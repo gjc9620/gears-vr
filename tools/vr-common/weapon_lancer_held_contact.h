@@ -23,7 +23,11 @@ inline bool authored(gears_vr::Vector& palm_in_mesh,gears_vr::Matrix& wrist_in_m
     constexpr double half_pi=1.5707963267948966;
     const auto basis=gears_vr::ue_matrix({0,half_pi,0});
     const auto shift=gears_vr::transform(basis,marker);
-    const gears_vr::Vector contact{-2.322615648+shift.x,shift.y,shift.z};
+    // Lancer-only GripPoint authoring: clear the fixed palm and wrap the
+    // original hand skin around this grip. The same mount positions mesh,
+    // authoritative bore and muzzle; controller/wrist calibration is unchanged.
+    const gears_vr::Vector contact{-4.131067499110079+shift.x,
+        -.7928067234513434+shift.y,-1.1633055962145933+shift.z};
     if(!gears_vr::finite(contact))return false;
     palm_in_mesh=contact;wrist_in_mesh=basis;return true;
 }

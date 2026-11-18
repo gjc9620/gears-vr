@@ -99,6 +99,10 @@ BODY_HOOK_RANGES = {
         (0xfa730, 1403, 'ccd15f18ead14a5c4645d4fc8ff41f2a5da766be276ed3d4f59a30ac26a126cb'),
         (0x8a18bc, 220, '938feaebec2a52aafc93607b187f25230eb17c4302cc2b34cd9ed36896c4497d'),
     ),
+    0xf9120: (
+        (0xf9120, 3167, '22fd1a30d06348f7d76fcffcf79e24ffb200b5c1ee57dc42c2e0380c20ff2090'),
+        (0x8a1642, 242, '31340b1e9bea9655fac6a9e334fcc558f1fc5e11a8ab2081c19364de6aa2f19e'),
+    ),
     0x1d2a04: (
         (0x1d2a04, 2552, '6be9fd2fd75e3293d24d2614ce2f1891a772c83336a15ae02d553b6f3cf53b8b'),
         (0x8c912c, 1418, 'bd3eef601899bfea97c429c6a82049bb2362c9ddceef2004539ed02caa525021'),
@@ -261,7 +265,10 @@ class SystemEntryCache:
                 owner = base, path, pe, relocations
                 break
         if owner is None:
-            raise RuntimeError('Target not in an allowed graphics system module')
+            nearest = max(((base, name) for name, (base, _) in loaded.items() if base <= target),
+                          default=None)
+            location = f'{nearest[1]}+0x{target-nearest[0]:x}' if nearest else 'no preceding module'
+            raise RuntimeError(f'Target not in an allowed graphics system module (0x{target:x}, {location})')
         base, path, pe, relocations = owner
         offset = target - base
         expected = bytearray(pe.get_data(offset, 32))

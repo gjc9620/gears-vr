@@ -1,10 +1,11 @@
-#include "cover_pose_role.h"
 // Continuous observation/planning only. Include after Rig/adapter/CCTRL.
 #include "continuous_hand_caller_certificate.h"
+#include "cover_pose_role.h"
 #include "body_c0_arm_alpha_policy.h"
 #include "body_tick_source_live.h"
 #include "held_outcome_journal.h"
 #include "hand_personal_reference.h"
+#include "troika_driver_scope_live.inl"
 namespace continuous_hand_owner_live {
 namespace budget=::gears_body_c0_budget;
 using Entry=gears_continuous_hand_entry::Entry;
@@ -222,8 +223,11 @@ void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     if(slot.active){reject(Failure::nested);return;}if(e.depth!=1||stopping.load())return;
     binding::Binding actor{};rig::CoreReadRequest request{};
     if(!(body_tick_source_live::enabled?rig::copy_scene_metadata_owner(actor,request,e.rcx):rig::copy_scene_owner(actor,request))||e.rcx!=actor.mesh.address||e.thread!=request.native.game_thread)return;
+    // Reuse closing-checked Lancer classification only to schedule this entry;
+    // current actor/source/lease checks remain mandatory below.
+    if(e.kind==3&&(!actor.weapon_known||!actor.weapon_class_known||!actor.weapon_is_lancer))return;
     // Only cached owner + code here. Actor/vtable reads require the lease below.
-    if(e.ra!=base+0x12e537||!caller_certified.load()||!phase::own_entries()||!controls::own_entries()){++rejected;return;}
+    if(e.ra!=base+(e.kind==3?0x18f021:0x12e537)||!caller_certified.load()||!phase::own_entries()||!controls::own_entries()){++rejected;return;}
     slot.active=true;e.selected=true;slot.tick_address=&e;slot.tick=e.invocation;++live_frames;++ticks;
     slot.sticky=false;slot.hard_control_fault=false;slot.observer_source_expired=false;slot.attempted=false;slot.metadata_revision=0;slot.data={};slot.compose={};slot.ordinal=0;
     slot.data.record.tick=e.invocation;slot.data.record.thread=e.thread;slot.data.record.begin_qpc=phase::qpc();
@@ -271,10 +275,16 @@ void compose_begin(Entry& e){if(!slot.active)return;
     if(!geometry()){++compose_rejections[3];reject(Failure::metadata);return;}
     slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;budget::recorder.admitted();if(!bind_personal())reject(Failure::model);
 }
-void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
+void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;
+    if(e.kind==2&&troika_driver_scope_live::begin_tick(e,tick_target,slot.active||stopping.load()))return;
+    if(e.kind==0&&troika_driver_scope_live::begin_compose(e,caller_certified.load()&&phase::own_entries()&&controls::own_entries()))return;
+    // kind3 is an actual standalone pose evaluation, never a synthetic Tick.
+    if(e.kind==3){if(!slot.active&&!slot.tick_depth&&e.ra==base+0x18f021)tick_begin(e);}
+    else if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
 void save_record(){std::lock_guard<std::mutex> lock(records_mutex);records[record_sequence%capacity]=slot.data.record;
     ++record_sequence;if(record_count<capacity)++record_count;}
 void pose_end(Entry const& e,bool returned) noexcept {Call call;
+    if(e.kind!=3&&troika_driver_scope_live::end(e,returned))return;
     if(e.kind==0){budget::recorder.finish(reinterpret_cast<uintptr_t>(&e),e.invocation,returned);
         gears_body_held_outcome::recorder.finish(reinterpret_cast<uintptr_t>(&e),e.invocation,returned);}
     try{
@@ -410,8 +420,8 @@ bool configure(wchar_t const* ini,FILE* file){wchar_t mode[16]{};GetPrivateProfi
         !passive()||!phase::certified||!controls::certified||!certify_caller())return false;
         length_mode=!wcscmp(mode,L"adaptive")?LengthMode::adaptive:LengthMode::preserve;caller_certified=true;enabled=true;}
     if(file)fprintf(file,"continuous_hand_enabled=%u caller_certified=%u continuous_hand_length_mode=%u read_only=1 writer=0 event_required=0 c0_snapshot_required=0\n",unsigned(enabled),unsigned(caller_certified.load()),unsigned(length_mode));return true;}
-void request_drain(){stopping=true;}unsigned pending_count(){return callbacks.load()+live_frames.load();}
-void summary(FILE* file){if(file){fprintf(file,"continuous_hand_enabled=%u continuous_hand_ticks=%llu continuous_hand_completed=%llu continuous_hand_rejected=%llu continuous_hand_prepare_left=%llu continuous_hand_prepare_right=%llu continuous_hand_pending=%u continuous_hand_failed=%u continuous_hand_file_written=%u continuous_hand_file_error=%lu ",unsigned(enabled),ticks.load(),completed.load(),rejected.load(),preparations[0].load(),preparations[1].load(),pending_count(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());
+void request_drain(){stopping=true;troika_driver_scope_live::request_drain();}unsigned pending_count(){return callbacks.load()+live_frames.load()+troika_driver_scope_live::pending_count();}
+void summary(FILE* file){troika_driver_scope_live::summary(file);if(file){fprintf(file,"continuous_hand_enabled=%u continuous_hand_ticks=%llu continuous_hand_completed=%llu continuous_hand_rejected=%llu continuous_hand_prepare_left=%llu continuous_hand_prepare_right=%llu continuous_hand_pending=%u continuous_hand_failed=%u continuous_hand_file_written=%u continuous_hand_file_error=%lu ",unsigned(enabled),ticks.load(),completed.load(),rejected.load(),preparations[0].load(),preparations[1].load(),pending_count(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());
     for(unsigned i=0;i<compose_rejections.size();++i)fprintf(file,"continuous_hand_compose_rejected_%u=%llu ",i,compose_rejections[i].load());
     for(unsigned i=0;i<metadata_rejections.size();++i)fprintf(file,"continuous_hand_metadata_rejected_%u=%llu ",i,metadata_rejections[i].load());
     PersonalDiagnostic diagnostic{};{std::lock_guard<std::mutex> lock(personal_mutex);diagnostic=personal_diagnostic;}

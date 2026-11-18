@@ -106,7 +106,13 @@ template<class Source> inline Status prepare(a::Neutral const& calibrated,a::Cov
     a::Output target{};
     if(a::prepare_axes_math(next.neutral,placement.anchor,original,neutral_tracking,model,frame,
         marker,{},policy,target)!=a::Status::okay)return Status::goal;
-    if(fit::fit(model,frame,target.goal,next.measured.pelvis.position,limits,work.fitting,next.fitting)!=fit::Status::okay)
+    // The owner now selects a reference-facing torso under the neutral head.
+    // Keep the original measurement as evidence, but do not replace this new
+    // authored pelvis with the retail back-to-cover hip before fitting it.
+    const auto fit_pelvis=policy.posture==b::Posture::reference_neutral&&
+        marker.basis()==a::marker::Basis::marcus_mesh_face_forward_y?
+        target.goal.absolute.neutral_pelvis_world:next.measured.pelvis.position;
+    if(fit::fit(model,frame,target.goal,fit_pelvis,limits,work.fitting,next.fitting)!=fit::Status::okay)
         return Status::fit;
     next.neutral.pelvis_world=next.fitting.goal.absolute.neutral_pelvis_world;
     next.binding=placement;

@@ -63,6 +63,11 @@ public:
     bool actual_full_pull() const noexcept{return stroke_.actual_full_pull();}
     double wanted_distance() const noexcept{return stroke_.wanted_distance();}
     bool begin(SnubSlideGeometry const& g,HammerburstLatchSample const& s,double actual) noexcept{return stroke_.begin(g,s,actual);}
+    // Caller must recheck its exact configured region on a fresh granted
+    // sample. All motion, speed, real upload and closure guards remain shared.
+    bool begin_in_region(SnubSlideGeometry const& g,HammerburstLatchSample const& s,double actual) noexcept {
+        return stroke_.begin(g,s,actual,true);
+    }
     bool move(HammerburstLatchSample const& s) noexcept{return stroke_.move(s);}
     bool release(double game_time) noexcept{return stroke_.release(game_time);}
     bool cancel(double game_time) noexcept{return stroke_.cancel(game_time);}

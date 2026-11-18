@@ -8,7 +8,11 @@
 namespace gears_hand_shoulder {
 namespace two=gears_hand_two_bone;
 using two::Pose;using two::Vector;using two::Quaternion;
-struct Input {two::Input arm{};Pose clavicle{};Vector up{},outward{};double units_per_metre{100};};
+struct Input {two::Input arm{};Pose clavicle{};Vector up{},outward{};double units_per_metre{100};
+    // Cosmetic attachment endpoint only. Neutral/free and release keep the
+    // original arm.authored pole; no history or interaction permission.
+    two::Pole attached_body_pole{};
+};
 struct Solution {
     Pose clavicle{};two::Solution arm{};
     double wrist_bend{},clavicle_turn{},shoulder_displacement{};
@@ -89,5 +93,66 @@ inline two::Status solve(Input const& input,Solution& output) noexcept {
         for(int de=-1;de<=1;++de)for(int dp=-1;dp<=1;++dp)if(de||dp)consider(e+de*step,p+dp*step);
     }
     best.result.adjusted=best.result.shoulder_displacement>1e-7;output=best.result;return two::Status::solved;
+}
+// Blend complete, valid geometric endpoints instead of changing the preferred
+// bend or a search bound: the shoulder search can switch candidates at either
+// threshold. Re-solving on the interpolated fixed-length circle keeps the wrist
+// exact and avoids shortening the arm by linearly mixing elbow positions.
+inline two::Status solve_body_pole_blend(Input const& input,double weight,Solution& output) noexcept {
+    using namespace two::detail;
+    if(!std::isfinite(weight)||weight<0||weight>1||!std::isfinite(input.arm.preferred_wrist_bend)||
+       input.arm.preferred_wrist_bend<0||input.arm.preferred_wrist_bend>detail::pi)return two::Status::invalid_input;
+    if(weight==0)return solve(input,output);
+    auto body=input;body.arm.preferred_wrist_bend=detail::pi;
+    if(input.attached_body_pole.known)body.arm.authored=input.attached_body_pole;
+    Solution from{},to{};
+    auto status=two::Status::solved;
+    if(weight<1){status=solve(input,from);if(status!=two::Status::solved)return status;}
+    status=solve(body,to);if(status!=two::Status::solved)return status;
+    // Correct the BODY endpoint before interpolation. Re-applying the wrist
+    // preference after interpolating poles can cross the signed pole-turn
+    // branch and jump the elbow even though both endpoints are valid.
+    const auto endpoint_delta=gears_vr::multiply(to.clavicle.orientation,
+        gears_vr::inverse(input.clavicle.orientation));
+    const auto endpoint_move=[&](Pose p){return Pose{
+        add(input.clavicle.position,rotated(endpoint_delta,sub(p.position,input.clavicle.position))),
+        gears_vr::multiply(endpoint_delta,p.orientation)};};
+    auto endpoint=input.arm;
+    endpoint.shoulder=endpoint_move(endpoint.shoulder);endpoint.elbow=endpoint_move(endpoint.elbow);
+    endpoint.wrist=endpoint_move(endpoint.wrist);
+    endpoint.authored={true,to.arm.elbow.position};endpoint.previous={};
+    status=two::solve(endpoint,to.arm);if(status!=two::Status::solved)return status;
+    Quaternion endpoint_target{};Vector endpoint_forward{};
+    if(!quaternion(endpoint.target.orientation,endpoint_target)||
+       !unit(rotated(endpoint_target,endpoint.wrist_forward_local),endpoint_forward))return two::Status::invalid_input;
+    to.wrist_bend=detail::bend(to.arm,endpoint_forward);
+    if(weight==1){output=to;return two::Status::solved;}
+    Quaternion q=to.clavicle.orientation;
+    if(weight<1){
+        const auto a=from.clavicle.orientation;auto b=to.clavicle.orientation;
+        if(a.x*b.x+a.y*b.y+a.z*b.z+a.w*b.w<0)b={-b.x,-b.y,-b.z,-b.w};
+        if(!quaternion({a.x+(b.x-a.x)*weight,a.y+(b.y-a.y)*weight,
+                       a.z+(b.z-a.z)*weight,a.w+(b.w-a.w)*weight},q))return two::Status::numerical_failure;
+    }
+    const auto delta=gears_vr::multiply(q,gears_vr::inverse(input.clavicle.orientation));
+    const auto move=[&](Pose p){return Pose{add(input.clavicle.position,rotated(delta,sub(p.position,input.clavicle.position))),
+        gears_vr::multiply(delta,p.orientation)};};
+    auto arm=input.arm;arm.shoulder=move(arm.shoulder);arm.elbow=move(arm.elbow);arm.wrist=move(arm.wrist);
+    arm.authored={true,weight==1?to.arm.elbow.position:
+        add(scaled(from.arm.elbow.position,1-weight),scaled(to.arm.elbow.position,weight))};
+    // Both endpoint elbows already include wrist comfort. This last solve
+    // only projects their interpolated pole onto the fixed-length circle;
+    // it must not perform a second pole-turn selection along that blend.
+    arm.previous={};arm.preferred_wrist_bend=detail::pi;
+    Solution candidate{};status=two::solve(arm,candidate.arm);if(status!=two::Status::solved)return status;
+    candidate.clavicle={input.clavicle.position,q};
+    Quaternion target{};Vector forward{};
+    if(!quaternion(arm.target.orientation,target)||!unit(rotated(target,arm.wrist_forward_local),forward))return two::Status::invalid_input;
+    candidate.wrist_bend=detail::bend(candidate.arm,forward);
+    const auto base=input.clavicle.orientation;
+    candidate.clavicle_turn=2*std::acos((std::clamp)(std::abs(q.x*base.x+q.y*base.y+q.z*base.z+q.w*base.w),0.,1.));
+    candidate.shoulder_displacement=length(sub(candidate.arm.shoulder.position,input.arm.shoulder.position));
+    candidate.adjusted=candidate.clavicle_turn>1e-7;
+    output=candidate;return two::Status::solved;
 }
 }

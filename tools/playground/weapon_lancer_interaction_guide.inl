@@ -64,7 +64,11 @@ bool supply_shape(hand::Frame const& f,guide::Shape& out) noexcept {
     if(!lancerreload_visual::interaction(f,actual))return false;
     gears_vr::Vector shoulder{};
     const gears_vr::Pose body{f.stereo.head.position,f.reference.orientation};
-    if(!gears_weapon::shoulder_ammo_center(nativeequipment::calibration,body,shoulder))return false;
+    if(gears_lancer_workbench_profile::shoulder_supply_enabled&&lancerreload_contact::authored_profile_current(f)){
+        if(!gears_lancer_shoulder_supply::center(
+            {gears_lancer_workbench_profile::shoulder_adjust,gears_lancer_workbench_profile::shoulder_scale},
+            body,shoulder))return false;
+    }else if(!gears_weapon::shoulder_ammo_center(nativeequipment::calibration,body,shoulder))return false;
     const auto& raw=f.controllers.hands[0].grip;const auto& world=actual.physical_left_grip;
     const auto basis=gears_vr::multiply(gears_vr::rotation_matrix(world.orientation),
         gears_vr::transpose(gears_vr::xr_to_ue(gears_vr::rotation_matrix(raw.orientation))));

@@ -1,6 +1,17 @@
 // Equipment action adapters run on normal PostPlayerTick, never Native
 // prepare/commit, observe, rollback/NoAuth or input workers. The dedicated
 // read_attached_frame helper is metadata only and grants no action permission.
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace lancer_grasp {
+void report_main_hold_trace(FILE*) noexcept;
+bool boltok_hold_trace_for(gears_weapon_hand::Frame const&) noexcept;
+bool hammerburst_source_scope_eligible(gears_weapon_hand::Frame const&) noexcept;
+bool boltok_source_scope_eligible(gears_weapon_hand::Frame const&) noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+namespace hod_input {bool prepare_equipment_stow(gears_weapon_hand::Frame const&,bool&) noexcept;}
+#endif
 namespace nativeequipment {
 namespace runtime=::gears_equipment_runtime;
 namespace abi=::gears_weapon_hand;
@@ -47,6 +58,148 @@ bool current(void*,abi::Frame const& frame) noexcept {
     return enabled.load(std::memory_order_acquire)&&weaponhand::current_gt(nullptr)&&domain_ready()&&
         weaponhand::client.source_current_on_gt(frame.key)&&abi::frame_active(frame,clock_ns(nullptr));
 }
+
+
+// Diagnostic-only accounting for the existing equipment current/hold boundary.
+// The wrapper returns the original current() result unchanged and grants nothing.
+struct HoldBoundaryEntry {
+    std::uint64_t frame{},sequence{};
+    std::int64_t sync_ns{};
+    bool baseline_ready{},input_bound{},actor_bound{},pending{},future_known{};
+    bool held_known{},hold_published{},binding_known{},edges_known{},edge_changed{};
+    std::uint64_t cursor{UINT64_MAX},model_hold_generation{};
+    unsigned clears{};
+    bool clear_binding_known{},clear_baseline_ready{},clear_input_bound{},clear_actor_bound{};
+    bool clear_pending{},clear_future_known{},clear_held_known{},clear_hold_published{};
+    std::uint64_t clear_cursor{UINT64_MAX},clear_input_sequence{};
+    unsigned clear_input_status{};
+    std::int64_t clear_age_ns{};
+    unsigned current_calls{};
+    bool current_result{};
+    std::int64_t current_ns{},current_age_ns{-1};
+    unsigned retain_calls{};
+    unsigned inventory_calls{},inventory_kind{},attached_calls{};
+    bool inventory_result{},attached_result{};
+    std::int64_t inventory_age_ns{-1},attached_age_ns{-1};
+    bool retain_last_result{};
+    unsigned outcome{};
+    bool exit_binding_known{};
+};
+
+std::array<HoldBoundaryEntry,8> hold_boundary_rows{};
+unsigned hold_boundary_count{};
+bool hold_boundary_active{};
+HoldBoundaryEntry hold_boundary_entry{};
+std::int64_t hold_boundary_started_ns{};
+
+bool hold_boundary_edge_changed(runtime::State const& s,abi::Frame const& f) noexcept {
+    for(unsigned hand=0;hand<2;++hand)for(unsigned control=0;control<gears_vr::control_count;++control)
+        if(s.last_edges[hand][0][control]!=f.controllers.hands[hand].pressed[control]||
+           s.last_edges[hand][1][control]!=f.controllers.hands[hand].released[control])return true;
+    return false;
+}
+
+void hold_boundary_begin(abi::Frame const& f) noexcept {
+    hold_boundary_active=false;
+    hold_boundary_entry={};
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(hold_boundary_count>=hold_boundary_rows.size()||
+       !lancer_grasp::boltok_hold_trace_for(f))return;
+    auto const& s=state.state();
+    hold_boundary_entry.frame=f.key.frame;
+    hold_boundary_entry.sequence=f.controllers.sequence;
+    hold_boundary_entry.sync_ns=f.controllers.sync_ns;
+    hold_boundary_entry.baseline_ready=s.baseline_ready;
+    hold_boundary_entry.input_bound=s.input_bound;
+    hold_boundary_entry.actor_bound=s.actor_bound;
+    hold_boundary_entry.pending=s.pending;
+    hold_boundary_entry.future_known=s.future_known;
+    hold_boundary_entry.held_known=s.held_known;
+    hold_boundary_entry.hold_published=s.hold_published;
+    hold_boundary_entry.binding_known=weaponhand::held_binding.known;
+    hold_boundary_entry.cursor=s.cursor;
+    hold_boundary_entry.model_hold_generation=vrequip::model.hold_generation();
+    hold_boundary_entry.edges_known=s.edges_known;
+    hold_boundary_entry.edge_changed=hold_boundary_edge_changed(s,f);
+    hold_boundary_started_ns=clock_ns(nullptr);
+    hold_boundary_active=true;
+#endif
+}
+
+bool current_for_trace(void* context,abi::Frame const& frame) noexcept {
+    if(!hold_boundary_active)return current(context,frame);
+    const auto begin=clock_ns(nullptr);
+    const bool result=current(context,frame);
+    const auto end=clock_ns(nullptr);
+    ++hold_boundary_entry.current_calls;
+    hold_boundary_entry.current_result=result;
+    hold_boundary_entry.current_ns=end-begin;
+    hold_boundary_entry.current_age_ns=(frame.controllers.sync_ns&&end>=frame.controllers.sync_ns)?
+        end-frame.controllers.sync_ns:-1;
+    return result;
+}
+
+void hold_boundary_before_clear() noexcept {
+    if(!hold_boundary_active)return;
+    ++hold_boundary_entry.clears;
+    auto const& s=state.state();
+    hold_boundary_entry.clear_binding_known=weaponhand::held_binding.known;
+    hold_boundary_entry.clear_baseline_ready=s.baseline_ready;
+    hold_boundary_entry.clear_input_bound=s.input_bound;
+    hold_boundary_entry.clear_actor_bound=s.actor_bound;
+    hold_boundary_entry.clear_pending=s.pending;
+    hold_boundary_entry.clear_future_known=s.future_known;
+    hold_boundary_entry.clear_held_known=s.held_known;
+    hold_boundary_entry.clear_hold_published=s.hold_published;
+    hold_boundary_entry.clear_cursor=s.cursor;
+    hold_boundary_entry.clear_age_ns=clock_ns(nullptr)-hold_boundary_started_ns;
+    hold_boundary_entry.clear_input_status=unsigned(input_evidence.status);
+    hold_boundary_entry.clear_input_sequence=input_evidence.sequence;
+}
+
+void hold_boundary_note_retain(bool retained) noexcept {
+    if(!hold_boundary_active)return;
+    ++hold_boundary_entry.retain_calls;
+    hold_boundary_entry.retain_last_result=retained;
+}
+
+void hold_boundary_end(runtime::Outcome const& outcome) noexcept {
+    if(!hold_boundary_active)return;
+    hold_boundary_entry.outcome=unsigned(outcome.status);
+    hold_boundary_entry.exit_binding_known=weaponhand::held_binding.known;
+    const bool record=hold_boundary_entry.clears||
+        outcome.status==runtime::Status::unavailable||
+        outcome.status==runtime::Status::inventory_unavailable||
+        outcome.status==runtime::Status::hold_failed;
+    if(record&&hold_boundary_count<hold_boundary_rows.size())
+        hold_boundary_rows[hold_boundary_count++]=hold_boundary_entry;
+    hold_boundary_active=false;
+}
+
+void hold_boundary_report_and_clear() noexcept {
+    if(log_file)for(unsigned i=0;i<hold_boundary_count;++i){
+        auto const& r=hold_boundary_rows[i];
+        fwprintf(log_file,L"boltok_equipment_hold_boundary frame=%llu sequence=%llu sync_ns=%lld baseline=%u input_bound=%u actor_bound=%u pending=%u future=%u held_known=%u hold_published=%u cursor=%llu model_hold_gen=%llu binding_known=%u edges_known=%u edge_changed=%u clears=%u clear_binding_known=%u clear_baseline=%u clear_input_bound=%u clear_actor_bound=%u clear_pending=%u clear_future=%u clear_held_known=%u clear_hold_published=%u clear_cursor=%llu clear_age_ns=%lld clear_input_status=%u clear_input_sequence=%llu current_calls=%u current_result=%u current_ns=%lld current_age_ns=%lld retain_calls=%u retain_last_result=%u outcome=%hs exit_binding_known=%u inventory_calls=%u inventory_kind=%u inventory_result=%u inventory_age_ns=%lld attached_calls=%u attached_result=%u attached_age_ns=%lld\n",
+            r.frame,r.sequence,r.sync_ns,unsigned(r.baseline_ready),unsigned(r.input_bound),unsigned(r.actor_bound),
+            unsigned(r.pending),unsigned(r.future_known),unsigned(r.held_known),unsigned(r.hold_published),
+            r.cursor,r.model_hold_generation,unsigned(r.binding_known),unsigned(r.edges_known),unsigned(r.edge_changed),
+            r.clears,unsigned(r.clear_binding_known),unsigned(r.clear_baseline_ready),unsigned(r.clear_input_bound),
+            unsigned(r.clear_actor_bound),unsigned(r.clear_pending),unsigned(r.clear_future_known),
+            unsigned(r.clear_held_known),unsigned(r.clear_hold_published),r.clear_cursor,r.clear_age_ns,
+            r.clear_input_status,r.clear_input_sequence,r.current_calls,unsigned(r.current_result),
+            r.current_ns,r.current_age_ns,r.retain_calls,unsigned(r.retain_last_result),
+            runtime::status_name(static_cast<runtime::Status>(r.outcome)),unsigned(r.exit_binding_known),
+            r.inventory_calls,r.inventory_kind,unsigned(r.inventory_result),r.inventory_age_ns,
+            r.attached_calls,unsigned(r.attached_result),r.attached_age_ns);
+    }
+    if(log_file&&hold_boundary_count)fflush(log_file);
+    hold_boundary_active=false;
+    hold_boundary_count=0;
+    hold_boundary_rows={};
+    hold_boundary_entry={};
+}
+
+
 void reset_input(void*) noexcept {input.reset();}
 bool read_input_continuity(abi::Frame const& frame,gears_hand_continuity::TrackedInput& tracking,
     gears_hand_continuity::Publisher& publisher,gears_hand_continuity::TrackedInput* right_press=nullptr,
@@ -75,18 +228,33 @@ bool read_input_continuity(abi::Frame const& frame,gears_hand_continuity::Tracke
     return result==gears_current_tracking::Failure::none;
 }
 bool next(void*,abi::Frame const& frame,std::uint64_t& cursor,gears_weapon::EquipmentIntentEvent& event) noexcept {
+    static const bool perf_input=[](){wchar_t value[4]{};
+        return GetEnvironmentVariableW(L"GEARSVR_TEST_PERF_UNHELD",value,4)==1&&value[0]==L'1';}();
     const auto input_begin_ns=clock_ns(nullptr);
     if(!current(nullptr,frame))return false;
     const auto validated_ns=clock_ns(nullptr);
     gears_equipment_input::Continuity continuity{};
     gears_current_tracking::Failure continuity_failure{};
-    const bool matched=read_input_continuity(frame,continuity.tracking,continuity.publisher,&continuity.right_press,&continuity_failure);
+    const bool requested_history=input.needs_recorded_right_press(frame,calibration,cursor);
+    const bool matched=read_input_continuity(frame,continuity.tracking,continuity.publisher,
+        requested_history?&continuity.right_press:nullptr,&continuity_failure);
     const auto continuity_ns=clock_ns(nullptr);
     if(matched)++input_continuity_matched;else ++input_continuity_unavailable;
     const bool index_acquire=stow_native::profile()&&!vrequip::model.held()&&
         !vrequip::model.switch_pending()&&!vrequip::model.animation_owns_hands();
     const bool available=input.next(frame,calibration,clock_ns(nullptr),clock_ms(nullptr),cursor,event,
         matched?&continuity:nullptr,index_acquire);
+    static unsigned input_cost_logs{},input_cost_observed{};
+    if(perf_input&&log_file&&input_cost_logs<16){
+        const auto ordinal=input_cost_observed++;
+        if(ordinal<4||ordinal%128==0){
+            const auto end_ns=clock_ns(nullptr);
+            fwprintf(log_file,L"native_equipment_input_cost observed=%u validation_ns=%lld continuity_read_ns=%lld input_next_ns=%lld total_ns=%lld requested_history=%u\n",
+                ordinal,validated_ns-input_begin_ns,continuity_ns-validated_ns,end_ns-continuity_ns,
+                end_ns-input_begin_ns,unsigned(requested_history));
+            fflush(log_file);++input_cost_logs;
+        }
+    }
     // Runtime may drop its baseline immediately after next rejects. Retain
     // only diagnostics, never another frame or an action to retry.
     input_evidence=input.evidence();
@@ -104,7 +272,10 @@ bool next(void*,abi::Frame const& frame,std::uint64_t& cursor,gears_weapon::Equi
     }
     return available;
 }
-void clear_hold(void*) noexcept {weaponhand::held_binding={};}
+void clear_hold(void*) noexcept {
+    hold_boundary_before_clear();
+    weaponhand::held_binding={};
+}
 bool identify(void*,std::uint64_t address,abi::ObjectIdentity& out) noexcept {
     out={};
     namespace meta=weaponhand::meta;
@@ -136,6 +307,32 @@ bool held_inventory(void*,abi::Frame const& frame,Snapshot& out) noexcept {
         if(!current(nullptr,frame)||!idle_inventory::read(frame,out))return false;
         return out.world==frame.world.address&&out.pawn==frame.pawn.address&&
             out.current_weapon==frame.weapon.address&&current(nullptr,frame);
+    }catch(...){out={};return false;}
+}
+bool quiet_unheld_inventory(void*,abi::Frame const& frame,Snapshot& out) noexcept {
+    try {
+        inventory_stage=L"quiet_unheld_chain_observation";
+        static const bool measure=[](){wchar_t value[4]{};return
+            GetEnvironmentVariableW(L"GEARSVR_TEST_PERF_UNHELD",value,4)==1&&value[0]==L'1';}();
+        static unsigned quiet_observed{},logged{};
+        const auto ordinal=measure?quiet_observed++:0;
+        const bool sample=measure&&logged<16&&(ordinal<4||ordinal%128==0);
+        const auto begin=sample?clock_ns(nullptr):0;
+        if(!current(nullptr,frame))return false;
+        const auto validated=sample?clock_ns(nullptr):0;
+        bool can_switch{},animation_busy{};
+        if(!vrequip::read_can_switch(frame.controller.address,can_switch)||
+           !vrequip::read_bool(frame.pawn.address,L"bSwitchingWeapons",animation_busy))return false;
+        const auto queried=sample?clock_ns(nullptr):0;
+        // No slots or manager were consumed before the original switch query.
+        // Observe its CURRENT result using one fully bracketed chain read.
+        // A query-time slot change is observed, never used for a new action.
+        if(!idle_inventory::read(frame,out)||!current(nullptr,frame))return false;
+        out.can_switch=can_switch;out.animation_busy=animation_busy;
+        if(sample&&log_file){const auto end=clock_ns(nullptr);
+            fwprintf(log_file,L"native_equipment_quiet_inventory_cost observed=%u current_ns=%lld switch_ns=%lld chain_close_ns=%lld total_ns=%lld action_permission=0\n",
+                ordinal,validated-begin,queried-validated,end-queried,end-begin);fflush(log_file);++logged;}
+        inventory_stage=L"quiet_unheld_ok";return true;
     }catch(...){out={};return false;}
 }
 bool hand_bone(Name value) noexcept {
@@ -211,6 +408,9 @@ bool switch_slot(void*,abi::Frame const& frame,Snapshot const& game,unsigned slo
     try{
         if(slot>=4||!game.can_switch||game.animation_busy||game.world!=frame.world.address||game.pawn!=frame.pawn.address||
            game.current_weapon!=frame.weapon.address)return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        if(gnasher_state::owns_stow(frame)&&!gnasher_state::stow_ready(frame))return false;
+#endif
         // End our old handoff before the original inventory mutation. Never
         // restore a detached old weapon after switching to a different one.
         if(stow_native::lease.dirty()&&(!stow_native::restore()||!current(nullptr,frame)))return false;
@@ -226,7 +426,7 @@ bool switch_slot(void*,abi::Frame const& frame,Snapshot const& game,unsigned slo
            !vrequip::read_can_switch(frame.controller.address,can_switch)||!can_switch||!current(nullptr,frame))return false;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-        if(!fragpreparation::stop()||!current(nullptr,frame))return false;
+        if(!fragpreparation::stop()||!smokepreparation::stop()||!current(nullptr,frame))return false;
 #endif
         if(!vrfire::yield_for_native_equipment(frame)||!current(nullptr,frame))return false;
 #endif
@@ -240,7 +440,21 @@ bool switch_slot(void*,abi::Frame const& frame,Snapshot const& game,unsigned slo
     }catch(...){return false;}
 }
 bool empty_sound(void*,abi::Frame const& frame,Snapshot const& game,unsigned slot) noexcept {
-    try{return current(nullptr,frame)&&vrequip::play_empty_slot_sound(game,slot);}catch(...){return false;}
+    try{
+        const bool valid=current(nullptr,frame);
+        const bool dispatched=valid&&vrequip::play_empty_slot_sound(game,slot);
+        // Bounded observation of the existing grenade-slot feedback only.
+        // Returning true means original sound dispatch, not audible output
+        // (automatic validation is muted). No additional original call/read.
+        static unsigned grenade_empty_reports{};
+        if(valid&&slot==1&&log_file&&grenade_empty_reports++<24){
+            const auto& right=frame.controllers.hands[1];
+            fwprintf(log_file,L"native_grenade_empty_feedback frame=%llu sequence=%llu pressed=%u released=%u slot=%u selected=%llx current_weapon=%llx dispatched=%u\n",
+                frame.key.frame,frame.controllers.sequence,right.pressed[gears_vr::control_squeeze],right.released[gears_vr::control_squeeze],
+                slot,game.weapon_in_slot[slot],game.current_weapon,unsigned(dispatched));fflush(log_file);
+        }
+        return dispatched;
+    }catch(...){return false;}
 }
 bool begin_index_acquire(void*,abi::Frame const& frame,Snapshot const& game,unsigned slot) noexcept {
     if(!stow_native::profile()||slot<2||slot>=4||vrequip::model.held()||
@@ -274,16 +488,124 @@ bool hold(void*,abi::Frame const& frame,Snapshot const& game) noexcept {
     if(!held.known||!abi::same(held.world,frame.world)||!abi::same(held.controller,frame.controller)||
        !abi::same(held.pawn,frame.pawn)||!abi::same(held.weapon,frame.weapon))return false;
     held.native_cookie=frame.key.registration_cookie;held.native_started=frame.key.native_started_qpc;held.world_generation=frame.key.world_generation;
-    abi::GripGameState verified{};
-    if(!weaponhand::observe(nullptr,frame,clock_ns(nullptr),verified)||!verified.main_hand_held||
+    weaponhand::HoldSourceObservation verified{};
+    if(!weaponhand::observe_hold_source(nullptr,frame,clock_ns(nullptr),verified)||!verified.main_hand_held||
        !weaponhand::client.registration_alive(frame.key.registration_cookie,frame.key.native_started_qpc)||
        !abi::frame_active(frame,clock_ns(nullptr))){held={};return false;}
+    if(playground::instance(frame.weapon.address,L"WEAP_HammerOfDawn")){
+        const bool waiting=weaponhand::client.begin_hod_posthold_on_gt(frame,held.generation);
+        static unsigned handoff_rows{};
+        if(log_file&&handoff_rows++<4){
+            fwprintf(log_file,L"hod_posthold_arm armed=%u frame=%llu weapon=%llx generation=%llu input_age_ns=%lld client_armed=%u disarm=%u\n",
+                unsigned(waiting),frame.key.frame,frame.weapon.address,held.generation,
+                clock_ns(nullptr)-frame.controllers.sync_ns,unsigned(weaponhand::client.armed()),weaponhand::client.last_disarm_reason());fflush(log_file);
+        }
+    }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    lancer_grasp::committed_main_hold(frame);
+#endif
     return true;
 }
-runtime::Backend backend{nullptr,clock_ms,clock_ns,current,next,inventory,attached,identify,switch_slot,empty_sound,hold,clear_hold,reset_input,held_inventory,
-    stow_native::profile()?stow_native::stow:nullptr,stow_native::profile()?stow_native::unholster:nullptr,
+bool unholster_after_reload(void* context,abi::Frame const& frame,Snapshot const& game,bool& changed) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(vrequip::model.held()&&vrequip::model.held_weapon()==frame.weapon.address&&gnasher_state::owns_stow(frame)){
+        if(!gnasher_state::prepare_stow(frame,changed))return false;
+        if(changed)return true; // Existing ORIGINAL intent deadline; await a new publication.
+    }
+#endif
+    return stow_native::unholster(context,frame,game,changed);
+}
+bool retain_idle_main_hold(void*,abi::Frame const& frame) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    const bool retained=lancer_grasp::retain_main_during_pose_gap(frame.controller.address);
+    hold_boundary_note_retain(retained);
+    return retained;
+#else
+    (void)frame;return false;
+#endif
+}
+bool retain_boltok_existing_hold(void*,abi::Frame const& frame) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    // Eligibility is routing only; the original routine performs every fresh
+    // game, lifetime, actor, generation and continuity check.
+    if(!lancer_grasp::boltok_source_scope_eligible(frame))return false;
+    const bool retained=lancer_grasp::retain_main_during_pose_gap(frame.controller.address);
+    hold_boundary_note_retain(retained);
+    return retained;
+#else
+    (void)frame;return false;
+#endif
+}
+
+// Diagnostic-only wrappers around the existing inventory and attachment calls.
+// Each calls its original function exactly once and returns that same result.
+bool inventory_for_trace(void* context,abi::Frame const& frame,Snapshot& out) noexcept {
+    if(!hold_boundary_active)return inventory(context,frame,out);
+    const bool result=inventory(context,frame,out);
+    const auto end=clock_ns(nullptr);
+    ++hold_boundary_entry.inventory_calls;
+    hold_boundary_entry.inventory_kind=1;
+    hold_boundary_entry.inventory_result=result;
+    hold_boundary_entry.inventory_age_ns=
+        (frame.controllers.sync_ns&&end>=frame.controllers.sync_ns)?
+        end-frame.controllers.sync_ns:-1;
+    return result;
+}
+
+bool held_inventory_for_trace(void* context,abi::Frame const& frame,Snapshot& out) noexcept {
+    if(!hold_boundary_active)return held_inventory(context,frame,out);
+    const bool result=held_inventory(context,frame,out);
+    const auto end=clock_ns(nullptr);
+    ++hold_boundary_entry.inventory_calls;
+    hold_boundary_entry.inventory_kind=2;
+    hold_boundary_entry.inventory_result=result;
+    hold_boundary_entry.inventory_age_ns=
+        (frame.controllers.sync_ns&&end>=frame.controllers.sync_ns)?
+        end-frame.controllers.sync_ns:-1;
+    return result;
+}
+
+// Runtime alone brackets this metadata read with its mandatory current
+// checks. Standalone attached()/attached_frame() callers keep their full
+// validation. Routing is a negative work choice, never action permission.
+bool attached_for_runtime(void* context,abi::Frame const& frame,Snapshot const& snapshot) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(lancer_grasp::boltok_source_scope_eligible(frame))
+        return snapshot.world==frame.world.address&&snapshot.pawn==frame.pawn.address&&
+            snapshot.current_weapon==frame.weapon.address&&read_attached_frame(frame,0);
+#endif
+    return attached(context,frame,snapshot);
+}
+
+bool attached_for_trace(void* context,abi::Frame const& frame,Snapshot const& snapshot) noexcept {
+    if(!hold_boundary_active)return attached_for_runtime(context,frame,snapshot);
+    const bool result=attached_for_runtime(context,frame,snapshot);
+    const auto end=clock_ns(nullptr);
+    ++hold_boundary_entry.attached_calls;
+    hold_boundary_entry.attached_result=result;
+    hold_boundary_entry.attached_age_ns=
+        (frame.controllers.sync_ns&&end>=frame.controllers.sync_ns)?
+        end-frame.controllers.sync_ns:-1;
+    return result;
+}
+
+runtime::Backend backend{nullptr,clock_ms,clock_ns,current_for_trace,next,inventory_for_trace,attached_for_trace,identify,switch_slot,empty_sound,hold,clear_hold,reset_input,held_inventory_for_trace,
+    stow_native::profile()?stow_native::stow:nullptr,stow_native::profile()?unholster_after_reload:nullptr,
     stow_native::profile()?stow_native::idle_unheld:nullptr,
-    [](void*,abi::Frame const& f,bool& changed) noexcept {return lancerreload_runtime::prepare_stow(f,changed);},begin_index_acquire};
+    [](void*,abi::Frame const& f,bool& changed) noexcept {
+        if(gnasher_state::owns_stow(f))return gnasher_state::prepare_stow(f,changed);
+        return lancerreload_runtime::prepare_stow(f,changed);
+    },begin_index_acquire,retain_idle_main_hold,quiet_unheld_inventory,retain_boltok_existing_hold,
+    [](void*,abi::Frame const& f,bool& stop_issued) noexcept {
+        stop_issued=false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+        if(playground::instance(f.weapon.address,L"WEAP_HammerOfDawn"))
+            return current(nullptr,f)&&hod_input::prepare_equipment_stow(f,stop_issued);
+#else
+        (void)f;
+#endif
+        return true;
+    }};
 bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept {
     reload_ticked_early=reload_already_ticked;
     ++ticks;
@@ -314,14 +636,17 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
         ++frame_unavailable;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         fragruntime::unavailable(pc);
+        smokeruntime::unavailable(pc);
+        longshot_scope_owner::unavailable(pc);
         // Inventory remains disarmed. The existing original-saw owner alone
         // may retain its already committed hold through a missing pose Frame,
         // after fresh independent actor/lifetime/input-pin checks. All other
         // source loss still revokes the hold publication normally.
-        if(lancersaw_original::retain_hold_during_pose_gap(pc)||lancersaw_starter::retain_grasp_during_pose_gap(pc)||
+        if(lancer_grasp::retain_main_during_pose_gap(pc)||
+           lancersaw_original::retain_hold_during_pose_gap(pc)||lancersaw_starter::retain_grasp_during_pose_gap(pc)||
            lancerreload_runtime::retain_magazine_during_pose_gap(pc)||
-           lancerreload_runtime::retain_charging_during_pose_gap(pc)||fragruntime::retain_return_during_pose_gap(pc)||
-           fragruntime::retain_preparation_during_pose_gap(pc)){
+           lancerreload_runtime::retain_charging_during_pose_gap(pc)||fragruntime::retain_return_during_pose_gap(pc)||smokeruntime::retain_return_during_pose_gap(pc)||
+           fragruntime::retain_preparation_during_pose_gap(pc)||smokeruntime::retain_preparation_during_pose_gap(pc)){
             state.suspend_input(backend);++saw_pose_gap_holds;}
         else
 #endif
@@ -330,7 +655,9 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
         // subsequent fresh Frame must prove the same actor/input cohort and
         // the existing <=100ms authentic press; startup, identity, Game or
         // transport failures still drop the entire input baseline.
-        if(frame_read.failure==abi::FrameReadFailure::publication||
+        if(frame_read.failure==abi::FrameReadFailure::hold_handoff_pending)
+            state.suspend_input(backend);
+        else if(frame_read.failure==abi::FrameReadFailure::publication||
            frame_read.failure==abi::FrameReadFailure::stale_before)
             state.suspend_pose_gap(backend);
         else state.suspend(backend);
@@ -339,10 +666,11 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
         static unsigned first_failures{},grip_failures{};
         if(frame_read.frame&&log_file&&((frame_read.left_grip_down&&grip_failures++<24)||
            (!frame_read.left_grip_down&&first_failures++<8))){
-            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g\n",
+            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g commit_check_input_age_ns=%lld since_commit_check_ns=%lld\n",
                 unsigned(frame_read.failure),frame_read.game_difference,frame_read.frame,frame_read.sequence,
                 frame_read.press_token,frame_read.left_grip_down,frame_read.input_age_ns,frame_read.candidate.flags,
-                frame_read.candidate.decision,frame_read.candidate.lease,frame_read.candidate.support_distance_metres);fflush(log_file);
+                frame_read.candidate.decision,frame_read.candidate.lease,frame_read.candidate.support_distance_metres,
+                frame_read.commit_check_input_age_ns,frame_read.since_commit_check_ns);fflush(log_file);
         }
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         weapon_part_assets::on_frame_unavailable();
@@ -351,15 +679,47 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     }
     if(pc!=frame.controller.address){++other_controller;return false;}
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-    if(fragruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
+    // One Lancer, Hammerburst or currently unheld equipment callback, one
+    // byte-revalidated boolean liveness proof. Full Frame/game/proposal readers
+    // keep their path.
+    // Every consumer still reads actual bytes; source mutation reruns the
+    // original observer. Never cache game state, pose, input, clocks or grants.
+    // Part-local scopes below borrow this scope rather than nesting disabled
+    // proofs. Other held weapons keep their original scope/observation path.
+    std::optional<weaponhand::source_validation::Scope> lancer_source_reads;
+    if(!weaponhand::source_validation::active&&(lancer_grasp::source_scope_eligible(frame)||
+       lancer_grasp::hammerburst_source_scope_eligible(frame)||
+       lancer_grasp::boltok_source_scope_eligible(frame)||
+       (!vrequip::model.held()&&copied_game.known&&!copied_game.main_hand_held)))
+        lancer_source_reads.emplace(frame);
+    if(fragruntime::pre_equipment(frame,copied_game)||smokeruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
     fragruntime::tick(frame,copied_game);
-    if(fragruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
+    smokeruntime::tick(frame,copied_game);
+    if(fragruntime::pre_equipment(frame,copied_game)||smokeruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
+    lancer_grasp::prepare_neutral_starter(frame,copied_game,copied_decision);
+    (void)lancer_grasp::publish_magazine_fingers_early(frame,copied_game,copied_decision);
     const bool support_grasp=copied_decision.lease.kind==abi::LeaseKind::support;
+    const bool passive_support_early=lancer_grasp::prefer_early_passive_support(frame,copied_game,copied_decision);
     // Publish a retained support pose at the same early admission point as a
     // new grant. Unrelated reload/starter work must not precede this request.
     // tick retains every current source, exact lease and geometry check.
-    if(copied_decision.new_grant||support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
+    if(copied_decision.new_grant||support_grasp||passive_support_early)lancer_grasp::tick(frame,copied_game,copied_decision);
     weapon_part_assets::on_frame(frame);
+    torquebow_arrow_visual::on_frame(frame);
+    // Hidden resource preparation grants no firing or pickup permission.
+    // On an idle, exact held Longshot DOWN, service it after this same tick's
+    // fire path. Active reload and an already acquired cartridge keep order.
+    const auto& longshot_right=frame.controllers.hands[1];
+    const bool defer_longshot_round=longshot_runtime::selected(frame)&&!longshot_runtime::pending_work()&&
+        !longshot_round::has_item()&&longshot_right.trigger_active==1&&std::isfinite(longshot_right.trigger)&&
+        longshot_right.trigger>.35f&&longshot_right.trigger<=1.f;
+    if(!defer_longshot_round)longshot_round::tick(frame);
+    gnasher_round::tick(frame);
+    longshot_fire::service(frame);
+    gnasher_fire::service(frame);
+    gnasher_inventory::service(frame);
+    gnasher_state::service(frame,state.state().pending,copied_game.main_hand_held);
+    gnasher_runtime::tick(frame,copied_game,copied_decision);
     if(!copied_decision.new_grant)lancer_magazine_appearance::prepare(frame);
 #endif
     ++frames;
@@ -387,13 +747,15 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
             // old early return freezes the lever at ON and never sees OFF.
             // Paired34 remains original-owned and cannot enter this branch.
             lancersaw_starter::tick(frame,copied_decision);
-            if(!support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
+            if(!support_grasp&&!passive_support_early)lancer_grasp::tick(frame,copied_game,copied_decision);
             if(lancersaw_original::ready_motion_allowed(frame))lancersaw_contact::tick(frame);
         }
         return false;
     }
     const auto timing_begin=clock_ns(nullptr);
+    hold_boundary_begin(frame);
     const auto outcome=state.tick(frame,backend,vrequip::model);
+    hold_boundary_end(outcome);
     const auto timing_equipment=clock_ns(nullptr);
     const auto status=static_cast<std::size_t>(outcome.status);
     if(status<outcomes.size())++outcomes[status];
@@ -414,11 +776,19 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     // Firing consumes this tick's authenticated controller plan before the
     // visual lease. A missing reach-resolved render endpoint must not erase
     // the independent shot plan or swallow a fresh trigger edge.
-    lancerreload_manual::prepare_starter(frame);
-    if(frame.controllers.hands[1].trigger_active==1){
-        lancerreload_manual::prepare(frame);
-        vrfire::tick(pc);fire_ticked_early=true;
-    }
+    const bool mechanism_first=!reload_ticked_early&&longshot_runtime::selected(frame)&&
+        longshot_bolt::granted(frame,copied_decision)&&vrfire::longshot_mechanism_neutral(frame);
+    const auto fire_current=[&]() noexcept {
+        // The original starter query admits Weap_AssaultRifle only. The
+        // existing exact held Longshot classification cannot enter that owner.
+        if(!longshot_runtime::selected(frame))lancerreload_manual::prepare_starter(frame);
+        if(frame.controllers.hands[1].trigger_active==1){
+            lancerreload_manual::prepare(frame);
+            vrfire::tick(pc);fire_ticked_early=true;
+        }
+        if(defer_longshot_round)longshot_round::tick(frame);
+    };
+    if(!mechanism_first)fire_current();
     nativelancerfollow::tick(frame);
     const auto timing_follow=clock_ns(nullptr);
     // Display follows this fresh hand publication before reload/reflection
@@ -434,12 +804,24 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     if(!reload_ticked_early&&(frame.left_grip_down||lancerreload_runtime::needs_priority())){
         lancerreload_runtime::tick(pc);reload_ticked_early=true;
     }
+    // Fresh follow/apply and the normal reload reauthentication remain first.
+    // Fire still runs exactly once in this tick, with its own live guards.
+    if(mechanism_first)fire_current();
     const auto timing_reload=clock_ns(nullptr);
+    // A retained Lancer magazine/loading skin uses the SAME fresh part pose
+    // just updated above. Do not spend its remaining100ms on unrelated C
+    // contact/idle work first. C owns its own post-starter geometry ordering.
+    const bool part_grasp_early=lancer_grasp::prefer_early_part(frame,copied_decision);
+    if(part_grasp_early)lancer_grasp::tick(frame,copied_game,copied_decision);
     lancersaw_contact::tick(frame);
     const auto timing_contact=clock_ns(nullptr);
     lancersaw_starter::tick(frame,copied_decision);
-    if(!support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
+    if(!support_grasp&&!passive_support_early&&!part_grasp_early)lancer_grasp::tick(frame,copied_game,copied_decision);
     const auto timing_starter=clock_ns(nullptr);
+    longshot_grasp::tick(frame,copied_game,copied_decision);
+    longshot_eyebox::observe(frame,copied_game,longshot_scope_owner::ready(frame));
+    longshot_scope_owner::tick(frame);
+    longshot_runtime::guide(frame);
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
     if(observer_budget())nativeequipment_attachment::tick(frame);else ++observer_budget_skips;
@@ -455,7 +837,9 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     static unsigned stage_logs{},stage_observed{};
-    if(log_file&&stage_logs<16&&vrequip::model.held_for(frame.world.address,frame.pawn.address,frame.weapon.address)){
+    static const bool perf_unheld=[](){wchar_t value[4]{};
+        return GetEnvironmentVariableW(L"GEARSVR_TEST_PERF_UNHELD",value,4)==1&&value[0]==L'1';}();
+    if(log_file&&stage_logs<16&&(perf_unheld||vrequip::model.held_for(frame.world.address,frame.pawn.address,frame.weapon.address))){
         const auto ordinal=stage_observed++;
         if(ordinal<4||ordinal%128==0){
             const auto end=clock_ns(nullptr);
@@ -468,6 +852,14 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
                 timing_draw-timing_follow,timing_contact-timing_reload,timing_starter-timing_contact,
                 timing_reload-timing_draw,end-timing_starter,starter.prepare_ns,starter.gun_ns,starter.stage_ns,
                 starter.flush_ns,starter.ack_ns,starter.asset_source_calls,starter.asset_source_ns);
+            if(lancer_source_reads){const auto& proof_scope=*lancer_source_reads;
+                fwprintf(log_file,L"native_equipment_source_validation_cost observed=%u validations=%u fallbacks=%u disabled=%u sealed=%u failure=%u ranges=%u merged=%u reads_per_pass=%u bytes=%u qualifications=%u capture_ns=%lld seal_ns=%lld validation_ns=%lld order_hits=%u order_misses=%u\n",
+                    ordinal,proof_scope.validations,proof_scope.fallbacks,unsigned(proof_scope.disabled),unsigned(proof_scope.sealed),
+                    proof_scope.proof?unsigned(proof_scope.proof->failure):0,
+                    proof_scope.proof?proof_scope.proof->count:0,proof_scope.proof?proof_scope.proof->merged:0,
+                    proof_scope.proof?proof_scope.proof->validation_reads_per_pass():0,proof_scope.proof?proof_scope.proof->used:0,
+                    proof_scope.qualifications,proof_scope.capture_ns,proof_scope.seal_ns,proof_scope.validation_ns,
+                    proof_scope.proof?proof_scope.proof->order_cache.hits:0,proof_scope.proof?proof_scope.proof->order_cache.misses:0);}
             fflush(log_file);++stage_logs;
         }
     }
@@ -476,6 +868,7 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
 }
 void reset_after_drain() noexcept {
     stow_native::reset_after_drain();
+    hold_boundary_report_and_clear();
     state.reset_after_drain(backend,vrequip::model);have_status=false;
     if(log_file)fwprintf(log_file,L"native_equipment_idle_inventory_summary hits=%llu qualifications=%llu rejected=%llu action_permission=0\n",
         idle_inventory::hits,idle_inventory::qualifications,idle_inventory::rejected);
@@ -483,6 +876,8 @@ void reset_after_drain() noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     lancersaw_starter::reset_after_drain();
     fragruntime::reset_after_drain();
+    smokeruntime::reset_after_drain();
+    longshot_scope_owner::reset_after_drain();
 #endif
     input_continuity_reader.close_after_drain();
     if(log_file)fwprintf(log_file,L"native_equipment_input_continuity matched=%llu unavailable=%llu consumer_jitter=%llu native_selected=%llu reader_closed=1\n",
@@ -501,6 +896,9 @@ void reset_after_drain() noexcept {
 #endif
     calibration={};calibration_measured=false;input_evidence={};input_gap_logs=0;
     if(log_file&&ticks){
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        lancer_grasp::report_main_hold_trace(log_file);
+#endif
         fwprintf(log_file,L"native_equipment_summary ticks=%llu frames=%llu frame_unavailable=%llu other_controller=%llu domain_rejected=%llu saw_pose_gap_holds=%llu\n",
             ticks,frames,frame_unavailable,other_controller,domain_rejected,saw_pose_gap_holds);
         for(std::size_t i=0;i<outcomes.size();++i)if(outcomes[i])

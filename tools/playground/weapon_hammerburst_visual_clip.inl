@@ -17,7 +17,7 @@ bool prepare_reload_name(hand::Frame const& f) noexcept {
             if(!name_started)name_started=now;return now>=name_started&&now-name_started<3000000;},reload_indices,8192)==gears_equipment_names::State::ready;
 }
 
-bool restore_closed() noexcept {
+bool restore_closed(bool initial=false) noexcept {
     if(!anim::ownership.active||!anim::ownership.stopped||!playground::instance(anim::ownership.inventory.weapon.address,L"Weap_LocustAssaultRifle")||
        !weaponhand::current_gt(nullptr))return false;
     anim::Observation actual{};
@@ -35,8 +35,11 @@ bool restore_closed() noexcept {
     if(call.r.size!=8||!anim::input_field(call,time,L"FloatProperty",4)||!anim::input_field(call,notify,L"BoolProperty",4)||
        get<unsigned>(time+0x94)!=c.time_offset||get<unsigned>(notify+0x94)!=c.notify_offset||get<unsigned>(notify+0xd0)!=c.notify_mask||
        !anim::original_node_function(call,L"SetPosition",fn)||!hand::same(fn,c.seek)||
-       !nativelancerfollow::bool_arg(call,L"bFireNotifies",false)||!call.set(L"NewTime",anim::ownership.last.length).valid)return false;
-    anim::ownership.seek_pending=true;anim::ownership.wanted_time=anim::ownership.last.length;
+       !nativelancerfollow::bool_arg(call,L"bFireNotifies",false)||!call.set(L"NewTime",initial?0.f:anim::ownership.last.length).valid)return false;
+    // Initial closed pose is the START of HB_Reload; its end can let the
+    // original custom-animation blend retire before the first hand-driven seek.
+    const float closed_time=initial?0.f:anim::ownership.last.length;
+    anim::ownership.seek_pending=true;anim::ownership.wanted_time=closed_time;
     return call.run()&&anim::reconcile_seek();
 }
 
@@ -45,7 +48,18 @@ bool capture_started() noexcept {
     const auto& id=anim::ownership.inventory;auto value=anim::ownership.last;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!meta::tables(base,schema.objects,schema.names))return false;
-    for(auto const& object:{id.world,id.pawn,id.weapon,value.component,value.asset,value.node})if(!weaponhand::object(r,object))return false;
+    for(auto const& object:{id.world,id.pawn,id.weapon,value.component,value.asset})if(!weaponhand::object(r,object))return false;
+    // Idle custom animation slots may have no sequence node yet. Bind only
+    // AFTER the one journaled PlayWeaponAnim dispatch, and never substitute
+    // a different node once this clip has been captured.
+    playground::Args getter(id.weapon.address,L"GetWeaponAnimNodeSeq");
+    hand::ObjectIdentity selected{};
+    if(getter.r.size!=8||!lancer_charging::script_call(getter,L"GetWeaponAnimNodeSeq")||
+       !vrequip::result_property(getter,L"ObjectProperty",8)||!getter.run()||
+       !lancermain_asset::identify(r,getter.output<uptr>(),selected)||
+       !weaponhand::derives(r,selected.address,L"AnimNodeSequence",L"Engine")||
+       (hand::identity_valid(value.node)&&!hand::same(value.node,selected)))return false;
+    value.node=selected;
     meta::PointerField mesh{},asset{},sequence{},instigator{},world{};
     if(!weaponhand::pointer(r,id.weapon.address,L"Instigator",id.pawn.address,instigator)||
        !weaponhand::pointer(r,id.pawn.address,L"WorldInfo",id.world.address,world)||
@@ -66,12 +80,12 @@ bool capture_started() noexcept {
 anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
     failure=1;
     if(!transaction||anim::ownership.active||!playground::instance(f.weapon.address,L"Weap_LocustAssaultRifle")||
-       !lancerreload_state::item_owned(f)||!nativeequipment::current(nullptr,f)||!prepare_reload_name(f))return anim::Acquire::rejected;
+       (!lancerreload_state::item_owned(f)&&!hammerburst_runtime::restoration_owned(f))||!nativeequipment::current(nullptr,f)||!prepare_reload_name(f))return anim::Acquire::rejected;
     bool reloading{};
     if(lancerreload_state::lease.acquired||!lancerreload_state::bool_call(f.weapon.address,L"IsReloading",reloading)||reloading)return anim::Acquire::rejected;
-    lancermain_asset::Evidence asset{};hand::ObjectIdentity node{};
-    if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready||
-       !anim::selected_node(f,node))return anim::Acquire::rejected;
+    lancermain_asset::Evidence asset{};
+    if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready)
+        return anim::Acquire::rejected;
     playground::Args play(f.weapon.address,L"PlayWeaponAnim");
     if(!lancer_charging::script_call(play,L"PlayWeaponAnim")||!vrequip::result_property(play,L"FloatProperty",4))return anim::Acquire::rejected;
     struct Parameter {const wchar_t* label;const wchar_t* type;unsigned bytes;};
@@ -91,7 +105,7 @@ anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
        !nativeequipment::current(nullptr,f))return anim::Acquire::rejected;
     anim::ownership={};auto& owner=anim::ownership;owner.inventory=inv::identity(f);owner.serial=transaction;
     owner.active=owner.visual_only=true;owner.last.weapon=f.weapon;owner.last.component=asset.component;
-    owner.last.asset=asset.asset;owner.last.node=node;
+    owner.last.asset=asset.asset; // Actual node is captured after Play, before Stop/seek.
     // Durable BEFORE start. Failure is cleanup, not permission to replay Play.
     failure=2;if(!play.run()||!capture_started())return anim::Acquire::recovery_required;
     playground::Args stop(owner.last.node.address,L"StopAnim");hand::ObjectIdentity function{};
@@ -109,13 +123,16 @@ anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
     auto& c=owner.controls;c.time_offset=get<unsigned>(seek.prop(L"NewTime")+0x94);
     c.notify_offset=get<unsigned>(seek.prop(L"bFireNotifies")+0x94);c.notify_mask=get<unsigned>(seek.prop(L"bFireNotifies")+0xd0);
     if(!c.notify_mask||(c.notify_mask&(c.notify_mask-1))||
-       !(c.time_offset+4<=c.notify_offset||c.notify_offset+4<=c.time_offset)||!restore_closed())return anim::Acquire::recovery_required;
+       !(c.time_offset+4<=c.notify_offset||c.notify_offset+4<=c.time_offset)||!restore_closed(true))return anim::Acquire::recovery_required;
     failure=0;return anim::Acquire::acquired;
 }
 bool restore() noexcept {
     if(!anim::ownership.active)return true;
     if(!anim::ownership.visual_only||!weaponhand::current_gt(nullptr))return false;
     auto& owner=anim::ownership;
+    // A dispatched Play may expose its node on a later GT. Read-only capture
+    // may finish the same journal; Play is never dispatched again here.
+    if(!hand::identity_valid(owner.last.node)&&!capture_started())return false;
     for(auto const& object:{owner.inventory.world,owner.inventory.pawn,owner.inventory.weapon,owner.last.component,owner.last.asset,owner.last.node})
         if(!lancerreload_ui::object(object))return false;
     // An actual replacement owner must not be stopped by this retired clip.

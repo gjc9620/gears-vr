@@ -86,7 +86,8 @@ struct Reader {
            !held_current(identity,generation)||!current())return false;
         status=sender::eligibility(identity,after,generation);
         if(status!=wire::Status::ready)return false;
-        out.game=after;out.hold_generation=generation;out.component=last.component;out.asset=last.asset;return true;
+        out.game=after;out.hold_generation=generation;out.component=last.component;
+        out.asset=last.asset;out.boomshot=last.kind==lancermain_asset::HeldAsset::boomshot;out.boltok=last.kind==lancermain_asset::HeldAsset::boltok;return true;
     }
 };
 wire::Status observe(wire::Request const& request,sender::Parent const& parent,std::uint64_t metadata_generation,

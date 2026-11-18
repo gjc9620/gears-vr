@@ -1,20 +1,84 @@
 // In-process UE3 playground bridge. Engine calls run on the observed game thread.
 #include <windows.h>
+#include "../vr-common/pose_editor_preview_rig.h"
+#include "../vr-common/stereo_frame.h"
+#include "../vr-common/weapon_lancer_natural_hand.h"
+#include "../vr-common/weapon_lancer_workbench_profile.h"
+#include "../vr-common/weapon_lancer_shoulder_supply.h"
 #include "fresh_wide_name.h"
 #include <bcrypt.h>
 #include "../vr-common/weapon_part_geometry.h"
+#include "../vr-common/weapon_torque_bow_original.h"
+#include "../vr-common/weapon_torque_bow_fire_driver.h"
+#include "../vr-common/weapon_torque_bow_arrow_scale.h"
+#include "../vr-common/weapon_torque_bow_feed.h"
+#include "../vr-common/weapon_torque_bow_grasp_pose.h"
+#include "../vr-common/weapon_torque_bow_feedback.h"
+#include "../vr-common/weapon_torque_bow_guide.h"
+#include "../vr-common/weapon_torque_bow_main_grip.h"
+#include "weapon_torque_bow_arrow_tracking.h"
+#include "weapon_torque_bow_arrow_presentation.h"
+#include "../vr-common/weapon_original_input_cleanup_context.h"
+#include "../vr-common/weapon_button_veto.h"
+#include "../vr-common/weapon_hod_owner.h"
+#include "../vr-common/weapon_hod_geometry.h"
+#include "../vr-common/weapon_troika_interaction.h"
+#include "../vr-common/weapon_troika_handle_geometry.h"
+#include "../vr-common/weapon_troika_mechanics.h"
+#include "../vr-common/troika_mounted_source.h"
+#include "../vr-common/weapon_troika_mounted_space.h"
+#include "../vr-common/troika_entry_basis.h"
+#include "../vr-common/troika_mounted_geometry.h"
+#include "../vr-common/troika_mounted_control.h"
+#include "../vr-common/weapon_troika_fire_owner.h"
+#include "../vr-common/weapon_troika_gun_consumption.h"
+#include "../vr-common/troika_c0_consumer.h"
 #include "../vr-common/weapon_part_native_contract.h"
 #include "../vr-common/weapon_part_input_catalog.h"
 #include "../vr-common/weapon_snub_part_input.h"
+#include "../vr-common/weapon_boltok_object02_input.h"
+#include "../vr-common/weapon_boomshot_part_input.h"
+#include "../vr-common/weapon_boomshot_insertion.h"
+#include "../vr-common/weapon_boomshot_contact_route.h"
+#include "../vr-common/weapon_boomshot_mechanics.h"
+#include "../vr-common/weapon_boomshot_owner_events.h"
+#include "../vr-common/weapon_boomshot_grasp_pose.h"
+#include "../vr-common/weapon_boomshot_owner_grabposes.h"
+#include "../vr-common/weapon_boomshot_carrier_geometry.h"
+#include "../vr-common/weapon_boomshot_animation_tracks.h"
+#include "weapon_boomshot_contact_geometry.h"
 #include "../vr-common/weapon_lancer_magazine_input.h"
 #include "../vr-common/weapon_snub_magazine_mount.h"
 #include "../vr-common/weapon_part_visibility.h"
+#include "../vr-common/weapon_boltok_original.h"
+#include "../vr-common/weapon_boltok_visual_geometry.h"
+#include "../vr-common/weapon_boltok_cylinder_grasp.h"
+#include "../vr-common/weapon_boltok_cylinder_insertion.h"
+#include "../vr-common/weapon_boltok_group_mask.h"
+#include "../vr-common/weapon_boltok_grip_close.h"
+#include "../vr-common/weapon_boltok_ammo_avatar_profile.h"
+#include "../vr-common/weapon_boltok_support_avatar_profile.h"
+#include "../vr-common/weapon_boltok_loading_snap.h"
+#include "../vr-common/weapon_boltok_close_release.h"
 #include "../vr-common/weapon_hammerburst_latch_curve.h"
 #include "../vr-common/weapon_hammerburst_latch.h"
+#include "../vr-common/weapon_hammerburst_latch_history.h"
+#include "../vr-common/controller_relative_motion.h"
 #include "../vr-common/weapon_reload_geometry.h"
+#include "../vr-common/weapon_longshot_reload.h"
+#include "../vr-common/weapon_longshot_animation_tracks.h"
+#include "../vr-common/weapon_longshot_bolt_path.h"
+#include "../vr-common/weapon_longshot_bolt_stroke.h"
+#include "../vr-common/weapon_longshot_eye_contact.h"
+#include "../vr-common/weapon_longshot_scope_view.h"
+#include "../vr-common/weapon_longshot_scope_input.h"
+#include "../vr-common/hand_part_grasp.h"
+#include "../vr-common/weapon_longshot_grasp_pose.h"
+#include "../vr-common/weapon_longshot_guide_geometry.h"
 #include "../vr-common/weapon_hammerburst_magazine.h"
 #include "../vr-common/weapon_lancer_interaction_guide.h"
 #include "../vr-common/weapon_bolo_grenade_interaction.h"
+#include "../vr-common/weapon_smoke_grenade_interaction.h"
 #include "weapon_equipment_names.h"
 #include <cstdint>
 #include <cstdio>
@@ -27,6 +91,9 @@
 #include <algorithm>
 #include <cmath>
 #include <type_traits>
+#include <memory>
+#include <new>
+#include "../vr-common/scoped_read_validation.h"
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL) && !defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #error Private entry routing requires the exact external boundary registration
 #endif
@@ -81,6 +148,12 @@ bool local_quiescent() noexcept;
 #error Fire-invocation scope requires the shared-hand client and existing CallFunction owner
 #endif
 #include "../vr-common/weapon_shot_scope.h"
+#include "weapon_gnasher_raw_input.h"
+#include "weapon_gnasher_runtime.h"
+#include "../vr-common/weapon_gnasher_round_pose.h"
+#include "../vr-common/weapon_gnasher_fire.h"
+#include "../vr-common/weapon_gnasher_cycle_commit.h"
+#include "../vr-common/weapon_gnasher_animation_tracks.h"
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "../vr-common/weapon_support_grip.h"
 #include "../vr-common/weapon_reload_transaction.h"
@@ -98,6 +171,7 @@ bool local_quiescent() noexcept;
 #include "../vr-common/weapon_lancer_saw_input.h"
 #include "../vr-common/weapon_snub_slide.h"
 #include "../vr-common/weapon_snub_slide_curve.h"
+#include "../vr-common/weapon_boltok_mechanics.h"
 #include "../vr-common/weapon_lancer_motion_samples.h"
 #endif
 #endif
@@ -289,6 +363,7 @@ extern "C" DWORD GearsPlaygroundAllocationAttempts(void);
 extern "C" DWORD GearsPlaygroundAllocationError(void);
 
 namespace {
+#include "weapon_metadata_parse.h"
 using uptr=std::uintptr_t;
 struct Array {uptr data;int count,capacity;};
 struct Name {unsigned index,number;};
@@ -317,11 +392,19 @@ std::array<uptr,256> observed{};unsigned observed_count{};
 SRWLOCK log_lock=SRWLOCK_INIT;
 
 bool copy(void* to,uptr from,size_t size){
-    if(!from)return false;
-    __try{std::memcpy(to,reinterpret_cast<void const*>(from),size);return true;}
-    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+    if(!from){gears_read_validation::unreadable();return false;}
+    __try{std::memcpy(to,reinterpret_cast<void const*>(from),size);gears_read_validation::observed(from,to,size);return true;}
+    __except(EXCEPTION_EXECUTE_HANDLER){gears_read_validation::unreadable();return false;}
 }
-template<class T>T get(uptr from){T v{};copy(&v,from,sizeof(v));return v;}
+#define GEARS_PLAYGROUND_FIXED_COPY_VALUE 1 // This composition provides the fixed-width SEH reader.
+template<class T>bool copy_value(T& to,uptr from){
+    static_assert(sizeof(T)==4||sizeof(T)==8);
+    if(!from){gears_read_validation::unreadable();return false;}
+    __try{std::memcpy(&to,reinterpret_cast<void const*>(from),sizeof(T));gears_read_validation::observed(from,&to,sizeof(T));return true;}
+    __except(EXCEPTION_EXECUTE_HANDLER){gears_read_validation::unreadable();return false;}
+}
+template<class T>T get(uptr from){T v{};
+    if constexpr(sizeof(T)==4||sizeof(T)==8)copy_value(v,from);else copy(&v,from,sizeof(v));return v;}
 bool registered(uptr object){
     const auto a=get<Array>(base+0x1c24730);
     const auto i=get<unsigned>(object+8);
@@ -544,7 +627,8 @@ void dump(bool clean){
 }
 } // namespace component_cost
 #endif
-bool name(uptr object,wchar_t* out,size_t count){
+#define GEARS_PLAYGROUND_FIELD_NAME_PREFIX 1 // Only this production composition provides the4-argument name seam.
+bool name(uptr object,wchar_t* out,size_t count,wchar_t const* negative_prefix=nullptr){
     if(!object||!count)return false;
     const auto n=get<Name>(object+0x48);const auto a=get<Array>(base+0x1c34800);
     if(!a.data||a.count<1000||a.count>a.capacity||a.capacity>4000000||n.index>=unsigned(a.count))return false;
@@ -557,7 +641,15 @@ bool name(uptr object,wchar_t* out,size_t count){
     // of the optional component_names scope. No scalar retry or cached text.
     static const std::size_t page=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
     if(entry>~uptr(0)-20)return false;
-    return fresh_wide_name::text(entry+20,out,count,page,
+    const auto from=entry+20;
+    // Preserve the original helper's zero-read rejection boundaries before a hint read.
+    if(negative_prefix&&out&&page>=sizeof(wchar_t)&&count>=4&&
+       count<=(~uptr(0)-from)/sizeof(wchar_t)&&count<=(page-from%page)/sizeof(wchar_t)){
+        uint64_t prefix{};if(!copy_value(prefix,from))return false;
+        wchar_t first[4];std::memcpy(first,&prefix,sizeof first);
+        if(_wcsnicmp(first,negative_prefix,4))return false;
+    }
+    return fresh_wide_name::text(from,out,count,page,
         [](void* destination,uptr address,std::size_t bytes) noexcept {return copy(destination,address,bytes);});
 }
 void record(uptr object,uptr function){
@@ -1153,6 +1245,7 @@ void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const
 }
 namespace lancerhandle_visual {
 bool ready_for(gears_weapon_hand::Frame const&) noexcept;
+std::uint64_t current_handle() noexcept;
 bool set_distance(gears_weapon_hand::Frame const&,double,gears_lancer_handle_morph::Receipt&) noexcept;
 bool restore() noexcept;
 }
@@ -1186,25 +1279,91 @@ void observe_call_no_engine(uptr,uptr,void const*) noexcept;
 void reset_after_drain() noexcept;
 }
 namespace lancersaw_contact {void tick(gears_weapon_hand::Frame const&) noexcept;}
+namespace boomshot_runtime {
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+bool support_geometry(gears_weapon_hand::Frame const&,gears_vr::Pose&) noexcept;
+bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+bool tick(uptr) noexcept;
+void service_unselected(uptr,uptr) noexcept;
+bool pending_work() noexcept;
+}
 namespace hammerburst_runtime {
+bool old_or_new_magazine_stage() noexcept;
+bool restoration_owned(gears_weapon_hand::Frame const&) noexcept;
+bool restoration_seek_owned(gears_weapon_hand::Frame const&,std::uint64_t,float) noexcept;
+namespace park_control {
+bool owns_stow(gears_weapon_hand::Frame const&) noexcept;
+bool prepare_stow(gears_weapon_hand::Frame const&,bool&) noexcept;
+}
 bool manual_enabled() noexcept;
 bool matrix(std::array<float,16> const&,gears_vr::Pose&,double&) noexcept;
 void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
 bool tick(uptr) noexcept;
+void service_unselected(uptr,uptr) noexcept;
 bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
 void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+bool pending_work() noexcept;
+}
+namespace longshot_bolt {bool granted(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;}
+namespace longshot_runtime {
+bool selected(gears_weapon_hand::Frame const&) noexcept;
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+bool tick(uptr) noexcept;
+void service_unselected(uptr,uptr) noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+bool pending_work() noexcept;
 }
 namespace snub_runtime {
 void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
 bool tick(uptr) noexcept;
+void service_unselected(uptr,uptr) noexcept;
 bool manual_enabled() noexcept;
 void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
 bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
 void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+bool pending_work() noexcept;
+}
+namespace boltok_runtime {
+bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+bool manual_enabled() noexcept;
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+bool tick(uptr) noexcept;
+void service_unselected(uptr,uptr) noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+bool pending_work() noexcept;
 }
 namespace weapon_part_assets {
 void on_frame(gears_weapon_hand::Frame const&) noexcept;
 void on_frame_unavailable() noexcept;
+}
+namespace torquebow_runtime {
+bool tick(uptr) noexcept;
+bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+}
+namespace torquebow_arrow_visual {void on_frame(gears_weapon_hand::Frame const&) noexcept;}
+namespace torquebow_main_mount {
+bool bind(gears_weapon_hand::Frame const&,gears_vr::Viewpoint const&,std::array<float,16> const&,
+    double,gears_weapon::WeaponMeshFollow&) noexcept;
+}
+namespace torquebow_grasp {
+void main_hand(gears_weapon_hand::Frame const&) noexcept;
+void support_hand(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;
+bool left_part(gears_weapon_hand::Frame const&,gears_torque_bow_grasp_pose::Part,gears_vr::Pose const&,bool) noexcept;
+}
+namespace torquebow_feedback {
+void sample(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&,bool) noexcept;
+void lost() noexcept;
+}
+namespace torquebow_guide {
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,bool) noexcept;
+void lost() noexcept;
 }
 namespace lancerreload_ui {
 bool prepare(gears_weapon_hand::Frame const&) noexcept;
@@ -1217,6 +1376,11 @@ bool returned(gears_weapon_call::Invocation const&) noexcept;
 }
 namespace lancerhud_layout {bool begin(gears_weapon_call::Invocation const&) noexcept;bool cleanup(gears_weapon_call::Invocation const&) noexcept;}
 namespace fraglaunch {
+void begin(gears_weapon_call::Invocation const&) noexcept;
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+bool cleanup(gears_weapon_call::Invocation const&) noexcept;
+}
+namespace smokelaunch {
 void begin(gears_weapon_call::Invocation const&) noexcept;
 bool returned(gears_weapon_call::Invocation const&) noexcept;
 bool cleanup(gears_weapon_call::Invocation const&) noexcept;
@@ -1241,9 +1405,15 @@ bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripG
 #endif
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "weapon_unified_fire.h"
+#include "weapon_boomshot_fire.h"
+#include "weapon_gnasher_muzzle.h"
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_torque_bow_fire.h"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace hod_runtime {bool owed() noexcept;}
 namespace lancerreload_manual {
 void begin(gears_weapon_call::Invocation const&) noexcept;
 bool returned(gears_weapon_call::Invocation const&) noexcept;
@@ -1253,12 +1423,26 @@ void cleanup(gears_weapon_call::Invocation const&) noexcept;
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 namespace nativeequipment::stow_native {void observe_call_no_engine(uptr,uptr,uptr) noexcept;}
 #endif
+namespace hod_trace {
+void begin(gears_weapon_call::Invocation const&) noexcept;
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+bool cleanup(gears_weapon_call::Invocation const&) noexcept;
+}
+namespace gnasher_fire {
+void begin(gears_weapon_call::Invocation const&,gears_weapon_shot::Token const&) noexcept;
+void returned(gears_weapon_call::Invocation const&,gears_weapon_shot::Token const&) noexcept;
+}
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+namespace torquebow_charge {void returned(gears_weapon_call::Invocation const&) noexcept;}
+#endif
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
 namespace vrfire {
 bool yield_for_native_equipment(gears_weapon_hand::Frame const&) noexcept;
+bool longshot_mechanism_neutral(gears_weapon_hand::Frame const&) noexcept;
+bool aim_owns() noexcept;
 void tick(uptr) noexcept;
 }
 #endif
@@ -1306,6 +1490,7 @@ bool requires_permission(gears_weapon_hand::Frame const&) noexcept;
 bool enter(gears_weapon_hand::Frame const&) noexcept;void leave() noexcept;
 }
 namespace lancerreload_runtime {
+extern std::atomic<bool> stop_requested;
 void tick(uptr) noexcept; bool pre_tick(uptr) noexcept; bool needs_priority() noexcept;
 bool idle_support_only(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,
     gears_weapon_hand::Decision const&) noexcept;
@@ -1325,19 +1510,29 @@ struct PhaseCost {
 extern PhaseCost last_cost;
 void tick(gears_weapon_hand::Frame const&,double pull_raw=0,bool deploy=false,bool lock=false) noexcept;
 }
-namespace lancer_grasp {void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;}
+namespace lancer_grasp {
+bool source_scope_eligible(gears_weapon_hand::Frame const&) noexcept;
+void committed_main_hold(gears_weapon_hand::Frame const&) noexcept;
+void prepare_neutral_starter(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;
+bool retain_main_during_pose_gap(uptr) noexcept;
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;
+bool prefer_early_passive_support(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;bool prefer_early_part(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;bool publish_magazine_fingers_early(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;
+}
 namespace fragruntime {
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
-void unavailable(uptr) noexcept;void reset_after_drain() noexcept;
+void pre_original_tick(uptr) noexcept;void unavailable(uptr) noexcept;void reset_after_drain() noexcept;
 bool retain_return_during_pose_gap(uptr) noexcept;
+bool return_visibility_current(gears_weapon_hand::Frame const&) noexcept;
 bool retain_preparation_during_pose_gap(uptr) noexcept;
 bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
 #else
 inline void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{}
+inline void pre_original_tick(uptr) noexcept{}
 inline void unavailable(uptr) noexcept{}
 inline void reset_after_drain() noexcept{}
 inline bool retain_return_during_pose_gap(uptr) noexcept{return false;}
+inline bool return_visibility_current(gears_weapon_hand::Frame const&) noexcept{return false;}
 inline bool retain_preparation_during_pose_gap(uptr) noexcept{return false;}
 inline bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{return false;}
 #endif
@@ -1354,6 +1549,46 @@ inline void reset_after_drain() noexcept{stop_requested.store(false);}
 #endif
 }
 namespace fraglaunch {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+extern std::atomic<bool> outstanding;
+void service() noexcept;void reset_after_drain() noexcept;
+#else
+inline std::atomic<bool> outstanding{};
+inline void service() noexcept{}
+inline void reset_after_drain() noexcept{}
+#endif
+}
+namespace smokeruntime {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
+void pre_original_tick(uptr) noexcept;void unavailable(uptr) noexcept;void reset_after_drain() noexcept;
+bool retain_return_during_pose_gap(uptr) noexcept;
+bool return_visibility_current(gears_weapon_hand::Frame const&) noexcept;
+bool retain_preparation_during_pose_gap(uptr) noexcept;
+bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
+#else
+inline void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{}
+inline void pre_original_tick(uptr) noexcept{}
+inline void unavailable(uptr) noexcept{}
+inline void reset_after_drain() noexcept{}
+inline bool retain_return_during_pose_gap(uptr) noexcept{return false;}
+inline bool return_visibility_current(gears_weapon_hand::Frame const&) noexcept{return false;}
+inline bool retain_preparation_during_pose_gap(uptr) noexcept{return false;}
+inline bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{return false;}
+#endif
+}
+namespace smokepreparation {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+extern std::atomic<bool> outstanding,stop_requested;
+bool stop() noexcept;void service() noexcept;void reset_after_drain() noexcept;
+#else
+inline std::atomic<bool> outstanding{},stop_requested{};
+inline bool stop() noexcept{return true;}
+inline void service() noexcept{}
+inline void reset_after_drain() noexcept{stop_requested.store(false);}
+#endif
+}
+namespace smokelaunch {
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 extern std::atomic<bool> outstanding;
 void service() noexcept;void reset_after_drain() noexcept;
@@ -1385,6 +1620,26 @@ void report(FILE* file) noexcept {
 }
 }
 namespace lancer_magazine_appearance {void prepare(gears_weapon_hand::Frame const&) noexcept;}
+namespace longshot_round {void tick(gears_weapon_hand::Frame const&) noexcept;bool has_item() noexcept;}
+namespace gnasher_round {void tick(gears_weapon_hand::Frame const&) noexcept;}
+namespace longshot_fire {void service(gears_weapon_hand::Frame const&) noexcept;}
+namespace gnasher_fire {void service(gears_weapon_hand::Frame const&) noexcept;bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;}
+namespace gnasher_inventory {void service(gears_weapon_hand::Frame const&) noexcept;bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;}
+namespace gnasher_state {
+void service(gears_weapon_hand::Frame const&,bool,bool) noexcept;bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+bool owns_stow(gears_weapon_hand::Frame const&) noexcept;bool stow_ready(gears_weapon_hand::Frame const&) noexcept;
+bool prepare_stow(gears_weapon_hand::Frame const&,bool&) noexcept;void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+}
+namespace longshot_eyebox {void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;}
+namespace longshot_eyebox {void observe(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,bool) noexcept;}
+namespace longshot_grasp {bool tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;}
+namespace longshot_runtime {void guide(gears_weapon_hand::Frame const&) noexcept;}
+namespace longshot_scope_owner {
+bool ready(gears_weapon_hand::Frame const&) noexcept;
+bool yield(gears_weapon_hand::Frame const&) noexcept;
+void tick(gears_weapon_hand::Frame const&) noexcept;
+void unavailable(uptr) noexcept;void reset_after_drain() noexcept;
+}
 #include "weapon_equipment_backend.inl"
 #include "controller_locomotion.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
@@ -1394,9 +1649,14 @@ namespace lancer_magazine_appearance {void prepare(gears_weapon_hand::Frame cons
 #include "weapon_equipment_rig.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "pose_editor_client.inl"
 #include "weapon_native_lancer_follow.inl"
 #include "committed_hand_consumer.inl"
 #include "weapon_lancer_reload_inventory.inl"
+namespace gnasher_round {
+bool release_for_stow(lancerreload_inventory::Identity const&,std::uint64_t) noexcept;
+bool captured_for(gears_weapon_hand::Frame const&,std::uint64_t) noexcept;
+}
 namespace lancerreload_reward {
 bool invoke(lancerreload_inventory::Identity const&,bool,playground::Args&,bool&,bool&) noexcept;
 }
@@ -1404,10 +1664,24 @@ bool invoke(lancerreload_inventory::Identity const&,bool,playground::Args&,bool&
 #include "weapon_lancer_reload_ui.inl"
 namespace lancersaw_original {bool starter_continuation(gears_weapon_call::Invocation const&) noexcept;}
 #include "weapon_lancer_manual_reload.inl"
+#include "weapon_longshot_fire_receipt.inl"
+#include "weapon_gnasher_fire_receipt.inl"
+#include "weapon_gnasher_inventory.inl"
 #include "weapon_reload_reward_scope.inl"
 namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reader&) noexcept;}
 #include "weapon_hammerburst_animation.inl"
+#include "weapon_troika_original.inl"
+#include "weapon_troika_reflection.inl"
+#include "weapon_troika_mounted_context.inl"
+#include "weapon_troika_tracking.inl"
+#include "weapon_troika_parts.inl"
+#include "weapon_troika_mounted_parts.inl"
+#include "weapon_troika_entry_runtime.inl"
 #include "weapon_snub_animation.inl"
+#include "weapon_gnasher_animation.inl"
+#include "weapon_gnasher_parts.inl"
+#include "weapon_gnasher_state.inl"
+#include "weapon_gnasher_cycle.inl"
 #include "weapon_lancer_magazine_visual.inl"
 #include "weapon_lancer_charging.inl"
 #include "weapon_lancer_reload_contact.inl"
@@ -1415,6 +1689,7 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 #include "weapon_part_assets.inl"
 #include "../vr-common/weapon_lancer_handle_morph.h"
 #include "weapon_part_inputs.inl"
+#include "weapon_gnasher_round.inl"
 #include "weapon_lancer_magazine_appearance.inl"
 #include "weapon_lancer_handle_visual.inl"
 #include "weapon_lancer_saw_original.inl"
@@ -1432,8 +1707,17 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "weapon_unified_fire.inl"
+#include "weapon_boomshot_muzzle_clear.inl"
+#include "weapon_boomshot_fire.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_gnasher_refire.inl"
+#include "weapon_gnasher_muzzle.inl"
+#endif
+#include "weapon_hod_trace.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
 #include "weapon_frag_original.inl"
+#include "weapon_smoke_original.inl"
+#include "weapon_smoke_metadata.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
 #include "weapon_hammerburst_visual_clip.inl"
@@ -1442,17 +1726,94 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 #include "weapon_snub_visual_clip.inl"
 #include "weapon_snub_charging.inl"
 #include "weapon_snub_runtime.inl"
+#include "weapon_boltok_parts.inl"
+#include "weapon_boltok_visual.inl"
+#include "weapon_boltok_sound.inl"
+#include "weapon_boltok_runtime.inl"
+#include "weapon_torque_bow_arrow_source.inl"
+#include "weapon_torque_bow_main_mount.inl"
+#include "weapon_torque_bow_arrow_parent.inl"
+#include "weapon_torque_bow_arrow_attributes.inl"
+#include "weapon_torque_bow_arrow_appearance.inl"
+#include "weapon_torque_bow_arrow_update.inl"
+#include "weapon_torque_bow_arrow_visual.inl"
+#include "weapon_torque_bow_original.inl"
+#include "weapon_torque_bow_empty_sound.inl"
+#include "weapon_torque_bow_cleanup_context.inl"
+#include "weapon_torque_bow_cleanup_anchor.inl"
+#include "weapon_torque_bow_state.inl"
+#include "weapon_torque_bow_reload_live.inl"
+#include "weapon_torque_bow_cancel_live.inl"
+#include "weapon_torque_bow_input_fence.inl"
+#include "weapon_torque_bow_charge_live.inl"
+#include "weapon_torque_bow_charge_buttons.inl"
+#include "weapon_torque_bow_projectile_class.inl"
+#include "weapon_torque_bow_muzzle_clear.inl"
+#include "weapon_torque_bow_fire.inl"
+#include "weapon_torque_bow_input_owner.inl"
+#include "weapon_torque_bow_input.inl"
+#include "weapon_torque_bow_feedback.inl"
+#include "weapon_torque_bow_guide_source.inl"
+#include "weapon_torque_bow_guide.inl"
+#include "weapon_torque_bow_grasp.inl"
+#include "weapon_torque_bow_runtime.inl"
+#include "weapon_reload_dispatch.inl"
+#include "weapon_longshot_parts.inl"
+#include "weapon_boomshot_parts.inl"
+#include "weapon_boomshot_original.inl"
+#include "weapon_boomshot_socket.inl"
+#include "weapon_boomshot_pose_read.inl"
+#include "weapon_boomshot_carrier.inl"
+#include "weapon_longshot_animation.inl"
+#include "weapon_animation_legacy_schema.inl"
+#include "weapon_boomshot_animation.inl"
+#include "weapon_boomshot_clip.inl"
+#include "weapon_boomshot_barrel.inl"
+#include "weapon_boomshot_grasp.inl"
+#include "weapon_boomshot_contact.inl"
+#include "weapon_boomshot_contact_current.inl"
+#include "weapon_boomshot_sessions.inl"
+#include "weapon_boomshot_core_motion.inl"
+#include "weapon_boomshot_core_source.inl"
+#include "weapon_boomshot_carrier_original.inl"
+#include "weapon_boomshot_reload_owner.inl"
+#include "weapon_boomshot_runtime.inl"
+#include "weapon_gnasher_curve.inl"
+#include "weapon_gnasher_runtime.inl"
+#include "weapon_longshot_clip.inl"
+#include "weapon_longshot_bolt.inl"
+#include "weapon_longshot_round.inl"
+#include "weapon_longshot_round_hold.inl"
+#include "weapon_longshot_runtime.inl"
+#include "weapon_longshot_grasp.inl"
+#include "weapon_longshot_guide.inl"
+#include "weapon_longshot_eyebox.inl"
+#include "weapon_longshot_scope_original.inl"
+#include "weapon_hod_original.inl"
+#include "weapon_hod_state.inl"
+#include "weapon_hod_input.inl"
+#include "weapon_hod_aim.inl"
+#include "weapon_hod_runtime.inl"
+#include "weapon_longshot_scope_state.inl"
+#include "weapon_longshot_scope_owner.inl"
 #include "weapon_hammerburst_guide.inl"
 #include "weapon_lancer_interaction_guide.inl"
+#include "weapon_boltok_guide.inl"
 #include "weapon_lancer_interaction_ranges.inl"
 #include "weapon_lancer_hud_layout.inl"
 #endif
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && !defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+namespace hod_runtime {bool owed() noexcept {return false;}}
 #endif
 #include "vr_fire_adapter.inl"
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
 #include "weapon_frag_preparation.inl"
 #include "weapon_frag_launch.inl"
 #include "weapon_frag_runtime.inl"
+#include "weapon_smoke_preparation.inl"
+#include "weapon_smoke_launch.inl"
+#include "weapon_smoke_runtime.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "weapon_lancer_refire_native.inl"
@@ -1616,7 +1977,8 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
                     nativeequipment::ConfigurationRead configuration;
                     if(configuration.held){
                         lancersaw_original::service(object);
-                        pre_reload_ticked=lancerreload_runtime::pre_tick(object);
+                        pre_reload_ticked=boltok_runtime::pre_tick(object);
+                        if(!pre_reload_ticked)pre_reload_ticked=lancerreload_runtime::pre_tick(object);
                     }
                 }
                 nativelancerfollow::pre_original_tick();
@@ -1724,7 +2086,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         // immediately after PlayerTick, even while hand publication changes.
         lancersaw_original::after_original_tick(object);
         fragpreparation::service();
+    smokepreparation::service();
+        longshot_scope_owner::service();
         fraglaunch::service();
+    smokelaunch::service();
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
         lancerrefire::service(object);
@@ -1733,28 +2098,41 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         // budget. Equipment's switch adapter explicitly yields any owned R2
         // press before changing weapons; firing then sees the committed hold.
         const auto equipment_work_begin=weaponhand::clock_ns(nullptr);
+        const bool troika_context=
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+            troika_entry_runtime::tick(object);
+#else
+            false;
+#endif
         bool reload_ticked_early=false;
-        [[maybe_unused]] const bool fire_ticked_early=nativeequipment::tick(object,reload_ticked_early,pre_reload_ticked);
+        [[maybe_unused]] const bool fire_ticked_early=!troika_context&&nativeequipment::tick(object,reload_ticked_early,pre_reload_ticked);
         const auto equipment_tick_end=weaponhand::clock_ns(nullptr);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
-        if(!fire_ticked_early)vrfire::tick(object);
+        if(!troika_context&&!fire_ticked_early)vrfire::tick(object);
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        if(!troika_context){
+        hod_runtime::tick(object);
         nativelancerfollow::apply();
         if(!reload_ticked_early)lancerreload_runtime::tick(object);
         hammerburst_guide::tick(object);
         lancer_interaction_guide::tick(object);
+        boltok_guide::tick(object);
         lancer_interaction_ranges::tick(object);
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
         lancerhud_layout::tick(object);
 #endif
         lancerhandle_visual::tick(object);
+        }
         if(lancersaw_visual::stop_requested.load()||lancersaw_visual::revoking)lancersaw_visual::restore();
         weapon_part_assets::drain();
         snub_part_visibility::drain_on_gt();
+        boltok_runtime::drain_on_gt();
 #endif
         static unsigned equipment_work_logs{},equipment_work_observed{};
-        if(log_file&&equipment_work_logs<16&&vrequip::model.hold_generation()){
+        static const bool perf_unheld=[](){wchar_t value[4]{};
+            return GetEnvironmentVariableW(L"GEARSVR_TEST_PERF_UNHELD",value,4)==1&&value[0]==L'1';}();
+        if(log_file&&equipment_work_logs<16&&(vrequip::model.hold_generation()||perf_unheld)){
             const auto ordinal=equipment_work_observed++;
             // Keep the original bounded receipt, with four early rows and
             // later samples. Initial setup alone did not describe the slow
@@ -2500,20 +2878,28 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStart(void* na
     nativeequipment::stow_native::reset_after_drain();
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
-    if(weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live())return unsigned(gears_weapon_hand::Reply::draining);
+    if(hod_runtime::owed()||longshot_scope_owner::owed()||fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||smokepreparation::outstanding.load(std::memory_order_acquire)||smokelaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
+    if(weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live())return unsigned(gears_weapon_hand::Reply::draining);
     lancersaw_original::reset_after_drain();
     fragpreparation::reset_after_drain();
+    smokepreparation::reset_after_drain();
+    longshot_scope_owner::reset_after_drain();
     fraglaunch::reset_after_drain();
+    smokelaunch::reset_after_drain();
     fragruntime::reset_after_drain();
     lancerreload_runtime::stop_requested.store(false,std::memory_order_release);
     weapon_part_assets::stop_requested.store(false,std::memory_order_release);
     snub_part_visibility::reset_after_drain();
+    boltok_runtime::reset_after_drain();
     lancerhandle_visual::reset_after_drain();
     lancersaw_visual::reset_after_drain();
     weapon_part_inputs::original_source_enabled.store(false,std::memory_order_release);
 #endif
-    return unsigned(weaponhand::start(static_cast<HMODULE>(native_module)));
+    const auto reply=weaponhand::start(static_cast<HMODULE>(native_module));
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(reply==gears_weapon_hand::Reply::accepted)pose_editor_client::connect(static_cast<HMODULE>(native_module));
+#endif
+    return unsigned(reply);
 }
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundControllerTurnDeadzone(void* argument){
@@ -2559,7 +2945,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundOriginalPartInputsEnable
     if(value>1||!enabled.load(std::memory_order_acquire)||!playground::automatic)return 1;
     const bool wanted=value!=0;
     if(wanted!=weapon_part_inputs::original_source_enabled.load(std::memory_order_acquire)&&
-       (lancersaw_original::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()))return 4;
+       (lancersaw_original::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()))return 4;
     weapon_part_inputs::original_source_enabled.store(wanted,std::memory_order_release);
     return 0;
 }
@@ -2592,15 +2978,23 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandRigConnect(void* arg
     if(reply==Reply::accepted&&weaponhand::client.native_started_qpc()!=value.native_started_qpc){
         weaponhand::stop();return unsigned(Reply::wrong_cookie);
     }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(reply==Reply::accepted)pose_editor_client::connect(reinterpret_cast<HMODULE>(value.native_module));
+#endif
     return unsigned(reply);
 }
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStop(void*){
     if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(!troika_entry_runtime::drain())return unsigned(gears_weapon_hand::Reply::draining);
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     fragpreparation::stop_requested.store(true,std::memory_order_release);
+    smokepreparation::stop_requested.store(true,std::memory_order_release);
+    longshot_scope_owner::stop_requested.store(true,std::memory_order_release);
 #endif
     nativeequipment::stow_native::stop_requested.store(true,std::memory_order_release);
     const auto stow_until=GetTickCount64()+2000;
@@ -2611,13 +3005,19 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStop(void*){
     lancerreload_runtime::stop_requested.store(true,std::memory_order_release);
     lancersaw_original::stop_requested.store(true,std::memory_order_release);
     fragpreparation::stop_requested.store(true,std::memory_order_release);
+    smokepreparation::stop_requested.store(true,std::memory_order_release);
+    longshot_scope_owner::stop_requested.store(true,std::memory_order_release);
     weapon_part_assets::stop_requested.store(true,std::memory_order_release);
     snub_part_visibility::request_stop();
+    boltok_runtime::request_stop();
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    hod_runtime::request_stop();
+#endif
     lancerhandle_visual::request_stop();
     lancersaw_visual::request_stop();
     const auto until=GetTickCount64()+2000;
-    while((fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<until)Sleep(1);
-    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
+    while((hod_runtime::owed()||longshot_scope_owner::owed()||fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||smokepreparation::outstanding.load(std::memory_order_acquire)||smokelaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<until)Sleep(1);
+    if(hod_runtime::owed()||longshot_scope_owner::owed()||fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||smokepreparation::outstanding.load(std::memory_order_acquire)||smokelaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
 #endif
     return unsigned(weaponhand::stop());
 }
@@ -2661,12 +3061,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     }
 #endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(!troika_entry_runtime::drain())return 54;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     // Close the original holster handoff on GT while the Native client is
     // still attached; an unresolved journal may never disappear on unload.
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     fragpreparation::stop_requested.store(true,std::memory_order_release);
+    smokepreparation::stop_requested.store(true,std::memory_order_release);
+    longshot_scope_owner::stop_requested.store(true,std::memory_order_release);
 #endif
     nativeequipment::stow_native::stop_requested.store(true,std::memory_order_release);
     const auto stow_until=GetTickCount64()+2000;
@@ -2678,13 +3083,19 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     lancerreload_runtime::stop_requested.store(true,std::memory_order_release);
     lancersaw_original::stop_requested.store(true,std::memory_order_release);
     fragpreparation::stop_requested.store(true,std::memory_order_release);
+    smokepreparation::stop_requested.store(true,std::memory_order_release);
+    longshot_scope_owner::stop_requested.store(true,std::memory_order_release);
     weapon_part_assets::stop_requested.store(true,std::memory_order_release);
     snub_part_visibility::request_stop();
+    boltok_runtime::request_stop();
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    hod_runtime::request_stop();
+#endif
     lancerhandle_visual::request_stop();
     lancersaw_visual::request_stop();
     const auto reload_until=GetTickCount64()+2000;
-    while((fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<reload_until)Sleep(1);
-    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return 54;
+    while((hod_runtime::owed()||longshot_scope_owner::owed()||fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||smokepreparation::outstanding.load(std::memory_order_acquire)||smokelaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<reload_until)Sleep(1);
+    if(hod_runtime::owed()||longshot_scope_owner::owed()||fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||smokepreparation::outstanding.load(std::memory_order_acquire)||smokelaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||boltok_runtime::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return 54;
 #endif
     if(weaponhand::stop()!=gears_weapon_hand::Reply::quiescent)return 53;
     // client remains static/alive through the existing hook-disable and PG
@@ -2876,6 +3287,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
         if(!handanimcall::remove())return 33;
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+        hod_runtime::request_stop();
+        if(!hod_runtime::stopped())return 33;
         if(!lancerhud_layout::stopped()||!lancerreload_ui::stopped())return 33;
 #endif
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;

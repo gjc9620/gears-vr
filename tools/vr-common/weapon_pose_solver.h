@@ -29,17 +29,20 @@ struct WeaponMount {
     Vector bore_forward_in_weapon{0,0,-1};
     double support_length_tolerance_metres{.12};
     double maximum_support_correction_radians{.8};
+    // Zero correction explicitly requests stabilizing support with right-hand
+    // aim retained. Positive corrections keep the existing foregrip solver.
+    bool close_support() const noexcept {return maximum_support_correction_radians==0;}
     bool valid() const noexcept {
         const auto bore=length(bore_forward_in_weapon);
         const auto support=length(difference(support_grip_in_weapon,right_grip_in_weapon.position));
         return gears_vr::stereo_pose_valid(right_grip_in_weapon)&&
             gears_vr::finite(support_grip_in_weapon)&&gears_vr::finite(muzzle_in_weapon)&&
             gears_vr::finite(bore_forward_in_weapon)&&std::isfinite(bore)&&bore>.9&&bore<1.1&&
-            std::isfinite(support)&&support>.15&&support<1.2&&
+            std::isfinite(support)&&(close_support()?(support>.005&&support<.35):(support>.15&&support<1.2))&&
             std::isfinite(support_length_tolerance_metres)&&support_length_tolerance_metres>=0&&
             support_length_tolerance_metres<=.3&&
             std::isfinite(maximum_support_correction_radians)&&
-            maximum_support_correction_radians>0&&maximum_support_correction_radians<=1.2;
+            maximum_support_correction_radians>=0&&maximum_support_correction_radians<=1.2;
     }
 };
 struct WeaponPoseSolution {
@@ -70,7 +73,12 @@ inline bool solve_weapon_pose(gears_vr::ControllerInputFrame const& hands,
             mount.right_grip_in_weapon.position));
         const auto actual=difference(hands.hands[0].grip.position,right.position);
         const double expected_length=length(expected),actual_length=length(actual);
-        if(std::isfinite(actual_length)&&actual_length>.1&&
+        if(mount.close_support()){
+            // Contact/lease is supplied by the broker; never derive gun aim
+            // from a near-zero two-controller baseline.
+            result.support_used=std::isfinite(actual_length)&&
+                length(difference(actual,expected))<=mount.support_length_tolerance_metres;
+        }else if(std::isfinite(actual_length)&&actual_length>.1&&
            std::abs(actual_length-expected_length)<=mount.support_length_tolerance_metres){
             const auto from=scaled(expected,1/expected_length),to=scaled(actual,1/actual_length);
             const double cosine=(std::clamp)(dot(from,to),-1.,1.);

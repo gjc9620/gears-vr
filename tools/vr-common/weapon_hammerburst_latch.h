@@ -20,6 +20,9 @@ struct HammerburstLatchSample {
     gears_vr::Vector hand{};
     std::uint64_t sequence{},milliseconds{},grip_token{};
     bool tracked{},gripped{};
+    // Optional original observation time. Zero preserves the legacy
+    // millisecond path exactly; nonzero must agree with milliseconds.
+    std::uint64_t nanoseconds{};
 };
 enum class HammerburstLatchMotion {rejected,moving,closed,open,held_stationary};
 enum class HammerburstLatchRejection {none,inactive,sample,token,order,gap,radius,axis,speed,range};
@@ -36,13 +39,27 @@ class HammerburstLatchStroke {
     static V scale(V a,double s) noexcept {return {a.x*s,a.y*s,a.z*s};}
     static V add(V a,V b) noexcept {return {a.x+b.x,a.y+b.y,a.z+b.z};}
     bool valid(HammerburstLatchSample const& s) const noexcept {
-        return s.tracked&&s.gripped&&s.sequence&&s.milliseconds&&s.grip_token&&gears_vr::finite(s.hand);
+        return s.tracked&&s.gripped&&s.sequence&&s.milliseconds&&s.grip_token&&gears_vr::finite(s.hand)&&
+            (!s.nanoseconds||s.nanoseconds/1000000==s.milliseconds);
+    }
+    bool same_time_mode(HammerburstLatchSample const& s) const noexcept {
+        return (!s.nanoseconds)==(!last_.nanoseconds);
+    }
+    bool time_order(HammerburstLatchSample const& s) const noexcept {
+        return s.sequence>last_.sequence&&(s.nanoseconds?
+            s.nanoseconds>last_.nanoseconds:s.milliseconds>last_.milliseconds);
     }
 public:
     static constexpr double stationary_position_epsilon_metres=1e-5;
     void reset() noexcept {active_=false;}
     bool active() const noexcept {return active_;}
     double angle() const noexcept {return angle_;}
+    // Pure result of already validated observations, never a mechanical write.
+    HammerburstLatchMotion observed_motion() const noexcept {
+        if(angle_<=.02)return HammerburstLatchMotion::closed;
+        if(angle_>=geometry_.open_angle-.02)return HammerburstLatchMotion::open;
+        return HammerburstLatchMotion::moving;
+    }
     HammerburstLatchRejection last_rejection() const noexcept {return rejection_;}
     // Diagnostic value only; it grants no continuity or permission.
     std::uint64_t last_observation_ms() const noexcept {return last_.milliseconds;}
@@ -73,8 +90,11 @@ public:
         if(!active_)return reject(HammerburstLatchRejection::inactive);
         if(!valid(s))return reject(HammerburstLatchRejection::sample);
         if(s.grip_token!=last_.grip_token)return reject(HammerburstLatchRejection::token);
-        if(s.sequence<=last_.sequence||s.milliseconds<=last_.milliseconds)return reject(HammerburstLatchRejection::order);
-        if(s.milliseconds-last_.milliseconds>geometry_.observation_interval_ms){
+        if(!same_time_mode(s))return reject(HammerburstLatchRejection::sample);
+        if(!time_order(s))return reject(HammerburstLatchRejection::order);
+        const auto gap=s.nanoseconds?s.nanoseconds-last_.nanoseconds:s.milliseconds-last_.milliseconds;
+        const auto maximum=s.nanoseconds?geometry_.observation_interval_ms*1000000:geometry_.observation_interval_ms;
+        if(gap>maximum){
             // Opt-in callers must still own the SAME current live grab.
             // Numerical contact noise may renew a stationary baseline, but
             // no movement, angle or endpoint is accepted across the gap.
@@ -89,13 +109,11 @@ public:
         if(radius<.01||std::abs(radius-radius_)>geometry_.radial_tolerance)return reject(HammerburstLatchRejection::radius);
         if(std::abs(height-height_)>geometry_.axial_tolerance)return reject(HammerburstLatchRejection::axis);
         const double delta=std::atan2(dot(geometry_.axis,cross(radial_,radial)),dot(radial_,radial));
-        if(std::abs(delta)>12.*double(s.milliseconds-last_.milliseconds)/1000.)return reject(HammerburstLatchRejection::speed);
+        if(std::abs(delta)>(s.nanoseconds?12.*double(gap)/1e9:12.*double(gap)/1000.))return reject(HammerburstLatchRejection::speed);
         const double next=angle_+delta;
         if(!std::isfinite(next)||next<-.05||next>geometry_.open_angle+.05)return reject(HammerburstLatchRejection::range);
         last_=s;radial_=radial;angle_=std::clamp(next,0.,geometry_.open_angle);
-        if(angle_<=.02)return HammerburstLatchMotion::closed;
-        if(angle_>=geometry_.open_angle-.02)return HammerburstLatchMotion::open;
-        return HammerburstLatchMotion::moving;
+        return observed_motion();
     }
 };
 } // namespace gears_weapon

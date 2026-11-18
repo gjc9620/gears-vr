@@ -1,5 +1,6 @@
 // Private, opt-in game-thread inventory observer. The separately gated switch
 // test may invoke the game's original slot function in an owned test arena.
+#include "query_partial_fields.h"
 namespace vrequip {
 gears_weapon::WeaponEquipmentModel model;
 gears_weapon::EquipmentSnapshot previous{};
@@ -60,7 +61,20 @@ template<std::size_t N>bool pose_fields(uptr object,wchar_t const* const (&label
 bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     out={};if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
-    out.mesh=playground::pointer(weapon,L"Mesh");out.weapon_mesh=playground::pointer(weapon,L"WeaponMesh");
+    // The two links share one fresh hierarchy walk. Retain partial results:
+    // WeaponMesh is optional in the original pointer() calls. Delete/type
+    // checks remain at their original boundaries; this selects addresses only.
+    struct LinkReader {
+        uptr super(uptr cls) const {return get<uptr>(cls+0x60);}
+        uptr children(uptr cls) const {return get<uptr>(cls+0x80);}
+        uptr next(uptr field) const {return get<uptr>(field+0x68);}
+        bool name(uptr field,wchar_t* text,std::size_t count) const {return ::name(field,text,count);}
+        bool equal(wchar_t const* a,wchar_t const* b) const {return !_wcsicmp(a,b);}
+    };
+    constexpr wchar_t const* link_labels[]={L"Mesh",L"WeaponMesh"};
+    const auto links=registered(weapon)?query_partial_fields::select(get<uptr>(weapon+0x50),link_labels,LinkReader{}):std::array<uptr,2>{};
+    out.mesh=links[0]?get<uptr>(weapon+get<unsigned>(links[0]+0x94)):0;
+    out.weapon_mesh=links[1]?get<uptr>(weapon+get<unsigned>(links[1]+0x94)):0;
     if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||playground::deleted(out.mesh))return false;
     constexpr wchar_t const* labels[]={L"SkeletalMesh",L"Translation",L"Rotation",L"LocalToWorld",L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale",L"HiddenGame"};
     std::array<uptr,8> fields{};if(!pose_fields(out.mesh,labels,fields))return false;

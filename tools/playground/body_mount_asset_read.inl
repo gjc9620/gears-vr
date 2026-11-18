@@ -51,6 +51,7 @@ Status read_equipment(gears_weapon_hand::EquipmentIdentity const& f,Evidence& ou
     if(!meta::tables(schema.module_base,objects_table,names_table)||!meta::same_table(objects_table,schema.objects)||
        !meta::same_table(names_table,schema.names)||base!=schema.module_base||weaponhand::current_gt(nullptr)!=gt||
        r.result.failure.reason!=meta::Reason::none)return Status::changed;
+    candidate.kind=expected_asset;
     out=candidate;return Status::ready;
 }
 }

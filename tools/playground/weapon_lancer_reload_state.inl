@@ -98,6 +98,18 @@ struct Lease {
 Lease lease;
 std::uint64_t next_serial{1};
 unsigned ui_setup_gate{};
+// Shared original-reload service queries. Consumers retain only the opaque
+// serial and accepted clock values, never the implementation's lease fields.
+bool retains_serial(std::uint64_t serial) noexcept {
+    return serial&&lease.acquired&&lease.serial==serial;
+}
+bool engaged_for(hand::Frame const& source) noexcept {
+    return lease.acquired&&inv::identity(source)==lease.identity;
+}
+bool accepted_clock(std::uint64_t serial,std::int64_t& begin,std::int64_t& perfect_end) noexcept {
+    begin=perfect_end=0;if(!retains_serial(serial))return false;
+    begin=lease.accepted_begin_ms;perfect_end=lease.perfect_end_ms;return true;
+}
 bool bool_result(playground::Args& call,bool& value) noexcept {
     if(!vrequip::result_property(call,L"BoolProperty",4))return false;
     const auto mask=get<unsigned>(call.prop(L"ReturnValue")+0xd0);
@@ -190,6 +202,15 @@ bool owned_state() noexcept {
 bool owns(hand::Frame const& source,std::uint64_t serial) noexcept {
     return lease.acquired&&serial==lease.serial&&inv::identity(source)==lease.identity&&
         nativeequipment::current(nullptr,source)&&owned_state()&&nativeequipment::current(nullptr,source);
+}
+// Opaque-serial observation of the ORIGINAL GAME start, not its QPC receipt
+// coordinate. Consumers cannot replace it with a later tracked-frame clock.
+bool accepted_game_start(std::uint64_t serial,float& seconds) noexcept {
+    seconds=0;if(!retains_serial(serial)||!owned_state())return false;
+    float actual{};
+    if(!start_time(lease.identity.weapon.address,actual)||actual!=lease.original_start||
+       actual!=lease.reward_start||!owned_state())return false;
+    seconds=actual;return true;
 }
 constexpr const wchar_t* ui_fields[]={L"ReloadDuration",L"AR_PossibleSuccessStartPoint",
     L"AR_PreReactionWindowDuration",L"AR_SuperSweetSpotDuration",L"AR_SweetSpotDuration",L"ReloadStartTime"};
@@ -410,7 +431,13 @@ bool stop_lancer_automatic_animation() noexcept {
     const auto weapon=lease.identity.weapon.address,pawn=lease.identity.pawn.address;
     const bool lancer=playground::instance(weapon,L"Weap_AssaultRifle");
     const bool snub=playground::instance(weapon,L"Weap_COGPistol");
-    if(!lancer&&!snub)return true;
+    const bool hammerburst=playground::instance(weapon,L"Weap_LocustAssaultRifle");
+    const bool boltok=playground::instance(weapon,L"Weap_LocustPistol");
+    const bool longshot=playground::instance(weapon,L"Weap_SniperRifle");
+    const bool boomshot=playground::instance(weapon,L"Weap_Boomer");
+    const bool gnasher=playground::instance(weapon,L"Weap_Shotgun");
+    const bool bow=playground::instance(weapon,L"Weap_Bow_base");
+    if(!lancer&&!snub&&!hammerburst&&!boltok&&!longshot&&!boomshot&&!gnasher&&!bow)return true;
     playground::Args stop_weapon(weapon,L"StopWeaponAnim"),stop_body(pawn,L"StopBodyStance");
     const auto original_call=[](playground::Args const& call,const wchar_t* owner_name) noexcept {
         if(!call.valid||!registered(call.r.function))return false;
@@ -474,19 +501,25 @@ bool stop_lancer_automatic_animation() noexcept {
        !owned_state())return false;
     // This synchronous stop belongs to the accepted reload action. Any partial
     // failure retains lease so existing original Abort recovery drains it.
+    // Bow's physical arrow must not coexist with timed pawn AmmoGrab/Reload
+    // notifies or an independently advancing gun reload clip. Charge/Fire
+    // animations and the original multi-bone skin are untouched.
     // Snub's original gun-only AR_Reload must remain selected for its single
     // animation owner to stop/seek; suppress only the pawn's automatic stance.
     // Lancer keeps its established independent charging-clip path unchanged.
-    if((lancer&&!stop_weapon.run())||!owned_state()||!stop_body.run()||!owned_state())return false;
+    if(((lancer||boltok||gnasher||bow||boomshot)&&!stop_weapon.run())||!owned_state()||!stop_body.run()||!owned_state())return false;
     if(log_file){fwprintf(log_file,L"lancer_reload_automatic_animation_stopped serial=%llu\n",lease.serial);fflush(log_file);}
     return true;
 }
-BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* suspended=nullptr) noexcept {
+BeginResult begin_for_part(hand::Frame const& source,std::uint64_t& serial,hand::LeaseKind starting_part,
+                           Lease const* suspended=nullptr,bool* start_dispatched=nullptr) noexcept {
     serial=0;
-    if(lease.acquired||next_serial==UINT64_MAX||!nativeequipment::current(nullptr,source)||
+    if(start_dispatched)*start_dispatched=false;
+    if((starting_part!=hand::LeaseKind::magazine&&starting_part!=hand::LeaseKind::ammo)||
+       lease.acquired||next_serial==UINT64_MAX||!nativeequipment::current(nullptr,source)||
        (suspended?(!(suspended->identity==inv::identity(source))&&
                     !inv::same_instance_across_hold(suspended->identity,inv::identity(source))):
-                   !magazine_owned(source)))return BeginResult::rejected;
+                   !hand_owned(source,starting_part)))return BeginResult::rejected;
     // Only this authenticated physical intent may pass CanReload. Empty-shot
     // Active.BeginFire/ShouldAutoReload must not start a timed vanilla refill.
     // The scope covers our preflight AND the nested original ForceReload;
@@ -507,7 +540,9 @@ BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* s
     playground::Args start(source.weapon.address,L"ForceReload");
     if(!start.valid||start.r.size!=0||!nativeequipment::current(nullptr,source))return BeginResult::rejected;
     const auto call_begin=weaponhand::clock_ns(nullptr);
-    if(call_begin<=0||!start.run())return BeginResult::rejected;
+    if(call_begin<=0)return BeginResult::rejected;
+    if(start_dispatched)*start_dispatched=true;
+    if(!start.run())return BeginResult::rejected;
     const auto call_end=weaponhand::clock_ns(nullptr);
     float started{};
     if(!start_time(source.weapon.address,started))return BeginResult::recovery_required;
@@ -539,6 +574,10 @@ BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* s
         lease.perfect_end_ms=suspended->perfect_end_ms;
     }
     return BeginResult::acquired;
+}
+// Preserve the established magazine entry and all existing callers exactly.
+BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* suspended=nullptr,bool* start_dispatched=nullptr) noexcept {
+    return begin_for_part(source,serial,hand::LeaseKind::magazine,suspended,start_dispatched);
 }
 // The saved Reloading.AbortWeaponReload calls global Abort then Active. The
 // global implementation fills ONLY in fire modes 10/11. Admit mode 1 alone;
@@ -603,6 +642,11 @@ bool recover_owned() noexcept {
     lease={};return true;
 }
 
+// A completed old owner may still owe component/reward cleanup after another
+// weapon acquires the shared service. Never restore that newer owner's lease.
+bool recover_serial(std::uint64_t serial) noexcept {
+    return !retains_serial(serial)||recover_owned();
+}
 struct RewardReceipt {
     bool dispatched{},applied{},call_confirmed{};
     int observed_bonus{},final_bonus{};

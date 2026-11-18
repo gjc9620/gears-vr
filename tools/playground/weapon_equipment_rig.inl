@@ -42,8 +42,15 @@ const char* status_name(Status value) noexcept {
     return "unknown";
 }
 std::uint64_t ready_count{},rejected_count{},last_publication{};
+std::uint64_t last_sample_ms{},skipped{};bool have_sample_clock{};
 Status last_status{};bool have_status{};unsigned logs{};
 void tick(hand::Frame const& source) noexcept {
+    // This tick updates private diagnostic counters/logs only. Production
+    // consumers call acquire() directly and always run its complete guards.
+    // Sample the diagnostic at most once per250ms, without retaining a Frame.
+    const auto now=nativeequipment::clock_ms(nullptr);
+    if(have_sample_clock&&now>=last_sample_ms&&now-last_sample_ms<250){++skipped;return;}
+    last_sample_ms=now;have_sample_clock=true;
     rig::Frame prepared{};const auto result=acquire(source,prepared);
     const bool ready=result.status==Status::ready;
     const bool held=vrequip::model.held_for(source.world.address,source.pawn.address,source.weapon.address);
@@ -63,9 +70,11 @@ void tick(hand::Frame const& source) noexcept {
     last_status=result.status;have_status=true;last_publication=prepared.publication_sequence;
 }
 void reset_after_drain() noexcept {
-    if(log_file&&(ready_count||rejected_count)){
-        fwprintf(log_file,L"native_equipment_rig_summary ready=%llu rejected=%llu\n",ready_count,rejected_count);fflush(log_file);
+    if(log_file&&(ready_count||rejected_count||skipped)){
+        fwprintf(log_file,L"native_equipment_rig_summary ready=%llu rejected=%llu sample_period_ms=250 counters_are_samples=1 skipped=%llu\n",
+            ready_count,rejected_count,skipped);fflush(log_file);
     }
     ready_count=rejected_count=last_publication=0;last_status={};have_status=false;logs=0;
+    last_sample_ms=skipped=0;have_sample_clock=false;
 }
 } // namespace nativeequipment_rig

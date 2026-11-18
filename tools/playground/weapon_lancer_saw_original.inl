@@ -181,10 +181,10 @@ bool refresh_hold_source() noexcept {
     hold_source_gate=1;input_pin_gate=0;input_pin_failure={};input_pin_elapsed_ns=0;hold_lifetime_failure=0;
     if(!button.owed()||!nativeequipment::domain_ready()||
        !policy::same(button.owner(),actors(source_parent))||source_hold!=vrequip::model.hold_generation())return false;
-    const auto begin=weaponhand::clock_ns(nullptr);hand::GripGameState game{};
+    const auto begin=weaponhand::clock_ns(nullptr);weaponhand::HoldSourceObservation game{};
     hold_source_gate=2;if(begin<=0)return false;
     hold_source_gate=3;if(!weaponhand::client.existing_action_lifetime_on_gt(action_lifetime,&hold_lifetime_failure))return false;
-    hold_source_gate=4;if(!weaponhand::observe_source(nullptr,source_parent,begin,game))return false;
+    hold_source_gate=4;if(!weaponhand::observe_hold_source(nullptr,source_parent,begin,game))return false;
     hold_source_gate=5;if(!game.known||!game.main_hand_held)return false;
     hold_source_gate=6;if(!refresh_input_pin(hold_input,source_parent.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated,begin))return false;
     hold_source_gate=7;if(!weaponhand::client.existing_action_lifetime_on_gt(action_lifetime,&hold_lifetime_failure))return false;

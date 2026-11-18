@@ -1,4 +1,7 @@
+#include "../vr-common/weapon_lancer_natural_magazine.h"
 namespace lancer_magazine_appearance {
+bool active_original(gears_weapon_hand::Frame const&) noexcept;
+bool active_original(gears_committed_hand::Frame const&) noexcept;
 bool install(gears_weapon_hand::Frame const&,gears_weapon_hand::ObjectIdentity const&,
     gears_weapon_hand::ObjectIdentity&) noexcept;
 bool uninstall(gears_weapon_hand::ObjectIdentity const&,gears_weapon_hand::ObjectIdentity&) noexcept;
@@ -18,7 +21,7 @@ float restored_reload_start{};
 bool restored_known{};
 bool active{};
 gears_weapon::LancerMagazineGraspMount pinch_mount;
-std::uint32_t pinch_mount_press{},pinch_mount_release{};
+gears_weapon::LancerMagazineGraspControl pinch_control;
 gears_vr::Viewpoint last_lancer_target{};bool last_lancer_target_known{};
 bool insertion_assist_enabled{};
 bool extraction_display_enabled{};
@@ -61,6 +64,16 @@ bool physical_wrist(gears_committed_interaction::Frame const& actual,gears_vr::P
         gears_hand_wrist::native_wrist_target(actual.physical_left_grip,mount.calibration,
             actual.right.units_per_metre,out)==gears_hand_wrist::Status::okay;
 }
+// Free-held original magazines and the fitted hand share one pose.
+// Genuine extraction still uses its actual pinch_mount.capture/apply.
+bool carried_target(gears_committed_hand::Frame const& source,gears_vr::Pose const& wrist,
+    gears_vr::Viewpoint& out,double scale) noexcept {
+    const gears_vr::Viewpoint pose{wrist.position,
+        gears_vr::ue_angles(gears_vr::rotation_matrix(wrist.orientation))};
+    return lancer_magazine_appearance::active_original(source)?
+        gears_lancer_natural_magazine::grip.item_for_wrist(pose,out,scale):
+        gears_weapon::lancer_magazine_from_left(pose,out,scale);
+}
 void observe_actual_pair(gears_committed_interaction::Frame const& actual) noexcept {
     static hand::ObjectIdentity observed_component{};static std::uint64_t sequence{};static unsigned rows{};
     if(!hand::same(observed_component,saved.component)){observed_component=saved.component;sequence=0;rows=0;}
@@ -79,8 +92,7 @@ void observe_actual_pair(gears_committed_interaction::Frame const& actual) noexc
         vrequip::read_bool(saved.component.address,L"AbsoluteTranslation",abs_t)&&
         vrequip::read_bool(saved.component.address,L"AbsoluteRotation",abs_r);
     gears_vr::Viewpoint expected{};
-    if(!gears_weapon::lancer_magazine_from_left({wrist.position,
-        gears_vr::ue_angles(gears_vr::rotation_matrix(wrist.orientation))},expected,actual.model_scale))return;
+    if(!carried_target(actual.right,wrist,expected,actual.model_scale))return;
     fwprintf(log_file,L"lancer_magazine_actual serial=%llu sequence=%llu wrist=%.9g,%.9g,%.9g expected=%.9g,%.9g,%.9g expected_rotation=%.9g,%.9g,%.9g actual=%.9g,%.9g,%.9g axes=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n",
         actual.right.serial,actual.right.controllers.sequence,wrist.position.x,wrist.position.y,wrist.position.z,
         expected.position.x,expected.position.y,expected.position.z,
@@ -178,7 +190,7 @@ bool restore() noexcept {
        !component_pointer(saved.component.address,L"LightEnvironment",restored_environment)||restored_environment)return false;
     restored=saved;
     restored_known=lancerreload_state::start_time(saved.weapon.address,restored_reload_start);
-    active=false;saved={};last_grab_known=false;last_lancer_target_known=false;pinch_mount={};extraction_display_enabled=false;return true;
+    active=false;saved={};last_grab_known=false;last_lancer_target_known=false;pinch_mount={};pinch_control={};extraction_display_enabled=false;return true;
 }
 bool reclaim_restored(hand::Frame const& source) noexcept {
     float started{};bool reloading{};
@@ -198,21 +210,26 @@ bool reclaim_restored(hand::Frame const& source) noexcept {
     return result;
 }
 enum class Profile {lancer,hammerburst};
+bool capture_mount(hand::Frame const& source,gears_committed_interaction::Frame const& actual,
+    gears_vr::Viewpoint const& target) noexcept {
+    gears_weapon::LancerMagazineGraspMount next;gears_weapon::LancerMagazineGraspControl control;
+    if(!next.capture(actual.physical_left_grip,target)||
+       !control.bind(hand::left_control(source),actual.right.controllers.hands[0]))return false;
+    pinch_mount=next;pinch_control=control;return true;
+}
 bool lancer_target(gears_committed_interaction::Frame const& actual,gears_vr::Viewpoint& target) noexcept {
     // Mechanical sampling always uses the fresh, reachable UNSNAPPED hand.
     // The display path may stop inward motion at the seat; that target never
     // feeds back into the extraction stroke or supplies a successful pose.
     const auto& left=actual.right.controllers.hands[0];
-    if(active&&pinch_mount.known&&left.pressed[gears_vr::control_trigger]==pinch_mount_press&&
-       left.released[gears_vr::control_trigger]==pinch_mount_release)
+    if(active&&pinch_mount.known&&pinch_control.matches(left))
         return pinch_mount.apply(actual.physical_left_grip,target);
     if(!active){
         const auto& r=actual.right;std::array<float,16> gun{};
         return nativelancerfollow::endpoint_matrix(r.right_grip,gun)&&gears_weapon::lancer_seated_magazine(gun,target);
     }
     gears_vr::Pose wrist{};if(!physical_wrist(actual,wrist))return false;
-    return gears_weapon::lancer_magazine_from_left({wrist.position,
-        gears_vr::ue_angles(gears_vr::rotation_matrix(wrist.orientation))},target,actual.model_scale);
+    return carried_target(actual.right,wrist,target,actual.model_scale);
 }
 bool lancer_sample(gears_committed_interaction::Frame const& actual,bool grip_down,
     gears_weapon::LancerInsertionSample& out) noexcept {
@@ -238,9 +255,7 @@ bool regrasp_original(hand::Frame const& source) noexcept {
        !hand::same(source.pawn,saved.pawn)||!lancerreload_state::hand_owned(source,hand::LeaseKind::magazine)||
        !nativeequipment::current(nullptr,source))return false;
     gears_committed_interaction::Frame actual{};
-    if(!interaction(source,actual)||!pinch_mount.capture(actual.physical_left_grip,last_lancer_target))return false;
-    pinch_mount_press=actual.right.controllers.hands[0].pressed[gears_vr::control_trigger];
-    pinch_mount_release=actual.right.controllers.hands[0].released[gears_vr::control_trigger];
+    if(!interaction(source,actual)||!capture_mount(source,actual,last_lancer_target))return false;
     return true; // Rebind the frozen visible item, with no movement or reload completion.
 }
 // A bounded observation in the existing combined reload, not a material
@@ -306,11 +321,11 @@ bool begin(hand::Frame const& source,Profile profile=Profile::lancer,
     };
     const bool hb=profile==Profile::hammerburst;
     if(active)return fail(1);
-    pinch_mount={};last_lancer_target_known=false;
+    pinch_mount={};pinch_control={};last_lancer_target_known=false;
     if(!playground::instance(source.weapon.address,hb?L"Weap_LocustAssaultRifle":L"Weap_AssaultRifle"))return fail(11);
     if(prepared_game&&decision&&actual){if(!prepared_start(source,*prepared_game,*decision,*actual))return fail(12);}
     else if(prepared_game||decision||actual)return fail(15);
-    else if(!lancerreload_state::magazine_owned(source))return fail(13);
+    else if(!lancerreload_state::magazine_owned(source)&&!(hb&&hammerburst_runtime::restoration_owned(source)))return fail(13);
     if(!nativeequipment::current(nullptr,source))return fail(14);
     vrequip::MagazineVisualProbe magazine{};vrequip::AmmoBoneVisualProbe bone{};
     bool magazine_known=vrequip::magazine_visual_probe(source.weapon.address,source.pawn.address,magazine);
@@ -362,9 +377,7 @@ bool begin(hand::Frame const& source,Profile profile=Profile::lancer,
         if(!gears_committed_interaction::matches(initial_actual,source,vrequip::model.hold_generation(),
                 weaponhand::clock_ns(nullptr),source.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated)||
            !lancer_target(initial_actual,initial_target))return fail(18);
-        if(!pinch_mount.capture(initial_actual.physical_left_grip,initial_target))return fail(18);
-        pinch_mount_press=initial_actual.right.controllers.hands[0].pressed[gears_vr::control_trigger];
-        pinch_mount_release=initial_actual.right.controllers.hands[0].released[gears_vr::control_trigger];
+        if(!capture_mount(source,initial_actual,initial_target))return fail(18);
     }
     begin_retryable=false;
     // The original detached StaticMesh retains baked-shadow mode, unlike the
@@ -499,10 +512,12 @@ bool take_replacement(hand::Frame const& source) noexcept {
     if(lancer){
         gears_committed_interaction::Frame actual{};
         replacement_failure=8;
-        if(!interaction(source,actual)||!lancer_target(actual,initial_target))return false;
-        if(!pinch_mount.capture(actual.physical_left_grip,initial_target))return false;
-        pinch_mount_press=actual.right.controllers.hands[0].pressed[gears_vr::control_trigger];
-        pinch_mount_release=actual.right.controllers.hands[0].released[gears_vr::control_trigger];
+        gears_vr::Pose wrist{};
+        // NEW supply is a new physical item/grasp. Never reuse the removed
+        // original's extraction registration merely because Trigger stayed0.
+        if(!interaction(source,actual)||!physical_wrist(actual,wrist)||
+           !carried_target(actual.right,wrist,initial_target,actual.model_scale)||
+           !capture_mount(source,actual,initial_target))return false;
     }
     replacement_failure=4;if(!retain_attachment())return false;
     // The stowed item has relative attachment coordinates. Prime its current

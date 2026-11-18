@@ -56,7 +56,12 @@ def lz4_block(packed,expected):
     return bytes(out)
 
 
-def read_export(package,*,export_offset=EXPORT_OFFSET,export_bytes=EXPORT_BYTES,export_sha256=EXPORT_SHA256):
+def read_export(package,*,export_offset=EXPORT_OFFSET,export_bytes=EXPORT_BYTES,export_sha256=EXPORT_SHA256,
+                package_bytes=PACKAGE_BYTES,package_sha256=PACKAGE_SHA256):
+    if type(package_bytes) is not int or not 101<package_bytes<=2*1024*1024*1024 or \
+       not isinstance(package_sha256,str) or len(package_sha256)!=64 or \
+       any(c not in '0123456789abcdef' for c in package_sha256):
+        raise ValueError('Invalid pinned source package identity')
     if not isinstance(export_offset,int) or not isinstance(export_bytes,int) or \
        export_offset<0 or not 0<export_bytes<=8*1024*1024 or \
        not isinstance(export_sha256,str) or len(export_sha256)!=64:
@@ -64,7 +69,7 @@ def read_export(package,*,export_offset=EXPORT_OFFSET,export_bytes=EXPORT_BYTES,
     package=Path(package)
     with package.open('rb') as stream:
         size=os.fstat(stream.fileno()).st_size
-        if size!=PACKAGE_BYTES or hashlib.file_digest(stream,'sha256').hexdigest()!=PACKAGE_SHA256:
+        if size!=package_bytes or hashlib.file_digest(stream,'sha256').hexdigest()!=package_sha256:
             raise ValueError('Unsupported purchased weapon package')
         stream.seek(0);header=stream.read(101)
         if len(header)!=101 or struct.unpack_from('<IHH',header)!=(0x9E2A83C1,835,76):

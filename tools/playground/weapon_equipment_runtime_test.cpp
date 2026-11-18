@@ -37,7 +37,8 @@ struct Host {
     unsigned stow_calls{},unholster_calls{},idle_unheld_calls{};
     unsigned next_calls{},inventory_calls{},identify_calls{},attached_calls{},switch_calls{},sound_calls{},hold_calls{},clear_calls{},reset_calls{};
     unsigned last_slot{4};er::Status reentrant_status{er::Status::idle};
-    Callback invalidate_at{Callback::none},age_at{Callback::none};std::uint64_t delay_ms{};
+    Callback invalidate_at{Callback::none},age_at{Callback::none},suspend_at{Callback::none};std::uint64_t delay_ms{};
+    bool reject_next_cursor{};
     static wh::ObjectIdentity object(std::uint64_t address){return {address,0x8000,0x9000,unsigned(address/8),7,0,1};}
     Host(){
         frame.key={11,22,33,1,1,1,44,55};frame.flags=wh::scene_owned|wh::input_matched|wh::gameplay_interactable;
@@ -85,6 +86,7 @@ struct Host {
         live=frame;
     }
     void fault(Callback which){
+        if(suspend_at==which){suspend_at=Callback::none;runtime.suspend(backend());}
         if(invalidate_at==which){current_ok=false;invalidate_at=Callback::none;}
         if(age_at==which){ms+=delay_ms;ns+=std::int64_t(delay_ms)*1000000;age_at=Callback::none;}
     }
@@ -97,6 +99,7 @@ struct Host {
     static bool next(void* p,wh::Frame const& f,std::uint64_t& cursor,gw::EquipmentIntentEvent& out) noexcept {
         C(!std::memcmp(&f,&host(p).frame,sizeof(f)));
         auto& h=host(p);++h.next_calls;h.fault(Callback::next);
+        if(host(p).reject_next_cursor){host(p).reject_next_cursor=false;cursor=UINT64_MAX;return false;}
         if(cursor==UINT64_MAX){if(!h.baseline_blocked)cursor=h.latest;return false;}
         for(auto const& e:h.events)if(e.serial==cursor+1){cursor=e.serial;out=e;return true;}
         return false;
@@ -105,6 +108,15 @@ struct Host {
         auto& h=host(p);++h.inventory_calls;h.fault(Callback::inventory);if(!h.inventory_ok)return false;out=h.game;return true;
     }
     unsigned held_inventory_calls{};
+    bool quiet_enabled{},quiet_ok{true};unsigned quiet_calls{};
+    gw::EquipmentSnapshot last_idle_game{};
+    static bool quiet_inventory(void* p,wh::Frame const&,gw::EquipmentSnapshot& out) noexcept {
+        auto& h=host(p);++h.quiet_calls;h.fault(Callback::inventory);
+        if(!h.quiet_ok)return false;
+        out={};out.world=h.game.world;out.pawn=h.game.pawn;out.current_weapon=h.game.current_weapon;
+        out.weapon_in_slot=h.game.weapon_in_slot;out.can_switch=h.game.can_switch;out.animation_busy=h.game.animation_busy;
+        return true;
+    }
     static bool held_inventory(void* p,wh::Frame const& f,gw::EquipmentSnapshot& out) noexcept {
         ++host(p).held_inventory_calls;return inventory(p,f,out);
     }    static bool attached(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {
@@ -137,7 +149,9 @@ struct Host {
         if(h.unholster_ok&&changed)h.attached_ok=true;
         return h.unholster_ok;
     }
-    static void idle_unheld(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {++host(p).idle_unheld_calls;}
+    static void idle_unheld(void* p,wh::Frame const&,gw::EquipmentSnapshot const& game) noexcept {
+        ++host(p).idle_unheld_calls;host(p).last_idle_game=game;
+    }
     static bool prepare_stow(void* p,wh::Frame const&,bool& changed) noexcept {
         auto& h=host(p);++h.prepare_stow_calls;changed=h.prepare_stow_changed;
         if(h.invalidate_on_prepare)h.current_ok=false;
@@ -146,9 +160,34 @@ struct Host {
     static bool begin_index(void* p,wh::Frame const&,gw::EquipmentSnapshot const&,unsigned) noexcept {
         auto& h=host(p);++h.index_begins;return h.index_allowed;
     }
+    bool retain_enabled{},retain_ok{true},retain_suspend{};unsigned retain_calls{};
+    bool baseline_retain_enabled{},baseline_retain_ok{},baseline_retain_suspends{};
+    unsigned baseline_retain_calls{};
+    static bool retain_idle(void* p,wh::Frame const&) noexcept {
+        auto& h=host(p);++h.retain_calls;
+        if(h.retain_suspend)h.runtime.suspend(h.backend());
+        return h.retain_ok&&h.current_ok;
+    }
+    static bool retain_baseline(void* p,wh::Frame const&) noexcept {
+        Host& h=host(p);
+        ++h.baseline_retain_calls;
+        if(h.baseline_retain_suspends)h.runtime.suspend_input(h.backend());
+        return h.baseline_retain_ok;
+    }
+    bool stow_effects_ready{true};
+    bool stow_stop_issued{};
+    std::uint64_t stow_effects_delay_ms{};
+    static bool effects_ready(void* p,wh::Frame const&,bool& stop_issued) noexcept {
+        auto& h=host(p);
+        h.ms+=h.stow_effects_delay_ms;
+        stop_issued=h.stow_stop_issued;
+        return h.stow_effects_ready;
+    }
     er::Backend backend(){return {this,clock_ms,clock_ns,current,next,inventory,attached,identify,forward,empty_sound,hold,clear_hold,reset_input,held_inventory,
         integrated_stow?stow:nullptr,integrated_stow?unholster:nullptr,integrated_stow?idle_unheld:nullptr,
-        integrated_stow?prepare_stow:nullptr,index_enabled?begin_index:nullptr};}
+        integrated_stow?prepare_stow:nullptr,index_enabled?begin_index:nullptr,retain_enabled?retain_idle:nullptr,
+        quiet_enabled?quiet_inventory:nullptr,
+            baseline_retain_enabled?retain_baseline:nullptr,effects_ready};}
     er::Outcome tick(){return runtime.tick(frame,backend(),model);}
     void baseline(){
         const auto switches=switch_calls,sounds=sound_calls,holds=hold_calls;
@@ -457,6 +496,39 @@ void integrated_stow_cases(){
     C(parked.tick().status==er::Status::stowed);
     C(parked.stow_calls==1&&parked.prepare_stow_calls==1&&!parked.model.held());
     C(!parked.runtime.state().pending);
+    ++cases;Host firing;held(firing);firing.stow_effects_ready=false;firing.stow_stop_issued=true;
+    firing.press();firing.event(0);
+    C(firing.tick().status==er::Status::stow_pending&&firing.stow_calls==0);
+    firing.advance(3000);
+    C(firing.tick().status==er::Status::stow_pending&&firing.stow_calls==0&&firing.model.held());
+    firing.stow_effects_ready=true;firing.advance();
+    C(firing.tick().status==er::Status::stowed&&firing.stow_calls==1&&!firing.model.held());
+    firing.advance();(void)firing.tick();C(firing.stow_calls==1);
+    ++cases;Host cancelled;held(cancelled);cancelled.stow_effects_ready=false;cancelled.stow_stop_issued=true;
+    cancelled.press();cancelled.event(0);
+    C(cancelled.tick().status==er::Status::stow_pending);
+    cancelled.runtime.suspend_input(cancelled.backend());
+    C(!cancelled.runtime.state().pending&&cancelled.stow_calls==0);
+    ++cases;Host changed;held(changed);changed.stow_effects_ready=false;changed.stow_stop_issued=true;
+    changed.press();changed.event(0);C(changed.tick().status==er::Status::stow_pending);
+    changed.advance();++changed.frame.controllers.input_epoch;changed.stow_effects_ready=true;
+    (void)changed.tick();C(!changed.runtime.state().pending&&changed.stow_calls==0);
+    ++cases;Host late;held(late);late.stow_effects_delay_ms=251;late.stow_stop_issued=true;
+    late.press();late.event(0);
+    C(late.tick().status==er::Status::expired_event&&late.stow_calls==0);
+    C(!late.runtime.state().pending&&late.model.held());
+    ++cases;Host unissued;held(unissued);unissued.stow_effects_ready=false;
+    unissued.press();const auto unissued_request=unissued.event(0);
+    C(unissued.tick().status==er::Status::stow_pending);
+    C(unissued.runtime.state().deadline_ms==unissued_request.created_ms+250);
+    unissued.advance(250);unissued.stow_effects_ready=true;
+    C(unissued.tick().status==er::Status::switch_timed_out&&unissued.stow_calls==0);
+    ++cases;Host completion_timeout;held(completion_timeout);
+    completion_timeout.stow_effects_ready=false;completion_timeout.stow_stop_issued=true;
+    completion_timeout.press();completion_timeout.event(0);
+    C(completion_timeout.tick().status==er::Status::stow_pending);
+    completion_timeout.advance(5000);completion_timeout.stow_effects_ready=true;
+    C(completion_timeout.tick().status==er::Status::switch_timed_out&&completion_timeout.stow_calls==0&&completion_timeout.model.held());
     ++cases;Host stale;held(stale);stale.prepare_stow_changed=true;stale.press();stale.event(0);
     C(stale.tick().status==er::Status::stow_pending);stale.advance(250);
     C(stale.tick().status==er::Status::switch_timed_out&&stale.stow_calls==0);
@@ -595,9 +667,475 @@ void blocked_input_cases(){
     C(!malformed.runtime.observe_input_while_blocked(malformed.frame,malformed.backend(),[&]() noexcept {++malformed_checks;return true;}));
     C(malformed_checks==0&&!malformed.published_hold&&!malformed.runtime.state().future_known);
 }
+void released_throwable_reacquisition(){
+    ++cases;Host h;h.integrated_stow=true;h.start(1);h.selected(1);
+    C(h.tick().status==er::Status::held&&h.model.held()&&h.published_hold);
+    const auto generation=h.model.hold_generation();const auto weapon=h.frame.weapon.address;
+    const auto old_holds=h.hold_calls,old_switches=h.switch_calls,old_idle=h.idle_unheld_calls,old_unholsters=h.unholster_calls;
+    C(h.model.release_throwable(h.game.world,h.game.pawn,weapon,generation));
+    Host::clear_hold(&h);h.advance();h.tick();
+    C(!h.model.held()&&!h.published_hold&&h.hold_calls==old_holds&&h.switch_calls==old_switches);
+    C(h.idle_unheld_calls>old_idle); // Original replenishment is not a grasp.
+    h.advance();h.tick();C(!h.model.held()&&h.hold_calls==old_holds);
+    h.press();h.event(1);C(h.tick().status==er::Status::held);
+    C(h.model.held()&&h.published_hold&&h.model.hold_generation()!=generation);
+    C(h.hold_calls==old_holds+1&&h.switch_calls==old_switches&&h.unholster_calls==old_unholsters+1);
+    C(!h.model.release_throwable(h.game.world,h.game.pawn,weapon,generation)&&h.model.held());
+}
+void idle_inventory_hold_retention_cases(){
+    // Real Runtime expiry at each observation, with an independent proof,
+    // a refused/missing proof, or a real backend-context loss.
+    for(auto stage:{Callback::next,Callback::inventory,Callback::attached})for(unsigned proof=0;proof<4;++proof){
+        ++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=proof!=2;h.retain_ok=proof!=1;h.advance();h.age_at=stage;h.delay_ms=101;
+        if(proof==3)h.invalidate_at=stage;
+        const auto hold=h.hold_calls,switches=h.switch_calls,stows=h.stow_calls,sounds=h.sound_calls;
+        const auto clears=h.clear_calls;const auto expired=h.frame;
+        C(wh::frame_active(expired,h.ns));
+        C(h.tick().status==er::Status::unavailable);
+        C(h.age_at==Callback::none&&!wh::frame_active(expired,h.ns));
+        C(h.model.held()&&h.published_hold==(proof==0)&&h.runtime.state().hold_published==(proof==0));
+        C(h.hold_calls==hold&&h.switch_calls==switches&&h.stow_calls==stows&&h.sound_calls==sounds);
+        C(h.retain_calls==(proof==2?0u:1u)&&!h.runtime.state().baseline_ready&&!h.runtime.state().future_known);
+        C(proof==0?h.clear_calls==clears:h.clear_calls>clears);
+        if(proof==0){
+            h.advance();C(h.tick().status==er::Status::baseline);
+            h.advance();C(h.tick().status==er::Status::idle);
+            C(h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches&&h.stow_calls==stows&&h.sound_calls==sounds);
+        }
+    }
+    // An edge without a slot event remains a full denial for the NEW expiry
+    // recovery. The existing held-inventory selection itself is unchanged.
+    for(auto stage:{Callback::next,Callback::inventory,Callback::attached}){
+        ++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.advance();++h.frame.controllers.hands[0].pressed[vr::control_squeeze];
+        h.frame.controllers.hands[0].squeeze=1;h.live=h.frame;
+        C(wh::frame_active(h.frame,h.ns));h.age_at=stage;h.delay_ms=101;
+        const auto hold=h.hold_calls,switches=h.switch_calls,stows=h.stow_calls,sounds=h.sound_calls;
+        C(h.tick().status==er::Status::unavailable);
+        C(h.age_at==Callback::none&&h.retain_calls==0&&!h.published_hold&&!h.runtime.state().hold_published);
+        C(h.hold_calls==hold&&h.switch_calls==switches&&h.stow_calls==stows&&h.sound_calls==sounds);
+    }
+    for(unsigned deny=0;deny<3;++deny){
+        ++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.advance();
+        if(deny==0)h.game.world=0;
+        if(deny==1)h.game.pawn+=8;
+        if(deny==2)h.game.current_weapon=h.game.weapon_in_slot[2];
+        C(!h.game.valid()||h.game.world!=h.frame.world.address||h.game.pawn!=h.frame.pawn.address||h.game.current_weapon!=h.frame.weapon.address);
+        h.age_at=Callback::inventory;h.delay_ms=101;const auto hold=h.hold_calls,switches=h.switch_calls;
+        C(h.tick().status==er::Status::unavailable&&h.age_at==Callback::none);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches);
+    }
+    {++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.advance();h.attached_ok=false;h.age_at=Callback::attached;h.delay_ms=101;
+        const auto calls=h.attached_calls,hold=h.hold_calls,switches=h.switch_calls;
+        C(h.tick().status==er::Status::unavailable&&h.age_at==Callback::none&&h.attached_calls==calls+1);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches);}
+    {++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.advance();h.suspend_at=Callback::inventory;
+        const auto hold=h.hold_calls,switches=h.switch_calls;
+        C(h.tick().status==er::Status::unavailable&&h.suspend_at==Callback::none);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches);}
+    for(unsigned proof=0;proof<4;++proof){
+        ++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=proof!=2;h.retain_ok=proof!=1;h.retain_suspend=proof==3;h.advance();h.ns+=101000000;
+        const auto calls=h.next_calls,hold=h.hold_calls,switches=h.switch_calls;
+        C(!wh::frame_active(h.frame,h.ns));C(h.tick().status==er::Status::unavailable);
+        C(h.next_calls==calls&&h.retain_calls==(proof==2?0u:1u));
+        C(h.published_hold==(proof==0)&&h.runtime.state().hold_published==(proof==0));
+        C(h.hold_calls==hold&&h.switch_calls==switches);
+        C(!h.runtime.state().baseline_ready);
+        if(proof==0){h.advance();C(h.tick().status==er::Status::baseline);
+            h.advance();C(h.tick().status==er::Status::idle);C(h.published_hold);}
+    }
+    {++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.advance();++h.frame.controllers.hands[0].pressed[gears_vr::control_squeeze];
+        h.live=h.frame;h.ns+=101000000;C(h.tick().status==er::Status::unavailable);
+        C(h.retain_calls==0&&!h.published_hold&&!h.runtime.state().hold_published);}
+    {++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.press();h.event(2);h.age_at=Callback::next;h.delay_ms=101;
+        const auto hold=h.hold_calls,switches=h.switch_calls,stows=h.stow_calls;
+        C(h.tick().status==er::Status::unavailable&&h.age_at==Callback::none);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches&&h.stow_calls==stows);}
+    {++cases;Host h;h.start(2);C(h.model.switch_pending()&&!h.model.held()&&h.runtime.state().pending);
+        h.retain_enabled=true;h.advance();h.age_at=Callback::inventory;h.delay_ms=101;
+        const auto hold=h.hold_calls,switches=h.switch_calls;
+        C(h.tick().status==er::Status::unavailable&&h.age_at==Callback::none);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==hold&&h.switch_calls==switches);}
+    for(bool acquiring:{false,true}){
+        ++cases;Host h;h.baseline();C(!h.model.held()&&!h.runtime.state().pending);h.retain_enabled=true;
+        if(acquiring){h.press();h.event(0);}else h.advance();
+        h.age_at=Callback::inventory;h.delay_ms=101;
+        C(h.tick().status==er::Status::unavailable&&h.age_at==Callback::none);
+        C(h.retain_calls==0&&!h.published_hold&&h.hold_calls==0&&h.switch_calls==0&&h.stow_calls==0&&h.sound_calls==0);
+    }
+    for(bool retain:{false,true}){
+        ++cases;Host h;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.retain_ok=retain;h.advance();h.inventory_ok=false;
+        const auto hold=h.hold_calls,switches=h.switch_calls,stows=h.stow_calls,sounds=h.sound_calls;
+        C(h.tick().status==er::Status::inventory_unavailable&&h.retain_calls==1);
+        C(h.model.held()&&h.published_hold==retain&&h.runtime.state().hold_published==retain);
+        C(h.hold_calls==hold&&h.switch_calls==switches&&h.stow_calls==stows&&h.sound_calls==sounds);
+        if(retain)C(!h.runtime.state().baseline_ready&&!h.runtime.state().future_known);
+        h.inventory_ok=true;h.advance();(void)h.tick();h.advance();(void)h.tick();
+        C(h.model.held()&&h.published_hold&&h.switch_calls==switches&&h.stow_calls==stows);
+    }
+    ++cases;Host unheld;unheld.baseline();unheld.retain_enabled=true;unheld.inventory_ok=false;unheld.advance();
+    C(unheld.tick().status==er::Status::inventory_unavailable&&unheld.retain_calls==0&&!unheld.published_hold);
+    ++cases;Host action;action.baseline();action.press();action.event(0);C(action.tick().status==er::Status::held);
+    action.retain_enabled=true;action.press();action.event(2);action.inventory_ok=false;
+    C(action.tick().status==er::Status::inventory_unavailable&&action.retain_calls==0&&!action.published_hold);
+    ++cases;Host changed;changed.baseline();changed.press();changed.event(0);C(changed.tick().status==er::Status::held);
+    changed.retain_enabled=true;changed.advance();changed.frame.weapon=changed.objects[2];changed.live=changed.frame;changed.inventory_ok=false;
+    C(changed.tick().status==er::Status::inventory_unavailable&&changed.retain_calls==0&&!changed.published_hold);
+}
+
+void quiet_unheld_inventory_cases(){
+    ++cases;Host h;h.quiet_enabled=h.integrated_stow=true;h.baseline();
+    C(h.inventory_calls==1&&h.quiet_calls==0); // Baseline never uses reduced data.
+    h.advance();C(h.tick().status==er::Status::idle&&h.quiet_calls==1&&h.inventory_calls==1);
+    C(!h.last_idle_game.throwable_count_known&&!h.model.held()&&h.hold_calls==0&&h.switch_calls==0&&h.sound_calls==0);
+    h.game.weapon_in_slot[2]=0x8880;h.advance();
+    C(h.tick().status==er::Status::idle&&h.last_idle_game.weapon_in_slot[2]==0x8880&&h.quiet_calls==2);
+    h.selected(3);C(h.tick().status==er::Status::idle&&!h.model.held()&&h.last_idle_game.current_weapon==h.frame.weapon.address);
+    // Every controller press AND release, including unrelated/left controls,
+    // must take the original full snapshot even with no decoded slot event.
+    for(unsigned side=0;side<2;++side)for(unsigned control=0;control<vr::control_count;++control){
+        if((side==0&&(control==vr::control_a||control==vr::control_b))||
+           (side==1&&(control==vr::control_x||control==vr::control_y||control==vr::control_menu)))continue;
+        const auto full=h.inventory_calls,quiet=h.quiet_calls;
+        h.advance();++h.frame.controllers.hands[side].pressed[control];h.publish();
+        const auto edge_outcome=h.tick();
+        if(edge_outcome.status!=er::Status::idle||h.inventory_calls!=full+1||h.quiet_calls!=quiet)
+            std::fprintf(stderr,"edge side=%u control=%u status=%s full=%u/%u quiet=%u/%u\n",side,control,
+                er::status_name(edge_outcome.status),h.inventory_calls,full,h.quiet_calls,quiet);
+        C(edge_outcome.status==er::Status::idle&&h.inventory_calls==full+1&&h.quiet_calls==quiet);
+        h.advance();++h.frame.controllers.hands[side].released[control];h.publish();
+        C(h.tick().status==er::Status::idle&&h.inventory_calls==full+2&&h.quiet_calls==quiet);
+    }
+    ++cases;Host failure;failure.quiet_enabled=failure.integrated_stow=true;failure.baseline();failure.advance();failure.quiet_ok=false;
+    C(failure.tick().status==er::Status::inventory_unavailable&&failure.quiet_calls==1&&failure.inventory_calls==1);
+    C(failure.hold_calls==0&&failure.switch_calls==0&&failure.sound_calls==0&&failure.idle_unheld_calls==1);
+    ++cases;Host stale;stale.quiet_enabled=true;stale.baseline();stale.advance();stale.age_at=Callback::inventory;stale.delay_ms=101;
+    C(stale.tick().status==er::Status::unavailable&&stale.quiet_calls==1&&stale.switch_calls==0);
+    ++cases;Host action;action.quiet_enabled=true;action.baseline();action.press();action.event(2);
+    C(action.tick().status==er::Status::switch_requested&&action.quiet_calls==0&&action.inventory_calls==2);
+    action.advance();C(action.tick().status==er::Status::switch_pending&&action.quiet_calls==0&&action.inventory_calls==3);
+    ++cases;Host future;future.quiet_enabled=true;future.baseline();future.press();future.event(2);future.events.back().input_sequence+=3;
+    C(future.tick().status==er::Status::future_event&&future.quiet_calls==0);
+    const auto full=future.inventory_calls;future.advance();
+    C(future.tick().status==er::Status::future_event&&future.inventory_calls==full+1&&future.quiet_calls==0);
+    ++cases;Host invalid;invalid.quiet_enabled=true;invalid.baseline();invalid.advance();invalid.game.current_weapon=0x9990;
+    C(invalid.tick().status==er::Status::identity_mismatch&&invalid.quiet_calls==1&&invalid.hold_calls==0);
+    ++cases;Host held;held.quiet_enabled=true;held.baseline();held.press();held.event(0);
+    C(held.tick().status==er::Status::held);held.advance();
+    C(held.tick().status==er::Status::idle&&held.quiet_calls==0&&held.held_inventory_calls==1);
+    ++cases;Host pickup;pickup.quiet_enabled=true;pickup.baseline();
+    C(pickup.model.begin_pickup(pickup.game).event==gw::EquipmentEvent::pickup_animation);pickup.advance();
+    const auto pickup_full=pickup.inventory_calls;
+    C(pickup.tick().status==er::Status::idle&&pickup.inventory_calls==pickup_full+1&&pickup.quiet_calls==0);
+    ++cases;Host cohort;cohort.quiet_enabled=true;cohort.baseline();cohort.advance();
+    ++cohort.frame.controllers.input_epoch;cohort.publish();const auto cohort_full=cohort.inventory_calls;
+    C(cohort.tick().status==er::Status::baseline&&cohort.inventory_calls==cohort_full+1&&cohort.quiet_calls==0);
+}
+
+void baseline_retention_cases(){
+    auto prepare=[](Host& h,bool retained,bool suspends=false){
+        h.baseline_retain_enabled=true;
+        h.baseline_retain_ok=retained;
+        h.baseline_retain_suspends=suspends;
+        h.baseline();h.press();h.event(0);
+        C(h.tick().status==er::Status::held);
+        C(h.model.held()&&h.published_hold);
+        h.runtime.suspend_input(h.backend());h.advance();
+    };
+    auto no_new_actions=[](Host& h,unsigned holds,unsigned switches,unsigned stows){
+        const auto& s=h.runtime.state();
+        C(h.hold_calls==holds&&h.switch_calls==switches&&h.stow_calls==stows);
+        C(!s.pending&&!s.pending_unholster&&!s.pending_dispatch&&
+          !s.pending_stow&&!s.future_known);
+    };
+
+    ++cases;Host aged;
+    prepare(aged,true);
+    aged.inventory_ok=false;
+    aged.age_at=Callback::inventory;aged.delay_ms=101;
+    const auto aged_holds=aged.hold_calls,aged_switches=aged.switch_calls;
+    const auto aged_stows=aged.stow_calls,aged_attached=aged.attached_calls;
+    const auto aged_out=aged.tick();
+    const auto& aged_state=aged.runtime.state();
+    C(aged_out.status==er::Status::inventory_unavailable);
+    C(aged.baseline_retain_calls==1);
+    C(aged.model.held()&&aged.published_hold&&aged_state.held_known&&
+      aged_state.hold_published);
+    C(!aged_state.baseline_ready&&aged_state.cursor==UINT64_MAX&&
+      !aged_state.future_known&&!aged_state.pending);
+    C(aged.attached_calls==aged_attached);
+    no_new_actions(aged,aged_holds,aged_switches,aged_stows);
+    // A later real baseline must not replay the discarded acquisition event.
+    aged.inventory_ok=true;aged.advance();
+    C(aged.tick().status==er::Status::baseline);
+    C(aged.published_hold&&aged.runtime.state().baseline_ready);
+    aged.advance();C(aged.tick().status==er::Status::idle);
+    C(aged.baseline_retain_calls==1);
+    no_new_actions(aged,aged_holds,aged_switches,aged_stows);
+
+    ++cases;Host live;
+    prepare(live,true);
+    live.inventory_ok=false;
+    const auto live_holds=live.hold_calls,live_switches=live.switch_calls;
+    const auto live_stows=live.stow_calls,live_attached=live.attached_calls;
+    const auto live_out=live.tick();
+    const auto& live_state=live.runtime.state();
+    C(live_out.status==er::Status::inventory_unavailable);
+    C(live.baseline_retain_calls==1);
+    C(live.model.held()&&live.published_hold&&live_state.held_known&&
+      live_state.hold_published);
+    C(!live_state.baseline_ready&&live_state.cursor==UINT64_MAX);
+    C(live.attached_calls==live_attached);
+    no_new_actions(live,live_holds,live_switches,live_stows);
+
+    ++cases;Host rejected;
+    prepare(rejected,false);
+    rejected.inventory_ok=false;
+    rejected.age_at=Callback::inventory;rejected.delay_ms=101;
+    const auto rejected_out=rejected.tick();
+    const auto& rejected_state=rejected.runtime.state();
+    C(rejected_out.status==er::Status::inventory_unavailable);
+    C(rejected.baseline_retain_calls==1);
+    C(rejected.model.held()&&!rejected.published_hold&&
+      !rejected_state.hold_published);
+
+    ++cases;Host no_callback;
+    no_callback.baseline();no_callback.press();no_callback.event(0);
+    C(no_callback.tick().status==er::Status::held);
+    no_callback.runtime.suspend_input(no_callback.backend());
+    no_callback.advance();
+    no_callback.inventory_ok=false;
+    no_callback.age_at=Callback::inventory;no_callback.delay_ms=101;
+    const auto null_out=no_callback.tick();
+    C(null_out.status==er::Status::inventory_unavailable);
+    C(no_callback.baseline_retain_calls==0);
+    C(no_callback.model.held()&&!no_callback.published_hold&&
+      !no_callback.runtime.state().hold_published);
+
+    ++cases;Host reentrant;
+    prepare(reentrant,true,true);
+    reentrant.inventory_ok=false;
+    reentrant.age_at=Callback::inventory;reentrant.delay_ms=101;
+    const auto reentrant_out=reentrant.tick();
+    C(reentrant_out.status==er::Status::inventory_unavailable);
+    C(reentrant.baseline_retain_calls==1);
+    C(reentrant.model.held()&&!reentrant.published_hold&&
+      !reentrant.runtime.state().hold_published);
+
+    ++cases;Host unheld;
+    unheld.baseline_retain_enabled=true;unheld.baseline_retain_ok=true;
+    unheld.baseline();
+    unheld.runtime.suspend_input(unheld.backend());
+    unheld.advance();
+    unheld.inventory_ok=false;
+    unheld.age_at=Callback::inventory;unheld.delay_ms=101;
+    (void)unheld.tick();
+    C(unheld.baseline_retain_calls==0);
+    C(!unheld.model.held()&&!unheld.published_hold);
+
+    ++cases;Host identity;
+    prepare(identity,true);
+    identity.game.current_weapon=0x9990;identity.publish();
+    const auto identity_out=identity.tick();
+    C(identity_out.status==er::Status::identity_mismatch);
+    C(identity.baseline_retain_calls==0);
+
+    ++cases;Host changed_model;
+    prepare(changed_model,true);
+    changed_model.model=gw::WeaponEquipmentModel{};
+    changed_model.inventory_ok=false;
+    changed_model.age_at=Callback::inventory;changed_model.delay_ms=101;
+    (void)changed_model.tick();
+    C(changed_model.baseline_retain_calls==0);
+
+    ++cases;Host action;
+    prepare(action,true);
+    C(action.tick().status==er::Status::baseline);
+    action.press();action.event(0);action.inventory_ok=false;
+    action.age_at=Callback::inventory;action.delay_ms=101;
+    (void)action.tick();
+    C(action.baseline_retain_calls==0);
+
+    ++cases;Host failed_baseline;
+    prepare(failed_baseline,true);
+    failed_baseline.baseline_blocked=true;
+    failed_baseline.inventory_ok=false;
+    failed_baseline.age_at=Callback::inventory;failed_baseline.delay_ms=101;
+    (void)failed_baseline.tick();
+    C(failed_baseline.baseline_retain_calls==0);
+
+    ++cases;Host attachment;
+    prepare(attachment,true);
+    attachment.attached_ok=false;
+    const auto attachment_out=attachment.tick();
+    C(attachment_out.status==er::Status::attachment_unavailable);
+    C(attachment.baseline_retain_calls==0);
+    C(!attachment.model.held()&&!attachment.published_hold&&
+      !attachment.runtime.state().hold_published);
+}
+
+void input_gap_retention_cases(){
+    auto held=[](Host& h){
+        h.baseline();h.press();h.event(0);
+        C(h.tick().status==er::Status::held);
+        h.advance();
+        h.age_at=Callback::next;h.delay_ms=101;h.reject_next_cursor=true;
+    };
+    ++cases;Host retained;
+    retained.baseline_retain_enabled=true;retained.baseline_retain_ok=true;held(retained);
+    const auto holds=retained.hold_calls,switches=retained.switch_calls;
+    const auto stows=retained.stow_calls,inventory=retained.inventory_calls;
+    const auto attached=retained.attached_calls;
+    C(retained.tick().status==er::Status::unavailable);
+    const auto& s=retained.runtime.state();
+    C(retained.baseline_retain_calls==1);
+    C(retained.model.held()&&retained.published_hold&&
+      s.held_known&&s.hold_published);
+    C(!s.baseline_ready&&s.cursor==UINT64_MAX&&!s.future_known&&!s.pending);
+    C(retained.hold_calls==holds&&retained.switch_calls==switches&&
+      retained.stow_calls==stows);
+    C(retained.inventory_calls==inventory&&retained.attached_calls==attached);
+    C(!wh::frame_active(retained.frame,retained.ns));
+    retained.advance();C(retained.tick().status==er::Status::baseline);
+    retained.advance();C(retained.tick().status==er::Status::idle);
+    C(retained.baseline_retain_calls==1&&retained.published_hold);
+    C(retained.hold_calls==holds&&retained.switch_calls==switches&&retained.stow_calls==stows);
+
+    ++cases;Host rejected;
+    rejected.baseline_retain_enabled=true;rejected.baseline_retain_ok=false;held(rejected);
+    C(rejected.tick().status==er::Status::unavailable);
+    C(rejected.baseline_retain_calls==1);
+    C(rejected.model.held()&&!rejected.published_hold&&
+      !rejected.runtime.state().hold_published);
+
+    ++cases;Host null_callback;held(null_callback);
+    C(null_callback.tick().status==er::Status::unavailable);
+    C(null_callback.baseline_retain_calls==0);
+    C(null_callback.model.held()&&!null_callback.published_hold);
+
+    ++cases;Host reentrant;
+    reentrant.baseline_retain_enabled=true;reentrant.baseline_retain_ok=true;
+    reentrant.baseline_retain_suspends=true;held(reentrant);
+    C(reentrant.tick().status==er::Status::unavailable);
+    C(reentrant.baseline_retain_calls==1);
+    C(reentrant.model.held()&&!reentrant.published_hold);
+
+    ++cases;Host event;
+    event.baseline_retain_enabled=true;event.baseline_retain_ok=true;
+    event.baseline();event.press();event.event(0);
+    C(event.tick().status==er::Status::held);
+    event.press();event.event(0);event.age_at=Callback::next;event.delay_ms=101;
+    (void)event.tick();
+    C(event.baseline_retain_calls==0);
+}
+
+void retained_entry_cases(){
+    // Reproduce a REAL successful post-next retain, which discards input.
+    auto gap=[](Host& h){
+        h.baseline_retain_enabled=true;h.baseline_retain_ok=true;
+        h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.advance();h.age_at=Callback::next;h.delay_ms=101;h.reject_next_cursor=true;
+        C(h.tick().status==er::Status::unavailable);
+        C(h.baseline_retain_calls==1&&h.published_hold);
+        C(!h.runtime.state().input_bound&&!h.runtime.state().baseline_ready&&
+          h.runtime.state().cursor==UINT64_MAX);
+    };
+    auto stale=[](Host& h){
+        h.ms+=101;h.ns+=101000000;
+        C(!wh::frame_active(h.frame,h.ns));
+        C(h.tick().status==er::Status::unavailable);
+    };
+    ++cases;Host repeated;gap(repeated);
+    const auto holds=repeated.hold_calls,switches=repeated.switch_calls;
+    const auto stows=repeated.stow_calls,nexts=repeated.next_calls;
+    stale(repeated);stale(repeated);
+    C(repeated.baseline_retain_calls==3&&repeated.published_hold);
+    C(!repeated.runtime.state().input_bound&&!repeated.runtime.state().baseline_ready&&
+      repeated.runtime.state().cursor==UINT64_MAX);
+    C(repeated.next_calls==nexts&&repeated.hold_calls==holds&&
+      repeated.switch_calls==switches&&repeated.stow_calls==stows);
+    // Even an event queued during the gap is discarded by a REAL baseline.
+    repeated.press();repeated.event(3);
+    C(repeated.tick().status==er::Status::baseline);
+    repeated.advance();C(repeated.tick().status==er::Status::idle);
+    C(repeated.hold_calls==holds&&repeated.switch_calls==switches&&repeated.stow_calls==stows);
+
+    ++cases;Host refused;gap(refused);refused.baseline_retain_ok=false;stale(refused);
+    C(refused.baseline_retain_calls==2&&!refused.published_hold);
+    ++cases;Host absent;gap(absent);absent.baseline_retain_enabled=false;stale(absent);
+    C(absent.baseline_retain_calls==1&&!absent.published_hold);
+    ++cases;Host reentrant;gap(reentrant);reentrant.baseline_retain_suspends=true;stale(reentrant);
+    C(reentrant.baseline_retain_calls==2&&!reentrant.published_hold);
+    ++cases;Host hard;gap(hard);hard.runtime.suspend_input(hard.backend());stale(hard);
+    C(hard.baseline_retain_calls==1&&!hard.published_hold);
+    // An actor/input/weapon/hold generation change must never reach the proof.
+    for(unsigned change=0;change<11;++change){
+        ++cases;Host changed;gap(changed);
+        switch(change){
+        case 0:++changed.frame.key.lifecycle;break;
+        case 1:++changed.frame.controllers.session;break;
+        case 2:++changed.frame.controllers.space_epoch;break;
+        case 3:++changed.frame.controllers.profile_generation;break;
+        case 4:++changed.frame.controllers.input_epoch;break;
+        case 5:++changed.frame.pawn.registry_index;break;
+        case 6:++changed.frame.weapon.registry_index;break;
+        case 7:--changed.frame.controllers.sequence;break;
+        case 8:++changed.frame.key.world_generation;break;
+        case 9:changed.frame.controllers.source=vr::StereoSource::MetaOperatorSimulated;break;
+        case 10:{Host newer;newer.baseline();newer.press();newer.event(0);
+            C(newer.tick().status==er::Status::held);changed.model=newer.model;break;}
+        }
+        stale(changed);
+        C(changed.baseline_retain_calls==1&&!changed.published_hold);
+    }
+}
+
+void attached_gap_continuity_cases(){
+    auto held=[](Host& h){
+        h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);
+        h.retain_enabled=true;h.baseline_retain_enabled=true;h.baseline_retain_ok=true;
+        h.advance();h.age_at=Callback::attached;h.delay_ms=101;
+    };
+    ++cases;Host h;held(h);
+    const auto holds=h.hold_calls,switches=h.switch_calls,nexts=h.next_calls;
+    C(h.tick().status==er::Status::unavailable);
+    C(h.retain_calls==1&&h.baseline_retain_calls==0&&h.published_hold);
+    C(!h.runtime.state().input_bound&&!h.runtime.state().baseline_ready);
+    // The post-observation proof was not repeated just to save metadata.
+    h.ms+=101;h.ns+=101000000;
+    C(h.tick().status==er::Status::unavailable);
+    C(h.retain_calls==1&&h.baseline_retain_calls==1&&h.published_hold);
+    C(h.next_calls==nexts+1&&h.hold_calls==holds&&h.switch_calls==switches);
+    h.advance();C(h.tick().status==er::Status::baseline);
+    h.advance();C(h.tick().status==er::Status::idle);
+    C(h.hold_calls==holds&&h.switch_calls==switches);
+
+    ++cases;Host detached;held(detached);detached.attached_ok=false;
+    C(detached.tick().status==er::Status::unavailable);
+    C(detached.retain_calls==0&&detached.baseline_retain_calls==0&&!detached.published_hold);
+    ++cases;Host reentrant;held(reentrant);reentrant.retain_suspend=true;
+    C(reentrant.tick().status==er::Status::unavailable);
+    C(reentrant.retain_calls==1&&reentrant.baseline_retain_calls==0&&!reentrant.published_hold);
+}
+
 int main(){
+    attached_gap_continuity_cases();
+    retained_entry_cases();
+    quiet_unheld_inventory_cases();
+    input_gap_retention_cases();
+    baseline_retention_cases();
+    idle_inventory_hold_retention_cases();
     baseline_cases();press_cases();future_cases();event_rejections();source_cases();boundary_cases();
     decision_cases();observe_cases();final_checks();integrated_stow_cases();
     blocked_input_cases();index_acquisition_cases();
+    released_throwable_reacquisition();
     std::printf("WeaponEquipmentRuntimeTest: %u cases / %u checks passed; actual Runtime + model, controlled synchronous PG backend seam; no Game/XR/Native callback or engine acceptance\n",cases,checks);
 }

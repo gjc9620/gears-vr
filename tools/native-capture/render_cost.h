@@ -9,7 +9,7 @@
 namespace gears_render_cost {
 // Published once for a bounded external sampler. Zero when profiling is off.
 inline std::atomic<DWORD> first_thread{};
-enum Kind : unsigned {safe_read,engine_view,output_stack,viewport_draw,frame_draw,reset_tracking,barrier_observation,frame_lock,draw_forward,count};
+enum Kind : unsigned {safe_read,engine_view,output_stack,viewport_draw,frame_draw,reset_tracking,barrier_observation,frame_lock,draw_forward,metadata_source_loop,count};
 struct Counter {uint64_t calls{},ticks{};};
 struct Record {std::array<Counter,count> items{};uint64_t total_ticks{};
  uint64_t kernel_100ns{},user_100ns{},cpu_samples{},cpu_failures{};

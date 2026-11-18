@@ -15,6 +15,38 @@ bool same(hand::Frame const& f) noexcept {
         asset::object(component)&&asset::object(original)&&asset::object(surface)&&
         playground::pointer(f.weapon.address,L"MagazineMesh")==component.address;
 }
+bool active_original(hand::Frame const& f) noexcept {
+    return ready&&installed&&same(f)&&asset::object(installed_mesh)&&
+        playground::pointer(component.address,L"StaticMesh")==installed_mesh.address;
+}
+// Read-only original-asset selection from the already admitted committed pair.
+// This overload never manufactures a hand Frame, refreshes times or grants
+// contact/ownership. The existing interaction consumer retains those gates.
+bool active_original(gears_committed_hand::Frame const& r) noexcept {
+    if(!ready||!installed||!generation||!nativelancerfollow::bound_key_known||
+       !nativelancerfollow::bound_is_lancer||!nativelancerfollow::mount.bound()||
+       key.registration_cookie!=r.parent.registration_cookie||key.lifecycle!=r.parent.lifecycle||
+       key.game_start!=r.parent.game_start||key.native_started_qpc!=r.parent.native_started_qpc||
+       key.world_generation!=r.parent.world_generation||
+       !hand::same(owner.weapon,r.weapon)||owner.hold_generation!=r.hold_generation||
+       !hand::same(owner.component,nativelancerfollow::bound_key.component)||
+       !hand::same(owner.asset,nativelancerfollow::bound_key.asset)||
+       !hand::same(owner.weapon,nativelancerfollow::bound_key.weapon)||
+       nativelancerfollow::bound_key.hold_generation!=r.hold_generation||
+       !vrequip::model.held_for(r.world.address,r.pawn.address,r.weapon.address)||
+       vrequip::model.hold_generation()!=r.hold_generation||
+       nativelancerfollow::bound_session!=r.stereo.session||nativelancerfollow::bound_space!=r.stereo.space_epoch||
+       nativelancerfollow::bound_input!=r.controllers.input_epoch||
+       nativelancerfollow::bound_world!=r.parent.world_generation||
+       nativelancerfollow::bound_reference!=r.reference_generation)return false;
+    return asset::object(component)&&asset::object(original)&&asset::object(surface)&&
+        asset::object(installed_mesh)&&asset::object(owner.component)&&asset::object(owner.asset)&&
+        playground::pointer(r.weapon.address,L"Instigator")==r.pawn.address&&
+        playground::pointer(r.weapon.address,L"Mesh")==owner.component.address&&
+        playground::pointer(owner.component.address,L"SkeletalMesh")==owner.asset.address&&
+        playground::pointer(r.weapon.address,L"MagazineMesh")==component.address&&
+        playground::pointer(component.address,L"StaticMesh")==installed_mesh.address;
+}
 bool set_mesh(hand::ObjectIdentity const& c,hand::ObjectIdentity const& mesh) noexcept {
     if(!asset::gt()||!asset::object(c)||!asset::object(mesh))return false;
     playground::Args call(c.address,L"SetStaticMesh");const auto p=call.prop(L"NewMesh");

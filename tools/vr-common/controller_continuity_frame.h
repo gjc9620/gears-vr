@@ -13,8 +13,9 @@ struct TrackedInput {
 };
 // Caller-owned copy of the EXISTING producer ring, oldest to newest. This is
 // motion data only: it is not a fresh Hand/Rig Frame, a release edge, a world
-// mapping or an action permit. Shared-memory packet layout is unchanged.
-inline constexpr unsigned motion_history_capacity=8;
+// mapping or an action permit. The versioned GHC4 channel retains32 rows;
+// current-sample and adjacent-pair freshness remain unchanged.
+inline constexpr unsigned motion_history_capacity=32;
 struct MotionHistory {
     std::uint32_t count{},reserved{};
     TrackedInput frames[motion_history_capacity]{};

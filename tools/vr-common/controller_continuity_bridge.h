@@ -7,7 +7,7 @@
 namespace gears_hand_continuity {
 struct ContinuityPacket {
     static constexpr std::uint32_t magic_value=0x47484331; // GHC1
-    static constexpr std::uint32_t version_value=3; // GVC4 menu/hint layout; producer sync-gap boundaries retained.
+    static constexpr std::uint32_t version_value=4; //32 original rows; source/adjacent freshness and epochs unchanged.
     static constexpr unsigned capacity=motion_history_capacity;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(ContinuityPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{};
@@ -53,8 +53,8 @@ class InputBridge {
                  tracked_input_shape_valid(packet.frames[packet.latest_sequence%ContinuityPacket::capacity])));
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t created,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.ControllerContinuityLock.v3.%lu.%llu":
-                           L"Local\\GearsVR.ControllerContinuity.v3.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.ControllerContinuityLock.v4.%lu.%llu":
+                           L"Local\\GearsVR.ControllerContinuity.v4.%lu.%llu",
                    pid,static_cast<unsigned long long>(created));
     }
     static bool lock_now(HANDLE mutex,bool* contended=nullptr) noexcept {

@@ -7,14 +7,13 @@
 // grip certification. It must never mark a WeaponMount valid by itself.
 namespace gears_weapon_lancer_wrist_mount {
 using Signature=gears_hand_authored_mount::Signature;
-inline constexpr char profile_id[]="marcus115-lancer-held-grip-v4-psvr-down35";
-inline constexpr std::uint32_t revision=4;
-// Physical16164: the runtime's PSVR Aim is34.80685degrees below Grip,
-// whereas the actual gun was only19.15983degrees below the raw target.
-// Author this Lancer profile at35degrees, rather than adding another blind
-//20degree correction. The matching held wrist and muzzle use this ONE basis.
-// This is current owner-controller authoring, not universal HMD calibration.
-inline constexpr gears_vr::Quaternion gun_pitch_down{0,.30070579950427311950,0,.95371695074822692114};
+inline constexpr char profile_id[]="marcus115-lancer-held-grip-v5-owner-down55";
+inline constexpr std::uint32_t revision=5;
+// Owner confirms residual ~20deg upward bore in ONE-handed neutral holding
+// with R2's existing down35 profile. Fit down55 in this one shared mount;
+// Native wrist, gun, support geometry and muzzle all consume this same basis.
+// This is owner-specific authoring, not universal controller calibration.
+inline constexpr gears_vr::Quaternion gun_pitch_down{0,.46174861323503391,0,.88701083317822171};
 inline constexpr char supported_mesh[]="COGAssaultRifle";
 struct Profile {
     std::uint32_t revision{};
@@ -34,7 +33,7 @@ inline bool marcus115(Signature const& actualGeometry,double modelScale,double u
     namespace authored=gears_hand_authored_mount;
     authored::Mount free{};
     if(!authored::marcus115(actualGeometry,authored::Side::right,modelScale,units,free))return false;
-    // Rebuild Native and PG together. Fit the held hand with the SAME35degree
+    // Rebuild Native and PG together. Fit the held hand with the SAME55degree
     // orientation as this gun while retaining the original palm marker.
     // Free hands keep their authored20degree pose; pickup blends the existing
     // part-specific wrist fit, never changes the physical controller path.

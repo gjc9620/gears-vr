@@ -11,6 +11,7 @@ class HammerburstMagazineExtraction {
 public:
     void reset() noexcept {*this={};}
     bool complete() const noexcept {return complete_;}
+    FeedSample const* previous_sample() const noexcept {return started_?&previous_:nullptr;}
     bool observe(FeedSample const& s,FeedPortMount const& m) noexcept {
         if(!m.valid()||!s.weapon||!s.item||!s.world||!s.space_epoch||!s.sequence||
            s.monotonic_ns<=0||!s.tracked||!s.item_held||

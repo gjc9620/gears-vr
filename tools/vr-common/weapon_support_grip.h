@@ -1,6 +1,7 @@
 #pragma once
 #include "weapon_hand_participant.h"
 #include "weapon_pose_solver.h"
+#include "weapon_support_volume.h"
 #include <limits>
 #include <optional>
 
@@ -19,6 +20,8 @@ struct GripGameState {
     std::array<Lease,2> object_incumbents{}; // Actual ammo/magazine/other objects.
     bool request_ammo{},request_magazine{}; // Independently certified candidates.
     bool magazine_observation_pending{}; // Unknown current part geometry, never contact.
+    gears_weapon::SupportBox support_box{}; // Optional; default sphere remains unchanged.
+    gears_weapon::SupportRegion support_region{}; // Optional acquisition only; local adapter state, not wire ABI.
 };
 struct GripSnapshot {
     Grip grip{};FrameKey key{};
@@ -81,7 +84,22 @@ inline bool support_contact(Frame const& f,GripGameState const& game,bool retain
     const auto e=gears_weapon::length(expected),a=gears_weapon::length(actual);
     const auto distance=gears_weapon::length(gears_weapon::difference(expected,actual));
     if(measured_distance&&std::isfinite(distance))*measured_distance=distance;
-    return std::isfinite(a)&&a>.10&&std::isfinite(distance)&&distance<=(retain?game.release_metres:game.acquire_metres)&&
+    const auto offset=gears_weapon::rotate(gears_vr::inverse(orientation),gears_weapon::difference(actual,expected));
+    bool contact{};
+    if(game.support_region.enabled){
+        const gears_vr::Pose physical_grip_in_mount{
+            {game.mount.support_grip_in_weapon.x+offset.x,game.mount.support_grip_in_weapon.y+offset.y,
+             game.mount.support_grip_in_weapon.z+offset.z},
+            gears_vr::normalized(gears_vr::multiply(gears_vr::inverse(orientation),left.grip.orientation))};
+        const bool region_contact=retain?
+            (game.support_region.snap_limits_enabled||distance<=game.release_metres):game.support_region.contains(offset);
+        contact=region_contact&&game.support_region.snap(physical_grip_in_mount,retain);
+    }else contact=game.support_box.enabled?game.support_box.contains(offset,retain):
+        distance<=(retain?game.release_metres:game.acquire_metres);
+    if(game.mount.close_support())
+        return std::isfinite(a)&&std::isfinite(distance)&&contact&&
+            distance<=game.mount.support_length_tolerance_metres;
+    return std::isfinite(a)&&a>.10&&std::isfinite(distance)&&contact&&
         std::abs(a-e)<=game.mount.support_length_tolerance_metres&&
         gears_weapon::dot(expected,actual)/(e*a)>=std::cos(game.mount.maximum_support_correction_radians);
 }
@@ -95,6 +113,8 @@ class SupportSocketPreference {
     gears_vr::Pose reference_{};gears_weapon::WeaponMount mount_{};
     std::array<std::uint64_t,9> epochs_{};
     double acquire_{},release_{};bool selected_{};
+    gears_weapon::SupportBox box_{};
+    gears_weapon::SupportRegion region_{};
     static bool same_mount(gears_weapon::WeaponMount const& a,gears_weapon::WeaponMount const& b) noexcept {
         const auto vector=[](gears_vr::Vector p,gears_vr::Vector q){return p.x==q.x&&p.y==q.y&&p.z==q.z;};
         return gears_vr::stereo_same_pose(a.right_grip_in_weapon,b.right_grip_in_weapon)&&
@@ -105,13 +125,34 @@ class SupportSocketPreference {
     }
 public:
     void reset() noexcept {selected_=false;}
+    bool current_contact(Frame const& f,GripGameState const& game,std::uint64_t hold,std::int64_t now) const noexcept {
+        if(!selected_||!hold||!frame_active(f,now)||!game.known||!game.main_hand_held||game.busy||
+           game.animation_owns_hands||game.kind!=WeaponKind::firearm||!f.left_tracked||!f.left_grip_known||
+           index_pinch(f)||game.request_magazine||game.request_ammo)return false;
+        for(auto const& item:game.object_incumbents)if(item.kind!=LeaseKind::none)return false;
+        const std::array<ObjectIdentity,6> objects{f.world,f.controller,f.pawn,f.mesh,f.weapon,game.mount_asset};
+        const std::array<std::uint64_t,9> epochs{f.reference_generation,f.stereo.session,f.stereo.space_epoch,
+            f.controllers.input_epoch,f.controllers.profile_generation,hold,game.mount_revision,
+            std::uint64_t(f.stereo.source),std::uint64_t(f.controllers.source)};
+        auto expected=key_;expected.frame=f.key.frame;
+        if(f.key.frame<key_.frame||!same(expected,f.key)||epochs_!=epochs||
+           !gears_vr::stereo_same_pose(reference_,f.reference)||!same_mount(mount_,game.mount)||
+           acquire_!=game.acquire_metres||release_!=game.release_metres||!(box_==game.support_box)||
+           !(region_==game.support_region))return false;
+        for(std::size_t i=0;i<objects.size();++i)if(!same(objects_[i],objects[i]))return false;
+        // The selected socket is identity only. Always evaluate TODAY's raw
+        // hand pair against the unchanged retention geometry, never old poses.
+        return support_contact(f,game,true);
+    }
     bool observe(Frame const& f,GripGameState const& game,std::uint64_t hold,std::int64_t now,bool another_socket) noexcept {
         bool occupied{};for(auto const& item:game.object_incumbents)occupied|=item.kind!=LeaseKind::none;
         if(!hold||another_socket||occupied||!frame_active(f,now)||!game.known||!game.main_hand_held||game.busy||
            game.animation_owns_hands||game.kind!=WeaponKind::firearm||!f.left_tracked||!f.left_grip_known||
-           index_pinch(f)||game.request_magazine||game.request_ammo||!support_contact(f,game,false)){
+           index_pinch(f)||game.request_magazine||game.request_ammo){
             reset();return false;
         }
+        const bool retained=current_contact(f,game,hold,now);
+        if(!retained&&!support_contact(f,game,false)){reset();return false;}
         const auto& left=f.controllers.hands[0];
         const std::array<ObjectIdentity,6> objects{f.world,f.controller,f.pawn,f.mesh,f.weapon,game.mount_asset};
         const std::array<std::uint64_t,9> epochs{f.reference_generation,f.stereo.session,f.stereo.space_epoch,
@@ -119,13 +160,10 @@ public:
             std::uint64_t(f.stereo.source),std::uint64_t(f.controllers.source)};
         if(!f.left_grip_down&&left.squeeze_active==1&&!control_held(left,gears_vr::control_squeeze)){
             key_=f.key;objects_=objects;epochs_=epochs;reference_=f.reference;mount_=game.mount;
-            acquire_=game.acquire_metres;release_=game.release_metres;selected_=true;return false;
+            acquire_=game.acquire_metres;release_=game.release_metres;box_=game.support_box;
+            region_=game.support_region;selected_=true;return false;
         }
-        auto expected=key_;expected.frame=f.key.frame;
-        if(!selected_||f.key.frame<key_.frame||!same(expected,f.key)||epochs_!=epochs||
-           !gears_vr::stereo_same_pose(reference_,f.reference)||!same_mount(mount_,game.mount)||
-           acquire_!=game.acquire_metres||release_!=game.release_metres){reset();return false;}
-        for(std::size_t i=0;i<objects.size();++i)if(!same(objects_[i],objects[i])){reset();return false;}
+        if(!retained){reset();return false;}
         return f.left_grip_down&&control_held(left,gears_vr::control_squeeze);
     }
 };
@@ -135,6 +173,7 @@ public:
 // state only after the shared Native arbiter has decided this exact frame.
 class SupportGripParticipant {
     std::optional<Frame> last_;
+    SupportSocketPreference socket_;
     Frame prepared_{};Proposal proposal_{};GripGameState game_{};
     Lease support_{};ObjectIdentity mount_asset_{};std::uint64_t mount_revision_{},nonce_{};
     GripSnapshot snapshot_{};bool pending_{};
@@ -153,7 +192,7 @@ class SupportGripParticipant {
             f.weapon.address&&game.kind!=WeaponKind::unknown&&
             gears_vr::controller_pose_usable(right.grip,right.grip_flags,right.grip_active);
     }
-    void clear() noexcept {support_={};snapshot_={};mount_asset_={};mount_revision_=0;}
+    void clear() noexcept {support_={};snapshot_={};mount_asset_={};mount_revision_=0;socket_.reset();}
 public:
     void invalidate_on_gt() noexcept {clear();pending_=false;}
     GripSnapshot snapshot() const noexcept {return snapshot_;}
@@ -181,11 +220,19 @@ public:
         }
         const bool main=main_valid(f,game,f.now_ns);
         const bool logical=f.left_grip_known&&f.left_tracked&&f.left_grip_down;
-        // Contact is an acquisition gate. A retained, current support grasp
-        // ends on its initiating control/identity/tracking lifetime, not just
-        // because the player moves the still-grasping hand away from hover.
+        // Same identity-only affinity as the producer's socket preference.
+        // mount_revision is the authenticated held-mount generation. A new
+        // socket still needs acquisition contact; the old socket may use its
+        // CURRENT retention contact on a new Grip. No proposal is authorized
+        // until the existing real-input arbiter and commit checks succeed.
+        socket_.observe(f,game,game.mount_revision,f.now_ns,false);
+        const bool socket_contact=socket_.current_contact(f,game,game.mount_revision,f.now_ns);
+        // The default spherical policy retains a genuine grasp until its
+        // initiating control/identity/tracking lifetime ends. An explicitly
+        // bounded box additionally requires CURRENT keep-volume contact.
         const bool retain=main&&logical&&support_.kind==LeaseKind::support&&
-            support_.id==f.press_token&&lease_valid(support_,f.key.lifecycle);
+            support_.id==f.press_token&&lease_valid(support_,f.key.lifecycle)&&
+            (!game.support_box.enabled||support_contact(f,game,true));
         if(retain&&count<proposal_.incumbents.size())proposal_.incumbents[count++]=support_;
         else if(!retain)support_={};
         // If all three exist, two are enough to expose an incumbent conflict;
@@ -195,7 +242,8 @@ public:
                 !game.request_magazine&&!game.request_ammo;
             // A not-yet-observed part must not turn the same press into a
             // support grasp before its current fitted pair becomes available.
-            proposal_.support=(retain||(!pending&&!game.request_magazine&&!game.request_ammo&&support_contact(f,game,false)))?1u:0u;
+            proposal_.support=(retain||(!pending&&!game.request_magazine&&!game.request_ammo&&
+                (support_contact(f,game,false)||socket_contact)))?1u:0u;
             proposal_.ammo=game.request_ammo?1u:0u;proposal_.magazine=game.request_magazine?1u:0u;
             proposal_.magazine_observation_pending=pending?1u:0u;
         }
@@ -219,7 +267,8 @@ public:
         const bool retained_support=d.status==DecisionStatus::retained&&incumbent&&
             same(support_,d.lease)&&d.lease.id==f.press_token;
         if(d.lease.kind==LeaseKind::support&&(!main_valid(f,game_,d.now_ns)||!p.support||
-           (!retained_support&&!support_contact(f,game_,false))||
+           (!retained_support&&!support_contact(f,game_,false)&&
+             !socket_.current_contact(f,game_,game_.mount_revision,d.now_ns))||
            (d.status==DecisionStatus::retained&&!retained_support)||
            (d.status==DecisionStatus::granted&&(incumbent||d.lease.id!=d.press_token||
              p.incumbents[0].kind!=LeaseKind::none||p.incumbents[1].kind!=LeaseKind::none||p.ammo||p.magazine)))){

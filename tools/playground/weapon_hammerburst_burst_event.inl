@@ -12,6 +12,8 @@ struct Pending {
     hand::ObjectIdentity function{};common::policy::EventKind kind{};
 } event;
 std::uint64_t event_serial{};
+struct ReleasedPending {Pending pending{};std::uint64_t frame{};std::int64_t sync{};} released_pending;
+void clear_release_handoff() noexcept {released_pending={};}
 bool validated{};
 unsigned service_stage{},delivery_stage{};
 void report_first_wait(wchar_t const* phase) noexcept {
@@ -44,7 +46,7 @@ bool requires_release() noexcept {
 }
 void clear_pending() noexcept {
     if(owns_pending()){common::pending_fire.event.reset();common::pending_validated=false;}
-    event={};validated=false;
+    event={};validated=false;clear_release_handoff();
 }
 bool prepare_press(hand::Frame const& f) noexcept {
     if(outstanding()&&!release_completed(nullptr))return false;
@@ -57,17 +59,18 @@ bool prepare_press(hand::Frame const& f) noexcept {
         weaponhand::clock_ns(nullptr)-f.controllers.sync_ns);fflush(log_file);}
     return ready;
 }
+#include "weapon_hammerburst_stale_debt_wait.inl"
 bool owned_press(hand::Frame const& f) noexcept {
     if(!tx::press(f))return false;
-    original_press=common::cohort(f);return original_press.known;
+    clear_released_lifetime();original_press=common::cohort(f);return original_press.known;
 }
-void press_failed() noexcept {tx::revoke();validated=false;}
+void press_failed() noexcept {tx::revoke_at(RevokeSite::press_failed,__LINE__,0);validated=false;}
 bool right_tracked(hand::Frame const& f) noexcept {
     auto const& h=f.controllers.hands[1];return gears_vr::controller_pose_usable(h.grip,h.grip_flags,h.grip_active);
 }
 bool need_source(hand::Frame const& f) noexcept {
     if(!outstanding())return false;
-    if(!right_tracked(f)){tx::revoke();return false;}
+    if(!right_tracked(f)){tx::revoke_at(RevokeSite::need_source_tracking,__LINE__,0);return false;}
     return tx::need_source(f);
 }
 bool source_allowed(hand::Frame const& f,std::int64_t render,std::int64_t sampled,std::int64_t now) noexcept {
@@ -84,7 +87,7 @@ bool queue(meta::Reader& r,common::policy::EventKind kind,uptr function,void con
     const bool empty=common::pending_fire.event.empty();
     if(!empty&&!owns_pending())return false;
     const auto captured=weaponhand::clock_ns(nullptr);
-    if(empty&&event_serial==(std::numeric_limits<std::uint64_t>::max)()){tx::revoke();return false;}
+    if(empty&&event_serial==(std::numeric_limits<std::uint64_t>::max)()){tx::revoke_at(RevokeSite::queue_serial,__LINE__,0);return false;}
     if(!common::queue(r,kind,function,parameters,bytes,tx::certificate.timer.address,&original_press,script_bound))return false;
     if(empty){event={++event_serial,captured,common::pending_fire.function,kind};}
     return true;
@@ -130,7 +133,7 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
     if(!owned&&!outstanding())return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};unsigned bytes{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,tx::certificate.held.weapon)){
-        tx::revoke();return false; // Never consume an unknown/recycled receiver.
+        tx::revoke_at(RevokeSite::capture_receiver,__LINE__,0);return false; // Never consume an unknown/recycled receiver.
     }
     common::Script outer_body{};
     const bool proved=outer?
@@ -149,17 +152,17 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
             hammerburst_first_contract::path_node,hammerburst_first_contract::path_gate,
             hammerburst_first_contract::observed_extent,unsigned(hammerburst_first_contract::observed_parameters),
             unsigned(hammerburst_first_contract::observed_result));fflush(log_file);}
-        tx::revoke();return true; // Authenticated owned first target cannot consume ammo on failed proof.
+        tx::revoke_at(RevokeSite::capture_proof,__LINE__,0);return true; // Authenticated owned first target cannot consume ammo on failed proof.
     }
     // A completed prior six-shot event may still await its normal timer's
     // state handoff; only this new authentic first entry can start another.
     if(owns_pending()&&common::pending_fire.event.kind()==common::policy::EventKind::refire)clear_pending();
     const bool first_was_owed=tx::first_debt;
-    if(!first_was_owed&&!tx::capture_first()){tx::revoke();return true;}
+    if(!first_was_owed&&!tx::capture_first()){tx::revoke_at(RevokeSite::capture_first,__LINE__,0);return true;}
     // The authenticated outer BeginState has one original eight-byte Name
     // parameter. Preserve that actual caller payload in the existing queue;
     // the original VM still calls its inherited BeginState itself.
-    if(!queue(r,common::policy::EventKind::first,function,parameters,outer?8:bytes,outer?512:256))tx::revoke();
+    if(!queue(r,common::policy::EventKind::first,function,parameters,outer?8:bytes,outer?512:256))tx::revoke_at(RevokeSite::capture_queue,__LINE__,0);
     static unsigned first_captures{};
     if(log_file&&first_captures++<6){fwprintf(log_file,L"native_hammerburst_first_captured outer=%u event=%llu bytes=%d retained=%u\n",
         unsigned(outer),event.serial,outer?outer_body.array.count:common::pending_fire.body.array.count,unsigned(owns_pending()));fflush(log_file);}
@@ -167,10 +170,22 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
 }
 unsigned release_rejection{};
 bool release_completed(hand::Frame const* f) noexcept {
+    clear_release_handoff();
     if(!outstanding())return true;
     validated=false;common::press.known=false;common::certified=false;common::pending_validated=false;
+    // A previous real UP already captured the original lifetime witness.
+    // Route a later pose-expiry cleanup through the SAME debt-only WAIT used
+    // by service/after_tick. No source, event, deadline or dispatch is created.
+    if(!f&&vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&
+       !requires_release()&&retain_stale_debt()){
+        static unsigned wait_rows{};
+        if(log_file&&wait_rows<8){++wait_rows;
+            fwprintf(log_file,L"hammerburst_release_debt_wait count=%u event=%llu captured_ns=%lld no_dispatch=1\n",
+                tx::completion.count(),event.serial,event.captured);fflush(log_file);}
+        return true;
+    }
     // Only a current real UP can preserve a committed finite burst. A raw
-    // release callback from source loss/stop carries no such continuation.
+    // release callback without that prior certified UP carries no continuation.
     vrfire::lr::Game game{};
     const auto gate=[](unsigned n,bool accepted) noexcept {if(!accepted)release_rejection=n;return accepted;};
     release_rejection=0;
@@ -180,7 +195,12 @@ bool release_completed(hand::Frame const* f) noexcept {
        gate(6,hand::frame_active(*f,weaponhand::clock_ns(nullptr)))&&gate(7,right_tracked(*f))&&
        gate(8,vrfire::read_game(vrfire::input.actors(),f,game))&&gate(9,game.known)&&gate(10,game.r2_known)&&gate(11,!game.r2_held)&&
        gate(12,!game.busy)&&gate(13,!game.animation)&&gate(14,!lancerreload_runtime::blocks_fire(f->weapon))&&gate(15,nativeequipment::current(nullptr,*f))&&
-       gate(16,tx::need_source(*f)))return true;
+       gate(16,tx::need_source(*f))){
+        remember_released_source(*f);
+        if(owns_pending()&&event.kind==common::policy::EventKind::refire)
+            released_pending={event,f->key.frame,f->controllers.sync_ns};
+        return true;
+    }
     static unsigned rows{};
     if(log_file&&rows<16){
         ++rows;
@@ -189,13 +209,27 @@ bool release_completed(hand::Frame const* f) noexcept {
             unsigned(tx::first_debt),unsigned(tx::firing_debt),unsigned(tx::cancel_requested));
         fflush(log_file);
     }
-    tx::revoke();
-    if(!tx::cancel())return false;
+    tx::revoke_at(RevokeSite::release_rejected,__LINE__,0);
+    if(!tx::cancel()){
+        // One failure record per diagnosed burst, after the existing cancel
+        // attempt. POD only; no re-read to explain a rejected cleanup.
+        static unsigned reported_revision{},failure_rows{};
+        auto const& diagnostic=tx::revoke_diagnostic();
+        if(log_file&&failure_rows<16&&diagnostic.revision&&reported_revision!=diagnostic.revision){
+            reported_revision=diagnostic.revision;++failure_rows;
+            fwprintf(log_file,L"hammerburst_cancel_wait revision=%u revoke_site=%u revoke_line=%u revoke_detail=%u runtime_cancel_gate=%u cancel_gate=%u count=%u first_debt=%u firing_debt=%u cancel=%u\n",
+                diagnostic.revision,unsigned(diagnostic.site),diagnostic.caller_line,diagnostic.detail,
+                tx::cancel_stage,tx::cancel_stage==3?hammerburst_burst_cancel::last_failure_gate:0,
+                tx::completion.count(),unsigned(tx::first_debt),unsigned(tx::firing_debt),unsigned(tx::cancel_requested));
+            fflush(log_file);
+        }
+        return false;
+    }
     // complete() invalidates the certificate, so clear the event using the
     // captured original owner rather than re-evaluating targets afterwards.
     if(event.serial&&!common::pending_fire.event.empty()&&hand::same(event.function,common::pending_fire.function)&&
        common::same_hold(original_press.held,common::pending_fire.cohort.held))common::pending_fire.event.reset();
-    event={};original_press={};return true;
+    event={};original_press={};clear_released_lifetime();return true;
 }
 // First failed gate only: preserve evaluation order/count and never re-read
 // game/controller data to explain a rejection. Bounded rows cannot grant input.
@@ -213,6 +247,10 @@ void report_continuation_rejection(hand::Frame const* f) noexcept {
 void after_tick(hand::Frame const* f) noexcept {
     if(!outstanding())return;
     after_tick_rejection=0;
+    // No dispatch, stale pose reuse or input edge. A new fresh Frame must
+    // still pass the original delivery and muzzle checks before another ray.
+    if(!f&&vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&
+       !requires_release()&&retain_stale_debt())return;
     if(!f)after_tick_rejection=1;
     else if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)after_tick_rejection=2;
     else if(tx::cancel_requested)after_tick_rejection=3;
@@ -220,7 +258,7 @@ void after_tick(hand::Frame const* f) noexcept {
     else if(!right_tracked(*f))after_tick_rejection=5;
     else if(!nativeequipment::current(nullptr,*f))after_tick_rejection=6;
     if(after_tick_rejection){
-        report_continuation_rejection(f);tx::revoke();release_completed(nullptr);return;
+        report_continuation_rejection(f);tx::revoke_at(RevokeSite::continuation_rejected,__LINE__,after_tick_rejection);release_completed(nullptr);return;
     }
     if(tx::completion.state()==tx::policy::State::committed&&!tx::need_source(*f)){
         after_tick_rejection=7;report_continuation_rejection(f);release_completed(nullptr);
@@ -283,38 +321,38 @@ bool defer(std::uint64_t object,std::uint64_t function) noexcept {
     weapon_metadata_parse::TickScope parsing;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};unsigned reason{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,tx::certificate.held.weapon)||
-       !weaponhand::object(r,tx::certificate.timer)){tx::revoke();return false;}
+       !weaponhand::object(r,tx::certificate.timer)){tx::revoke_at(RevokeSite::defer_objects,__LINE__,0);return false;}
     // The live binding can disappear before normal cancellation discharges
     // this ORIGINAL firing-state debt. Losing permission to dispatch must not
     // release its still-authenticated timer to stock unscoped firing. Retain
     // interception only: no event capture, source, engine call or ammo change.
     // Registration/source loss still cannot authorize dispatch through context.
     if(!targets(object)){
-        tx::revoke();static unsigned reports{};
+        tx::revoke_at(RevokeSite::defer_target,__LINE__,0);static unsigned reports{};
         if(log_file&&reports++<8){
             fwprintf(log_file,L"native_hammerburst_owned_timer_blocked object=%llx function=%llx count=%u no_dispatch=1\n",
                 object,function,tx::completion.count());fflush(log_file);
         }
         return true;
     }
-    if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||tx::cancel_requested){tx::revoke();return true;}
+    if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||tx::cancel_requested){tx::revoke_at(RevokeSite::defer_mode,__LINE__,0);return true;}
     if(!context(r)||!state_firing(r)||
-       !common::hammerburst_refire::original_loop(r,object,function,reason)){tx::revoke();return true;}
+       !common::hammerburst_refire::original_loop(r,object,function,reason)){tx::revoke_at(RevokeSite::defer_context_loop,__LINE__,reason);return true;}
     if(owns_pending()||tx::first_debt)return true; // Coalesce, never renew the old event.
     unsigned count{},limit{};
-    if(!tx::checked_counts(count,limit)||count!=tx::completion.count()||limit!=6){tx::revoke();return true;}
+    if(!tx::checked_counts(count,limit)||count!=tx::completion.count()||limit!=6){tx::revoke_at(RevokeSite::defer_counts,__LINE__,0);return true;}
     if(count==6&&tx::completion.state()==tx::policy::State::idle){
         // This ACTUAL stock timer cannot fire another shot. Complete its
         // original bWasTargeting/BurstDelaying branch without a pose permit.
-        if(!terminal_proof(count,false)){tx::revoke();return true;}
+        if(!terminal_proof(count,false)){tx::revoke_at(RevokeSite::defer_terminal,__LINE__,0);return true;}
         const bool invoked=common::invoke_original(object,function,0,nullptr);
         unsigned after_count{},after_limit{};
         if(!invoked||!ended(r)||!tx::checked_counts(after_count,after_limit)||after_count!=count||after_limit!=limit||
-           !tx::completion.original_ended(count,true,true,false)){tx::revoke();return true;}
+           !tx::completion.original_ended(count,true,true,false)){tx::revoke_at(RevokeSite::defer_end,__LINE__,0);return true;}
         tx::firing_debt=false;return true;
     }
     if(tx::completion.state()!=tx::policy::State::committed||
-       !queue(r,common::policy::EventKind::refire,function,nullptr,0))tx::revoke();
+       !queue(r,common::policy::EventKind::refire,function,nullptr,0))tx::revoke_at(RevokeSite::defer_queue,__LINE__,0);
     return true;
 }
 bool service(std::uint64_t controller) noexcept {
@@ -326,21 +364,51 @@ bool service(std::uint64_t controller) noexcept {
        !weaponhand::current_gt(nullptr)||common::delivering)return false;
     validated=false;
     service_stage=3;
-    if(tx::cancel_requested||vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||
-       !weaponhand::client.armed()||(owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
-        tx::revoke();release_completed(nullptr);return true;
+    unsigned service_rejection{};
+    const auto service_failed=[&](unsigned gate_number,bool gate_failed)noexcept {
+        if(gate_failed&&!service_rejection)service_rejection=gate_number;return gate_failed;
+    };
+    if(service_failed(1,tx::cancel_requested)||service_failed(2,vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)||
+       service_failed(3,!weaponhand::client.armed()&&!retain_stale_debt())||service_failed(4,owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
+#include "weapon_hammerburst_service_loss_observation.inl"
+        tx::revoke_at(RevokeSite::service_gates,__LINE__,service_rejection);release_completed(nullptr);return true;
     }
     service_stage=4;if(!owns_pending())return true;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};unsigned reason{};
-    service_stage=5;if(!meta::tables(base,schema.objects,schema.names)){tx::revoke();return true;}
-    service_stage=6;if(!common::pending_identity(r)){tx::revoke();return true;}
-    service_stage=7;if(!context(r)){tx::revoke();return true;}
-    service_stage=8;if(!state_firing(r)){tx::revoke();return true;}
+    service_stage=5;if(!meta::tables(base,schema.objects,schema.names)){tx::revoke_at(RevokeSite::service_tables,__LINE__,0);return true;}
+    service_stage=6;if(!common::pending_identity(r)){tx::revoke_at(RevokeSite::service_identity,__LINE__,0);return true;}
+    service_stage=7;if(!context(r)){tx::revoke_at(RevokeSite::service_context,__LINE__,0);return true;}
+    service_stage=8;if(!state_firing(r)){tx::revoke_at(RevokeSite::service_state,__LINE__,0);return true;}
     service_stage=9;
     if(!common::hammerburst_refire::original_loop(r,tx::certificate.held.weapon.address,tx::certificate.timer.address,reason)){
-        tx::revoke();return true;
+        tx::revoke_at(RevokeSite::service_loop,__LINE__,reason);return true;
     }
     validated=true;service_stage=0;return true;
+}
+// A successful release deliberately revokes the prior service validation.
+// Consume this ONE same-frame handoff after Input::advance has finished. It
+// supplies no Frame/source/permit; the original service and delivery recheck
+// registration, original body/state, event expiry, current muzzle and reserve.
+void after_release(hand::Frame const& f) noexcept {
+    const auto handoff=released_pending;clear_release_handoff();
+    if(!handoff.pending.serial||handoff.frame!=f.key.frame||handoff.sync!=f.controllers.sync_ns||
+       vrfire::input.owns_press()||tx::first_debt||!tx::firing_debt||tx::cancel_requested||
+       tx::completion.state()!=tx::policy::State::committed||!owns_pending()||
+       event.serial!=handoff.pending.serial||event.captured!=handoff.pending.captured||
+       event.kind!=common::policy::EventKind::refire||!hand::same(event.function,handoff.pending.function)||
+       !right_tracked(f)||f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger>.35f)return;
+    const auto current=tx::cohort(f);
+    if(!tx::policy::same(current,tx::pressed)||current.presses!=tx::pressed.presses||
+       tx::pressed.releases==(std::numeric_limits<std::uint32_t>::max)()||
+       current.releases!=tx::pressed.releases+1)return;
+    service(f.controller.address);
+    static unsigned rows{};
+    if(log_file&&rows<8){
+        fwprintf(log_file,L"hammerburst_release_handoff frame=%llu event=%llu captured_ns=%lld observed_ns=%lld validated=%u service_stage=%u pending_same=%u no_dispatch=1\n",
+            f.key.frame,handoff.pending.serial,handoff.pending.captured,weaponhand::clock_ns(nullptr),unsigned(validated),service_stage,
+            unsigned(event.serial==handoff.pending.serial&&event.captured==handoff.pending.captured));
+        fflush(log_file);++rows;
+    }
 }
 void deliver(hand::Frame const& f) noexcept {
     struct Report {bool first{tx::first_debt};~Report(){if(first)report_first_wait(L"deliver");}} report;
@@ -391,5 +459,27 @@ void deliver(hand::Frame const& f) noexcept {
                 unsigned(invoked),unsigned(first),f.key.frame);fflush(log_file);
         }
     }
+}
+// Consume only an EXISTING original continuation after a previously
+// certified real UP. New presses/first events remain in the post-Input path.
+void pre_original_released_refire(hand::Frame const& f) noexcept {
+#if defined(GEARS_PLAYGROUND_HB_STALE_DEBT_WAIT) && GEARS_PLAYGROUND_HB_STALE_DEBT_WAIT
+    if(!released_lifetime.epoch||tx::first_debt||!tx::firing_debt||tx::cancel_requested||
+       vrfire::input.owns_press()||!owns_pending()||event.kind!=common::policy::EventKind::refire||
+       tx::completion.state()!=tx::policy::State::committed||!tx::completion.count()||tx::completion.count()>=6||
+       f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger>.35f||
+       !targets(f.weapon.address)||!weaponhand::client.existing_action_lifetime_on_gt(released_lifetime))return;
+    const auto serial=event.serial;const auto captured=event.captured;const auto before=tx::completion.count();
+    // Original checks, original event/capture and original once-only claim.
+    // No Input advance, event capture, clock renewal or alternate dispatcher.
+    service(f.controller.address);deliver(f);
+    static unsigned rows{};
+    if(log_file&&rows<12){++rows;
+        fwprintf(log_file,L"hammerburst_pre_original_refire frame=%llu sequence=%llu event=%llu captured_ns=%lld before_count=%u after_count=%u pending_after=%u once_claim=1\n",
+            f.key.frame,f.controllers.sequence,serial,captured,before,tx::completion.count(),unsigned(owns_pending()));fflush(log_file);
+    }
+#else
+    (void)f;
+#endif
 }
 }

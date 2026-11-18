@@ -1,3 +1,5 @@
+#include "../vr-common/weapon_boltok_park.h"
+#include "../vr-common/weapon_boltok_observation.h"
 #include <windows.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
@@ -16,6 +18,11 @@
 #include <Xinput.h>
 #include <intrin.h>
 #include "../vr-common/vr_gamepad_input.h"
+#include "../vr-common/weapon_longshot_scope_input.h"
+#include "../vr-common/weapon_longshot_scope_view.h"
+#include "../vr-common/hand_part_grasp.h"
+#include "../vr-common/weapon_longshot_scope_projection.h"
+#include "../vr-common/weapon_longshot_eye_contact.h"
 #include "../vr-common/current_tracking_reader.h"
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
@@ -95,12 +102,18 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/cover_view.h"
 #include "../vr-common/cover_view_heading.h"
 #include "../vr-common/cover_input_owner.h"
+#include "../vr-common/cover_grab_owner_receipt.h"
 #include "../vr-common/cover_body_target.h"
 #include "native_scene_boundary.h"
+#include "original_input_cleanup_context_policy.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/controller_continuity_bridge.h"
 #include "../vr-common/rig_tracking_frame.h"
 #include "../vr-common/native_rig_tracking_frame.h"
+#include "../vr-common/troika_mounted_source.h"
+#include "../vr-common/troika_c0_consumer.h"
+#include "../vr-common/troika_entry_basis.h"
+#include "../vr-common/troika_mounted_geometry.h"
 #pragma push_macro("small")
 #undef small
 #include "hand_core_target_adapter.h"
@@ -117,6 +130,7 @@ gears_support::Recorder support_diagnostics;
 #include "hand_personal_calibration_live.inl"
 #include "weapon_hand_broker.h"
 #include "../vr-common/weapon_lancer_original_handle.h"
+#include "../vr-common/weapon_lancer_handle_compose.h"
 #include "../vr-common/weapon_lancer_handle_morph.h"
 #include "cover_surface_getters.h"
 #include "cover_l2_viewpoint_getter.h"
@@ -124,6 +138,7 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include <new>
 #include "first_person_view.h"
+#include "../vr-common/first_person_display_policy.h"
 #include "run_camera_stabilizer.h"
 #include "first_person_weapon.h"
 #if defined(GEARS_COVER_CALL_OBSERVER) && GEARS_COVER_CALL_OBSERVER
@@ -133,6 +148,8 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
 #include "anchor_config_loader.h"
+#define GEARS_ANCHOR_CONFIG_REVISION 1 // Native TU owns the immutable-view publisher.
+#include "anchor_config_store.h"
 #include "hook_entry_attestation.h"
 #include "world_rebind_metadata.h"
 #include "world_epoch_gate.h"
@@ -255,8 +272,9 @@ FrameHookMutex frame_hook_mutex;
 thread_local uint64_t consuming_frame_ticket{};
 struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
 bool owned_plain_output_attested{};
+bool campaign_final_output_attested{};
 FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false,bool output_controlled=false,bool owned_plain=false) {
-    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0||caller==0xe27709)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0||caller==0xe27709||caller==0x224baf)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
         std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
         width==float(target_width/2)&&(x==0||x==float(target_width/2));
     if(!exact)return {};
@@ -417,7 +435,14 @@ std::atomic<uint64_t> unpossessed_first_ticket{},unpossessed_last_ticket{};
 bool origin_trial_enabled=false;
 gears_origin_trial::Trial origin_trial;
 std::atomic<unsigned long long> origin_prepare_failed{0},origin_commit_failed{0};
-gears_anchor::Config anchor_config;
+namespace anchor_config_owner {
+namespace {gears_anchor_native::ConfigStore<> store;}
+uint64_t revision() noexcept{return store.revision();}
+bool preflight(gears_anchor::Config const& next) noexcept{return store.preflight(next);}
+bool publish_config(gears_anchor::Config const& next) noexcept{return store.publish(next);}
+gears_anchor::Config const& view() noexcept{return store.view();}
+}
+gears_anchor::Config const& anchor_config=anchor_config_owner::view();
 void configure_unpossessed_camera(gears_anchor::Config& c){
 #if defined(GEARS_UNPOSSESSED_VIEW_TARGET) && GEARS_UNPOSSESSED_VIEW_TARGET
     c.unpossessed_camera_enabled=c.cinematic_enabled&&!c.mounted_enabled;
@@ -617,7 +642,7 @@ constexpr unsigned ui_call_boundary_hooks=0;
 #endif
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 constexpr unsigned cover_body_hooks=2;
-constexpr unsigned cover_pose_hooks=3;
+constexpr unsigned cover_pose_hooks=4;
 #else
 constexpr unsigned cover_body_hooks=0;
 constexpr unsigned cover_pose_hooks=0;
@@ -697,7 +722,9 @@ constexpr unsigned atom_overwrite_hooks=1;
 #else
 constexpr unsigned atom_overwrite_hooks=0;
 #endif
-std::array<SessionHookEntry,atom_overwrite_hooks+fresh_pose_hooks+ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+cover_control_hooks+cover_future_g_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks+2> session_hook_entries{};
+// The four first-person head-render targets are installed as one group.
+constexpr unsigned first_person_head_render_hooks=4;
+std::array<SessionHookEntry,first_person_head_render_hooks+atom_overwrite_hooks+fresh_pose_hooks+ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+cover_control_hooks+cover_future_g_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks+2> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1036,6 +1063,13 @@ void observe(cover_control_observer_live::Row const&,gears_native_rig_tracking::
 void request_drain();unsigned pending_count();void summary(FILE*);
 }
 namespace rig_tracking_live {void stop() noexcept;void summary(FILE*);}
+namespace troika_control_live {void interrupt_locked() noexcept;void stop() noexcept;}
+namespace troika_scene_tracking {
+void clear() noexcept;void stop() noexcept;
+bool control_mapping_ready() noexcept;
+bool prepare(gears_anchor::Receipt const*,gears_vr::StereoResult const&) noexcept;
+void query_geometry(gears_anchor::Receipt const*) noexcept;
+}
 namespace weapon_hand_runtime {
 void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;
 bool begin_action(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::ActionScope&) noexcept;
@@ -1057,6 +1091,7 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
     native_atom_overwrite_live::request_drain();body_c0_goal_policy_live::request_drain();full_body_c0_native_live::request_drain();cover_physics_c0_live::request_drain();fresh_pose_producer_live::request_drain();body_recoil_observer_live::request_drain();continuous_hand_owner_live::request_drain();
     cover_native_rig_observer_live::request_drain();
     rig_tracking_live::stop();
+    troika_scene_tracking::stop();troika_control_live::stop();
     vr_gamepad_live::request_stop();
     weapon_hand_runtime::request_stop();
     cover_control_observer_live::request_drain();
@@ -1167,7 +1202,7 @@ struct SessionBuildScope {
 };
 bool session_native_cleanup_ready() {
     if(vr_gamepad_live::pending_count())return false;
-    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!native_atom_overwrite_live::pending_count()&&!body_c0_goal_policy_live::pending_count()&&!(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())&&!fresh_pose_producer_live::pending_count()&&!body_recoil_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!native_atom_overwrite_live::pending_count()&&!body_c0_goal_policy_live::pending_count()&&!(full_body_c0_native_live::resource_pending_count()||cover_physics_c0_live::pending_count())&&!fresh_pose_producer_live::pending_count()&&!body_recoil_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1432,6 +1467,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "path_choice_close_observer.inl"
 #include "cover_body_live.inl"
 #include "weapon_hand_scene_binding.inl"
+#include "troika_scene_binding.inl"
 #include "first_person_authored_eye.inl"
 #include "cover_pose_phase_live.inl"
 #include "cover_control_observer_live.inl"
@@ -1443,11 +1479,20 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_input_live.inl"
 #include "cover_l2_grab_live.inl"
 #include "weapon_hand_runtime.inl"
+#include "original_input_cleanup_context_live.inl"
+#include "weapon_longshot_scope_input_live.inl"
+#include "weapon_button_veto_live.inl"
+#include "weapon_longshot_scope_view_live.inl"
 #include "weapon_part_visibility_live.inl"
 #include "lancer_original_handle_live.inl"
+#include "boltok_original_live.inl"
 #include "lancer_grasp_live.inl"
+#include "authored_grasp_live.inl"
 #include "cover_shared_input_live.inl"
 #include "rig_tracking_live.inl"
+#include "troika_scene_tracking.inl"
+#include "troika_control_live.inl"
+#include "troika_view_live.inl"
 #include "body_tick_tracking_probe_live.inl"
 #include "body_tick_input_live.inl"
 #include "body_tick_source_live.inl"
@@ -1457,10 +1502,13 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "body_recoil_observer_live.inl"
 #include "fresh_pose_producer_live.inl"
 #include "native_atom_overwrite_live.inl"
+#include "pose_editor_live.inl"
+#include "cover_grab_skin_live.inl"
 #include "full_body_c0_native_live.inl"
 #include "cover_physics_c0_live.inl"
 #include "body_c0_goal_policy_live.inl"
 #include "lancer_handle_morph_live.inl"
+#include "authored_grasp_owner_live.inl"
 #include "first_person_head_render_live.inl"
 #include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
@@ -2002,7 +2050,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||support_startup.call("native_owned_scene_retained",[&]{return native_owned_scene_retained();});
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
     resources_retained=resources_retained||cover_pose_phase_live::pending_count()!=0;
-    resources_retained=resources_retained||native_atom_overwrite_live::pending_count()!=0||body_c0_goal_policy_live::pending_count()!=0||(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())!=0||fresh_pose_producer_live::pending_count()!=0||body_recoil_observer_live::pending_count()!=0||continuous_hand_owner_live::pending_count()!=0||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
+    resources_retained=resources_retained||native_atom_overwrite_live::pending_count()!=0||body_c0_goal_policy_live::pending_count()!=0||(full_body_c0_native_live::resource_pending_count()||cover_physics_c0_live::pending_count())!=0||fresh_pose_producer_live::pending_count()!=0||body_recoil_observer_live::pending_count()!=0||continuous_hand_owner_live::pending_count()!=0||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
     resources_retained=resources_retained||weapon_hand_runtime::retained();
     if(!continuous_session){support_startup.record("session_status","exit");return;}
     support_startup.call("swapchain_status",[&]{write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");});
@@ -3301,6 +3349,12 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     // this real Scene, so the next C0 can recover without a render/source cycle.
     // The data reader never enters this path or acquires session/stereo locks.
     struct RigAttempt {bool kept{};~RigAttempt(){if(!kept&&rig_tracking_live::enabled)rig_tracking_live::fail();}} rig_attempt;
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+    // Query on every exit AFTER inner stereo/Scene scopes have unwound. A
+    // skipped render must not create a geometry/view publication cycle.
+    struct MountedQueryAttempt {gears_anchor::Receipt const* scene;
+        ~MountedQueryAttempt(){if(stereo_xr&&anchor_config.mounted_enabled)troika_scene_tracking::query_geometry(scene);}} mounted_query{anchor};
+#endif
     note_world_progress(WorldProgress::try_pair);
     std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
     if(continuous_session)session_lock.lock();
@@ -3385,6 +3439,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         // Both data paths retain the final reference of this same ticket,
         // including an authenticated L3 recenter applied above.
         const auto rig_reference=stereo_gate.continuity();
+        // Refresh the existing read-only pose owner even when a later view
+        // basis is unavailable. This grants no pose or projection permission.
+        cover_pose_phase_live::scene(anchor,result);
 #if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
         // Freeze under the gate's original mutex, after the same-ticket L3
         // request. This is the reference used below, not a diagnostic mirror.
@@ -3474,6 +3531,12 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(first_person_live::body_basis&&first_person_live::near_clip_metres>0&&
            (body_view_owned||first_person_live::preview_current)&&
            !gears_first_person::near_clip(projection,stereo_units_per_metre,first_person_live::near_clip_metres))return false;
+        // Mounted observation uses the same retained entry-space basis as the
+        // hands. It never follows the native turret camera or adds world_head
+        // to a base that stereo_matrices will compose with the HMD again.
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+        if(anchor_config.mounted_enabled&&!troika_view_live::prepare(anchor,result,view))return false;
+#endif
         if(!gears_vr::stereo_matrices(view,projection,result.reference,result.sample,stereo_units_per_metre,frame.expected,simulator_operator)){
             ++stereo_rejections[9];
             if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
@@ -3570,7 +3633,6 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             }else ++controller_hand_pose_rejected;
         }
 #endif
-        cover_pose_phase_live::scene(anchor,result);
         if(rig_tracking_live::enabled&&first_person_live::ordinary(anchor)){
             const auto current_reference=stereo_gate.continuity();
             if(current_reference.epoch==rig_reference.epoch&&current_reference.stable==rig_reference.stable&&
@@ -3593,6 +3655,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
            !first_person_head_render_live::visual_current(anchor->anchor.pawn)){
             ++first_person_live::uncomposed_view_rejected;return false;
         }
+        if(!native_menu_display::flat())
+            (void)longshot_scope_view_live::select(frame.world_generation,result.reference_generation,
+                result.sample,stereo_units_per_metre,frame.expected);
         frame.enabled=true;frame.sample=result.sample;frame_reference=result.reference;
         frame.flat_menu=native_menu_display::flat();
         frame.reference_generation=result.reference_generation;frame.reference=result.reference;
@@ -4084,8 +4149,9 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
     // third-person buffer merely because its certified eye image is not ready.
     // The fallback draws only a labelled waiting card on this same admitted
     // queue/destination. It never renews a stale image or grants action input.
-    const bool wait_display=continuous_session&&first_person_live::enabled&&first_person_live::body_basis&&
-        native_menu_display::current_mode()==gears_menu::Mode::gameplay;
+    const bool wait_display=gears_first_person_display::waiting_fallback(
+        continuous_session,first_person_live::enabled,first_person_live::body_basis,
+        native_menu_display::current_mode());
     const bool mirrored=desktop_mirror.present(buffer.Get(),owned_scene_gpu::queue,gears_vr::monotonic_ns(),&reason,wait_display);
     if(mirrored)mirror_had_output=true;
     // A waiting card is presentation, never proof of a fresh eye image.
@@ -4227,8 +4293,15 @@ bool load_anchor_config(const wchar_t* ini){
             expected_identity?gears_anchor::guard_reason_name(guard_diagnostic.reason):"not_attempted",
             gears_anchor::guard_reason_name(last.reason),gears_anchor::guard_stage_name(last.stage),last.before_stamp,last.strict_after_stamp,last.final_stamp,last.timestamp_only?1:0);
         fflush(diagnostic_status);}
-    if(admitted)anchor_config=c;
-    return admitted;
+    // Prime startup hooks can already exist; ordinary recording and binding
+    // metadata must not have begun when this bootstrap config is published.
+    bool binding_not_ready=true;
+#if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
+    binding_not_ready=!weapon_hand_scene_binding::metadata_ready;
+#endif
+    if(admitted&&!recording.load()&&binding_not_ready)
+        return anchor_config_owner::publish_config(c);
+    return false;
 }
 void flush(FILE* file,unsigned max_batches=0) {
     std::array<Record,128> batch;
@@ -4318,7 +4391,7 @@ bool install(void* target,void* detour,void** original) {
     return created==MH_OK && queued==MH_OK;
 }
 bool session_hooks_restored() {
-    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||native_atom_overwrite_live::pending_count()||body_c0_goal_policy_live::pending_count()||(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())||fresh_pose_producer_live::pending_count()||body_recoil_observer_live::pending_count()||continuous_hand_owner_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
+    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||native_atom_overwrite_live::pending_count()||body_c0_goal_policy_live::pending_count()||(full_body_c0_native_live::resource_pending_count()||cover_physics_c0_live::pending_count())||fresh_pose_producer_live::pending_count()||body_recoil_observer_live::pending_count()||continuous_hand_owner_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
     for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
@@ -4619,7 +4692,7 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
         scope.world()&&consuming_frame_ticket&&consuming_frozen_frame.enabled&&consuming_frozen_frame.id==consuming_frame_ticket&&
         consuming_frozen_frame.world_generation==committed_world_generation.load()&&
         target_width==gears_native_render_size::width()&&target_height==gears_native_render_size::height(),
-        dlss_quad.candidate(),caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
+        dlss_quad.candidate(),caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},campaign_final_output_attested);
     if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8||caller==0x2b11a0||(caller==0xd83cbf&&dlss_quad.candidate())||owned_plain)) {
         final_eye_candidate={caller,consuming_frame_ticket,{x,y,width,height},target_width,target_height};
         const bool source_attested=final_transfer_live::enabled()&&u==x&&v==y&&uw==width&&vh==height&&
@@ -5294,6 +5367,7 @@ DWORD WINAPI worker(void*) {
     FILE* status=_wfsopen(status_path,L"w",_SH_DENYWR);
     if(!status) return 1;
     diagnostic_status=status;
+    pose_editor_live::configure(ini,status);
     if(!hash_matches() || ini_address(ini,L"pid")!=GetCurrentProcessId()) {
         fprintf(status,"rejected: executable hash/name or PID mismatch\n");fclose(status);return 2;
     }
@@ -5637,6 +5711,16 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"owned_plain_output_identity attested=%u callers=d83cbf,2b11a0,e27709 identity_uv_only=1 runtime_owned_only=1\n",unsigned(owned_plain_output_attested));
         ok=owned_plain_output_attested;
     }
+    campaign_final_output_attested=false;
+#if defined(GEARS_PRIVATE_CAMPAIGN_FINAL_OUTPUT) && GEARS_PRIVATE_CAMPAIGN_FINAL_OUTPUT
+    if(ok&&owned_bindings_enabled){
+        // Preserve full-function coverage within the existing 4096-byte verifier.
+        const bool prefix=final_transfer_live::verify_range(status,0x223ab4,0x1000,"bb1637c7045a6d0558260306ad6cdd3cb720005292b6f7e71e6c67b87b8e918a","campaign_final_output_prefix_identity");
+        const bool tail=final_transfer_live::verify_range(status,0x224ab4,0x1c9,"a8bcec261f0de38131dbd508c4a79f48847b376b5fb5be7a8cc57108826a50f6","campaign_final_output_tail_identity");
+        campaign_final_output_attested=prefix&&tail;
+    }
+    fprintf(status,"campaign_final_output_enabled=1 attested=%u caller=224baf identity_uv_only=1 exact_source_extent=1 runtime_owned_only=1\n",unsigned(campaign_final_output_attested));
+#endif
     if(ok)ok=dlss_route_observer::enable(status);
     if(ok)ok=ngx_route_observer::enable(status);
     if(ok)ok=ngx_stereo_host::enable(status);
@@ -5707,8 +5791,8 @@ DWORD WINAPI worker(void*) {
         ok=install(fresh_pose_producer_live::targets[i],fresh_pose_producer_live::detours[i],&fresh_pose_producer_live::originals[i]);
 #endif
     if(ok&&(cover_pose_phase_live::enabled||continuous_hand_owner_live::requested)){
-        const std::array<void*,3> pose_detours{{reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseComposeHook),
-            reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPosePhysicsHook),reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseTickHook)}};
+        const std::array<void*,4> pose_detours{{reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseComposeHook),
+            reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPosePhysicsHook),reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseTickHook),reinterpret_cast<void*>(cover_pose_phase_live::GearsStandalonePoseHook)}};
         for(unsigned i=0;i<cover_pose_phase_live::targets.size()&&ok;++i)
             ok=install(cover_pose_phase_live::targets[i],pose_detours[i],&cover_pose_phase_live::originals[i]);
     }
@@ -5818,6 +5902,7 @@ DWORD WINAPI worker(void*) {
         for(;;){
             native_menu_display::worker_tick();
             weapon_hand_runtime::worker_tick();
+            pose_editor_live::worker_tick(session_phase.load()!=SessionPhase::running);
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
             if(cover_body_stop_record.load(std::memory_order_acquire)==2)
                 request_session_stop_at(cover_body_stop_reason,cover_body_stop_file,cover_body_stop_line);
@@ -5944,6 +6029,7 @@ DWORD WINAPI worker(void*) {
     cover_pose_phase_live::print(status,disabled==MH_OK);
     cover_control_observer_live::print(status,disabled==MH_OK);
     continuous_hand_owner_live::print(status,disabled==MH_OK);body_recoil_observer_live::print(status,disabled==MH_OK);fresh_pose_producer_live::print(status,disabled==MH_OK);full_body_c0_native_live::summary(status);cover_physics_c0_live::summary(status);body_c0_goal_policy_live::summary(status);native_atom_overwrite_live::summary(status);cover_native_rig_observer_live::print(status,disabled==MH_OK);
+    authored_grasp_live::summary(status);
     hand_goal_observer_live::print(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
@@ -6154,8 +6240,46 @@ extern "C" __declspec(dllexport) gears_weapon_part_visibility::Result __cdecl Ge
     gears_weapon_part_visibility::Request const* request,gears_weapon_part_visibility::Receipt* receipt) noexcept {
     return weapon_part_visibility_live::begin(request,receipt);
 }
+extern "C" __declspec(dllexport) gears_boltok_original::Result __cdecl GearsVrBindOriginalBoltokV1(
+    gears_boltok_original::Request const* request,gears_boltok_original::Receipt* receipt) noexcept {
+    return boltok_original_live::begin(request,receipt);
+}
+extern "C" __declspec(dllexport) gears_boltok_original::Result __cdecl GearsVrPoseOriginalBoltokV1(
+    gears_boltok_original::Control const* request,gears_boltok_original::Receipt* receipt) noexcept {
+    return boltok_original_live::update(request,receipt,false);
+}
+extern "C" __declspec(dllexport) gears_boltok_original::Result __cdecl GearsVrRestoreOriginalBoltokV1(
+    gears_boltok_original::Control const* request,gears_boltok_original::Receipt* receipt) noexcept {
+    return boltok_original_live::update(request,receipt,true);
+}
+extern "C" __declspec(dllexport) gears_boltok_original::Result __cdecl GearsVrParkOriginalBoltokV1(
+    gears_boltok_original::Control const* request,gears_boltok_original::Receipt* receipt) noexcept {
+    return boltok_original_live::park(request,receipt);
+}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrReadOriginalBoltokObservationV1(
+    gears_boltok_original::ObservationRequest const* request,
+    gears_boltok_original::Observation* observation) noexcept {
+    return boltok_original_live::read_observation(request,observation);
+}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrRegisterLancerSupportSocketV5(
+    gears_lancer_support_socket::Descriptor const* descriptor) noexcept {return lancer_grasp_live::publish_socket(descriptor);}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrRegisterLancerStarterSocketV5(
+    gears_lancer_support_socket::Descriptor const* descriptor) noexcept {return lancer_grasp_live::publish_starter_socket(descriptor);}
 extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishLancerGraspV2(
     gears_hand_object_grasp::Request const* request) noexcept {return lancer_grasp_live::publish(request);}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishPartGraspV3(
+    gears_hand_part_grasp::Request const* request) noexcept {return lancer_grasp_live::publish_part(request);}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishAuthoredPartFingersV5(gears_hand_authored_grasp::Request const* request) noexcept {
+    return authored_grasp_live::publish_fingers(request);
+}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishAuthoredGraspV4(
+    gears_hand_authored_grasp::Request const* request) noexcept {return authored_grasp_live::publish(request);}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrReadPoseEditorV2(unsigned part,gears_pose_editor::Config* out) noexcept {
+    return pose_editor_live::read(part,out);
+}
+extern "C" __declspec(dllexport) void __cdecl GearsVrPoseEditorReceiptV2(std::uint64_t revision,unsigned kind,std::uint64_t frame) noexcept {
+    pose_editor_live::receipt(revision,kind,frame);
+}
 extern "C" __declspec(dllexport) gears_lancer_original_handle::Result __cdecl GearsVrBindOriginalLancerStarterV2(
     gears_lancer_original_handle::Request const* request,gears_lancer_original_handle::Receipt* receipt) noexcept {
     return lancer_original_handle_live::begin(request,receipt);
@@ -6196,11 +6320,32 @@ extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadRi
     gears_rig_tracking::ReadRequest const* request,gears_rig_tracking::Frame* frame) noexcept {
     return rig_tracking_live::read(request,frame);
 }
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadTroikaMountedSourceV1(
+    gears_troika_source::Request const* request,gears_troika_source::Frame* frame) noexcept {
+    return troika_scene_tracking::read(request,frame);
+}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrRetainTroikaEntryBasisV1(
+    gears_troika_basis::Request const* request) noexcept {return troika_scene_tracking::retain_basis(request);}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrCancelTroikaEntryBasisV1(
+    gears_troika_basis::Request const* request) noexcept {return troika_scene_tracking::cancel_basis(request);}
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadOriginalActionPending(void*) noexcept {
     return vr_gamepad_live::original_action_pending();
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadStowFence(void* argument) noexcept {
     return vr_gamepad_live::set_stow_fence(argument);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureLongshotScopeInputV1(gears_weapon_longshot_scope_input::Request const* request) noexcept {
+    return longshot_scope_input_live::publish(request);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOriginalInputCleanupContextV1(
+    gears_weapon_original_input_cleanup_context::Request const* request) noexcept {
+    return original_input_cleanup_context_live::query(request);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureWeaponButtonVetoV1(gears_weapon_button_veto::Request const* request) noexcept {
+    return weapon_button_veto_live::publish(request);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureLongshotScopeViewV2(gears_weapon_longshot_scope_view::Request const* request) noexcept {
+    return longshot_scope_view_live::publish(request);
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadAxesOwned(void*) noexcept {
     return vr_gamepad_live::owns_axes()?1:0;
@@ -6253,6 +6398,34 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachW
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachBodyMainMountProviderV3(
     gears_body_main_mount_provider::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_body_mount_provider(registration,result,full_body_c0_native_live::body_mount_policy_enabled());
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachTroikaMountedControlV2(
+    gears_troika_control::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+    return weapon_hand_runtime::attach_troika_control(registration,result,true);
+#else
+    (void)registration;(void)result;return gears_weapon_hand::Reply::unavailable;
+#endif
+}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadTroikaMountedControlV2(
+    gears_troika_geometry::Source const* source,gears_troika_control::Decision* output) noexcept {
+    return troika_control_live::read(source,output);
+}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadTroikaC0ConsumerV1(
+    gears_troika_c0::Request const* request,gears_troika_c0::Frame* output) noexcept {
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE && defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+    return full_body_c0_native_live::troika_c0_commit::read_consumer(request,output);
+#else
+    (void)request;(void)output;return gears_rig_tracking::Reply::unavailable;
+#endif
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachTroikaMountedGeometryV3(
+    gears_troika_geometry::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+    return weapon_hand_runtime::attach_troika_geometry(registration,result,true);
+#else
+    (void)registration;(void)result;return gears_weapon_hand::Reply::unavailable;
+#endif
 }
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachWeaponMainMountProviderV1(
     gears_weapon_main_mount_provider::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {

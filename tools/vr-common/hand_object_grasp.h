@@ -1,12 +1,28 @@
 #pragma once
 #include "weapon_hand_participant.h"
 #include "hand_wrist_calibration.h"
+#include "hand_finger_pose.h"
+#include <array>
 
 // Cosmetic target only. It cannot grant contact, move a controller, advance a
 // mechanism, supply ammunition or replace the unmodified tracked palm.
 namespace gears_hand_object_grasp {
 namespace vr=gears_vr;namespace hand=gears_weapon_hand;
 enum class Kind:unsigned {none,magazine,loading,starter,support};
+enum class Preset:unsigned {automatic,precision,cylinder,support_surface,authored};
+inline bool valid(Preset preset) noexcept {return unsigned(preset)<=unsigned(Preset::authored);}
+inline bool valid_for(Kind kind,Preset preset) noexcept {
+    return valid(preset)&&(preset!=Preset::support_surface||kind==Kind::support);
+}
+inline gears_hand_fingers::Shape finger_shape(Kind kind,Preset preset) noexcept {
+    if(kind==Kind::none||unsigned(kind)>unsigned(Kind::support)||!valid(preset))return gears_hand_fingers::Shape::free;
+    if(preset==Preset::authored)return gears_hand_fingers::Shape::authored;
+    if(preset==Preset::support_surface)return kind==Kind::support?
+        gears_hand_fingers::Shape::authored:gears_hand_fingers::Shape::free;
+    if(preset==Preset::precision)return gears_hand_fingers::Shape::loading;
+    if(preset==Preset::cylinder)return gears_hand_fingers::Shape::starter;
+    return static_cast<gears_hand_fingers::Shape>(kind);
+}
 // Only an acquisition preference at a REAL released part. No lease, pose,
 // travel or action survives here. Reflected busy flags and neutral fitting
 // publication can disappear independently of the user's stationary hand.
@@ -56,7 +72,54 @@ inline Kind proximity_socket(Kind incumbent,double support,double starter,
     }
     return nearest;
 }
-struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};};
+// Exact optional authoring regions provide their own enter/retain predicates.
+// Selection still uses distance and the same3cm switch hysteresis, no lease.
+struct ProximityContact {double distance{};bool enter{},retain{};};
+inline Kind proximity_socket(Kind incumbent,ProximityContact support,ProximityContact starter,
+    bool stationary_starter=false) noexcept {
+    for(const auto c:{support,starter})if(!std::isfinite(c.distance)||c.distance<0)return Kind::none;
+    const auto nearest=support.enter&&(!starter.enter||support.distance<=starter.distance)?Kind::support:
+        starter.enter?Kind::starter:Kind::none;
+    const bool retained=incumbent==Kind::support?support.retain:incumbent==Kind::starter&&starter.retain;
+    if(retained){
+        if(incumbent==Kind::starter&&stationary_starter)return incumbent;
+        const double old=incumbent==Kind::support?support.distance:starter.distance;
+        const double next=nearest==Kind::support?support.distance:starter.distance;
+        if(nearest!=Kind::none&&nearest!=incumbent&&next+.03<old)return nearest;
+        return incumbent;
+    }
+    return nearest;
+}
+
+// Refresh an existing C hover anchor only at a currently observed contact
+// centre, not at every point inside the broad entry/retention volumes.
+inline bool recenter_starter_anchor(double closed_distance,double visible_distance) noexcept {
+    return std::isfinite(closed_distance)&&closed_distance>=0&&
+        std::isfinite(visible_distance)&&visible_distance>=0&&
+        (closed_distance<=.03||visible_distance<=.03);
+}
+// Keep the selected cosmetic handguard through its support lease, and a
+// selected C while the real Grip still awaits its first actual part grant.
+// No pose/contact/action is saved; an occupied unrelated lease clears C.
+// the next neutral frame still resolves current identity and real distances.
+inline Kind proximity_control_handoff(Kind incumbent,hand::LeaseKind holder,bool reload_idle) noexcept {
+    if(reload_idle&&incumbent==Kind::starter&&holder==hand::LeaseKind::none)return incumbent;
+    return reload_idle&&incumbent==Kind::support&&
+        (holder==hand::LeaseKind::none||holder==hand::LeaseKind::support)?Kind::support:Kind::none;
+}
+struct Target {
+    Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};Preset preset{};
+    // Internal cosmetic data, never part of the existing V2/V3 input wires.
+    // Same sole C0 writer; no item/action or tracking authority.
+    std::array<vr::Quaternion,15> authored_pose{};bool has_authored_pose{};
+    bool passive_relative_socket{}; // Static main-Grip geometry; current C0 resolves it.
+};
+inline bool authored_valid(Target const& target) noexcept {
+    if(target.preset!=Preset::support_surface&&target.preset!=Preset::authored)return true;
+    if(!target.has_authored_pose)return false;
+    for(auto q:target.authored_pose)if(!vr::stereo_pose_valid({{},q}))return false;
+    return true;
+}
 // support carries a fixed foregrip-in-right-grip pose in metres; Native
 // evaluates it from BOTH current physical hands in the one C0 solve.
 // A proximity request contains a WORLD socket and grants skin fitting only.
@@ -73,7 +136,7 @@ inline vr::Quaternion blend(vr::Quaternion a,vr::Quaternion b,double t) noexcept
 }
 inline bool apply(Target const& target,vr::Pose const& physical,
     gears_hand_wrist::Calibration const& calibration,double units,vr::Pose& visual) noexcept {
-    if(target.kind==Kind::none||unsigned(target.kind)>unsigned(Kind::support)||
+    if(target.kind==Kind::none||unsigned(target.kind)>unsigned(Kind::support)||!valid_for(target.kind,target.preset)||!authored_valid(target)||
        !vr::stereo_pose_valid(target.grip)||!vr::stereo_pose_valid(physical)||
        !std::isfinite(units)||units<10||units>500||!std::isfinite(target.weight)||target.weight<=0||target.weight>1)return false;
     const auto d=vr::Vector{target.grip.position.x-physical.position.x,target.grip.position.y-physical.position.y,target.grip.position.z-physical.position.z};
@@ -93,13 +156,20 @@ inline bool apply(Target const& target,vr::Pose const& physical,
         physical.position.z+d.z*position_t},blend(physical.orientation,target.grip.orientation,t)};
     return gears_hand_wrist::native_wrist_target(grip,calibration,units,visual)==gears_hand_wrist::Status::okay;
 }
+inline bool keep_relative_fit(bool current,Kind part,Kind fitted,Preset preset,
+    std::uint64_t token,std::uint64_t fitted_token,std::uint64_t profile,std::uint64_t fitted_profile) noexcept {
+    return current&&part!=Kind::none&&part!=Kind::support&&part==fitted&&
+        preset==Preset::authored&&token&&token==fitted_token&&profile&&profile==fitted_profile;
+}
 struct BlendState {
     Kind kind{};double weight{};std::int64_t last_ns{};
     bool position_fitted{};
     vr::Quaternion wrist_in_grip{};vr::Vector wrist_metres{};
+    Preset preset{};
+    std::array<vr::Quaternion,15> authored_pose{};
     bool update(Target const& target,vr::Pose const& physical,gears_hand_wrist::Calibration const& calibration,
-        double units,std::int64_t now,vr::Pose& visual) noexcept {
-        if(now<=0||!vr::stereo_pose_valid(physical)||!calibration.known)return false;
+        double units,std::int64_t now,vr::Pose& visual,bool current_same_grasp=false) noexcept {
+        if(now<=0||!vr::stereo_pose_valid(physical)||!calibration.known||!valid_for(target.kind,target.preset)||!authored_valid(target))return false;
         const double dt=last_ns>0&&now>=last_ns?std::clamp(double(now-last_ns)/1e9,0.,.05):0.;last_ns=now;
         vr::Pose desired{};position_fitted=apply(target,physical,calibration,units,desired);
         bool active=position_fitted;
@@ -114,14 +184,20 @@ struct BlendState {
                 calibration,units,desired)==gears_hand_wrist::Status::okay;
         }
         if(active){
-            if(kind!=target.kind){weight=0;kind=target.kind;}
+            if(kind!=target.kind||preset!=target.preset){weight=0;kind=target.kind;preset=target.preset;}
+            if(preset==Preset::support_surface||preset==Preset::authored)authored_pose=target.authored_pose;
             wrist_in_grip=vr::multiply(vr::inverse(physical.orientation),desired.orientation);
             const auto d=vr::Vector{(desired.position.x-physical.position.x)/units,
                 (desired.position.y-physical.position.y)/units,(desired.position.z-physical.position.z)/units};
             wrist_metres=vr::transform(vr::transpose(vr::rotation_matrix(physical.orientation)),d);
             weight=std::clamp(weight+dt/.12,0.,1.);
-        }else weight=std::clamp(weight-dt/.12,0.,1.);
-        if(weight<=0){kind=Kind::none;return false;}
+        }else if(!current_same_grasp||target.kind!=Kind::none)
+            weight=std::clamp(weight-dt/.12,0.,1.);
+        // A separately current SAME part/press/profile may retain only this
+        // already fitted relative cosmetic offset on the NEW physical hand.
+        // No cached world socket, tracking, contact or travel is supplied.
+        // Release/unknown/currentness failure uses the ordinary decay above.
+        if(weight<=0){kind=Kind::none;preset=Preset::automatic;authored_pose={};return false;}
         // Release uses only a decaying relative skin offset on THIS fresh
         // physical hand. No old world contact/pose is replayed as tracking.
         const auto a=calibration.grip_to_wrist_metres;const double w=weight;

@@ -86,7 +86,21 @@ class FrozenThreads:
                 current = thread_ids(self.pid)
                 for tid in sorted(current - seen):
                     handle = k.OpenThread(0x001A, False, tid) # suspend, context, query
-                    if not handle: raise c.WinError(c.get_last_error())
+                    if not handle:
+                        error = c.WinError(c.get_last_error())
+                        evidence = dict(stage='OpenThread',pid=self.pid,tid=tid,
+                                        winerror=error.winerror,enumerated=sorted(current),
+                                        already_suspended=sorted(seen))
+                        try:
+                            fresh=thread_ids(self.pid)
+                            evidence.update(fresh_threads=sorted(fresh),failed_tid_still_present=tid in fresh)
+                        except Exception as observation_error:
+                            evidence['fresh_snapshot_error']=repr(observation_error)
+                        error.add_note(json.dumps(evidence,sort_keys=True))
+                        # Observe only. Never skip an un-opened thread or write
+                        # code after an incomplete freeze; outer cleanup resumes
+                        # every handle that this transaction suspended.
+                        raise error
                     if k.SuspendThread(handle) == 0xffffffff:
                         k.CloseHandle(handle); raise c.WinError(c.get_last_error())
                     self.handles.append(handle); seen.add(tid)
@@ -124,7 +138,18 @@ def write_code(handle, address, raw):
 
 def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix('.tmp'); temp.write_text(json.dumps(value, indent=2), encoding='utf-8'); temp.replace(path)
+    temp = path.with_suffix('.tmp')
+    temp.write_text(json.dumps(value, indent=2), encoding='utf-8')
+    # A transient sharing conflict must not repeat the input transaction.
+    # Bound the delay while the owning thread set remains frozen.
+    for attempt in range(6):
+        try:
+            temp.replace(path)
+            return
+        except OSError as error:
+            if attempt == 5 or getattr(error, 'winerror', None) not in (5, 32, 33):
+                raise
+            time.sleep(.02)
 
 def change(pid, action, expected_creation=None):
     control = WindowsControl(); identity = control.identity(pid)

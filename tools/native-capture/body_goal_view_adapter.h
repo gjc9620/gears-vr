@@ -227,6 +227,35 @@ inline Status cover_placement_current(CoverPlacement const& placement,
     if(placement.observed_ns<input.metadata_begin_ns||placement.observed_ns>input.metadata_end_ns)return Status::cover;
     return cover_placement_binding(placement,input.observed.parent_scene,policy);
 }
+// Cover torso uses the fixed Marcus reference front, not an animated root
+// captured while the retail character was back against cover. Continuous
+// view/physical HMD, pelvis placement and explicit foot contacts stay owned
+// by their existing paths. This changes no Pawn rotation or weapon aim.
+inline Status face_cover_reference(body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,vr::CoverViewAnchor const& wall,Neutral& placed) noexcept {
+    using namespace body::d;
+    // Retain the historical legacy mount behavior; current Native explicitly
+    // prepares marcus_mesh_face_forward_y before this cover-only call.
+    if(authored.basis()!=marker::Basis::marcus_mesh_face_forward_y)return Status::okay;
+    if(marker::detail::context(model,frame,model.canonical)!=marker::Status::okay||
+       !vr::cover_view_basis(wall))return Status::head_marker;
+    body::ik::Matrix component{};for(unsigned i=0;i<16;++i)component.m[i]=frame.component_to_world.values[i];
+    if(!similarity(component)||std::abs(length(row(component,0))-1)>2e-5)return Status::cover_component;
+    const auto reference_eye=authored.reference_eye_model();
+    if(!goal_pose(reference_eye))return Status::head_marker;
+    body::Quat reference_root{};
+    auto const& q=model.reference[body::root].q;
+    if(!normalized({q[0],q[1],q[2],q[3]},reference_root))return Status::head_marker;
+    const auto component_q=rotation(component);
+    const auto forward=rotate(product(component_q,reference_eye.orientation),{1,0,0});
+    const double horizontal=std::hypot(forward.x,forward.y);
+    if(!finite_vector(forward)||!std::isfinite(horizontal)||horizontal<.5)return Status::numerical;
+    const auto target=wall.forward_world;
+    const double angle=std::atan2(forward.x*target.y-forward.y*target.x,forward.x*target.x+forward.y*target.y);
+    const auto root=product(yaw(angle),product(component_q,reference_root));
+    body::Quat checked{};if(!normalized(root,checked))return Status::numerical;
+    placed.root_bone_world_q=checked;return Status::okay;
+}
 inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement const& placement,
     core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
     marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
@@ -240,6 +269,8 @@ inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement con
     Neutral placed{};
     const auto status=place_cover(calibrated,placement.anchor,placement.view_anchor,placement.feet_world,placed);
     if(status!=Status::okay)return status;
+    const auto facing=face_cover_reference(model,frame,authored,placement.anchor,placed);
+    if(facing!=Status::okay)return facing;
     // The authored eye offset rotates with the head, not with the torso.
     // Keep the reference spine under the same HEAD pivot when body heading
     // and continuous view heading differ. This uses neither current HMD nor
@@ -253,7 +284,17 @@ inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement con
     marker::HeadBoneWorld wall_head{},tracking_head{};
     if(marker::head_from_eye(authored,model,frame,{wall_eye},wall_head)!=marker::Status::okay||
        marker::head_from_eye(authored,model,frame,{tracking_eye},tracking_head)!=marker::Status::okay)return Status::head_marker;
-    placed.pelvis_world=add(placed.pelvis_world,sub(tracking_head.pose.position,wall_head.pose.position));
+    if(authored.basis()==marker::Basis::marcus_mesh_face_forward_y){
+        // Keep the authored neutral torso under the neutral HEAD, rather than
+        // inheriting the retail back-to-cover pelvis displacement. Feet still
+        // use their measured contacts and the planner preserves every length.
+        const auto reference_root=atom_matrix(model.reference[body::root]);
+        const auto reference_pelvis=multiply(atom_matrix(model.reference[body::pelvis]),reference_root);
+        const auto reference_delta=sub(authored.reference_head_model().position,position(reference_pelvis));
+        const auto turn=product(placed.root_bone_world_q,body::d::inverse(rotation(reference_root)));
+        const auto neutral_head=add(placement.view_anchor.neutral_eye_world,tracking_head.pose.position);
+        placed.pelvis_world=sub(neutral_head,rotate(turn,reference_delta));
+    }else placed.pelvis_world=add(placed.pelvis_world,sub(tracking_head.pose.position,wall_head.pose.position));
     out=placed;return Status::okay;
 }
 inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& placement,

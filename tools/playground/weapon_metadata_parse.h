@@ -48,7 +48,10 @@ public:
 // existing entered claim). No large temporary or game-hook stack allocation.
 inline Workspace* activate(Workspace& workspace) noexcept {
     auto* previous=active;
-    std::memset(&workspace,0,sizeof(workspace));active=&workspace;return previous;
+    std::memset(workspace.names.data(),0,sizeof(workspace.names));
+    std::memset(workspace.epochs.data(),0,sizeof(workspace.epochs));
+    workspace.epoch=0;workspace.walk_owned=false;
+    active=&workspace;return previous;
 }
 inline void restore(Workspace* previous) noexcept {active=previous;}
 // Ordinary PlayerTick also performs the same bounded reflection walks as the

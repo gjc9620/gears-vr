@@ -1,7 +1,28 @@
+#include <atomic>
 // Original-L2 world reference collector, included after cover_input_live.
 // Caller holds stereo_mutex and the current Scene GT admission.
 namespace cover_l2_grab_live {
 namespace input=cover_input_live;
+// Original L2 reference data only. No collision or hand lease is certified.
+// Caller owns Scene GT serialization; C0 must independently bind eye/object
+// identities, the actual owner ticket, freshness and its one body candidate.
+struct PointReceipt {
+    uint64_t frame{};int64_t observed_ns{};gears_vr::CoverEpochs epochs{};
+    cover_neutral_eye_live::EyeSample eye{};
+    gears_vr::CoverL2GrabPoints references{};
+    gears_vr::CoverViewAnchor wall_anchor{};
+    double units_per_metre{};
+};
+PointReceipt point_receipt{};std::atomic<unsigned> point_thread{};bool point_ready{};
+bool read_points(uint64_t frame,gears_vr::CoverEpochs const& epochs,PointReceipt& out){
+    if(GetCurrentThreadId()!=point_thread.load(std::memory_order_acquire))return false;
+    if(!point_ready||!frame||frame!=point_receipt.frame||
+       &out==&point_receipt||epochs.world!=point_receipt.epochs.world||epochs.pawn!=point_receipt.epochs.pawn||
+       epochs.cover!=point_receipt.epochs.cover||epochs.slot!=point_receipt.epochs.slot||
+       epochs.session!=point_receipt.epochs.session||epochs.space!=point_receipt.epochs.space||
+       epochs.reference!=point_receipt.epochs.reference)return false;
+    out=point_receipt;return true;
+}
 struct Diagnostics {
     uint64_t attempts{},ready{},rejected{},hand_missing{};
     uint64_t point_frame{};int64_t point_sample_ns{};
@@ -18,6 +39,11 @@ bool same_grip(gears_vr::CoverEpochs const& a,gears_vr::CoverEpochs const& b){
 bool prepare(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSample const& eye,
     gears_vr::CoverInputOwnerFrame& frame){
     ++diagnostics.attempts;diagnostics.selected={};frame.cover.edge={};frame.cover.range={};
+    point_ready=false;
+    if(!scene||!frame.frame||scene->invocation!=frame.frame||scene->thread!=GetCurrentThreadId()||
+       frame.now_ns<=0||!frame.cover.epochs.world||!frame.cover.epochs.pawn||!frame.cover.epochs.cover||
+       !frame.cover.epochs.slot||!frame.cover.epochs.session||!frame.cover.epochs.space||!frame.cover.epochs.reference)
+        return false;
     cover_geometry_live::Geometry geometry{};gears_cover_l2_points::Result points{};
     if(!frame.cover.cover_valid||!frame.cover.interaction_enabled||!gears_vr::cover_view_basis(frame.anchor)||
        !std::isfinite(frame.units_per_metre)||frame.units_per_metre<10||frame.units_per_metre>500||
@@ -43,6 +69,8 @@ bool prepare(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSampl
         else references.points[i].available=false;
     }
     frame.cover.range=range;
+    point_receipt={frame.frame,frame.now_ns,frame.cover.epochs,eye,references,frame.anchor,frame.units_per_metre};
+    point_thread.store(GetCurrentThreadId(),std::memory_order_release);point_ready=true;
     const auto& previous=input::diagnostics.latest.interaction;
     const auto offset=same_cover(diagnostics.previous,frame.cover.epochs)?previous.offset:gears_vr::CoverOffset{};
     const bool latched=same_grip(diagnostics.previous,frame.cover.epochs)&&
@@ -71,3 +99,4 @@ void summary(FILE* file){
 }
 struct Registration {Registration(){input::grab_points_provider=prepare;input::grab_point_summary=summary;}} registration;
 } // namespace cover_l2_grab_live
+

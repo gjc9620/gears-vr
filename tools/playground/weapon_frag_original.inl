@@ -1,10 +1,11 @@
+#include "weapon_grenade_cleanup_context.inl"
 // Original Frag declarations and normal-GT calls. No alternate input producer,
 // pose publication, projectile implementation or arbitrary native entry address.
 // Include after the existing unified-fire/metadata and original-call helpers.
 namespace frag_original {
 namespace hand=gears_weapon_hand;
 namespace meta=gripdamage_metadata;
-enum class Method:unsigned {prepare,stop,notify,base_throw,origin,velocity,finished,empty,press,release,target,mode};
+enum class Method:unsigned {prepare,stop,notify,base_throw,origin,velocity,finished,empty,press,release,target,mode,prediction};
 enum class Type:unsigned {name,boolean,vector,projectile,byte};
 struct Parameter {
     hand::ObjectIdentity identity{};Type type{};unsigned offset{},bytes{},mask{};
@@ -107,6 +108,7 @@ bool selector(meta::Reader& r,uptr receiver,Method method,uptr& owner,uptr& fn,u
     case Method::base_throw:return child(r,owner,L"ThrowGrenade",fn);
     case Method::origin:return child(r,owner,L"GetPhysicalFireStartLoc",fn);
     case Method::velocity:return child(r,owner,L"GetGrenadeTossVelocity",fn);
+    case Method::prediction:return child(r,owner,L"ShouldDrawTrajectoryPrediction",fn);
     case Method::finished:return child(r,declaring,L"ThrowingGrenade",owner)&&child(r,owner,L"FinishedThrow",fn);
     default:return false;
     }
@@ -145,6 +147,10 @@ bool bind(uptr receiver,Method method,Entry& out) noexcept {
                 if(!r.named(prop.identity,L"ReturnValue")||(prop.flags&0x580)!=0x580||prop.offset!=ret)return false;
                 if((method==Method::origin||method==Method::velocity)&&unified_weapon_fire::core_struct(r,prop,L"Vector"))parameter.type=Type::vector;
                 else if(method==Method::base_throw&&projectile_property(r,prop))parameter.type=Type::projectile;
+                else if(method==Method::prediction&&weaponhand::core_type(r,prop.type,L"BoolProperty")&&prop.element_bytes==4){
+                    if(!r.at(p,0xd0,parameter.mask)||!parameter.mask||(parameter.mask&(parameter.mask-1)))return false;
+                    parameter.type=Type::boolean;
+                }
                 else return false;bit=1;
             }else if((method==Method::press||method==Method::release)&&r.named(prop.identity,L"ButtonName")&&
                 weaponhand::core_type(r,prop.type,L"NameProperty")&&prop.element_bytes==8&&(prop.flags&0x580)==0x80){parameter.type=Type::name;bit=2;}
@@ -175,7 +181,7 @@ bool bind(uptr receiver,Method method,Entry& out) noexcept {
         p=prop.next;
     }
     const unsigned expected=method==Method::velocity?15u:(method==Method::origin?3u:
-        (method==Method::base_throw?1u:
+        (method==Method::base_throw||method==Method::prediction?1u:
         (method==Method::target||method==Method::press||method==Method::release||method==Method::mode?2u:0u)));
     uptr closing_fn{},closing_owner{},closing_declaring{};
     if(found!=expected||(!(expected&1)&&ret!=0xffff)||
@@ -300,6 +306,32 @@ bool release_existing(hand::Frame const& source,hand::ExistingActionLifetime con
         // The zero-filled actual BoolProperty argument can only turn OFF.
     }else if(entry.count)return false;
     return weaponhand::client.existing_action_lifetime_on_gt(lifetime)&&invoke(&request);
+}
+// Exact original negative-method/actor/function/argument checks; only the
+// lifetime witness is the independently authenticated dispatched journal.
+bool release_anchored(hand::Frame const& source,grenade_cleanup_context::Anchor const& anchor,
+    std::uint64_t serial,std::uint64_t hold,
+    Entry const& entry,Name button_name={}) noexcept {
+    const auto m=entry.method;
+    if(m!=Method::release&&m!=Method::target&&m!=Method::stop)return false;
+    if(!weaponhand::current_gt(nullptr)||!nativeequipment::restoration_quiet()||
+       !anchor.current(source,serial,hold))return false;
+    for(const auto& id:{source.world,source.controller,source.pawn,source.weapon})
+        if(!weapon_part_assets::object(id))return false;
+    if(playground::pointer(source.controller.address,L"Pawn")!=source.pawn.address||
+       playground::pointer(source.pawn.address,L"WorldInfo")!=source.world.address||
+       playground::pointer(source.weapon.address,L"Instigator")!=source.pawn.address)return false;
+    const auto receiver=m==Method::stop?source.weapon.address:source.controller.address;
+    Entry fresh{};if(!bind(receiver,m,fresh)||!same(entry,fresh))return false;
+    Request request{};request.object=receiver;request.function=entry.function.address;request.size=entry.parameter_bytes;
+    if(m==Method::release){
+        if(entry.count!=1||entry.parameters[0].type!=Type::name)return false;
+        std::memcpy(request.params+entry.parameters[0].offset,&button_name,sizeof button_name);
+    }else if(m==Method::target){
+        if(entry.count!=1||entry.parameters[0].type!=Type::boolean)return false;
+        // The zero-filled actual BoolProperty argument can only turn OFF.
+    }else if(entry.count)return false;
+    return anchor.current(source,serial,hold)&&invoke(&request);
 }
 // Completion of a proven, already dispatched physical throw. It cannot spawn
 // another grenade. The caller owns the once-only completion journal; the

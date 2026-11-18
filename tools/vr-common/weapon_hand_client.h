@@ -23,13 +23,16 @@ struct ClientAdapter {
     // candidates. Display revalidation consumes no proposal or hand grant.
     // Omitted adapters retain the original full-observation behavior.
     bool (*observe_source)(void*,Frame const&,std::int64_t,GripGameState&) noexcept{};
+    // Optional GT-only logical-generation check for an already committed HOD
+    // equip handoff. It grants no Frame, tracking lifetime, pose or action.
+    bool (*hold_generation_current)(void*,Frame const&,std::uint64_t) noexcept{};
 };
 enum class ClientPhase:std::uint32_t {off,connecting,active,draining,quarantined};
 struct ClientSession {std::uint64_t game_start{};std::uint32_t game_pid{};};
 // Optional caller-owned failure observation. Never a Frame, source, holder or
 // permission. It classifies the SAME existing checks without another read.
 enum class FrameReadFailure:std::uint32_t {none,thread_or_unarmed,gate,publication,key,
-    stale_before,observe,game_changed,stale_or_changed_after,support_prepare,implicit_clear};
+    stale_before,observe,game_changed,stale_or_changed_after,support_prepare,implicit_clear,hold_handoff_pending};
 struct CandidateObservation {
     // Diagnostic bits:1 association known,2 support contact,4 mount known,
     //8 mount valid,16 magazine pending,32 magazine request,64 ammo request.
@@ -53,6 +56,8 @@ struct FrameReadObservation {
     // Last successful commit's existing freshness-check clock, not a source
     // stamp or an action permit. Negative values mean unavailable.
     std::int64_t commit_check_input_age_ns{-1},since_commit_check_ns{-1};
+    // Diagnostic-only same_game field groups, never an action permit.
+    std::uint32_t observed_game_flags{},committed_game_flags{},game_field_difference{};
 };
 // Lifetime of an already journalled ORIGINAL action through a normal pose/
 // animation handoff. This is neither a pose/input Frame nor an action grant.
@@ -70,7 +75,8 @@ inline bool same_game(GripGameState const& a,GripGameState const& b) noexcept {
         a.acquire_metres==b.acquire_metres&&a.release_metres==b.release_metres&&
         same(a.object_incumbents[0],b.object_incumbents[0])&&same(a.object_incumbents[1],b.object_incumbents[1])&&
         a.request_ammo==b.request_ammo&&a.request_magazine==b.request_magazine&&
-        a.magazine_observation_pending==b.magazine_observation_pending;
+        a.magazine_observation_pending==b.magazine_observation_pending&&
+        a.support_box==b.support_box&&a.support_region==b.support_region;
 }
 inline bool same_support_observation(Frame const& f,Decision const& d,
     GripGameState const& current,GripGameState const& committed) noexcept {
@@ -134,6 +140,33 @@ inline unsigned game_difference(GripGameState const& current,GripGameState const
     if(!same_game(compared,expected))difference|=8;
     return difference;
 }
+inline std::uint32_t game_diagnostic_flags(GripGameState const& g) noexcept {
+    return (unsigned(g.known)<<0)|(unsigned(g.main_hand_held)<<1)|
+        (unsigned(g.animation_owns_hands)<<2)|(unsigned(g.busy)<<3)|
+        (unsigned(g.mount_known)<<4)|(unsigned(g.kind==WeaponKind::firearm)<<5);
+}
+inline std::uint32_t game_field_difference(GripGameState const& a,GripGameState const& b) noexcept {
+    auto const& x=a.mount;auto const& y=b.mount;
+    const auto vector=[](gears_vr::Vector p,gears_vr::Vector q){return p.x==q.x&&p.y==q.y&&p.z==q.z;};
+    return (unsigned(a.known!=b.known)<<0)|(unsigned(a.main_hand_held!=b.main_hand_held)<<1)|
+        (unsigned(a.animation_owns_hands!=b.animation_owns_hands)<<2)|(unsigned(a.busy!=b.busy)<<3)|
+        (unsigned(a.mount_known!=b.mount_known)<<4)|(unsigned(a.kind!=b.kind)<<5)|
+        (unsigned(!same(a.mount_asset,b.mount_asset))<<6)|
+        (unsigned(a.mount_revision!=b.mount_revision)<<7)|
+        (unsigned(!gears_vr::stereo_same_pose(x.right_grip_in_weapon,y.right_grip_in_weapon))<<8)|
+        (unsigned(!vector(x.support_grip_in_weapon,y.support_grip_in_weapon))<<9)|
+        (unsigned(!vector(x.muzzle_in_weapon,y.muzzle_in_weapon))<<10)|
+        (unsigned(!vector(x.bore_forward_in_weapon,y.bore_forward_in_weapon))<<11)|
+        (unsigned(x.support_length_tolerance_metres!=y.support_length_tolerance_metres)<<12)|
+        (unsigned(x.maximum_support_correction_radians!=y.maximum_support_correction_radians)<<13)|
+        (unsigned(a.acquire_metres!=b.acquire_metres)<<14)|(unsigned(a.release_metres!=b.release_metres)<<15)|
+        (unsigned(!same(a.object_incumbents[0],b.object_incumbents[0])||
+            !same(a.object_incumbents[1],b.object_incumbents[1]))<<16)|
+        (unsigned(a.request_ammo!=b.request_ammo)<<17)|
+        (unsigned(a.request_magazine!=b.request_magazine)<<18)|
+        (unsigned(a.magazine_observation_pending!=b.magazine_observation_pending)<<19)|
+        (unsigned(!(a.support_box==b.support_box))<<20)|(unsigned(!(a.support_region==b.support_region))<<21);
+}
 
 // Weapon-side callback storage, not a host/arbiter or a loader. Control calls
 // are externally serialized on a non-GT thread; callback state is GT-only.
@@ -152,11 +185,27 @@ class HandClient {
     SupportGripParticipant participant_;
     Frame committed_{};GripGameState prepared_game_{},committed_game_{};
     Decision committed_decision_{};
+    struct HodPosthold {FrameKey key{};ObjectIdentity weapon{};std::uint64_t generation{},epoch{};};
+    HodPosthold hod_posthold_pending_{};
     std::int64_t committed_check_ns_{}; // Observation only; never used by admission.
     FrameReadObservation last_withdrawal_{};
     std::atomic<std::uint32_t> last_disarm_reason_{};
     std::uint64_t seen_epoch_{},prepared_epoch_{};bool pending_{};
     bool adapter_valid() const noexcept {return adapter_.observe&&adapter_.game_thread&&adapter_.clock_ns;}
+    // Gate-held, non-authorizing classification shared by BOTH strict read
+    // entry points. Returning true always withholds output; it never adopts
+    // current as a committed state or renews the original Frame's lifetime.
+    bool hod_handoff_waiting_locked(GripGameState const& current,std::uint64_t epoch,std::int64_t now) noexcept {
+        if(!hod_posthold_pending_.generation)return false;
+        auto before=current;before.main_hand_held=false;
+        const bool exact=hod_posthold_pending_.epoch==epoch&&same(hod_posthold_pending_.key,committed_.key)&&
+            same(hod_posthold_pending_.weapon,committed_.weapon)&&current.known&&current.main_hand_held&&
+            !committed_game_.main_hand_held&&committed_decision_.lease.kind==LeaseKind::none&&
+            !committed_decision_.new_grant&&same_game(before,committed_game_)&&
+            adapter_.hold_generation_current&&adapter_.hold_generation_current(adapter_.context,committed_,hod_posthold_pending_.generation);
+        if(exact&&active(epoch)&&published_.load(std::memory_order_acquire)==epoch&&fresh(committed_,now))return true;
+        hod_posthold_pending_={};return false;
+    }
     void disarm(std::uint32_t reason=1) noexcept {
         // Read-only failure classification. No validity is extended and no
         // caller may use this diagnostic to recover a retired publication.
@@ -182,7 +231,7 @@ class HandClient {
                     now-committed_.controllers.sync_ns:-1,committed_.left_grip_down};
             last_withdrawal_.candidate=candidate_observation(committed_,committed_game_,committed_decision_);
         }
-        participant_.invalidate_on_gt();committed_={};prepared_game_={};committed_game_={};committed_decision_={};
+        participant_.invalidate_on_gt();committed_={};prepared_game_={};committed_game_={};committed_decision_={};hod_posthold_pending_={};
         pending_=false;prepared_epoch_=0;published_.store(0,std::memory_order_release);
     }
     void withdraw_expired_pose_gt() noexcept {
@@ -292,7 +341,7 @@ class HandClient {
         if(!active(epoch)||!fresh(*frame,now))return fail_gt(Reply::unavailable);
         const auto reply=participant_.commit(*frame,*proposal,*decision);
         if(reply!=Reply::accepted)return fail_gt(reply);
-        committed_=*frame;committed_game_=game;committed_decision_=*decision;committed_check_ns_=now;
+        committed_=*frame;committed_game_=game;committed_decision_=*decision;committed_check_ns_=now;hod_posthold_pending_={};
         published_.store(epoch,std::memory_order_release);
         if(!active(epoch))return fail_gt(Reply::unavailable);
         if(adapter_.committed)adapter_.committed(adapter_.context,*frame,*decision);
@@ -547,11 +596,18 @@ public:
         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return fail(FrameReadFailure::key);}
         if(!fresh(committed_,now)){withdraw_expired_pose_gt();return fail(FrameReadFailure::stale_before);}
         if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return fail(FrameReadFailure::observe);}
+        now=adapter_.clock_ns(adapter_.context);
+        if(hod_handoff_waiting_locked(current,epoch,now))return fail(FrameReadFailure::hold_handoff_pending,8);
         if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
             // Classify candidates, actual item incumbents, and remaining
             // live-game/mount fields separately. Returned game data remains
             // the actual observation, including acquisition hover changes.
             const unsigned difference=game_difference(current,committed_game_);
+            if(observation){
+                observation->observed_game_flags=game_diagnostic_flags(current);
+                observation->committed_game_flags=game_diagnostic_flags(committed_game_);
+                observation->game_field_difference=game_field_difference(current,committed_game_);
+            }
             clear_gt(FrameReadFailure::game_changed,difference);return fail(FrameReadFailure::game_changed,difference);
         }
         now=adapter_.clock_ns(adapter_.context);
@@ -582,6 +638,42 @@ private:
     }
 public:
     FrameReadObservation withdrawal_on_gt() const noexcept {return on_gt()?last_withdrawal_:FrameReadObservation{};}
+    // Non-authorizing wait hint: only reports that Native has committed a
+    // held state for this exact weapon. It returns no Frame, grant, timestamp,
+    // or renewed lease and never clears/disarms/republishes on false.
+    bool published_main_hand_hint_on_gt(std::uint64_t weapon) noexcept {
+        if(!on_gt()||!armed())return false;
+        Gate gate(gate_);if(!gate.held)return false;
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
+        return weapon&&committed_.weapon.address==weapon&&committed_game_.known&&
+            committed_game_.main_hand_held&&active(epoch)&&published_.load(std::memory_order_acquire)==epoch;
+    }
+    // HOD-only non-authorizing barrier after a real successful backend hold.
+    // It retains no old Frame as valid: strict reads return NOTREADY while the
+    // exact publication only transitions from released to main-hand-held.
+    bool begin_hod_posthold_on_gt(Frame const& source,std::uint64_t generation) noexcept {
+        if(!on_gt()||!armed()||!generation||!adapter_.hold_generation_current)return false;
+        Gate gate(gate_);if(!gate.held)return false;
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||
+           !same(committed_.key,source.key)||!same(committed_.weapon,source.weapon)||
+           !same(committed_.world,source.world)||!same(committed_.controller,source.controller)||
+           !same(committed_.pawn,source.pawn)||!committed_game_.known||committed_game_.main_hand_held||
+           committed_decision_.lease.kind!=LeaseKind::none||committed_decision_.new_grant||
+           !same(committed_game_.object_incumbents[0],Lease{})||!same(committed_game_.object_incumbents[1],Lease{})||
+           !key_valid(committed_))return false;
+        auto now=adapter_.clock_ns(adapter_.context);
+        if(!fresh(committed_,now))return false;
+        // Called only after backend hold has fully verified actor liveness
+        // and the actual logical hold. Do not repeat its expensive reflection
+        // here: every pending read still observes ALL game fields and checks
+        // the sole held-bit transition before withholding its zero output.
+        if(!adapter_.hold_generation_current(adapter_.context,source,generation))return false;
+        now=adapter_.clock_ns(adapter_.context);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
+        hod_posthold_pending_={source.key,source.weapon,generation,epoch};return true;
+    }
     bool source_game_on_gt(FrameKey const& expected,GripGameState& out) noexcept {
         return source_observation_on_gt(expected,out,false);
     }
@@ -602,6 +694,8 @@ public:
         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return false;}
         if(!fresh(committed_,now)){withdraw_expired_pose_gt();return false;}
         if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return false;}
+        now=adapter_.clock_ns(adapter_.context);
+        if(hod_handoff_waiting_locked(current,epoch,now))return false;
         if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
             clear_gt(FrameReadFailure::game_changed,game_difference(current,committed_game_));return false;}
         now=adapter_.clock_ns(adapter_.context);auto snapshot=participant_.snapshot();

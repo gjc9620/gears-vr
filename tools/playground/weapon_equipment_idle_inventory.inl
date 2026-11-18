@@ -21,8 +21,8 @@ bool same(Capture const& a,Capture const& b) noexcept {
        !same(a.nodes[i].next,b.nodes[i].next)||!same(a.nodes[i].slot,b.nodes[i].slot))return false;
     return true;
 }
-bool capture(abi::Frame const& frame,Capture& out) noexcept {
-    Capture c{};const auto manager=playground::pointer(frame.pawn.address,L"InvManager");
+bool capture(uptr manager,Capture& out) noexcept {
+    Capture c{};
     if(!playground::instance(manager,L"WarInventoryManager")||playground::deleted(manager)||
        !identify(nullptr,manager,c.manager)||!typed(manager,L"InventoryChain",L"ObjectProperty",8,c.head)||
        !copy(&c.first,manager+c.head.offset,8))return false;
@@ -51,13 +51,14 @@ bool function_current(Certificate const& c) noexcept {
         script.count==c.script.count&&script.capacity==c.script.capacity&&
         weaponshot::hash_script(script.data,unsigned(script.count),hash)&&hash==c.hash;
 }
-bool read(abi::Frame const& frame,Snapshot& out) noexcept {
-    out={};Capture before{},after{};
-    if(!weaponhand::current_gt(nullptr)||!domain_ready()||
-       playground::pointer(frame.controller.address,L"Pawn")!=frame.pawn.address||
-       playground::pointer(frame.pawn.address,L"Controller")!=frame.controller.address||
-       playground::pointer(frame.pawn.address,L"WorldInfo")!=frame.world.address||
-       playground::pointer(frame.pawn.address,L"Weapon")!=frame.weapon.address||!capture(frame,before))return false;
+// The capture callback selects the manager afresh at BOTH ends. The Frame
+// reader retains its original pawn->manager rereads; the manager-only reader
+// is explicitly bracketed by its caller's independent actor/link checks.
+template<class CaptureCurrent>
+bool read_slots_query(CaptureCurrent&& capture_current,std::array<uptr,4>& slots,
+    abi::ObjectIdentity& observed_manager) noexcept {
+    slots={};observed_manager={};Capture before{},after{};
+    if(!weaponhand::current_gt(nullptr)||!domain_ready()||!capture_current(before))return false;
     const bool cached=certificate.valid&&same(before,certificate.inventory)&&function_current(certificate);
     if(!cached){
         certificate={};playground::Args slot_query(before.manager.address,L"GetWeaponInSlot");Certificate candidate{};
@@ -70,7 +71,7 @@ bool read(abi::Frame const& frame,Snapshot& out) noexcept {
         std::array<std::uint64_t,4> actual{};
         for(unsigned slot=0;slot<4;++slot){uptr item{};
             if(!vrequip::read_slot(before.manager.address,std::uint8_t(slot),item))return false;actual[slot]=item;}
-        if(actual!=before.view.slots||!capture(frame,after)||!same(before,after)){++rejected;return false;}
+        if(actual!=before.view.slots||!capture_current(after)||!same(before,after)){++rejected;return false;}
         candidate.inventory=after;candidate.valid=true;
         if(!function_current(candidate))return false;
         // Metadata correspondence only, not a source permit. Its qualification
@@ -79,14 +80,29 @@ bool read(abi::Frame const& frame,Snapshot& out) noexcept {
         if(log_file&&qualifications<=8){fwprintf(log_file,L"native_equipment_idle_inventory qualified=%llu entries=%u original_queries=4 action_permission=0\n",
             qualifications,after.view.count);fflush(log_file);}
     }else{
-        if(!capture(frame,after)||!same(before,after)||!function_current(certificate)){++rejected;return false;}
+        if(!capture_current(after)||!same(before,after)||!function_current(certificate)){++rejected;return false;}
         ++hits;
     }
+    slots=after.view.slots;observed_manager=after.manager;return true;
+}
+bool read_slots(uptr manager,std::array<uptr,4>& slots,abi::ObjectIdentity& observed_manager) noexcept {
+    return read_slots_query([&](Capture& value) noexcept {return capture(manager,value);},slots,observed_manager);
+}
+bool read(abi::Frame const& frame,Snapshot& out) noexcept {
+    out={};std::array<uptr,4> slots{};abi::ObjectIdentity observed_manager{};
+    if(!weaponhand::current_gt(nullptr)||!domain_ready()||
+       playground::pointer(frame.controller.address,L"Pawn")!=frame.pawn.address||
+       playground::pointer(frame.pawn.address,L"Controller")!=frame.controller.address||
+       playground::pointer(frame.pawn.address,L"WorldInfo")!=frame.world.address||
+       playground::pointer(frame.pawn.address,L"Weapon")!=frame.weapon.address||
+       !read_slots_query([&](Capture& value) noexcept {
+           return capture(playground::pointer(frame.pawn.address,L"InvManager"),value);
+       },slots,observed_manager))return false;
     // This is the reduced OBSERVATION snapshot only. It cannot authorize a
     // switch, sound, new hold or ammo/throwable availability decision.
     out.world=frame.world.address;out.pawn=frame.pawn.address;out.current_weapon=frame.weapon.address;
-    out.weapon_in_slot=after.view.slots;
-    return playground::pointer(frame.pawn.address,L"InvManager")==after.manager.address&&
+    out.weapon_in_slot=slots;
+    return playground::pointer(frame.pawn.address,L"InvManager")==observed_manager.address&&
         playground::pointer(frame.pawn.address,L"Weapon")==frame.weapon.address&&
         playground::pointer(frame.controller.address,L"Pawn")==frame.pawn.address&&
         playground::pointer(frame.pawn.address,L"Controller")==frame.controller.address&&

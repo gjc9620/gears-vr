@@ -13,19 +13,25 @@ inv::Inventory opening;inv::Request completion;lancerreload_state::RewardReceipt
 gears_weapon::FeedInsertionStroke insertion;hand::Lease held{};
 std::uint64_t serial{},animation_serial{},old_item{},new_item{},feed_sequence{},last_intent{};
 std::uint64_t held_after_frame{};
-inv::Identity last_identity{},proposal_identity{};P proposal_gun{},gun_in_right{};
+inv::Identity last_identity{},proposal_identity{};P gun_in_right{};
 bool proposal_known{},released{},extracted{},switch_requested{},standalone{},ui_pending{},native_exited{};
 std::int64_t feed_ns{},closed_tick{},perfect_ms{};
 unsigned sound_dispatched{},preparation_gate{~0u};
 std::uint64_t reported_grip{},accepted_intent{};inv::Identity accepted_identity{};
 struct ContactRead {std::uint64_t frame{},token{};unsigned gate{};double distance{};bool candidate{};};
 ContactRead contact_read;unsigned contact_reports{},last_contact_signature{~0u};
+void guide_tick(hand::Frame const&,hand::GripGameState const&) noexcept;
 void report_contact(unsigned read_failure=0,unsigned difference=0) noexcept {
     if(!contact_read.token||contact_reports>=16)return;
     const auto signature=contact_read.gate|(unsigned(contact_read.candidate)<<8)|(read_failure<<9)|(difference<<17);
     if(signature==last_contact_signature)return;last_contact_signature=signature;++contact_reports;
-    if(log_file){fwprintf(log_file,L"snub_contact_admission frame=%llu token=%llu gate=%u candidate=%u distance=%.9g read_failure=%u game_difference=%u\n",
-        contact_read.frame,contact_read.token,contact_read.gate,unsigned(contact_read.candidate),contact_read.distance,read_failure,difference);fflush(log_file);}
+    // Existing atomic/POD diagnostics only. These observations explain
+    // an already rejected read; they never recover its Frame or part lease.
+    if(log_file){const auto withdrawal=weaponhand::client.withdrawal_on_gt();
+        fwprintf(log_file,L"snub_contact_admission frame=%llu token=%llu gate=%u candidate=%u distance=%.9g read_failure=%u game_difference=%u hand_disarm_reason=%u hand_phase=%u hand_armed=%u stage=%u withdrawal_reason=%u withdrawal_difference=%u withdrawal_frame=%llu withdrawal_sequence=%llu withdrawal_token=%llu\n",
+        contact_read.frame,contact_read.token,contact_read.gate,unsigned(contact_read.candidate),contact_read.distance,read_failure,difference,
+        weaponhand::client.last_disarm_reason(),unsigned(weaponhand::client.phase()),unsigned(weaponhand::client.armed()),unsigned(stage),
+        unsigned(withdrawal.failure),withdrawal.game_difference,withdrawal.frame,withdrawal.sequence,withdrawal.press_token);fflush(log_file);}
 }
 void committed(hand::Frame const& f,hand::Decision const& d) noexcept {
     if(stage!=Stage::idle||!d.new_grant||d.lease.kind!=hand::LeaseKind::magazine||
@@ -105,7 +111,12 @@ bool bind_proposal(hand::Frame const& f) noexcept {
     const P relative{gears_weapon::rotate(inverse,visual::sub(gun.position,right.position)),
         gears_vr::normalized(gears_vr::multiply(inverse,gun.orientation))};
     if(!gears_vr::stereo_pose_valid(relative)||!nativeequipment::current(nullptr,f))return false;
-    gun_in_right=relative;proposal_gun=gun;proposal_identity=inv::identity(f);proposal_known=true;return true;
+    gun_in_right=relative;proposal_identity=inv::identity(f);proposal_known=true;return true;
+}
+void request_contact(hand::Frame const& f,hand::GripGameState& game,bool contact) noexcept {
+    const bool pair_pending=contact&&visual::capture_observation_pending(f);
+    game.request_magazine=contact&&!pair_pending;game.magazine_observation_pending=pair_pending;
+    contact_read.candidate=game.request_magazine;if(pair_pending)contact_read.gate=8;
 }
 void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     if(f.left_grip_down&&playground::instance(f.weapon.address,L"Weap_COGPistol"))contact_read={f.key.frame,f.press_token,1,0,false};
@@ -123,10 +134,8 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     }
     contact_read.gate=4;V left{};double units{};if(!local_left(f,left,units))return;
     if(stage==Stage::charging||((stage==Stage::idle||standalone)&&find_debt(inv::identity(f))>=0)){
-        const auto contact=gears_weapon::rotate(gears_vr::inverse(proposal_gun.orientation),
-            visual::sub(snub_charging::contact_world,proposal_gun.position));
-        game.request_magazine=proposal_known&&proposal_identity==inv::identity(f)&&snub_charging::contact_known&&
-            snub_charging::contact_identity==inv::identity(f)&&visual::length(visual::sub(left,contact))<=.065*units;return;
+        request_contact(f,game,proposal_known&&proposal_identity==inv::identity(f)&&snub_charging::contact_known&&
+            snub_charging::contact_identity==inv::identity(f)&&visual::length(visual::sub(left,snub_charging::contact_local))<=.065*units);return;
     }
     // observe() already holds HandClient's arbitration gate. A recursive
     // visual::current -> nativeequipment::current -> source_game_on_gt here
@@ -137,7 +146,7 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     if(!proposal_known||!(proposal_identity==inv::identity(f))||!visual::generation||
        !(visual::identity==inv::identity(f))||!(visual::gun_key==nativelancerfollow::bound_key)||!visual::same_binding(f))return;
     contact_read.gate=7;contact_read.distance=visual::length(visual::sub(left,visual::nearest(left)))/units;
-    game.request_magazine=contact_read.candidate=contact_read.distance<=.065;
+    contact_read.candidate=contact_read.distance<=.065;request_contact(f,game,contact_read.candidate);
 }
 void reset() noexcept {
     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};held={};
@@ -162,7 +171,7 @@ bool cleanup(unsigned line) noexcept {
     if(visual::held&&!visual::hide())return false;
     if(!snub_part_visibility::restore())return false;
     if(anim::ownership.active&&!anim::restore_closed_snub())return false;
-    if(serial&&!lancerreload_state::recover_owned())return false;
+    if(serial&&!lancerreload_state::recover_serial(serial))return false;
     if(anim::ownership.active&&!(anim::ownership.visual_only?snub_visual_clip::restore():anim::hand_back_after_native_exit()))return false;
     if(transaction.dispatched_request(pending_request)){
         inv::Inventory counts{};if(!observer.sample_owned(pending_request.identity,counts))return false;
@@ -189,10 +198,17 @@ bool finish(hand::Frame const& f) noexcept {
     if(!transaction.confirm_closed(tick,perfect_ms)||(serial&&!transaction.take_request(completion)))return false;
     stage=Stage::completing;held={};return true;
 }
-gears_weapon::FeedResult feed_step(hand::Frame const& f,std::uint64_t item) noexcept {
+gears_weapon::FeedResult feed_step(hand::Frame const& f,std::uint64_t item,
+    visual::FeedObservation const* feed_observation=nullptr) noexcept {
     if(f.controllers.sequence<=feed_sequence)return gears_weapon::FeedResult::rejected;
     gears_weapon::FeedPortMount port{};gears_weapon::FeedSample sample{};
-    if(!visual::feed_sample(f,item,port,sample))return gears_weapon::FeedResult::rejected;
+    if(feed_observation){
+        if(!visual::feed_observation_current(f,item,*feed_observation))return gears_weapon::FeedResult::rejected;
+        port=feed_observation->port;sample=feed_observation->sample;
+    }else if(!visual::feed_sample(f,item,port,sample))return gears_weapon::FeedResult::rejected;
+    // A newer permission frame may see the same original C0 observation.
+    // Ignore it without resetting the stroke or manufacturing a new sample.
+    if(sample.sequence<=feed_sequence||(feed_ns&&sample.monotonic_ns<=feed_ns))return gears_weapon::FeedResult::rejected;
     port.maximum_sample_gap_ns=250000000; // observation continuity, never tracking permission
     if(!feed_ns||sample.monotonic_ns-feed_ns>port.maximum_sample_gap_ns)
         if(!insertion.arm(f.weapon.address,item,f.world.address,f.stereo.space_epoch))return gears_weapon::FeedResult::rejected;
@@ -209,16 +225,45 @@ bool configure_ui(hand::Frame const& f) noexcept {
     }
     return lancerreload_state::tick_ui_timing();
 }
+unsigned acquire_reported_gate=~0u,acquire_reported_curve=~0u,acquire_reported_observe=~0u,acquire_report_count{};
+anim::Acquire acquire_animation(hand::Frame const& f) noexcept {
+    if(!serial)return snub_visual_clip::start(f,animation_serial);
+    if(snub_visual_clip::no_configured_gun_reload(f,serial)){
+        const auto result=snub_visual_clip::start(f,serial,true);
+        snub_animation::acquire_gate=result==anim::Acquire::acquired?0:100+snub_visual_clip::failure;return result;
+    }
+    return snub_animation::acquire(f,serial,snub_charging::curve);
+}
+void report_acquire(hand::Frame const& f,unsigned gate) noexcept {
+    const auto curve=snub_animation::curve_failure,observe=snub_animation::observe_failure;
+    if(!log_file||acquire_report_count>=16||(gate==acquire_reported_gate&&curve==acquire_reported_curve&&observe==acquire_reported_observe))return;
+    acquire_reported_gate=gate;acquire_reported_curve=curve;acquire_reported_observe=observe;++acquire_report_count;
+    fwprintf(log_file,L"snub_acquire_observation frame=%llu sequence=%llu token=%llu serial=%llu gate=%u curve_line=%u observe_line=%u active=%u stopped=%u left_known=%u left_down=%u left_tracked=%u\n",
+        f.key.frame,f.controllers.sequence,f.press_token,serial,gate,curve,observe,unsigned(anim::ownership.active),unsigned(anim::ownership.stopped),
+        f.left_grip_known,f.left_grip_down,f.left_tracked);fflush(log_file);
+}
+void retain_charging_grant(hand::Frame const& f,hand::Decision const& d,
+    snub_charging::Stroke::Phase previous,snub_charging::Result result) noexcept {
+    // A successful fresh slide capture owns this exact committed hand lease.
+    // Report it through the existing incumbent path on the NEXT frame, just
+    // like a held magazine. This neither allocates nor renews a hand grant.
+    if(stage!=Stage::charging||previous!=snub_charging::Stroke::Phase::idle||
+       snub_charging::stroke.phase()!=snub_charging::Stroke::Phase::pulling||
+       result!=snub_charging::Result::waiting||!f.left_grip_known||!d.new_grant||!visual::granted(f,d))return;
+    held=d.lease;held_after_frame=f.key.frame;
+}
 void step(hand::Frame const& f,hand::Decision const& d) noexcept {
     if(stage==Stage::acquiring){
         if(!f.left_grip_known||!f.left_grip_down){cleanup(__LINE__);return;}
         if(!anim::ownership.active){
-            const auto accepted=serial?snub_animation::acquire(f,serial,snub_charging::curve):snub_visual_clip::start(f,animation_serial);
+            const auto accepted=acquire_animation(f);
+            report_acquire(f,snub_animation::acquire_gate);
             if(accepted==anim::Acquire::recovery_required)cleanup(__LINE__);return;
         }
-        if(!anim::ownership.stopped||!anim::restore_closed_snub())return;
+        if(!anim::ownership.stopped){report_acquire(f,6);return;}
+        if(!anim::restore_closed_snub()){report_acquire(f,7);return;}
         if(standalone){stage=Stage::charging;held={};snub_charging::release_seen=false;return;}
-        if(!snub_part_visibility::begin(f,animation_serial))return;
+        if(!snub_part_visibility::begin(f,animation_serial)){report_acquire(f,8);return;}
         stage=Stage::hiding;return;
     }
     if(stage==Stage::hiding){
@@ -232,7 +277,9 @@ void step(hand::Frame const& f,hand::Decision const& d) noexcept {
         if(!finish(f))cleanup(__LINE__);return;
     }
     if(stage==Stage::charging){
+        const auto previous_stroke=snub_charging::stroke.phase();
         const auto result=snub_charging::tick(f,d,animation_serial);
+        retain_charging_grant(f,d,previous_stroke,result);
         if(snub_charging::stroke.actual_full_pull())sound(f,L"CockOpen",4);
         if(snub_charging::stroke.phase()==snub_charging::Stroke::Phase::returning&&snub_charging::issued_full)sound(f,L"CockClose",8);
         if(result==snub_charging::Result::recovery_required){cleanup(__LINE__);return;}
@@ -240,7 +287,7 @@ void step(hand::Frame const& f,hand::Decision const& d) noexcept {
             if(debt_slot>=0)debts[unsigned(debt_slot)]={};
             // Freeze finish before optional sound dispatch consumes the frame.
             if(!finish(f)){cleanup(__LINE__);return;}sound(f,L"CockCloseFinish",16);
-        }
+        }else snub_grasp::slide(f,d,animation_serial);
         return;
     }
     if(!f.left_grip_known)return;
@@ -267,11 +314,15 @@ void step(hand::Frame const& f,hand::Decision const& d) noexcept {
         return;
     }
     if(stage!=Stage::old_magazine&&stage!=Stage::new_magazine)return;
-    if(!visual::granted(f,d)||!hand::same(held,d.lease)||!visual::show(f,d,animation_serial))return;
     const auto item=stage==Stage::old_magazine?old_item:new_item;
-    const auto moved=feed_step(f,item);
+    if(!visual::granted(f,d)||!hand::same(held,d.lease))return;
+    visual::FeedObservation feed_observation{};
+    if(!visual::show_and_feed(f,d,animation_serial,item,feed_observation))return;
+    const auto moved=feed_step(f,item,&feed_observation);
     if(moved==gears_weapon::FeedResult::approaching&&stage==Stage::old_magazine){extracted=true;sound(f,L"EjectClip",1);}
-    if(moved!=gears_weapon::FeedResult::inserted)return;
+    // Optional skin work must not consume the physical observation's original
+    // deadline before its authoritative feed/finish consumer has run.
+    if(moved!=gears_weapon::FeedResult::inserted){snub_grasp::magazine(f,d,item);return;}
     if(stage==Stage::old_magazine){if(!extracted||!transaction.restore_original(old_item)){cleanup(__LINE__);return;}}
     else{
         if(!opening.loaded){debt_slot=reserve_debt(opening.identity);if(debt_slot<0){cleanup(__LINE__);return;}}
@@ -291,7 +342,7 @@ bool tick(uptr pc) noexcept {
     if(stage==Stage::recovering){cleanup(__LINE__);return true;}
     if(stage==Stage::completing){
         if(!native_exited){
-            if(!snub_part_visibility::restore()||!anim::restore_closed_snub()||(serial&&!lancerreload_state::recover_owned())||
+            if(!snub_part_visibility::restore()||!anim::restore_closed_snub()||(serial&&!lancerreload_state::recover_serial(serial))||
                !(anim::ownership.visual_only?snub_visual_clip::restore():anim::hand_back_after_native_exit())){cleanup(__LINE__);return true;}
             native_exited=true;return true;
         }
@@ -343,6 +394,7 @@ bool tick(uptr pc) noexcept {
             if(prepared!=visual::Preparation::ready)return true;
             bind_proposal(f);
         }
+        guide_tick(f,game);
         if(f.left_grip_down&&f.press_token!=reported_grip&&log_file){
             fwprintf(log_file,L"snub_reload_grip token=%llu new=%u status=%u lease=%u accepted=%llu current=%u\n",f.press_token,
                 unsigned(d.new_grant),unsigned(d.status),unsigned(d.lease.kind),accepted_intent,unsigned(debt>=0||visual::current(f)));fflush(log_file);reported_grip=f.press_token;
@@ -371,7 +423,7 @@ bool tick(uptr pc) noexcept {
         if(!transaction.begin(before,old_item,gears_weapon::ReloadIntentSource::magazine_pull,serial,gears_weapon::ReloadTxnMode::magazine,before.capacity,start,old_item)){cleanup(__LINE__);return true;}
         // Stop the original gun clip promptly, before its early magazine
         // notifies. UI/property work belongs to a later stopped-owner frame.
-        if(serial&&snub_animation::acquire(f,serial,snub_charging::curve)==anim::Acquire::recovery_required)cleanup(__LINE__);
+        if(serial&&acquire_animation(f)==anim::Acquire::recovery_required)cleanup(__LINE__);
         return true;
     }
     if(!f.left_tracked){cleanup(__LINE__);return true;}
@@ -379,8 +431,16 @@ bool tick(uptr pc) noexcept {
         const bool setup=ui_pending;if(!configure_ui(f)){cleanup(__LINE__);return true;}if(setup)return true;
     }
     const auto previous=stage;step(f,d);
+    guide_tick(f,game);
     if(stage!=previous&&log_file){fwprintf(log_file,L"snub_reload_transition from=%u to=%u serial=%llu extracted=%u loaded=%u reserve=%u debt=%d\n",
         unsigned(previous),unsigned(stage),serial,unsigned(extracted),transaction.inventory().loaded,transaction.inventory().reserve,debt_slot);fflush(log_file);}
     return true;
 }
+bool pending_work() noexcept {return stage!=Stage::idle;}
+// Service an existing old owner's completion/restoration only. Its pending
+// result must not select or block another weapon's current candidate.
+void service_unselected(uptr pc,uptr selected) noexcept {
+    if(stage!=Stage::idle&&opening.identity.weapon.address!=selected)tick(pc);
+}
 } // namespace snub_runtime
+#include "weapon_snub_guide.inl"

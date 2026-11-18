@@ -8,6 +8,7 @@
 ; its value is preserved, not replaced with the protected bridge's return RA.
 OPTION CASEMAP:NONE
 EXTERN GearsCoverPoseInvokeProtected:PROC
+EXTERN GearsStandalonePoseInvokeProtected:PROC
 .code
 
 POSE_SAVE MACRO Base:REQ, Delta:REQ
@@ -45,7 +46,7 @@ POSE_LOAD MACRO Base:REQ, Delta:REQ
     mov r10, [Base+Delta+028h]
     mov r11, [Base+Delta+030h]
 ENDM
-POSE_THUNK MACRO Name:REQ, Kind:REQ
+POSE_THUNK MACRO Name:REQ, Kind:REQ, Bridge:REQ
     PUBLIC Name
 Name PROC FRAME
     push rbp
@@ -59,14 +60,15 @@ Name PROC FRAME
     mov r8, [rbp+008h]
     lea rcx, [rsp+020h]
     mov edx, Kind
-    call GearsCoverPoseInvokeProtected
+    call Bridge
     POSE_LOAD rsp, 020h
     lea rsp, [rbp]
     pop rbp
     ret
 Name ENDP
 ENDM
-POSE_THUNK GearsCoverPoseComposeHook, 0
-POSE_THUNK GearsCoverPosePhysicsHook, 1
-POSE_THUNK GearsCoverPoseTickHook, 2
+POSE_THUNK GearsCoverPoseComposeHook, 0, GearsCoverPoseInvokeProtected
+POSE_THUNK GearsCoverPosePhysicsHook, 1, GearsCoverPoseInvokeProtected
+POSE_THUNK GearsCoverPoseTickHook, 2, GearsCoverPoseInvokeProtected
+POSE_THUNK GearsStandalonePoseHook, 3, GearsStandalonePoseInvokeProtected
 END

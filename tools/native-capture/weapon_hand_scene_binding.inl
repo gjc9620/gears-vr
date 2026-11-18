@@ -16,13 +16,17 @@ struct Binding {
     gears_anchor::Identity controller{},pawn{},mesh{},world{},weapon{};
     uint64_t world_generation{},scene_invocation{};unsigned char special_move{};
     bool weapon_known=false,context_valid=false,shared_actor_world=false;
+    // Derived from the ALREADY read and closing-checked weapon ClassPath.
+    // No extra object/name read or new lifetime permission.
+    bool weapon_class_known=false,weapon_is_lancer=false;
     bool actor_or_mesh_fields_written=false,atomic_snapshot_verified=false;
 };
 // Identity key for two successful samples, including typed known-empty Weapon.
 // Invocation and SpecialMove are per-Scene/policy inputs, not identity keys.
 // Equality never replaces the next sample's current Scene/metadata proof.
 bool same_key(Binding const& a,Binding const& b){return a.context_valid&&b.context_valid&&a.weapon_known&&b.weapon_known&&
-    a.world_generation&&a.world_generation==b.world_generation&&gears_anchor::equal_identity(a.controller,b.controller)&&
+    a.world_generation&&a.world_generation==b.world_generation&&
+    a.weapon_class_known==b.weapon_class_known&&a.weapon_is_lancer==b.weapon_is_lancer&&gears_anchor::equal_identity(a.controller,b.controller)&&
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&
     gears_anchor::equal_identity(a.world,b.world)&&gears_anchor::equal_identity(a.weapon,b.weapon);}
 // Camera-only binding cannot authorize weapon/pose operations: those require
@@ -44,7 +48,7 @@ bool reject(Reason r){last_reason=r;return false;}
 gears_anchor::Config metadata{};
 std::array<unsigned char,sizeof(gears_anchor::Config)> metadata_bytes{};
 bool metadata_ready{};
-uint64_t metadata_generation{};
+uint64_t metadata_generation{},metadata_revision{};
 std::atomic<unsigned> game_thread{}; // First SUCCESSFUL admitted Scene latches GT.
 std::mutex mutex;
 template<class T>bool read(T& out,uintptr_t address){return address&&address<=UINTPTR_MAX-sizeof(T)&&safe_copy(&out,reinterpret_cast<void const*>(address),sizeof(T));}
@@ -106,6 +110,30 @@ struct Proof {
     std::array<Property,5> fields{};std::array<gears_anchor::Identity,2> keys{};
     unsigned attempts{};uint64_t last_attempt{};bool attempted{},ready{};
 } base_proof,instigator_proof;
+#if defined(GEARS_ANCHOR_CONFIG_REVISION) && GEARS_ANCHOR_CONFIG_REVISION
+bool synchronize_metadata(){
+    static_assert(std::is_trivially_copyable_v<gears_anchor::Config>);
+    const auto revision=anchor_config_owner::revision();
+    const auto generation=committed_world_generation.load();
+    if(!revision||!generation)return false;
+    if(metadata_ready&&metadata_generation==generation&&metadata_revision==revision)
+        return revision==anchor_config_owner::revision()&&generation==committed_world_generation.load();
+    gears_anchor::Config current_config{};memcpy(&current_config,&anchor_config,sizeof current_config);
+    if(!generation||!current_config.objects_header||!current_config.names_header||!current_config.identity_count||
+       current_config.identity_count>current_config.identities.size()||current_config.role_controller>=current_config.identity_count||
+       current_config.role_pawn>=current_config.identity_count||current_config.role_camera>=current_config.identity_count||
+       current_config.role_local>=current_config.identity_count||current_config.role_level>=current_config.identity_count||
+       current_config.object_internal_index>92||current_config.object_name>88||current_config.object_class>88||current_config.object_outer>88||
+       current_config.field_super>0x1000||current_config.name_entry_index>0x1000||current_config.name_entry_text>0x1000)return false;
+    if(!metadata_ready||metadata_generation!=generation||metadata_revision!=revision){
+        memcpy(&metadata,&current_config,sizeof metadata);memcpy(metadata_bytes.data(),&current_config,sizeof current_config);
+        metadata_generation=generation;metadata_revision=revision;metadata_ready=true;base_proof={};instigator_proof={};
+    }
+    return revision==anchor_config_owner::revision()&&generation==committed_world_generation.load();
+}
+bool metadata_current(){return metadata_ready&&metadata_generation&&metadata_generation==committed_world_generation.load()&&
+    metadata_revision&&metadata_revision==anchor_config_owner::revision();}
+#else
 bool synchronize_metadata(){
     static_assert(std::is_trivially_copyable_v<gears_anchor::Config>);
     gears_anchor::Config current_config{};memcpy(&current_config,&anchor_config,sizeof current_config);
@@ -124,6 +152,7 @@ bool synchronize_metadata(){
 }
 bool metadata_current(){return metadata_ready&&metadata_generation&&metadata_generation==committed_world_generation.load()&&
     !memcmp(metadata_bytes.data(),&anchor_config,sizeof anchor_config);}
+#endif
 uint64_t system_ms(){return GetTickCount64();}
 uint64_t (*clock_ms)()=system_ms; // Private offline test clock; production uses system_ms.
 bool remember(Proof& p,gears_anchor::Identity const& id){
@@ -166,11 +195,40 @@ bool property(Proof& p,uintptr_t start,const wchar_t* name,const wchar_t* proper
         if(!source_field(p,owner,owner,metadata.field_super))return false;
     }return false;
 }
+bool source_loop_original(Proof const& p){
+    if(p.source_count>p.sources.size())return false;
+    for(unsigned i=0;i<p.source_count;++i){auto const& s=p.sources[i];std::array<unsigned char,8> bytes{};
+        if(!s.size||s.size>s.bytes.size()||!range(s.address,s.size)||!safe_copy(bytes.data(),reinterpret_cast<void const*>(s.address),s.size)||memcmp(bytes.data(),s.bytes.data(),s.size))return false;}
+    return true;
+}
+// POD-only SEH boundary. Every original source is read in original order.
+// No padding, cached result, or cross-call observation is introduced.
+__declspec(noinline) bool source_loop_exact(Proof const& p){
+    __try {
+        if(p.source_count>p.sources.size())return false;
+        for(unsigned i=0;i<p.source_count;++i){auto const& s=p.sources[i];
+            if(!s.size||s.size>s.bytes.size()||!range(s.address,s.size))return false;
+            if(s.size==8){uint64_t expected;memcpy(&expected,s.bytes.data(),8);
+                const auto actual=*reinterpret_cast<uint64_t const volatile __unaligned*>(s.address);if(actual!=expected)return false;}
+            else if(s.size==4){uint32_t expected;memcpy(&expected,s.bytes.data(),4);
+                const auto actual=*reinterpret_cast<uint32_t const volatile __unaligned*>(s.address);if(actual!=expected)return false;}
+            else {for(unsigned k=0;k<s.size;++k)if(*reinterpret_cast<unsigned char const volatile*>(s.address+k)!=s.bytes[k])return false;}
+        }
+        return true;
+    }__except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
 bool current(Proof const& p){
     for(unsigned i=0;i<p.identity_count;++i){gears_anchor::Identity id{};if(!identity(p.identities[i].address,id)||!same(id,p.identities[i]))return false;}
-    for(unsigned i=0;i<p.source_count;++i){auto const& s=p.sources[i];std::array<unsigned char,8> bytes{};
-        if(!safe_copy(bytes.data(),reinterpret_cast<void const*>(s.address),s.size)||memcmp(bytes.data(),s.bytes.data(),s.size))return false;}
-    return true;
+#if defined(GEARS_SCENE_BINDING_SOURCE_LOOP_USE_READER) && GEARS_SCENE_BINDING_SOURCE_LOOP_USE_READER
+    // Explicit offline fixture seam: its safe_copy failure/observer hooks remain reader tests.
+    return source_loop_original(p);
+#else
+    // Aggregate timing is separate from individual safe_copy reads.
+#if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
+    gears_render_cost::Scope source_loop_cost(gears_render_cost::metadata_source_loop);
+#endif
+    return source_loop_exact(p);
+#endif
 }
 void keys(Proof& p,gears_anchor::Identity const& first,gears_anchor::Identity const& second={}){
     if(!same(p.keys[0],first)||!same(p.keys[1],second)){p={};p.keys={first,second};}
@@ -249,6 +307,9 @@ bool values(Context& c,bool visual_only=false){
     if(!field(weapon,result.pawn.address,p.fields[2].offset)||!field(result.special_move,result.pawn.address,p.fields[4].offset))return reject(Reason::weapon);
     if(weapon){
         if(!identity(weapon,result.weapon,true)||!derives(result.weapon.cls,L"WarWeapon",p.fields[2].reference.address,c.paths[3]))return reject(Reason::weapon);
+        result.weapon_class_known=true;result.weapon_is_lancer=false;
+        for(unsigned i=0;i<c.paths[3].count;++i)
+            result.weapon_is_lancer=result.weapon_is_lancer||named(c.paths[3].ids[i],L"Weap_AssaultRifle");
         gears_anchor::Identity cls{};if(!identity(result.weapon.cls,cls))return reject(Reason::weapon);if(!prepare_instigator(cls))return false;
         stage="current_instigator";ClassPath pawn_type{};
         if(!derives(result.pawn.cls,L"WarPawn",instigator_proof.fields[0].reference.address,pawn_type)||
@@ -262,6 +323,7 @@ bool same_context(Context const& a,Context const& b){auto const& x=a.binding;aut
     if(!gears_anchor::equal_binding(a.possession,b.possession)||!same(x.controller,y.controller)||!same(x.pawn,y.pawn)||
        !same(x.mesh,y.mesh)||!same(x.world,y.world)||!same(x.weapon,y.weapon)||
        x.world_generation!=y.world_generation||x.scene_invocation!=y.scene_invocation||x.special_move!=y.special_move||a.instigator!=b.instigator||
+       x.weapon_class_known!=y.weapon_class_known||x.weapon_is_lancer!=y.weapon_is_lancer||
        !cohort(a.objects,b.objects)||!cohort(a.names,b.names))return false;
     for(unsigned i=0;i<a.paths.size();++i)if(!same_path(a.paths[i],b.paths[i]))return false;return true;
 }

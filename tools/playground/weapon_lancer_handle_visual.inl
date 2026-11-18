@@ -117,6 +117,7 @@ bool prepare(hand::Frame const& f) noexcept try {
        result.result!=code||!result.handle){failure=100+result.binding_gate;return false;}
     control={};control.handle=result.handle;control.cookie=f.key.registration_cookie;failure=0;report(&result);return true;
 }catch(...){revoking=true;return false;}
+std::uint64_t current_handle() noexcept {return control.handle;}
 bool ready_for(hand::Frame const& f) noexcept {
     return asset::gt()&&!revoking&&!stop_requested.load()&&control.handle&&
         control.cookie==f.key.registration_cookie&&asset::same_weapon(weapon,f);

@@ -401,7 +401,10 @@ bool release_completed([[maybe_unused]] wh::Frame const* normal_source) noexcept
     if(current.index!=firing.index||current.number!=firing.number){pending_fire.event.reset();handoff_stage=0;return true;}
     unsigned reason{};
     handoff_stage=5;if(!original_loop(r,game.actors.weapon.address,pending_fire.refire,reason))return false;
-    playground::Args should(game.actors.weapon.address,L"ShouldRefire");unsigned slot{};meta::Structure structure{};
+    // This retained event admits Lancer only (capture_initial/defer). Keep the
+    // existing class function lookup; no incomplete second-weapon state branch.
+    auto should=playground::Args(game.actors.weapon.address,L"ShouldRefire");
+    unsigned slot{};meta::Structure structure{};
     meta::Property result{};const auto field=should.prop(L"ReturnValue");
     handoff_stage=61;if(!should.valid||should.r.size!=4||!field||
        !weapon_function(r,should.r.function,L"ShouldRefire",slot,structure,true)||

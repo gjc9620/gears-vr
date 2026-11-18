@@ -6,6 +6,8 @@ using Counts=lancerreload_inventory::Counts;
 std::atomic<bool> outstanding{},stop_requested{};
 struct Journal {
     hand::Frame source{};hand::ExistingActionLifetime lifetime{};
+    grenade_cleanup_context::Anchor cleanup_anchor{};
+    hand::Frame cleanup_source{};hand::ExistingActionLifetime cleanup_lifetime{};
     frag_original::Entry press{},release{},target{},prepare{},stop{},mode{};
     hand::ObjectIdentity projectile{};
     Name l2{};Counts before{};
@@ -40,9 +42,46 @@ bool name_current(Name const& value) noexcept {
         gripdamage_metadata::fresh_name(names,value.index,text)&&gripdamage_metadata::exact_text(text,L"L2");
 }
 bool owed() noexcept {return outstanding.load(std::memory_order_acquire);}
+// Negative cleanup only: a new AUTHENTIC current parent may finish the
+// exact already-dispatched preparation after its old input epoch was revoked.
+// Never replace journal.source/lifetime: launch/completion still use those.
+bool stop_source(hand::Frame const*& source,hand::ExistingActionLifetime const*& lifetime,unsigned& refusal) noexcept {
+    source=&journal.source;lifetime=&journal.lifetime;refusal=0;
+    if(!nativeequipment::restoration_quiet()){refusal=2;return false;}
+    unsigned old_failure{};
+    if(weaponhand::client.existing_action_lifetime_on_gt(journal.lifetime,&old_failure))return true;
+    refusal=100+old_failure;
+    if(old_failure!=3||!journal.dispatched||
+       !weaponhand::client.registration_alive(journal.source.key.registration_cookie,journal.source.key.native_started_qpc))return false;
+    if(journal.cleanup_lifetime.epoch&&
+       weaponhand::client.existing_action_lifetime_on_gt(journal.cleanup_lifetime)){
+        source=&journal.cleanup_source;lifetime=&journal.cleanup_lifetime;refusal=0;return true;
+    }
+    hand::Frame fresh{};
+    if(!weaponhand::client.copy_frame_on_gt(fresh)||!nativeequipment::current(nullptr,fresh)){refusal=310;return false;}
+    auto expected=journal.lifetime.parent;expected.key.frame=fresh.key.frame;
+    // This preserves every old parent/key/actor/reference comparison. Only
+    // the actual newer Native frame number may advance, as in the existing
+    // action-lifetime reader. No old pose/input stamp is copied into fresh.
+    if(fresh.key.frame<journal.source.key.frame||!hand::equipment_matches(fresh,expected)){refusal=311;return false;}
+    hand::ExistingActionLifetime captured{};
+    if(!weaponhand::client.capture_existing_action_lifetime_on_gt(fresh.key,captured)||
+       !nativeequipment::current(nullptr,fresh)||!weaponhand::client.existing_action_lifetime_on_gt(captured)){
+        refusal=312;return false;
+    }
+    journal.cleanup_source=fresh;journal.cleanup_lifetime=captured;
+    static unsigned reports{};
+    if(log_file&&reports++<8){
+        fwprintf(log_file,L"frag_cleanup_current_parent old_epoch=%llu cleanup_epoch=%llu old_frame=%llu cleanup_frame=%llu sequence=%llu input_sync_ns=%lld weapon=%llx negative_only=1\n",
+            journal.lifetime.epoch,captured.epoch,journal.source.key.frame,fresh.key.frame,
+            fresh.controllers.sequence,fresh.controllers.sync_ns,fresh.weapon.address);fflush(log_file);
+    }
+    source=&journal.cleanup_source;lifetime=&journal.cleanup_lifetime;refusal=0;return true;
+}
 bool stop() noexcept {
     if(!weaponhand::current_gt(nullptr))return false;
     if(!owed())return true;
+    bool used_anchor{};
     // These are idempotent release/stop operations, never a throw retry.
     // Clearing targeting after ButtonRelease also handles stock toggle mode.
     // StopSpin follows both, so the stock targeting callback cannot restart it.
@@ -60,9 +99,24 @@ bool stop() noexcept {
     };
     if(!proven_up()){
         if(!name_current(journal.l2))return false;
-        if(journal.key_owed)(void)frag_original::release_existing(journal.source,journal.lifetime,journal.release,journal.l2);
-        if(journal.target_owed)(void)frag_original::release_existing(journal.source,journal.lifetime,journal.target);
-        if(journal.spin_owed)(void)frag_original::release_existing(journal.source,journal.lifetime,journal.stop);
+        hand::Frame const* cleanup_source{};hand::ExistingActionLifetime const* cleanup_lifetime{};
+        unsigned source_refusal{};
+        if(!stop_source(cleanup_source,cleanup_lifetime,source_refusal)){
+            if(!(journal.dispatched&&journal.cleanup_anchor.current(journal.source,journal.token,journal.hold))){
+                static unsigned reports{};
+                if(log_file&&reports++<8){fwprintf(log_file,L"frag_stop_source_refusal reason=%u frame=%llu epoch=%llu token=%llu\n",
+                    source_refusal,journal.source.key.frame,journal.lifetime.epoch,journal.token);fflush(log_file);}
+                return false;
+            }
+            used_anchor=true;
+            if(journal.key_owed)(void)frag_original::release_anchored(journal.source,journal.cleanup_anchor,journal.token,journal.hold,journal.release,journal.l2);
+            if(journal.target_owed)(void)frag_original::release_anchored(journal.source,journal.cleanup_anchor,journal.token,journal.hold,journal.target);
+            if(journal.spin_owed)(void)frag_original::release_anchored(journal.source,journal.cleanup_anchor,journal.token,journal.hold,journal.stop);
+        }else{
+            if(journal.key_owed)(void)frag_original::release_existing(*cleanup_source,*cleanup_lifetime,journal.release,journal.l2);
+            if(journal.target_owed)(void)frag_original::release_existing(*cleanup_source,*cleanup_lifetime,journal.target);
+            if(journal.spin_owed)(void)frag_original::release_existing(*cleanup_source,*cleanup_lifetime,journal.stop);
+        }
         // ButtonRelease/target callbacks can already clear all four original
         // states and retire their pose association. A later redundant stop
         // then loses that old Frame witness. Settle only from the double-read
@@ -70,6 +124,15 @@ bool stop() noexcept {
         // alone or a fabricated replacement lifetime. Any bit still owned
         // retains this cleanup debt and its existing guards.
         if(!proven_up())return false;
+    }
+    if(!nativeequipment::stow_native::sync_input_fence_after_grenade_stop(false))return false;
+    if(!journal.cleanup_anchor.retire(journal.token,journal.hold,true))return false;
+    if(used_anchor){
+        static unsigned anchor_stop_reports{};
+        if(log_file&&anchor_stop_reports++<8){
+            fwprintf(log_file,L"frag_cleanup_incarnation serial=%llu hold=%llu weapon=%llx terminal_mode8_neutral=1 old_epoch_unchanged=1\n",
+                journal.token,journal.hold,journal.source.weapon.address);fflush(log_file);
+        }
     }
     journal.key_owed=journal.target_owed=journal.spin_owed=journal.prepared=false;
     outstanding.store(false,std::memory_order_release);return true;
@@ -111,12 +174,17 @@ Result begin(hand::Frame const& f,gears_weapon::BoloGrenadeInteraction& owner) n
        !frag_original::bind(f.weapon.address,frag_original::Method::mode,next.mode)||
        !frag_original::projectile_class(f,next.projectile)||
        !weaponhand::client.capture_existing_action_lifetime_on_gt(f.key,next.lifetime)||
+       (grenade_cleanup_context::available()&&!next.cleanup_anchor.capture_before_input(f,next.token,next.hold))||
        !nativeequipment::current(nullptr,f)||vrequip::model.hold_generation()!=next.hold)return result;
     const auto taken=owner.take_request();result.token_taken=bool(taken);
     if(!taken||taken->token!=request.token||taken->binding!=next.binding)return result;
     journal=next;result.before=next.before;result.executed_ns=weaponhand::clock_ns(nullptr);
     if(!request.executable_at(result.executed_ns,request.identity,next.binding,request.motion_epoch,request.reference_generation))return result;
     // Establish release debt BEFORE any dispatcher can enter original code.
+    // Arm the EXISTING Native original-button veto before the original
+    // preparation can own L2/target/spin. Old actors remain intact until GT
+    // cancellation below disarms it; no new input producer or hook is added.
+    if(!nativeequipment::stow_native::input_fence(true))return result;
     outstanding.store(true,std::memory_order_release);
     journal.key_owed=journal.target_owed=journal.spin_owed=true;
     bool invoked{};bool okay=frag_original::button(f,journal.press,journal.l2,&invoked);
@@ -129,6 +197,7 @@ Result begin(hand::Frame const& f,gears_weapon::BoloGrenadeInteraction& owner) n
     if(okay&&!actual.spinning){okay=frag_original::call(f,journal.prepare,nullptr,0,nullptr,&invoked);journal.dispatched|=invoked;}
     if(okay)okay=state(f,actual)&&actual.key&&actual.controller_target&&actual.pawn_target&&actual.spinning&&
         inventory(f,result.after)&&result.after==journal.before&&nativeequipment::current(nullptr,f);
+    journal.cleanup_anchor.record_dispatched(journal.token,journal.hold,journal.dispatched);
     journal.prepared=okay;result.prepared=okay;result.dispatched=journal.dispatched;
     result.preparation_serial=okay?journal.token:0;
     if(!okay){result.cleanup_complete=stop();(void)inventory(f,result.after);}

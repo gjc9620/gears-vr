@@ -518,10 +518,13 @@ void blend_before(uintptr_t self,Scope const& scope){
         if(!prepare_layout(id,binding))return;layout_ready=true;}
     uintptr_t pawn_mesh{},world{};unsigned char ct{},sm{};gears_anchor::Identity mesh_id{},world_id{};Children children{},after{};
     if(!metadata_current()||!field(pawn_mesh,binding.pawn.address,layout.mesh)||pawn_mesh!=mesh||!identity(mesh,mesh_id,true)||
-       !field(ct,binding.pawn.address,layout.cover)||ct!=2||!field(sm,binding.pawn.address,layout.special)||sm!=0||
+       !field(ct,binding.pawn.address,layout.cover)||(ct!=1&&ct!=2)||!field(sm,binding.pawn.address,layout.special)||sm!=0||
        !field(world,binding.pawn.address,layout.world)||!identity(world,world_id,true)||world_id.outer!=binding.level||
        !children_at(self,children)||children.count<=int(endpoint_for(pose_profile))||!children_at(self,after)||!equal(children,after)){++rejected;return;}
     if(!game_thread.load()){game_thread=thread;service_entry(self);}
+    // Both retail cover types authenticate the shared read-only neutral-eye
+    // provider's thread. Legacy endpoint/weight injection remains low-only.
+    if(ct!=2)return;
     tick={self,binding.pawn.address,mesh,world,id,children,initial_world,false};
 }
 bool animations_current(){
@@ -754,7 +757,11 @@ bool configure(const wchar_t* ini,FILE* file){
 void request_drain(){if(!enabled)return;std::lock_guard<std::mutex> lock(mutex);stopping=true;ULONGLONG empty{};drain_tick.compare_exchange_strong(empty,GetTickCount64());}
 unsigned pending_count(){return pending.load()+in_flight.load()+transactions.load();}
 bool draining(){return enabled&&pending_count()&&GetTickCount64()-drain_tick.load()<5000;}
-bool drain_failed(){return enabled&&stopping.load()&&drain_tick.load()&&pending_count()&&!draining();}
+bool drain_failed(){
+    if(!enabled||!stopping.load())return false;
+    const auto tick=drain_tick.load(),stamp=GetTickCount64();
+    return tick&&stamp>=tick&&stamp-tick>=5000&&pending_count()!=0;
+}
 bool proof_failed(){return failed.load()||external_change.load();}
 void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_pose_profile=%s cover_body_endpoint_child=%u cover_body_target_source=%s cover_body_live_published=%llu cover_body_live_rejected=%llu cover_body_live_expired=%llu cover_body_live_invalidated=%llu cover_body_live_frame=%llu cover_body_live_u=%.9g cover_body_live_reject=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,profile_name(pose_profile),endpoint_for(pose_profile),source_name(target_source),live_published.load(),live_rejected.load(),live_expired.load(),live_invalidated.load(),static_cast<unsigned long long>(live_last_frame.load()),double(live_last_u.load()),unsigned(live_last_reject.load()),layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
 void print(FILE* file,bool disabled){

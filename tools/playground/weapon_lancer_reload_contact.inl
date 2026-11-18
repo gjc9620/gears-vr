@@ -2,6 +2,13 @@
 // calls the client (it already holds its gate), setters or inventory functions.
 namespace lancerreload_contact {
 namespace hand=gears_weapon_hand;
+bool authored_profile_current(hand::Frame const& f) noexcept {
+    // Association only; the caller still proves its fresh visual/input frame.
+    // A shared reload adapter must not apply this Lancer export to another gun.
+    return nativelancerfollow::bound_key_known&&nativelancerfollow::bound_is_lancer&&
+        hand::same(nativelancerfollow::bound_key.weapon,f.weapon)&&
+        nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation();
+}
 gears_weapon::LancerContactRoute mechanism_route;
 bool dispatch_enabled{true}; // Same production consumer; package promotion follows runtime evidence.
 bool waiting_ammo{};
@@ -10,6 +17,10 @@ bool waiting_ammo{};
 gears_weapon::ReloadSupplyRejection empty_supply;
 bool resume_original{};
 unsigned sample_failure{},match_status{};
+// Existing once-per-press receipt only: already-read POD, no extra sampler.
+struct CohortFailure {unsigned why{},control{},old_active{},new_active{},old_press{},new_press{},old_release{},new_release{},old_down{},new_down{};
+    std::uint64_t old_sequence{},new_sequence{};std::int64_t old_sync{},new_sync{};};
+CohortFailure cohort_failure;
 std::int64_t last_geometry_ns{};
 gears_committed_interaction::Frame last_actual{};
 gears_vr::Vector last_magazine_position{};
@@ -108,7 +119,7 @@ bool completed_sample(gears_committed_interaction::Frame const& actual,bool grip
     return out.created_ms&&out.sequence;
 }
 bool sample(hand::Frame const& f,gears_weapon::LancerInsertionSample& out,bool* observation_pending=nullptr) noexcept {
-    out={};sample_failure=2;
+    out={};sample_failure=2;cohort_failure={};
     if(observation_pending)*observation_pending=false;
     gears_committed_interaction::Frame actual{};
     if(!lancerreload_visual::interaction(f,actual)){
@@ -116,6 +127,22 @@ bool sample(hand::Frame const& f,gears_weapon::LancerInsertionSample& out,bool* 
         return false;
     }
     if(!gears_committed_interaction::same_left_control_cohort(actual,f)){
+        auto const& a=actual.right.controllers;auto const& b=f.controllers;
+        const auto control=hand::left_control(f);auto const& old=a.hands[0];auto const& now=b.hands[0];
+        auto& d=cohort_failure;d.control=control;d.old_sequence=a.sequence;d.new_sequence=b.sequence;
+        d.old_sync=a.sync_ns;d.new_sync=b.sync_ns;
+        d.old_active=control==gears_vr::control_trigger?old.trigger_active:old.squeeze_active;
+        d.new_active=control==gears_vr::control_trigger?now.trigger_active:now.squeeze_active;
+        d.old_press=old.pressed[control];d.new_press=now.pressed[control];
+        d.old_release=old.released[control];d.new_release=now.released[control];
+        d.old_down=hand::control_held(old,control);d.new_down=hand::control_held(now,control);
+        // Classify the existing failed predicate; do not alter its decision.
+        d.why=f.interaction_control>unsigned(gears_vr::LeftInteractionControl::pinch)?1u:
+            a.source!=b.source||a.session!=b.session||a.space_epoch!=b.space_epoch||
+            a.input_epoch!=b.input_epoch||a.profile_generation!=b.profile_generation?2u:
+            a.sequence>b.sequence?3u:a.sync_ns>b.sync_ns?4u:
+            d.old_active!=1||d.new_active!=1?5u:d.old_press!=d.new_press?6u:
+            d.old_release!=d.new_release?7u:d.old_down!=d.new_down?8u:9u;
         sample_failure=3;if(observation_pending)*observation_pending=true;return false;
     }
     return completed_sample(actual,f.left_tracked&&f.left_grip_known&&f.left_grip_down,out);
@@ -182,18 +209,13 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
             }
             unsigned contacts=game.request_magazine?unsigned(purpose):0u;
             double starter_distance{};
-            if(lancersaw_starter::propose(frame,game,&starter_distance)){
-                // Grip now also acquires the magazine. Overlapping generous
-                // volumes choose the actually nearer part, not an ambiguous
-                // multi-purpose grant or a hidden priority for C.
-                if(contacts==unsigned(gears_weapon::LancerContact::magazine))
-                    // A hand already auto-fitted to C should grasp C on the
-                    // real Grip edge. Cosmetic unfolding changes the visible
-                    // point's distance; it must not turn that input into a
-                    // magazine grab. C's actual contact above is still needed.
-                    contacts=!lancer_grasp::selected_starter(frame)&&magazine_distance<=starter_distance?
-                        contacts:unsigned(gears_weapon::LancerContact::starter);
-                else contacts|=unsigned(gears_weapon::LancerContact::starter);
+            const bool starter_available=lancersaw_starter::propose(frame,game,&starter_distance);
+            const auto resolved=gears_weapon::resolve_lancer_starter_proposal(contacts,
+                lancer_grasp::selected_starter(frame),starter_available,magazine_distance,starter_distance);
+            contacts=resolved.candidates;
+            if(resolved.observation_pending){
+                game.request_magazine=false;game.magazine_observation_pending=true;
+                mechanism_route.propose(frame,0);return;
             }
             const auto selected=mechanism_route.propose(frame,contacts);
             game.request_magazine=selected!=gears_weapon::LancerContact::none&&selected!=gears_weapon::LancerContact::conflict;
@@ -240,8 +262,11 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
         const gears_vr::Pose body{f.stereo.head.position,f.reference.orientation};
         const auto& left=f.controllers.hands[0];
         if(gears_vr::controller_pose_usable(left.grip,left.grip_flags,left.grip_active))
-            game.request_ammo=gears_weapon::body_slot(nativeequipment::calibration,body,left.grip.position,0)==
-                gears_weapon::BodySlot::shoulder_ammo;
+            game.request_ammo=gears_lancer_workbench_profile::shoulder_supply_enabled&&authored_profile_current(f)?
+                gears_lancer_shoulder_supply::contains(
+                    {gears_lancer_workbench_profile::shoulder_adjust,gears_lancer_workbench_profile::shoulder_scale},
+                    body,left.grip.position):
+                gears_weapon::body_slot(nativeequipment::calibration,body,left.grip.position,0)==gears_weapon::BodySlot::shoulder_ammo;
         return;
     }
     if(resume_original){
@@ -268,7 +293,8 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     if(!gears_weapon::lancer_insertion_geometry(s,geometry))return;
     last_geometry=geometry;
     game.request_magazine=gears_weapon::lancer_magazine_grab(s.gun_mesh,
-        last_actual.physical_left_grip.position,last_actual.right.units_per_metre,&tag.magazine_distance);
+        last_actual.physical_left_grip.position,last_actual.right.units_per_metre,&tag.magazine_distance,
+        authored_profile_current(f)?gears_lancer_workbench_profile::magazine():nullptr);
     if(game.request_magazine){
         double support_distance{};
         if(hand::support_contact(f,game,false,&support_distance)&&support_distance<tag.magazine_distance)

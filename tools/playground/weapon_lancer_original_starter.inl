@@ -1,4 +1,4 @@
-// Read-only current geometry consumer; the existing Native decoder remains
+// Read-only current geometry consumer; the existing Native Compose owner remains
 // the sole bone writer. No added T-grip, cord, material or second evaluator.
 namespace lancersaw_visual {
 namespace api=gears_lancer_original_handle;namespace hand=gears_weapon_hand;
@@ -12,7 +12,9 @@ std::int64_t last_pose_ns{};double deployment_angle{};
 api::DisplayTarget accepted_pose{};bool accepted_pose_known{};
 void report() noexcept {
     static unsigned previous{~0u},rows{};const unsigned state=failure*4+unsigned(ready)+2*unsigned(visible);
-    if(log_file&&rows<32&&state!=previous){
+    // Reserve the last eight existing rows for restoration failures.
+    // Ordinary ready/pending alternation must not consume the error budget.
+    if(log_file&&rows<(failure>=1000?32u:24u)&&state!=previous){
         fwprintf(log_file,L"lancer_starter_visual gate=%u ready=%u visible=%u generation=%llu original_bone=4 added_cord=0 retained=%u\n",
             failure,unsigned(ready),unsigned(visible),generation,outstanding.load());fflush(log_file);++rows;
     }previous=state;
@@ -28,6 +30,10 @@ bool same_binding(hand::Frame const& f) noexcept {
     return control.handle&&key.registration_cookie==f.key.registration_cookie&&key.lifecycle==f.key.lifecycle&&
         key.game_start==f.key.game_start&&key.native_started_qpc==f.key.native_started_qpc&&
         key.world_generation==f.key.world_generation&&asset::same_weapon(owner,f);
+}
+bool defer_closed_reload(hand::Frame const& f) noexcept {
+    return (!live()||same_binding(f))&&api::defer_closed_reload(live(),stop_requested.load(),revoking,
+        closed.known,accepted_pose_known,accepted_pose,deployment_angle);
 }
 // A missing current interaction frame hides the cue/contact, not the owned
 // bone resource. Hard binding changes and stop still use the normal drain.
@@ -48,8 +54,9 @@ bool reset_after_drain() noexcept {
     if(live())return false;stop_requested.store(false,std::memory_order_release);return true;
 }
 struct Observation {
-    gears_vr::Vector rest{},grasp{},pivot{},axis{};
+    gears_vr::Vector rest{},grasp{},closed_grasp{},pivot{},axis{};
     double angle{},pull_raw{},scale{};bool deployed{};std::array<float,16> gun{};unsigned epoch{};
+    api::Matrix part_delta{};
 };
 // All accesses are bounded reads. In particular this can run in Native's
 // proposal callback: no GetBoneMatrix/ProcessEvent or broker reentrancy.
@@ -84,12 +91,13 @@ bool observe(hand::Frame const& f,Observation& out,bool calibrate=false) noexcep
         p[0]*out.gun[0]+p[1]*out.gun[4]+p[2]*out.gun[8]+out.gun[12],
         p[0]*out.gun[1]+p[1]*out.gun[5]+p[2]*out.gun[9]+out.gun[13],
         p[0]*out.gun[2]+p[1]*out.gun[6]+p[2]*out.gun[10]+out.gun[14]};};
-    const auto move=api::multiply(api::inverse(closed.space),h);std::array<double,3> grasp{};
+    const auto move=api::multiply(api::inverse(closed.space),h);out.part_delta=move;std::array<double,3> grasp{};
     for(unsigned j=0;j<3;++j){grasp[j]=move[12+j];for(unsigned i=0;i<3;++i)grasp[j]+=api::closed_grasp[i]*move[i*4+j];}
     api::Matrix deployed{};if(!closed.target(api::maximum_angle,0,ignored,deployed))return false;
     const auto deploy_delta=api::multiply(api::inverse(closed.space),deployed);std::array<double,3> rest{};
     for(unsigned j=0;j<3;++j){rest[j]=deploy_delta[12+j];for(unsigned i=0;i<3;++i)rest[j]+=api::closed_grasp[i]*deploy_delta[i*4+j];}
-    out.rest=world(rest);out.grasp=world(grasp);out.pivot=world({closed.space[12],closed.space[13],closed.space[14]});
+    out.rest=world(rest);out.grasp=world(grasp);out.closed_grasp=world(api::closed_grasp);
+    out.pivot=world({closed.space[12],closed.space[13],closed.space[14]});
     const double size=std::hypot(std::hypot(double(out.gun[4]),double(out.gun[5])),double(out.gun[6]));
     if(!std::isfinite(size)||size<.1||size>10)return false;
     out.axis={out.gun[4]/size,out.gun[5]/size,out.gun[6]/size};out.scale=size;out.epoch=epoch;
@@ -140,8 +148,20 @@ void tick(hand::Frame const& f,double pull_raw,bool deploy,bool lock) noexcept t
     control.source=f;control.angle=target.angle;
     control.pull_raw=target.pull;const auto pose=function<api::Update>(api::update_export);api::Receipt r{};
     failure=3;if(!pose)return;const auto code=pose(&control,&r);
+    // The ordinary visual gate budget can finish before a motor tail ends.
+    // Preserve at most four actual rejected spring requests, using only the
+    // already submitted request/result. No new observer, retry or authority.
+    if(!lock&&accepted_pose_known&&control.pull_raw<accepted_pose.pull&&code==api::Result::rejected){
+        static unsigned return_rejections{};
+        if(return_rejections<4&&log_file){
+            fwprintf(log_file,L"lancer_starter_return_rejected frame=%llu before_angle=%.9g wanted_angle=%.9g before_pull=%.9g wanted_pull=%.9g left_known=%u left_tracked=%u\n",
+                f.key.frame,accepted_pose.angle,control.angle,accepted_pose.pull,control.pull_raw,
+                unsigned(f.left_grip_known),unsigned(f.left_tracked));fflush(log_file);++return_rejections;
+        }
+    }
     if(r.size!=sizeof r||r.version!=2||r.handle!=control.handle||r.result!=code)return;
-    if(code==api::Result::restoring||code==api::Result::restored||code==api::Result::inactive_restored){revoking=true;restore();return;}
+    if(code==api::Result::restoring||code==api::Result::restored||code==api::Result::inactive_restored){
+        failure=1000+r.gate;report();revoking=true;restore();return;}
     if(code!=api::Result::pending&&code!=api::Result::ready)return;
     if(r.angle!=control.angle||r.pull_raw!=control.pull_raw)return;
     accepted_pose={r.angle,r.pull_raw};accepted_pose_known=true;
@@ -150,6 +170,6 @@ void tick(hand::Frame const& f,double pull_raw,bool deploy,bool lock) noexcept t
     if(!closed.known&&(control.angle!=0||pull_raw!=0||code!=api::Result::ready))return;
     if(!observe(f,actual,true))return;
     visible=true;ready=code==api::Result::ready;
-    failure=ready?0:4;last_cost.prepare_ns=weaponhand::clock_ns(nullptr)-begin;
+    failure=ready?0:(r.gate?100+r.gate:4);last_cost.prepare_ns=weaponhand::clock_ns(nullptr)-begin;
 }catch(...){hide();}
 }

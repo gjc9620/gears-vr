@@ -424,7 +424,7 @@ def continuous_passed(state):
                 and not state.get('native_cleanup_error') and not state.get('xr_cleanup_error'))
 
 
-def request_stop(path,timeout,control=None):
+def request_stop(path,timeout,control=None,*,signal_native=True):
     control=control or WindowsControl()
     state=json.loads(path.read_text(encoding='utf-8'))
     if state.get('schema')!=1 or state.get('kind')!='continuous_strict_stereo' or not state.get('session_id'):
@@ -434,7 +434,7 @@ def request_stop(path,timeout,control=None):
     checked_identity(control,state['owner_identity'])
     checked_identity(control,state['game_identity'])
     if state.get('xr_identity'):checked_identity(control,state['xr_identity'],allow_exited=True)
-    if not control.signal(f"Local\\GearsVR.Capture.Stop.{state['game_identity']['pid']}") and state.get('phase')!='stopping':
+    if signal_native and not control.signal(f"Local\\GearsVR.Capture.Stop.{state['game_identity']['pid']}") and state.get('phase')!='stopping':
         raise RuntimeError('Native stop event absent; owner has not activated capture or is already cleaning up')
     deadline=time.monotonic()+timeout
     while time.monotonic()<deadline:

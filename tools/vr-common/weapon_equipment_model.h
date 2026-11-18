@@ -87,6 +87,13 @@ public:
         return held()&&world_==world&&pawn_==pawn&&weapon_==weapon;
     }
     std::uint8_t held_slot() const noexcept {return held()?slot_:4;}
+    // Only the authenticated throwable owner may end its exact hold after a
+    // release/completion. Firearm tap-to-hold and inventory remain untouched.
+    bool release_throwable(std::uint64_t world,std::uint64_t pawn,std::uint64_t weapon,
+                           std::uint64_t generation) noexcept {
+        if(slot_!=1||!generation||hold_generation_!=generation||!held_for(world,pawn,weapon))return false;
+        clear_hold();return true;
+    }
 
     EquipmentDecision observe(EquipmentSnapshot const& game) noexcept {
         if(!game.valid()){reset();return {EquipmentEvent::interrupted};}

@@ -74,6 +74,8 @@ void __cdecl begin(void* context,callabi::Invocation const* call,callabi::State*
     lancerreload_manual::begin(*call);
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     fraglaunch::begin(*call);
+    smokelaunch::begin(*call);
+    hod_trace::begin(*call);
     if(!lancerhud_layout::begin(*call)){journal.flags|=unified_uncertain;store(state,journal);poison();}
 #endif
     // CallFunction's caller FFrame is not a callee parameter buffer. The
@@ -86,6 +88,12 @@ void __cdecl begin(void* context,callabi::Invocation const* call,callabi::State*
     journal.scope=weaponshot::enter(call->self,call->caller_frame,call->callee);store(state,journal);
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     unified_weapon_fire::begin(*call,journal.scope);
+    boomshot_fire::begin(*call,journal.scope);
+    gnasher_muzzle::begin(*call,journal.scope);
+    gnasher_fire::begin(*call,journal.scope);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    torquebow_fire::begin(*call,journal.scope);
+#endif
     if(!unified_weapon_fire::hud_begin(*call)){
         journal.flags|=unified_uncertain;store(state,journal);
     }
@@ -111,7 +119,9 @@ bool raw_closed(Journal const& journal) noexcept {
 bool cleanup(Journal& journal,callabi::State* state) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(!hod_trace::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
     if(!fraglaunch::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
+    if(!smokelaunch::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
     if(!lancerhud_layout::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
 #endif
     if(!lancerreload_ui::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
@@ -134,6 +144,17 @@ bool cleanup(Journal& journal,callabi::State* state) noexcept {
         if(!unified_weapon_fire::cleanup(journal.call,journal.scope)){
             journal.flags|=unified_uncertain;store(state,journal);clean=false;
         }
+        if(!boomshot_fire::cleanup(journal.call,journal.scope)){
+            journal.flags|=unified_uncertain;store(state,journal);clean=false;
+        }
+        if(!gnasher_muzzle::cleanup(journal.call,journal.scope)){
+            journal.flags|=unified_uncertain;store(state,journal);clean=false;
+        }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        if(!torquebow_fire::cleanup(journal.call,journal.scope)){
+            journal.flags|=unified_uncertain;store(state,journal);clean=false;
+        }
+#endif
 #endif
         weaponshot::leave(journal.scope);
         if(!weaponshot::stack.poisoned()&&(!journal.scope.entered||weaponshot::stack.depth()==journal.scope.previous_depth))
@@ -156,6 +177,11 @@ callabi::End finish(void* context,callabi::Invocation const* call,callabi::State
     __try{
         if(normal&&(journal.flags&begin_done)&&!(journal.flags&ignored)){
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+            if(!hod_trace::returned(*call)){journal.flags|=unified_uncertain;store(state,journal);poison();}
+            gnasher_fire::returned(*call,journal.scope);
+            torquebow_charge::returned(*call);
+#endif
             if(!lancerreload_ui::returned(*call)){
                 journal.flags|=unified_uncertain;store(state,journal);poison();
             }
@@ -171,10 +197,24 @@ callabi::End finish(void* context,callabi::Invocation const* call,callabi::State
             if(!fraglaunch::returned(*call)){
                 journal.flags|=unified_uncertain;store(state,journal);poison();
             }
+            if(!smokelaunch::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
 #endif
             if(!unified_weapon_fire::normal_return(*call)){
                 journal.flags|=unified_uncertain;store(state,journal);poison();
             }
+            if(!boomshot_fire::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+            if(!gnasher_muzzle::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+            if(!torquebow_fire::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
             gripdamage::leave(journal.raw,true);

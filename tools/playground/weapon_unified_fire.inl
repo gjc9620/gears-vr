@@ -155,8 +155,10 @@ bool aim_from_socket(playground::Rotation const& rotation,playground::Rotation& 
     return true;
 }
 void clear_source() noexcept {muzzle_sample={};}
-bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) noexcept {
-    clear_source();prepare_stage=0;
+bool prepare_source(hand::Frame const& frame,hand::GripGameState const& game,
+    lancermain_asset::AssetScope asset_scope,MuzzleSample& output,
+    bool (*preflight)(MuzzleSample const&) noexcept) noexcept {
+    output={};prepare_stage=0;
     const auto now=weaponhand::clock_ns(nullptr);
     if(!manual_profile()||!control_running.load(std::memory_order_acquire)||write_faulted.load(std::memory_order_acquire)||
        sampling||!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||
@@ -168,11 +170,11 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
 #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
     lancermain_asset::HeldAsset observed_kind{};
     if(!candidate.hold_generation||lancermain_asset::read(frame,candidate.asset,
-       lancermain_asset::AssetScope::supported_instant_fire,&observed_kind)!=lancermain_asset::Status::ready)return false;
+       asset_scope,&observed_kind)!=lancermain_asset::Status::ready)return false;
     candidate.hammerburst=observed_kind==lancermain_asset::HeldAsset::hammerburst;
 #else
     if(!candidate.hold_generation||lancermain_asset::read(frame,candidate.asset,
-       lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready)return false;
+       asset_scope)!=lancermain_asset::Status::ready)return false;
 #endif
     prepare_stage=2;
     Name muzzle{};if(!configured_muzzle(frame,muzzle))return false;
@@ -215,9 +217,9 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
        !hand::frame_active(frame,candidate.sampled_ns)||!weaponhand::client.source_game_on_gt(frame.key,after)||
        !weaponhand::client.armed()||candidate.hold_generation!=weaponhand::held_binding.generation||
        !hand::same_game(game,after)||
-       lancermain_asset::read(frame,after_asset,lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready||
+       lancermain_asset::read(frame,after_asset,asset_scope)!=lancermain_asset::Status::ready||
        !hand::same(candidate.asset.component,after_asset.component)||!hand::same(candidate.asset.asset,after_asset.asset)||
-       !preflight_returns(candidate))return false;
+       !preflight||!preflight(candidate))return false;
     prepare_stage=7;
     // Preserve original input/stereo receive stamps. The getter does not renew
     // tracking lifetime; the shot consumer must still match this source cohort.
@@ -232,7 +234,11 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
        !hand::same(admitted.world,frame.world)||!hand::same(admitted.controller,frame.controller)||
        !hand::same(admitted.pawn,frame.pawn)||!hand::same(admitted.mesh,frame.mesh))return false;
     prepare_stage=8;
-    candidate.valid=true;muzzle_sample=candidate;return true;
+    candidate.valid=true;output=candidate;return true;
+}
+bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) noexcept {
+    return prepare_source(frame,game,lancermain_asset::AssetScope::supported_instant_fire,
+        muzzle_sample,preflight_returns);
 }
 bool held_current(MuzzleSample const& sample) noexcept {
     auto const& held=weaponhand::held_binding;auto const& frame=sample.source;
@@ -401,7 +407,8 @@ void schema_fingerprint(metadata::Snapshot const& schema,Fingerprint& hash) noex
         hash.word(field.identity);hash.word(field.type);hash.word(field.next);hash.word(field.flags);
         hash.word(field.dimension);hash.word(field.element_bytes);hash.word(field.offset);}
 }
-bool typed_result(callabi::Invocation const& call,MuzzleSample const& sample,ReturnSignature& out) noexcept {
+bool typed_result(callabi::Invocation const& call,MuzzleSample const& sample,ReturnSignature& out,
+                  bool projectile_muzzle=false) noexcept {
     // This function only reads metadata. Exact visited-address membership is
     // query-local; it ends before any engine call and never retains selectors,
     // names, values, input or a previous result across queries/callbacks.
@@ -421,6 +428,7 @@ bool typed_result(callabi::Invocation const& call,MuzzleSample const& sample,Ret
     else if((pawn||weapon)&&r.named(fn,L"GetWeaponStartTraceLocation"))result=ResultKind::trace_origin;
     else if((pawn||weapon)&&r.named(fn,L"GetPushedForwardStartTraceLocation"))result=ResultKind::pushed_origin;
     else if((pawn||weapon)&&r.named(fn,L"GetPhysicalFireStartLoc"))result=ResultKind::physical_origin;
+    else if(projectile_muzzle&&war&&r.named(owner,L"WarWeapon")&&r.named(fn,L"GetMuzzleLoc"))result=ResultKind::physical_origin;
     else return false;
     auto const& frame=sample.source;
     const auto& receiver=pawn?frame.pawn:frame.weapon;
@@ -647,6 +655,7 @@ void observe_fire_trace(callabi::Invocation const& call,SourceScope const& sourc
     fire_trace.input_sequence=source.sample.source.controllers.sequence;
     fire_trace.input_sync_ns=source.sample.source.controllers.sync_ns;
     fire_trace.observed_ns=weaponhand::clock_ns(nullptr);
+    longshot_fire::trace(source.sample.source,packet.shot);
     std::memcpy(fire_trace.start,input.start.data(),12);
     std::memcpy(fire_trace.end,input.end.data(),12);
     std::memcpy(fire_trace.pushed,input.pushed.data(),12);
@@ -716,6 +725,11 @@ void begin(callabi::Invocation const& call,shot::Token const& scope) noexcept {
     // work for every helper consumes the live render endpoint's100ms window.
     // This is only a negative name filter; every admitted candidate still
     // passes the unchanged receiver, bytecode, schema, lifetime and shot checks.
+    // No live shot source means neither trace nor getter can be consumed.
+    // This only reads the local stack; keep names and live guards below in
+    // their existing order for a source that could actually use the call.
+    auto* source=active_source();
+    if(!source)return;
     const bool trace_candidate=playground::named(call.callee,L"CalcWeaponFire");
     const bool result_candidate=call.result&&(
         playground::named(call.callee,L"GetAdjustedAimFor")||
@@ -723,8 +737,7 @@ void begin(callabi::Invocation const& call,shot::Token const& scope) noexcept {
         playground::named(call.callee,L"GetPushedForwardStartTraceLocation")||
         playground::named(call.callee,L"GetPhysicalFireStartLoc"));
     if(!trace_candidate&&!result_candidate)return;
-    auto* source=active_source();
-    if(!source||!control_running.load(std::memory_order_acquire)||source->sample.epoch!=control_epoch.load(std::memory_order_acquire)||
+    if(!control_running.load(std::memory_order_acquire)||source->sample.epoch!=control_epoch.load(std::memory_order_acquire)||
        write_faulted.load(std::memory_order_acquire)||!held_current(source->sample))return;
     shot::Packet packet{};
     if(!packet_for(call,*source,packet)){++source_admission_counts[3];return;}
@@ -910,9 +923,10 @@ bool store_result(Pending& entry,SourceScope const& source) noexcept {
 void observe_impact_return(callabi::Invocation const& call) noexcept {
     // Cheap rejection only; full schema/shot admission remains below. Avoid
     // repeating live weapon observation for unrelated return callbacks.
-    if(!playground::named(call.callee,L"CalcWeaponFire"))return;
     auto* source=active_source();
-    if(!source||!held_current(source->sample))return;
+    if(!source)return;
+    if(!playground::named(call.callee,L"CalcWeaponFire"))return;
+    if(!held_current(source->sample))return;
     shot::Packet packet{};unsigned locals_size{};
     if(!packet_for(call,*source,packet)||!fire_trace_schema(call,*source,locals_size))return;
     auto* slot=trajectory_slot(packet.shot,source->sample.epoch);

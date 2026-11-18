@@ -36,21 +36,29 @@ inline bool prepare(gears_vr::StereoMatrix const& original,gears_vr::Vector pawn
     using namespace gears_vr;
     if(!stereo_rigid(original)||!finite(pawn_eye)||!std::isfinite(units_per_metre)||
        units_per_metre<10||units_per_metre>500)return false;
-    Vector forward{original[2],original[6],original[10]};
-    const double horizontal=std::hypot(forward.x,forward.y);
+    Vector native_forward{original[2],original[6],original[10]};
+    const double horizontal=std::hypot(native_forward.x,native_forward.y);
     if(!std::isfinite(horizontal)||horizontal<.05)return false;
-    Vector right{-forward.y/horizontal,forward.x/horizontal,0};
+    // Body fallback uses the original heading but not its native pitch/roll.
+    // Legacy preview deliberately retains native aim/recoil direction.
+    Vector forward=body_basis?Vector{native_forward.x/horizontal,
+        native_forward.y/horizontal,0}:native_forward;
+    // Legacy preserves native pitch and normalizes its full forward vector.
+    // Body fallback already has unit horizontal forward, so build right from it.
+    Vector right=body_basis?Vector{-forward.y,forward.x,0}:
+        Vector{-native_forward.y/horizontal,native_forward.x/horizontal,0};
     Vector up{forward.y*right.z-forward.z*right.y,
               forward.z*right.x-forward.x*right.z,
               forward.x*right.y-forward.y*right.x};
-    // Keep native view forward (including gameplay aim/recoil), remove camera
-    // roll and positional camera animation. Pitch never raises this anchor.
+    // Legacy preview keeps native aim/recoil direction. Body fallback uses
+    // only native heading; neither path adds pitch to the eye position.
     StereoMatrix view{float(right.x),float(up.x),float(forward.x),0,
                       float(right.y),float(up.y),float(forward.y),0,
                       float(right.z),float(up.z),float(forward.z),0,0,0,0,1};
     const double forward_offset=body_basis?0.:.35,up_offset=body_basis?0.:.10;
-    Vector eye{pawn_eye.x+forward.x/horizontal*forward_offset*units_per_metre,
-               pawn_eye.y+forward.y/horizontal*forward_offset*units_per_metre,
+    const double forward_length=body_basis?1.:horizontal;
+    Vector eye{pawn_eye.x+forward.x/forward_length*forward_offset*units_per_metre,
+               pawn_eye.y+forward.y/forward_length*forward_offset*units_per_metre,
                pawn_eye.z+up_offset*units_per_metre};
     if(!view_with_origin(view,eye,view))return false;
     out={view,eye};return true;

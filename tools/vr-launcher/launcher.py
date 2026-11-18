@@ -401,7 +401,17 @@ class Backend:
                 self.playground_reservation=(dict(manifest),dict(accepted))
         return report
     def close_uninjected_reservation(self,receipt,selected,*,clock=time.monotonic,sleep=time.sleep):
-        if not receipt.exists():return {'status':'no_birth_receipt'}
+        if not receipt.exists():
+            rejection=receipt.with_name(receipt.name+'.no-start.json')
+            if rejection.exists():
+                proof=json.loads(rejection.read_text(encoding='utf-8'))
+                script=ROOT/'tools/debug-launch/Start-DebugGame.ps1'
+                if (proof.get('schema')==1 and proof.get('kind')=='startup_prelaunch_rejection' and
+                        proof.get('stage')=='python_discovery' and proof.get('launch_receipt')==str(receipt.resolve()) and
+                        all(proof.get(k) is False for k in ('game_creation_attempted','injection_attempted','prime_attempted')) and
+                        proof.get('startup_script_sha256')==hashlib.sha256(script.read_bytes()).hexdigest()):
+                    return {'status':'prelaunch_rejected','no_game_started':True,'proof':proof}
+            return {'status':'no_birth_receipt'}
         value=json.loads(receipt.read_text(encoding='utf-8'));identity=value.get('game_identity')
         if (value.get('schema')!=1 or value.get('kind')!='reservation_birth' or
                 value.get('injection_attempted') is not False or value.get('prime_attempted') is not False):
@@ -627,6 +637,24 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                     stream.write(json.dumps(dict(event='monitor_start_error',error=repr(error),identity=identity))+'\n')
             except OSError:pass
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
+        # The original menu item must not depend on XR's first-frame receipt.
+        # Enable the already reserved PG bridge while the original menu is live;
+        # Native activation/player discovery retain their existing later gate.
+        if owned_prime and manifest.get('playground_menu',False):
+            class PlaygroundCancelled(Exception):pass
+            def check_playground_startup():
+                if backend.cancelled(cancel):raise PlaygroundCancelled()
+                if backend.control.identity(pid)!=identity:
+                    raise RuntimeError('Reserved game exited or identity changed before Playground activation')
+                if manifest.get('graphics_startup_lock',False):backend.require_prime_active(identity)
+            try:
+                check_playground_startup()
+                state['playground']=backend.start_playground(manifest,identity,check_playground_startup)
+                state['playground_before_xr_startup']=True
+                atomic_json(index,state)
+            except PlaygroundCancelled:
+                state.update(phase='cancelled_before_activation',native_activated=False)
+                atomic_json(index,state);return 0
         def prepare_level(check_live=None):
             def check_startup():
                 if check_live:check_live()
@@ -662,7 +690,18 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                     state.pop('waiting_for_level_reason',None)
                     print(json.dumps({'level_player_ready':True}),flush=True)
                     break
-                reason=last_error if current is None else 'Waiting for the same guarded player/camera with an advancing timestamp'
+                if current is None:
+                    reason=last_error
+                elif previous is None:
+                    reason='Waiting for a second guarded player/camera observation'
+                else:
+                    changed=[key for key in ('pawn','controller','camera','level') if current[key]!=previous[key]]
+                    if changed:
+                        reason='Guarded player/camera identity changed between observations: '+', '.join(changed)
+                    elif current['timestamp'] < previous['timestamp']:
+                        reason='Guarded camera timestamp moved backwards'
+                    else:
+                        reason='Guarded camera timestamp is unchanged'
                 if state.get('waiting_for_level_reason')!=reason:
                     state['waiting_for_level_reason']=reason;atomic_json(index,state)
                     print(json.dumps({'waiting_for_level':reason}),flush=True)
@@ -835,7 +874,10 @@ def stop(backend,index=INDEX):
     if original.get('phase') in ('starting','awaiting_level'):
         print('Session startup cancellation requested; owner will perform cleanup without activating new native work.')
         return 0
-    return backend.runner.request_stop(report,95.,backend.control)
+    # The owner must drain weapon/Playground participants while Native is
+    # still registered. Sending Capture.Stop here races that ordered drain.
+    # Its cancellation callback already enters the owner's normal finally.
+    return backend.runner.request_stop(report,95.,backend.control,signal_native=False)
 
 def indexed_session(index):
     state=json.loads(index.read_text())

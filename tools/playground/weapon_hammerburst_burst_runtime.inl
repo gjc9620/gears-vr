@@ -1,4 +1,5 @@
 #include "../vr-common/weapon_hammerburst_burst.h"
+#include "weapon_hammerburst_burst_runtime.h"
 // HB-only completion transaction, to be called by the EXISTING event owner.
 // There is deliberately no dispatcher, hook or publisher in this module.
 namespace hammerburst_burst_runtime {
@@ -9,6 +10,10 @@ hammerburst_burst_contract::Certificate certificate;
 policy::Completion completion;
 policy::Cohort pressed;
 bool first_debt{},firing_debt{},cancel_requested{},scope_active{},scope_first{};
+unsigned revoke_revision{};
+unsigned cancel_stage{}; // Existing checks only; no cleanup authority.
+hammerburst_burst_event::RevokeDiagnostic first_revoke{};
+hammerburst_burst_event::RevokeDiagnostic const& revoke_diagnostic() noexcept {return first_revoke;}
 policy::Ticket ticket;
 policy::Source entered;
 unsigned enter_stage{},source_stage{}; // Observation only; zero means committed source admission passed.
@@ -39,10 +44,15 @@ policy::Source source(hand::Frame const& f,std::int64_t render,std::int64_t samp
     // validation. This only identifies a transaction already in progress.
     s.authenticated=s.cohort.known;s.tracking_only=tracking_only;return s;
 }
-void revoke() noexcept {
+void revoke_at(hammerburst_burst_event::RevokeSite site,unsigned caller_line,unsigned detail) noexcept {
+    if(!first_revoke.revision){
+        if(revoke_revision!=std::numeric_limits<unsigned>::max())++revoke_revision;
+        first_revoke={revoke_revision,site,caller_line,detail};
+    }
     if(firing_debt||first_debt||completion.state()!=policy::State::idle)cancel_requested=true;
     completion.revoke();observed.conflict=true;
 }
+void revoke() noexcept {revoke_at(hammerburst_burst_event::RevokeSite::unknown,__LINE__);}
 bool raw_counts(unsigned& count,unsigned& limit) noexcept {
     if(!certificate.known)return false;
     unsigned char c{},n{};
@@ -84,6 +94,7 @@ bool prime(hand::Frame const& f,uptr original_timer) noexcept {
 bool press(hand::Frame const& f) noexcept {
     if(!certificate.known||firing_debt||first_debt||cancel_requested||scope_active)return false;
     auto c=cohort(f);if(!c.known||f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger<=.35f)return false;
+    first_revoke={};cancel_stage=0; // Reset only after the real press passed its existing checks.
     pressed=c;enter_stage=0;attempted_source={};return true;
 }
 bool capture_first() noexcept {
@@ -97,7 +108,7 @@ bool need_source(hand::Frame const& f) noexcept {
     source_stage=1;
     if(!certificate.known||cancel_requested||scope_active)return false;
     source_stage=2;auto c=cohort(f);
-    if(!policy::same(c,pressed)){revoke();return false;}
+    if(!policy::same(c,pressed)){revoke_at(hammerburst_burst_event::RevokeSite::runtime_need_source_cohort,__LINE__);return false;}
     source_stage=3;
     if(first_debt)return f.controllers.hands[1].trigger_active==1&&f.controllers.hands[1].trigger>.35f&&
         c.presses==pressed.presses&&c.releases==pressed.releases;
@@ -106,7 +117,7 @@ bool need_source(hand::Frame const& f) noexcept {
     // muzzle sample in enter(), then independently at every callback.
     policy::Source s{};s.cohort=c;s.frame=f.key.frame;s.authenticated=c.known;
     s.trigger_down=f.controllers.hands[1].trigger_active==1&&f.controllers.hands[1].trigger>.35f;
-    source_stage=5;if(!completion.observe(s,true)){revoke();return false;}
+    source_stage=5;if(!completion.observe(s,true)){revoke_at(hammerburst_burst_event::RevokeSite::runtime_need_source_observe,__LINE__);return false;}
     source_stage=0;return true;
 }
 bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t captured,bool original_resets_counter=false) noexcept {
@@ -114,7 +125,7 @@ bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t cap
     if(scope_active||cancel_requested||!certificate.known)return false;
     enter_stage=2;
     unsigned count{},limit{};
-    if(!checked_counts(count,limit)){revoke();return false;}
+    if(!checked_counts(count,limit)){revoke_at(hammerburst_burst_event::RevokeSite::runtime_enter_counts,__LINE__);return false;}
     // Refresh only the decision clock after metadata work, never any source,
     // render, pose or sampling stamp supplied by the real muzzle preparation.
     actual.now=weaponhand::clock_ns(nullptr);
@@ -135,7 +146,7 @@ bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t cap
     }else{
         enter_stage=20;
         if(!completion.enter(actual,event,captured,count,limit,ticket)){
-            if(completion.needs_cancel())revoke();return false;
+            if(completion.needs_cancel())revoke_at(hammerburst_burst_event::RevokeSite::runtime_enter_completion,__LINE__);return false;
         }
     }
     entered=actual;observed={};scope_active=true;scope_first=first;enter_stage=0;return true;
@@ -170,7 +181,7 @@ bool leave(bool invoked) noexcept {
         accepted=valid&&completion.commit(observed.source,observed.shot,count,limit,true);
         if(accepted)first_debt=false;
     }else accepted=completion.leave(ticket,observed.shot,count,invoked,valid);
-    observed={};if(!accepted)revoke();return accepted;
+    observed={};if(!accepted)revoke_at(hammerburst_burst_event::RevokeSite::runtime_leave,__LINE__);return accepted;
 }
 bool leave_original_end(unsigned original_count,bool no_refire,bool firing_ended,bool magazine_empty) noexcept {
     if(!scope_active||scope_first||cancel_requested||observed.known||observed.conflict)return false;
@@ -178,10 +189,13 @@ bool leave_original_end(unsigned original_count,bool no_refire,bool firing_ended
     scope_active=false;firing_debt=false;observed={};return true;
 }
 bool cancel() noexcept {
-    revoke();
+    revoke_at(hammerburst_burst_event::RevokeSite::runtime_cancel,__LINE__);
     if(!cancel_requested)return true;
-    if(scope_active||!certificate.known||!hammerburst_burst_cancel::complete(certificate.held))return false;
-    if(completion.needs_cancel()&&!completion.acknowledge_cancel(true,true))return false;
+    cancel_stage=1;if(scope_active)return false;
+    cancel_stage=2;if(!certificate.known)return false;
+    cancel_stage=3;if(!hammerburst_burst_cancel::complete(certificate.held))return false;
+    cancel_stage=4;if(completion.needs_cancel()&&!completion.acknowledge_cancel(true,true))return false;
+    cancel_stage=0;
     first_debt=false;firing_debt=false;cancel_requested=false;pressed={};certificate={};return true;
 }
 }

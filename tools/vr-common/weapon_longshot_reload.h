@@ -11,6 +11,7 @@ namespace gears_weapon {
 // identifies Longshot's bullet_spent_single as an EMPTY case, not a live round.
 // There is deliberately no default step order, mount, cartridge or deadline.
 inline constexpr char longshot_reload_class[]="Weap_SniperRifle";
+inline constexpr std::int64_t longshot_perfect_duration_us=4000000;
 enum class LongshotAction : std::uint8_t {unknown,open_breech,eject_case,take_round,insert_round,close_breech};
 enum class LongshotReloadStage : std::uint8_t {idle,step,inventory_commit,original_completion,complete,interrupted};
 enum class LongshotReloadEvent : std::uint8_t {
@@ -53,10 +54,16 @@ struct LongshotReloadPlan {
     bool current_instance_verified{};
     bool valid() const noexcept {
         if(!identity.valid()||!generation||!original_reload_serial||!initial_state||
-           !final_ready_state||!current_instance_verified||count<2||count>steps.size())return false;
+           !final_ready_state||!current_instance_verified||count!=5)return false;
+        // Reuse the preserved W04 semantic plan. Physical paths/state ids are
+        // still supplied by the authenticated current-instance calibration.
+        constexpr LongshotAction order[]={LongshotAction::open_breech,LongshotAction::eject_case,
+            LongshotAction::take_round,LongshotAction::insert_round,LongshotAction::close_breech};
+        if(steps[0].part!=steps[4].part||steps[0].calibration!=steps[4].calibration)return false;
         unsigned grabs=0,inserts=0;auto state=initial_state;
         for(unsigned i=0;i<count;++i){
             const auto s=steps[i];
+            if(s.action!=order[i]||s.needs_left_hand!=(i!=1))return false;
             if(!s.before_state||!s.after_state||s.before_state!=state)return false;
             switch(s.action){
                 case LongshotAction::take_round:if(++grabs!=1||inserts)return false;break;
@@ -69,8 +76,6 @@ struct LongshotReloadPlan {
             }
             state=s.after_state;
         }
-        // Only ammo/data invariants are imposed; opening/ejection/closure order
-        // is supplied by a separately authenticated current-instance plan.
         return grabs==1&&inserts==1&&state==final_ready_state;
     }
 };
@@ -79,18 +84,23 @@ struct LongshotInventory {
     std::uint64_t revision{};
     std::uint32_t loaded{},reserve{}; // Capacity is verified as ONE at begin.
 };
-struct LongshotPerfectWindow {
+struct LongshotShot {
     LongshotReloadIdentity identity{};
-    std::uint64_t original_reload_serial{},plan_generation{};
-    std::int64_t end_ticks{}; // Relative to accepted R3 in original game clock.
-    bool current_instance_verified{};
+    std::uint64_t original_event_sequence{};
+    std::int64_t game_tick{},ticks_per_second{};
+    bool confirmed{}; // Original successful fire receipt, never a trigger edge.
+    bool valid(LongshotReloadStamp const& start) const noexcept {
+        return confirmed&&identity==start.identity&&original_event_sequence&&
+            game_tick>=0&&game_tick<=start.game_tick&&ticks_per_second>0&&
+            ticks_per_second<=std::numeric_limits<std::int64_t>::max()/4;
+    }
 };
 struct LongshotReloadStart {
     LongshotReloadStamp stamp{};
     LongshotReloadPlan plan{};
     LongshotInventory inventory{};
-    LongshotPerfectWindow perfect{};
-    std::uint64_t r3_press_edge{};
+    LongshotShot shot{};
+    std::uint64_t physical_start_edge{};
     bool original_class_verified{},single_round_capacity_verified{},
         original_reload_accepted{},automatic_refill_held{},inventory_reconciled{};
 };
@@ -148,13 +158,13 @@ class LongshotReload {
     LongshotReloadIdentity identity_{};
     LongshotReloadPlan plan_{};
     LongshotInventory inventory_{};
-    LongshotPerfectWindow perfect_{};
+    LongshotShot shot_{};
     LongshotInventoryRequest inventory_request_{};
     LongshotCompletionRequest completion_request_{};
     LongshotReloadStage stage_{LongshotReloadStage::idle};
     unsigned step_{};
     std::uint64_t next_token_{1},last_sequence_{},last_edge_{},last_reload_{},
-        step_enter_sequence_{},held_item_{},last_item_{},last_original_event_{};
+        step_enter_sequence_{},held_item_{},last_item_{},last_original_event_{},completed_shot_{};
     std::int64_t last_ns_{},last_tick_{},started_tick_{},physical_finish_tick_{};
     bool inventory_dispatched_{},completion_dispatched_{};
     LongshotReloadEvent outcome_{LongshotReloadEvent::rejected};
@@ -182,8 +192,8 @@ class LongshotReload {
         ++step_;step_enter_sequence_=stamp.sequence;
         if(step_<plan_.count)return LongshotReloadEvent::step_completed;
         const auto request_token=token();if(!request_token)return interrupt();
-        const bool perfect=perfect_.current_instance_verified&&
-            physical_finish_tick_-started_tick_<=perfect_.end_ticks;
+        const bool perfect=shot_.confirmed&&physical_finish_tick_>=started_tick_&&
+            physical_finish_tick_-started_tick_<4*shot_.ticks_per_second;
         outcome_=perfect?LongshotReloadEvent::perfect:LongshotReloadEvent::ordinary;
         completion_request_={identity_,request_token,plan_.original_reload_serial,plan_.generation,
             inventory_.revision,plan_.final_ready_state,started_tick_,physical_finish_tick_,outcome_};
@@ -201,29 +211,36 @@ class LongshotReload {
             r.motion_begin_sequence<s.sequence;
     }
 public:
-    LongshotReloadEvent begin_r3(LongshotReloadStart const& start,std::int64_t now_ns) noexcept {
+    LongshotReloadEvent begin_manual(LongshotReloadStart const& start,std::int64_t now_ns) noexcept {
         const auto& s=start.stamp;const auto& p=start.plan;const auto& i=start.inventory;
         if(active())return LongshotReloadEvent::rejected;
         if(!s.valid(now_ns)||!s.right_tracked||!s.weapon_owned||!p.valid()||!(p.identity==s.identity)||
-           !(i.identity==s.identity)||!i.revision||i.loaded>1||i.reserve>1000000||!start.r3_press_edge||
+           !(i.identity==s.identity)||!i.revision||i.loaded>1||i.reserve>1000000||!start.physical_start_edge||
            !start.original_class_verified||!start.single_round_capacity_verified||!start.original_reload_accepted||
-           !start.automatic_refill_held||!start.inventory_reconciled||start.perfect.end_ticks<0)
+           !start.automatic_refill_held||!start.inventory_reconciled||
+           p.steps[p.count-1].action!=LongshotAction::close_breech)
             return LongshotReloadEvent::invalid;
-        if(start.perfect.current_instance_verified&&
-           (!(start.perfect.identity==s.identity)||start.perfect.original_reload_serial!=p.original_reload_serial||
-            start.perfect.plan_generation!=p.generation||start.perfect.end_ticks<=0))return LongshotReloadEvent::invalid;
+        if(start.shot.confirmed&&!start.shot.valid(s))return LongshotReloadEvent::invalid;
         const bool same=identity_.valid()&&identity_==s.identity;
-        if(identity_.valid()&&((same&&(!accepts(s,now_ns)||start.r3_press_edge<=last_edge_||
+        if(identity_.valid()&&((same&&(!accepts(s,now_ns)||start.physical_start_edge<=last_edge_||
             p.original_reload_serial<=last_reload_))||(!same&&s.identity.binding_generation<=identity_.binding_generation)))
             return LongshotReloadEvent::rejected;
         if(same&&(i.revision<inventory_.revision||(i.revision==inventory_.revision&&
            (i.loaded!=inventory_.loaded||i.reserve!=inventory_.reserve))))return LongshotReloadEvent::invalid;
         if(i.loaded)return LongshotReloadEvent::full;
         if(!i.reserve)return LongshotReloadEvent::no_ammo;
-        identity_=s.identity;plan_=p;inventory_=i;perfect_=start.perfect;
-        last_edge_=start.r3_press_edge;last_reload_=p.original_reload_serial;
-        if(!same)last_original_event_=0;
-        consume(s);started_tick_=physical_finish_tick_=s.game_tick;step_enter_sequence_=s.sequence;
+        if(same&&start.shot.confirmed&&start.shot.original_event_sequence<=completed_shot_)
+            return LongshotReloadEvent::rejected;
+        if(same&&shot_.confirmed&&start.shot.confirmed&&
+           (start.shot.original_event_sequence<shot_.original_event_sequence||
+            (start.shot.original_event_sequence==shot_.original_event_sequence&&
+             (start.shot.game_tick!=shot_.game_tick||start.shot.ticks_per_second!=shot_.ticks_per_second))))
+            return LongshotReloadEvent::invalid;
+        identity_=s.identity;plan_=p;inventory_=i;shot_=start.shot;
+        last_edge_=start.physical_start_edge;last_reload_=p.original_reload_serial;
+        if(!same){last_original_event_=0;completed_shot_=0;}
+        consume(s);started_tick_=shot_.confirmed?shot_.game_tick:s.game_tick;
+        physical_finish_tick_=s.game_tick;step_enter_sequence_=s.sequence;
         held_item_=0;step_=0;inventory_request_={};completion_request_={};
         inventory_dispatched_=completion_dispatched_=false;outcome_=LongshotReloadEvent::rejected;
         stage_=LongshotReloadStage::step;return LongshotReloadEvent::started;
@@ -314,6 +331,7 @@ public:
         if(!s.weapon_owned||!s.right_tracked||!s.left_tracked||!receipt.accepted||!receipt.original_ready||
            receipt.final_ready_state!=plan_.final_ready_state||!same_inventory(receipt.observed))return interrupt();
         consume(s);inventory_=receipt.observed;last_original_event_=receipt.original_event_sequence;
+        if(shot_.confirmed)completed_shot_=shot_.original_event_sequence;
         completion_request_={};stage_=LongshotReloadStage::complete;return outcome_;
     }
     LongshotReloadEvent interrupt() noexcept {

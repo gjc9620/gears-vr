@@ -40,6 +40,7 @@ class GnasherLever {
     std::uint64_t weapon_{},world_{},space_epoch_{},last_sequence_{};
     std::int64_t started_ns_{},last_ns_{};
     double last_angle_{};
+    bool suspended_{};
     void restart(LeverPoseSample const& sample,LeverTravel const& travel) noexcept {
         phase_=sample.lever_angle_radians<=travel.home_max_radians?
             LeverPhase::push_down:LeverPhase::waiting_home;
@@ -54,8 +55,41 @@ public:
     }
     void reset() noexcept {*this=GnasherLever{};}
     LeverPhase phase() const noexcept {return phase_;}
+    bool suspended() const noexcept {return suspended_;}
+    // Read-only binding to an already consumed ORIGINAL producer point.
+    // This never reattaches, restarts, or extends the stroke's clock.
+    bool motion_anchor(LeverPoseSample const& sample,double tolerance) const noexcept {
+        return phase_!=LeverPhase::unarmed&&!suspended_&&last_sequence_&&
+            sample.weapon==weapon_&&sample.world==world_&&sample.space_epoch==space_epoch_&&
+            sample.sequence==last_sequence_&&sample.monotonic_ns==last_ns_&&
+            sample.tracked&&sample.left_front_held&&sample.right_handle_held&&
+            std::isfinite(tolerance)&&tolerance>=0&&tolerance<=.0002&&
+            std::isfinite(sample.lever_angle_radians)&&
+            std::abs(sample.lever_angle_radians-last_angle_)<=tolerance;
+    }
+    // Opt-in physical regrasp. Keep the actual endpoint/phase, but never
+    // consume movement or elapsed outage time. The caller authenticates a NEW
+    // grip lease; this method authenticates identity, source and frozen angle.
+    void suspend() noexcept {
+        if(phase_!=LeverPhase::unarmed&&last_sequence_)suspended_=true;
+    }
+    bool reattach(LeverPoseSample const& sample,LeverTravel const& travel,
+                  double angle_tolerance) noexcept {
+        if(!suspended_||!travel.valid()||!std::isfinite(angle_tolerance)||
+           angle_tolerance<0||angle_tolerance>.05||
+           sample.weapon!=weapon_||sample.world!=world_||sample.space_epoch!=space_epoch_||
+           !sample.tracked||!sample.left_front_held||!sample.right_handle_held||
+           sample.sequence<=last_sequence_||sample.monotonic_ns<=last_ns_||
+           !std::isfinite(sample.lever_angle_radians)||sample.lever_angle_radians<0||
+           sample.lever_angle_radians>travel.maximum_angle_radians||
+           std::abs(sample.lever_angle_radians-last_angle_)>angle_tolerance)return false;
+        // started <= last <= sample, so adding this gap cannot overflow.
+        started_ns_+=sample.monotonic_ns-last_ns_;
+        last_ns_=sample.monotonic_ns;last_sequence_=sample.sequence;
+        suspended_=false;return true;
+    }
     bool observe(LeverPoseSample const& sample,LeverTravel const& travel) noexcept {
-        if(phase_==LeverPhase::unarmed||!travel.valid())return false;
+        if(phase_==LeverPhase::unarmed||!travel.valid()||suspended_)return false;
         if(sample.weapon!=weapon_||sample.world!=world_||sample.space_epoch!=space_epoch_||
            !sample.tracked||!sample.left_front_held||!sample.right_handle_held||
            !std::isfinite(sample.lever_angle_radians)||sample.lever_angle_radians<0||

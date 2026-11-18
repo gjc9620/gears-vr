@@ -68,5 +68,17 @@ public:
         const auto i=std::size_t(key);const double t=std::clamp(key-double(i),0.,1.);
         out=distance_[i]+(distance_[i+1]-distance_[i])*t;return true;
     }
+    // Observation only. A closing-branch time under one sampling law can
+    // land just BEFORE the pull maximum under the other law. Inspect that
+    // original decoded prefix when comparing actual bone observations;
+    // time_for_distance still selects only the verified closing branch.
+    bool observe_distance_at_time(double time,double& out,Sampling law) const noexcept {
+        if(!bound_||!std::isfinite(time)||time<0||time>duration_)return false;
+        const auto intervals=law==Sampling::endpoint_intervals?count_-1:count_;
+        const double key=time*double(intervals)/duration_;
+        if(key>=double(closed_)){out=0;return true;}
+        const auto i=std::size_t(key);const double t=std::clamp(key-double(i),0.,1.);
+        out=distance_[i]+(distance_[i+1]-distance_[i])*t;return true;
+    }
 };
 } // namespace gears_weapon

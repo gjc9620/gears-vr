@@ -62,6 +62,13 @@ ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) no
         if(!needs_native)return finish_resume(source,decision)?ResumeResult::ready:ResumeResult::waiting;
         restore_resume_step=1;return ResumeResult::advanced;
     }
+    // A resumed original ForceReload has a new engine start but retains the
+    // first accepted reward clock. Complete the existing owned UI mutation on
+    // a separate fresh frame before acquire() snapshots ReloadStartTime.
+    if(restore_resume_step==1&&ui_pending){
+        if(!apply_pending_ui(source))return ResumeResult::recovery_required;
+        return ResumeResult::advanced;
+    }
     restoration_admission::Scope permit(source);
     if(!permit)return ResumeResult::waiting;
     if(restore_resume_step==1){

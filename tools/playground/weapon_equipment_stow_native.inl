@@ -61,7 +61,18 @@ bool input_fence(bool arm) noexcept {
     const auto set=input_function("GearsCaptureVrGamepadStowFence");
     return set&&set(arm?reinterpret_cast<void*>(uintptr_t{1}):nullptr)==ERROR_SUCCESS;
 }
-bool sync_input_fence() noexcept {return input_fence(lease.dirty()||equip_visibility.dirty());}
+bool sync_input_fence() noexcept {
+    return input_fence(lease.dirty()||equip_visibility.dirty()||
+        fragpreparation::outstanding.load(std::memory_order_acquire)||
+        smokepreparation::outstanding.load(std::memory_order_acquire));
+}
+// The exact preparation has already proved all original stop states. Keep
+// other preparation/visibility owners fenced until their own cleanup settles.
+bool sync_input_fence_after_grenade_stop(bool smoke) noexcept {
+    return input_fence(lease.dirty()||equip_visibility.dirty()||
+        (smoke?fragpreparation::outstanding.load(std::memory_order_acquire):
+               smokepreparation::outstanding.load(std::memory_order_acquire)));
+}
 bool certified_empty_pickup_touch(uptr function) noexcept {
     // NoAuth classification only: no engine calls or journal change. Trust
     // neither a name nor an offline decompilation without these live bytes.
@@ -86,7 +97,7 @@ bool certified_empty_pickup_touch(uptr function) noexcept {
     return registered(function)&&get<uptr>(function+0x40)==owner_state&&get<uptr>(owner_state+0x40)==owner_class&&
         get<uptr>(owner_class+0x40)==owner_package;
 }
-bool identities(Key const& k) noexcept {
+bool identities(Key const& k,bool certified_slot_observation=false) noexcept {
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
     for(auto const& wanted:k.objects){abi::ObjectIdentity actual{};
         if(!identify(nullptr,wanted.address,actual)||!abi::same(wanted,actual))return false;}
@@ -102,6 +113,14 @@ bool identities(Key const& k) noexcept {
        playground::pointer(o[6].address,L"Instigator")!=o[3].address||
        playground::pointer(o[6].address,L"Mesh")!=o[7].address||
        playground::pointer(o[7].address,L"SkeletalMesh")!=o[8].address)return false;
+    if(certified_slot_observation){
+        std::array<uptr,4> slots{};abi::ObjectIdentity manager{};
+        return idle_inventory::read_slots(o[4].address,slots,manager)&&
+            abi::same(manager,o[4])&&slots==k.slots&&
+            // Qualification can invoke the original getter. Close the actor's
+            // manager link after it, rather than only recapturing an old manager.
+            playground::pointer(o[3].address,L"InvManager")==o[4].address;
+    }
     for(std::uint8_t i=0;i<4;++i){uptr item{};
         if(!vrequip::read_slot(o[4].address,i,item)||item!=k.slots[i])return false;}
     return true;
@@ -175,14 +194,18 @@ struct Backend {
 };
 struct VisibilityBackend {
     Key expected{};abi::Frame const* request{};
-    bool active_idle{};
+    bool active_idle{};bool released_frag_return{};bool released_smoke_return{};
     unsigned reads{};bool first_hidden{},unhide_attempted{},unhide_called{};
+    // Opt-in for the idle retained READ only. All setters/new acquisition and
+    // restoration keep the original VM slot checks, even on this backend.
+    bool certified_slot_observation{};
     bool read(gears_weapon::StowState<Key>& out) noexcept {
-        out={};if(!identities(expected))return false;
+        out={};if(!identities(expected,certified_slot_observation))return false;
         weaponhand::meta::Snapshot schema{};schema.module_base=base;
         weaponhand::meta::Reader reader{schema,weaponhand::meta::Stage::final_check};weaponhand::BoolField hidden{};
         if(!weaponhand::meta::tables(base,schema.objects,schema.names)||
-           !weaponhand::boolean(reader,expected.objects[7].address,L"HiddenGame",hidden)||!identities(expected))return false;
+           !weaponhand::boolean(reader,expected.objects[7].address,L"HiddenGame",hidden)||
+           !identities(expected,certified_slot_observation))return false;
         out.key=expected;out.ready=true;
         out.attachment=(hidden.bits&hidden.mask)?Attachment::detached:Attachment::original_hand;
         if(!reads++)first_hidden=out.attachment==Attachment::detached;
@@ -191,7 +214,9 @@ struct VisibilityBackend {
     bool set_holstered(bool value) noexcept {
         if(mutating||!identities(expected)||!(value?domain_ready():restoration_quiet()))return false;
         if(value&&(!request||stop_requested.load()||!current(nullptr,*request)||
-           phase(request->weapon.address)!=(active_idle?gears_weapon::StowPhase::active:gears_weapon::StowPhase::equipping)||
+           (released_frag_return?!fragruntime::return_visibility_current(*request):
+            released_smoke_return?!smokeruntime::return_visibility_current(*request):
+            phase(request->weapon.address)!=(active_idle?gears_weapon::StowPhase::active:gears_weapon::StowPhase::equipping))||
            !clear_equip_transition(request->pawn.address)))return false;
         playground::Args call(expected.objects[7].address,L"SetHidden");const auto parameter=call.prop(L"NewHidden");
         if(!call.valid||call.r.size!=4||get<unsigned short>(call.r.function+0x108)!=0xffff||
@@ -232,7 +257,8 @@ bool hide_equip_transition(abi::Frame const& f,Snapshot const& game,bool active_
        (active_idle&&game.animation_busy)||!clear_equip_transition(f.pawn.address))return false;
     lancermain_asset::Evidence asset{};
     if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready&&
-       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready)return false;
+       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready&&
+       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::smoke_hold)!=lancermain_asset::Status::ready)return false;
     Key k{};k.epoch=++epoch;k.slots=game.weapon_in_slot;
     const uptr addresses[]={f.world.address,get<uptr>(f.world.address+0x40),f.controller.address,f.pawn.address,
         playground::pointer(f.pawn.address,L"InvManager"),f.mesh.address,f.weapon.address,asset.component.address,asset.asset.address};
@@ -242,6 +268,90 @@ bool hide_equip_transition(abi::Frame const& f,Snapshot const& game,bool active_
     VisibilityBackend b{k,&f,active_idle};const bool accepted=equip_visibility.acquire(b);publish();(void)sync_input_fence();
     if(log_file&&report_count<32){++report_count;fwprintf(log_file,L"native_equipment_visibility acquired=%u outstanding=%u revoked=%u weapon=%llx\n",
         unsigned(accepted),unsigned(equip_visibility.dirty()),unsigned(equip_visibility.revoked()),f.weapon.address);fflush(log_file);}
+    return accepted;
+}
+// Read-only attachment witness for this EXISTING exact hidden interval.
+// HiddenGame is ignored only after the same lease authenticates that bit;
+// ordinary asset/attachment admission continues to require a visible mesh.
+bool released_frag_attached(abi::Frame const& f) noexcept {
+    if(!equip_visibility.dirty()||!current(nullptr,f))return false;
+    const auto& k=equip_visibility.key();
+    if(!abi::same(k.objects[0],f.world)||!abi::same(k.objects[2],f.controller)||
+       !abi::same(k.objects[3],f.pawn)||!abi::same(k.objects[5],f.mesh)||
+       !abi::same(k.objects[6],f.weapon))return false;
+    VisibilityBackend before{k,nullptr};
+    if(!equip_visibility.retains_detached(before))return false;
+    bool detached{};
+    if(!read_attached_frame(f,k.objects[7].address,false,nullptr,&detached,false)||detached)return false;
+    VisibilityBackend after{k,nullptr};
+    return current(nullptr,f)&&equip_visibility.retains_detached(after);
+}
+// Only the already-successful original Frag return owner may enter here.
+// This uses the existing component visibility lease/SetHidden route. It does
+// not holster/detach, complete an animation, alter stock, or create a grasp.
+bool hide_released_frag_return(abi::Frame const& f) noexcept {
+    if(!fragruntime::return_visibility_current(f))return false;
+    if(equip_visibility.dirty())return released_frag_attached(f);
+    if(equip_visibility.faulted()||epoch==UINT64_MAX||!profile()||stop_requested.load()||
+       !clear_equip_transition(f.pawn.address))return false;
+    lancermain_asset::Evidence asset{};
+    if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready||
+       !attached_frame(f,asset.component.address)||!fragruntime::return_visibility_current(f))return false;
+    Key k{};k.epoch=++epoch;
+    const auto inv=playground::pointer(f.pawn.address,L"InvManager");
+    for(std::uint8_t i=0;i<4;++i)if(!vrequip::read_slot(inv,i,k.slots[i]))return false;
+    if(k.slots[1]!=f.weapon.address)return false;
+    const uptr addresses[]={f.world.address,get<uptr>(f.world.address+0x40),f.controller.address,f.pawn.address,
+        playground::pointer(f.pawn.address,L"InvManager"),f.mesh.address,f.weapon.address,asset.component.address,asset.asset.address};
+    for(unsigned i=0;i<k.objects.size();++i)if(!identify(nullptr,addresses[i],k.objects[i]))return false;
+    if(!identities(k)||!current(nullptr,f)||!input_fence(true))return false;
+    VisibilityBackend b{k,&f,false,true};
+    const bool accepted=equip_visibility.acquire(b);publish();(void)sync_input_fence();
+    if(log_file&&report_count<32){++report_count;fwprintf(log_file,
+        L"frag_return_visibility acquired=%u outstanding=%u revoked=%u weapon=%llx component=%llx frame=%llu hold=%llu visual_only=1\n",
+        unsigned(accepted),unsigned(equip_visibility.dirty()),unsigned(equip_visibility.revoked()),
+        f.weapon.address,asset.component.address,f.key.frame,vrequip::model.hold_generation());fflush(log_file);}
+    return accepted;
+}
+bool released_smoke_attached(abi::Frame const& f) noexcept {
+    if(!playground::instance(f.weapon.address,L"Weap_SmokeGrenade")||
+       !equip_visibility.dirty()||!current(nullptr,f))return false;
+    const auto& k=equip_visibility.key();
+    if(!abi::same(k.objects[0],f.world)||!abi::same(k.objects[2],f.controller)||
+       !abi::same(k.objects[3],f.pawn)||!abi::same(k.objects[5],f.mesh)||
+       !abi::same(k.objects[6],f.weapon))return false;
+    VisibilityBackend before{k,nullptr};
+    if(!equip_visibility.retains_detached(before))return false;
+    bool detached{};
+    if(!read_attached_frame(f,k.objects[7].address,false,nullptr,&detached,false)||detached)return false;
+    VisibilityBackend after{k,nullptr};
+    return current(nullptr,f)&&equip_visibility.retains_detached(after);
+}
+// Only the already-successful original Smoke return owner may enter here.
+// This uses the existing component visibility lease/SetHidden route. It does
+// not holster/detach, complete an animation, alter stock, or create a grasp.
+bool hide_released_smoke_return(abi::Frame const& f) noexcept {
+    if(!smokeruntime::return_visibility_current(f))return false;
+    if(equip_visibility.dirty())return released_smoke_attached(f);
+    if(equip_visibility.faulted()||epoch==UINT64_MAX||!profile()||stop_requested.load()||
+       !clear_equip_transition(f.pawn.address))return false;
+    lancermain_asset::Evidence asset{};
+    if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::smoke_hold)!=lancermain_asset::Status::ready||
+       !attached_frame(f,asset.component.address)||!smokeruntime::return_visibility_current(f))return false;
+    Key k{};k.epoch=++epoch;
+    const auto inv=playground::pointer(f.pawn.address,L"InvManager");
+    for(std::uint8_t i=0;i<4;++i)if(!vrequip::read_slot(inv,i,k.slots[i]))return false;
+    if(k.slots[1]!=f.weapon.address)return false;
+    const uptr addresses[]={f.world.address,get<uptr>(f.world.address+0x40),f.controller.address,f.pawn.address,
+        playground::pointer(f.pawn.address,L"InvManager"),f.mesh.address,f.weapon.address,asset.component.address,asset.asset.address};
+    for(unsigned i=0;i<k.objects.size();++i)if(!identify(nullptr,addresses[i],k.objects[i]))return false;
+    if(!identities(k)||!current(nullptr,f)||!input_fence(true))return false;
+    VisibilityBackend b{k,&f,false,false,true};
+    const bool accepted=equip_visibility.acquire(b);publish();(void)sync_input_fence();
+    if(log_file&&report_count<32){++report_count;fwprintf(log_file,
+        L"smoke_return_visibility acquired=%u outstanding=%u revoked=%u weapon=%llx component=%llx frame=%llu hold=%llu visual_only=1\n",
+        unsigned(accepted),unsigned(equip_visibility.dirty()),unsigned(equip_visibility.revoked()),
+        f.weapon.address,asset.component.address,f.key.frame,vrequip::model.hold_generation());fflush(log_file);}
     return accepted;
 }
 bool restore_with_reason(unsigned reason) noexcept {
@@ -285,7 +395,8 @@ bool acquire(abi::Frame const& f,Snapshot const& game,bool idle_unheld=false) no
 #endif
     lancermain_asset::Evidence asset{};
     if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready&&
-       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready)return false;
+       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready&&
+       lancermain_asset::read(f,asset,lancermain_asset::AssetScope::smoke_hold)!=lancermain_asset::Status::ready)return false;
     Key k{};k.epoch=++epoch;k.slots=game.weapon_in_slot;
     const auto inv=playground::pointer(f.pawn.address,L"InvManager"),level=get<uptr>(f.world.address+0x40);
     const uptr addresses[]={f.world.address,level,f.controller.address,f.pawn.address,inv,
@@ -303,11 +414,13 @@ bool acquire(abi::Frame const& f,Snapshot const& game,bool idle_unheld=false) no
 bool stow(void*,abi::Frame const& f,Snapshot const& game) noexcept {
     if(!profile()||!current(nullptr,f))return false;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-    if(lancerreload_runtime::needs_priority()&&!lancerreload_runtime::stow_ready(f))return false;
+    if(gnasher_state::owns_stow(f)){
+        if(!gnasher_state::stow_ready(f))return false;
+    }else if(lancerreload_runtime::needs_priority()&&!lancerreload_runtime::stow_ready(f))return false;
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-    if(!fragpreparation::stop()||!current(nullptr,f))return false;
+    if(!fragpreparation::stop()||!smokepreparation::stop()||!current(nullptr,f))return false;
 #endif
     if(!vrfire::yield_for_native_equipment(f)||!current(nullptr,f))return false;
 #endif
@@ -344,6 +457,10 @@ void pre_original_tick(uptr pc) noexcept {
         decal_attach_reported=decal_attach_skipped;
         fwprintf(log_file,L"native_equipment_decal_attach attested_skips=%llu original_component_only=1 journal_write=0\n",decal_attach_skipped);fflush(log_file);
     }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    fragruntime::pre_original_tick(pc);
+    smokeruntime::pre_original_tick(pc);
+#endif
     const Key* key=lease.dirty()?&lease.key():equip_visibility.dirty()?&equip_visibility.key():nullptr;
     if(key&&key->objects[2].address==pc&&original_action_pending())(void)restore_with_reason(2);
 }
@@ -354,7 +471,6 @@ void idle(abi::Frame const& f,Snapshot const& game,bool may_hide) noexcept {
     if(lancerreload_runtime::needs_priority())return;
 #endif
     const IdleKey key{f.world,f.pawn,f.weapon,f.key.native_started_qpc,f.key.registration_cookie,f.key.world_generation};
-    const auto weapon_phase=phase(f.weapon.address);
     if(equip_visibility.dirty()){
         if(!abi::same(equip_visibility.key().objects[6],f.weapon))return;
         // manual31404: empty hands approaching the ground rack repeatedly
@@ -366,11 +482,13 @@ void idle(abi::Frame const& f,Snapshot const& game,bool may_hide) noexcept {
         // keep their existing restoration/revocation paths. World pickups
         // are separate components and are never hidden by this journal.
         VisibilityBackend retained{equip_visibility.key(),nullptr};
+        retained.certified_slot_observation=true;
         if(equip_visibility.retains_detached(retained))return;
         if(!restore_visibility(4)||!current(nullptr,f))return;
         // A completed clean visibility interval may serve a later equip.
         if(!equip_visibility.faulted())equip_visibility.reset();
     }
+    const auto weapon_phase=phase(f.weapon.address);
     if(weapon_phase==gears_weapon::StowPhase::equipping){(void)hide_equip_transition(f,game);return;}
     const bool eligible=gears_weapon::stow_phase_allowed(weapon_phase,game.can_switch,game.animation_busy,true,
         clear_equip_transition(f.pawn.address));
@@ -382,7 +500,18 @@ void idle(abi::Frame const& f,Snapshot const& game,bool may_hide) noexcept {
     // retains actor/inventory identity, foreign-setter and restore checks.
     (void)hide_equip_transition(f,game,true);
 }
-void idle_unheld(void*,abi::Frame const& f,Snapshot const& game) noexcept {idle(f,game,true);}
+void idle_unheld(void*,abi::Frame const& f,Snapshot const& game) noexcept {
+    static const bool measure=[](){wchar_t value[4]{};return
+        GetEnvironmentVariableW(L"GEARSVR_TEST_PERF_UNHELD",value,4)==1&&value[0]==L'1';}();
+    static unsigned idle_observed{},idle_logged{};
+    const auto ordinal=measure?idle_observed++:0;
+    const bool sample=measure&&idle_logged<16&&(ordinal<4||ordinal%128==0);
+    const auto begin=sample?clock_ns(nullptr):0;
+    idle(f,game,true);
+    if(sample&&log_file){const auto end=clock_ns(nullptr);
+        fwprintf(log_file,L"native_equipment_idle_visibility_cost observed=%u elapsed_ns=%lld\n",ordinal,end-begin);
+        fflush(log_file);++idle_logged;}
+}
 bool relevant(uptr object,uptr function) noexcept {
     bool related=false;for(auto const& id:lease.key().objects)related=related||id.address==object;
     wchar_t label[96]{};if(!registered(function)||!name(function,label,96))return related;

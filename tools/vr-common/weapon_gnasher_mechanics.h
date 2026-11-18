@@ -1,6 +1,7 @@
 #pragma once
 #include "weapon_mechanism_geometry.h"
 #include "weapon_reload_geometry.h"
+#include "gnasher_lever_motion.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -33,7 +34,7 @@ struct GnasherMechanicalConfig {
     std::uint64_t calibration_id{};
     bool lever_calibrated{},feed_calibrated{};
     std::uint32_t capacity{};
-    std::int64_t perfect_end_ticks{}; // 0 = unknown: ordinary reloads still work.
+    std::int64_t game_ticks_per_second{}; // Authenticated game clock; 0 = unknown, ordinary only.
     LeverMount lever{};
     Quaternion right_grip_home_in_main{};
     Vector right_contact_in_grip{};
@@ -42,9 +43,10 @@ struct GnasherMechanicalConfig {
     double maximum_grip_orientation_error_radians{.45};
     double maximum_hand_speed_metres_per_second{5.};
     double maximum_hand_rotation_radians_per_second{18.};
+    double regrasp_angle_tolerance_radians{.02};
     bool valid() const noexcept {
         return calibration_id&&lever_calibrated&&capacity&&capacity<=10000&&
-            perfect_end_ticks>=0&&lever.valid()&&travel.valid()&&
+            game_ticks_per_second>=0&&game_ticks_per_second<=1000000000&&lever.valid()&&travel.valid()&&
             gears_vr::stereo_pose_valid({{},right_grip_home_in_main})&&
             gears_vr::finite(right_contact_in_grip)&&
             length(right_contact_in_grip)<.5&&
@@ -57,6 +59,8 @@ struct GnasherMechanicalConfig {
             std::isfinite(maximum_hand_rotation_radians_per_second)&&
             maximum_hand_rotation_radians_per_second>.1&&
             maximum_hand_rotation_radians_per_second<40.&&
+            std::isfinite(regrasp_angle_tolerance_radians)&&regrasp_angle_tolerance_radians>=0&&
+            regrasp_angle_tolerance_radians<=.05&&
             (!feed_calibrated||feed.valid());
     }
 };
@@ -76,6 +80,36 @@ struct GnasherMechanicalSample {
     std::uint64_t left_round_serial{};
     bool left_tracked{},right_tracked{},left_front_held{},right_handle_held{};
     bool original_animation_active{},original_ready{};
+    std::uint64_t support_grasp_token{}; // Actual shared support lease; never an XR counter.
+    std::uint64_t reference_generation{};
+};
+
+// Shared geometry for the CURRENT world pair and producer-relative motion.
+// A relative pair is mathematical calibration data, never a world pose/Frame.
+inline bool gnasher_lever_geometry(GnasherMechanicalConfig const& config,
+    Pose const& left,Pose const& right,Pose& main,double& angle) noexcept {
+    if(!gears_vr::stereo_pose_valid(left)||!gears_vr::stereo_pose_valid(right))return false;
+    main.orientation=gears_vr::normalized(gears_vr::multiply(left.orientation,
+        gears_vr::inverse(config.lever.left_front_grip_in_main.orientation)));
+    main.position=difference(left.position,rotate(main.orientation,config.lever.left_front_grip_in_main.position));
+    const auto contact=sum(right.position,rotate(right.orientation,config.right_contact_in_grip));
+    if(!lever_angle_from_hands(main,contact,config.lever,angle)||
+       angle>config.travel.maximum_angle_radians)return false;
+    const auto half=angle*.5;const auto axis=config.lever.hinge_axis_in_main;
+    const Quaternion rotation{axis.x*std::sin(half),axis.y*std::sin(half),axis.z*std::sin(half),std::cos(half)};
+    const auto expected=gears_vr::normalized(gears_vr::multiply(main.orientation,
+        gears_vr::multiply(rotation,config.right_grip_home_in_main)));
+    const auto a=gears_vr::normalized(expected),b=gears_vr::normalized(right.orientation);
+    const auto dot=std::abs(a.x*b.x+a.y*b.y+a.z*b.z+a.w*b.w);
+    return 2*std::acos((std::clamp)(dot,0.,1.))<=config.maximum_grip_orientation_error_radians;
+}
+
+// Adapter supplies this only after exact raw history AND current Native/
+// reference/hold/support closure. It cannot authorize past poses or calls.
+struct GnasherProducerMotion {
+    GnasherIdentity identity{};
+    std::uint64_t reference_generation{},support_grasp_token{};
+    GnasherLeverMotion lever{};
 };
 
 inline bool gnasher_mechanical_sample_from_hands(
@@ -88,7 +122,7 @@ inline bool gnasher_mechanical_sample_from_hands(
        identity.space_epoch!=hands.space_epoch||identity.input_epoch!=hands.input_epoch||
        identity.profile_generation!=hands.profile_generation||game_tick<0||
        !gears_vr::controller_frame_matches(hands,stereo,now_ns,allow_sim))return false;
-    out={identity,hands.sequence,now_ns,game_tick,hands.hands[0].grip,
+    out={identity,hands.sequence,hands.sync_ns,game_tick,hands.hands[0].grip,
         hands.hands[1].grip,left_round_serial,
         gears_vr::controller_pose_usable(hands.hands[0].grip,
             hands.hands[0].grip_flags,hands.hands[0].grip_active),
@@ -110,7 +144,7 @@ struct GnasherMechanicalDecision {
     GnasherMechanicalEvent event{GnasherMechanicalEvent::none};
     ReloadEvent reload_event{ReloadEvent::rejected};
     std::uint64_t request_token{};
-    bool drive_lever{},animation_owns_hands{},restore_6dof{};
+    bool drive_lever{},animation_owns_hands{},restore_6dof{},lever_returning{};
     double lever_angle_radians{};
     Pose main_pose{};
 };
@@ -118,6 +152,8 @@ struct GnasherInventoryRequest {
     GnasherIdentity identity{};
     std::uint64_t token{},round_serial{},before_revision{};
     std::uint32_t before_loaded{},before_reserve{},after_loaded{},after_reserve{};
+    std::uint64_t input_sequence{};std::int64_t physical_completion_ns{};
+    std::uint64_t reference_generation{};
 };
 struct GnasherInventoryReceipt {
     std::uint64_t request_token{};
@@ -130,6 +166,7 @@ struct GnasherCycleRequest {
     std::int64_t physical_completion_game_tick{};
     MechanismAction action{MechanismAction::none};
     ReloadEvent completion{ReloadEvent::rejected}; // Proposal; reward only after cycle_accepted.
+    std::uint64_t input_sequence{};std::int64_t physical_completion_ns{};
 };
 // An accepted handoff is not an animation-completion or ammunition receipt.
 // Original SG_Chamber/reload notifications, firing, damage, recoil and sounds
@@ -146,6 +183,16 @@ struct GnasherShotReceipt {
     std::int64_t monotonic_ns{},game_tick{};
     GnasherInventory observed{}; // Same original event's actual post-shot counts.
 };
+struct GnasherShotAcceptance {
+    GnasherIdentity identity{};std::uint64_t original_event_sequence{},source_sequence{};
+    std::int64_t source_sync_ns{},source_admitted_ns{};
+    GnasherInventory before{};bool accepted{};
+};
+struct GnasherReloadAcceptance {
+    GnasherIdentity identity{};std::uint64_t source_sequence{};
+    std::int64_t source_sync_ns{},source_admitted_ns{},original_start_game_tick{};
+    GnasherInventory observed{};bool accepted{};
+};
 
 class GnasherMechanicalInteraction {
     GnasherIdentity identity_{};
@@ -156,12 +203,13 @@ class GnasherMechanicalInteraction {
     GnasherInventoryRequest inventory_request_{};
     GnasherCycleRequest cycle_request_{};
     std::uint64_t next_token_{1},last_round_serial_{},held_round_{},sequence_{},
-                  last_shot_event_{},last_cycle_event_{};
+                  last_shot_event_{},last_cycle_event_{},last_support_token_{},last_reference_generation_{};
     std::int64_t last_ns_{},last_game_tick_{},reload_start_tick_{};
     Pose previous_left_{},previous_right_{};
     std::uint32_t target_{},inserted_{};
+    unsigned observation_rejection_{}; // Last actual observe result; never admission.
     bool bound_{},reload_active_{},mechanism_pending_{},pose_continuity_{},feed_armed_{},
-         tracked_{},ready_{},animation_owns_hands_{},waiting_recovery_{};
+         tracked_{},ready_{},animation_owns_hands_{},waiting_recovery_{},close_requested_{},hold_suspended_{};
 
     GnasherMechanicalDecision result(GnasherMechanicalEvent event,
         ReloadEvent reload=ReloadEvent::rejected,std::uint64_t token=0) const noexcept {
@@ -180,7 +228,7 @@ class GnasherMechanicalInteraction {
         if(next_token_==std::numeric_limits<std::uint64_t>::max())return 0;
         return next_token_++;
     }
-    void break_stroke() noexcept {lever_.reset();feed_.reset();feed_armed_=false;}
+    void break_stroke() noexcept {lever_.reset();last_support_token_=0;feed_.reset();feed_armed_=false;}
     GnasherMechanicalDecision invalidate() noexcept {
         reset();return result(GnasherMechanicalEvent::invalidated);
     }
@@ -207,24 +255,9 @@ class GnasherMechanicalInteraction {
     }
     bool lever_geometry(GnasherMechanicalSample const& sample,
                         Pose& main,double& angle) const noexcept {
-        main.orientation=gears_vr::normalized(gears_vr::multiply(
-            sample.left_grip.orientation,
-            gears_vr::inverse(config_.lever.left_front_grip_in_main.orientation)));
-        main.position=difference(sample.left_grip.position,rotate(main.orientation,
-            config_.lever.left_front_grip_in_main.position));
-        const auto contact=sum(sample.right_grip.position,
-            rotate(sample.right_grip.orientation,config_.right_contact_in_grip));
-        if(!lever_angle_from_hands(main,contact,config_.lever,angle)||
-           angle>config_.travel.maximum_angle_radians)return false;
-        const auto half=angle*.5;
-        const auto axis=config_.lever.hinge_axis_in_main;
-        const Quaternion rotation{axis.x*std::sin(half),axis.y*std::sin(half),
-            axis.z*std::sin(half),std::cos(half)};
-        const auto expected=gears_vr::normalized(gears_vr::multiply(main.orientation,
-            gears_vr::multiply(rotation,config_.right_grip_home_in_main)));
-        return orientation_distance(expected,sample.right_grip.orientation)<=
-            config_.maximum_grip_orientation_error_radians;
+        return gnasher_lever_geometry(config_,sample.left_grip,sample.right_grip,main,angle);
     }
+
     bool fresh(std::int64_t now_ns) const noexcept {
         return tracked_&&last_ns_>0&&now_ns>=last_ns_&&
             now_ns-last_ns_<=config_.travel.maximum_sample_gap_ns;
@@ -243,17 +276,28 @@ public:
             return false;
         identity_=identity;config_=config;inventory_=inventory;bound_=true;return true;
     }
+    // Initialize a newly calibrated consumer from an ALREADY authenticated
+    // original shot/count receipt. Never synthesize a pre-shot count or a
+    // fresh tracking sample; the pending cycle survives the stock timer.
+    bool bind_after_original_shot(GnasherMechanicalConfig const& config,
+                                  GnasherShotReceipt const& receipt) noexcept {
+        if(bound_||!receipt.original_event_sequence||receipt.monotonic_ns<=0||receipt.game_tick<0||
+           !(receipt.identity==receipt.observed.identity)||!bind(receipt.identity,config,receipt.observed))return false;
+        last_shot_event_=receipt.original_event_sequence;last_ns_=receipt.monotonic_ns;
+        last_game_tick_=receipt.game_tick;mechanism_pending_=waiting_recovery_=true;
+        return true;
+    }
     // A failed controller-frame factory must call this too. It interrupts
     // gesture history without cancelling an original animation or refunding
     // already committed ammunition.
     void tracking_lost() noexcept {
-        tracked_=false;pose_continuity_=false;break_stroke();
+        tracked_=false;pose_continuity_=false;lever_.suspend();feed_.reset();feed_armed_=false;
     }
     GnasherMechanicalStage stage() const noexcept {
         if(!bound_)return GnasherMechanicalStage::unbound;
         if(inventory_request_.token)return GnasherMechanicalStage::inventory_commit;
         if(cycle_request_.token)return GnasherMechanicalStage::cycle_handoff;
-        if(reload_active_&&inserted_<target_)
+        if(reload_active_&&!close_requested_&&inserted_<target_)
             return held_round_?GnasherMechanicalStage::holding_round:
                 GnasherMechanicalStage::feed_port;
         return mechanism_pending_?GnasherMechanicalStage::lever:GnasherMechanicalStage::ready;
@@ -278,16 +322,55 @@ public:
         return inventory_matches(observed)&&observed.revision==inventory_.revision&&
             can_request_fire(now_ns);
     }
+    // Read-only diagnostic of the independent original fire prerequisites.
+    // Never consumes a sample or changes the normal admission predicate.
+    unsigned observation_rejection() const noexcept {return observation_rejection_;}
+    unsigned fire_readiness_mask(std::int64_t now_ns,GnasherInventory const& observed) const noexcept {
+        return (bound_?1u:0u)|(tracked_?2u:0u)|
+            ((last_ns_>0&&now_ns>=last_ns_&&now_ns-last_ns_<=config_.travel.maximum_sample_gap_ns)?4u:0u)|
+            (ready_?8u:0u)|(!reload_active_?16u:0u)|(!mechanism_pending_?32u:0u)|
+            (!inventory_request_.token?64u:0u)|(!cycle_request_.token?128u:0u)|
+            (!animation_owns_hands_?256u:0u)|(!waiting_recovery_?512u:0u)|
+            (inventory_.loaded>0?1024u:0u)|(inventory_matches(observed)?2048u:0u)|
+            (observed.revision==inventory_.revision?4096u:0u);
+    }
     bool animation_owns_hands() const noexcept {
         return animation_owns_hands_||waiting_recovery_;
     }
     GnasherInventory inventory() const noexcept {return inventory_;}
+    bool source_matches(std::uint64_t sequence,std::int64_t sync_ns) const noexcept {
+        return bound_&&sequence&&sequence==sequence_&&sync_ns>0&&sync_ns==last_ns_;
+    }
+    std::uint32_t capacity() const noexcept {return config_.capacity;}
+    std::int64_t game_ticks_per_second() const noexcept {return config_.game_ticks_per_second;}
+    bool reload_active() const noexcept {return reload_active_;}
+    bool hold_suspended() const noexcept {return hold_suspended_;}
+    std::int64_t reload_started_game_tick() const noexcept {return reload_start_tick_;}
+    // Parking has no new gesture authority. Resolve dispatched inventory and
+    // final-cycle proposals, and release the actual held item, before parking.
+    // Keep the logical reload clock/counts and the frozen physical lever phase.
+    bool suspend_hold() noexcept {
+        if(!bound_||held_round_||inventory_request_.token||cycle_request_.token)return false;
+        hold_suspended_=true;tracking_lost();ready_=false;return true;
+    }
+    bool resume_hold(GnasherInventory const& observed) noexcept {
+        if(!hold_suspended_||!inventory_matches(observed)||observed.revision<inventory_.revision)return false;
+        inventory_.revision=observed.revision;hold_suspended_=false;
+        tracking_lost();ready_=false;return true; // No input, pose or time renewed.
+    }
     std::uint32_t target() const noexcept {return target_;}
     std::uint32_t inserted() const noexcept {return inserted_;}
     std::uint64_t held_round_serial() const noexcept {return held_round_;}
     bool mechanism_pending() const noexcept {return mechanism_pending_;}
     GnasherInventoryRequest inventory_request() const noexcept {return inventory_request_;}
     GnasherCycleRequest cycle_request() const noexcept {return cycle_request_;}
+    // The live owner may reject only a proposal that has not entered its
+    // original readback/exit gate. This never pays the shot/reload debt or
+    // changes target/counts/clock, and its consumed token cannot be reused.
+    bool reject_unpublished_cycle(std::uint64_t token) noexcept {
+        if(!token||cycle_request_.token!=token||inventory_request_.token)return false;
+        cycle_request_={};break_stroke();return true;
+    }
 
     GnasherMechanicalDecision begin_reload(GnasherIdentity const& identity,
         std::int64_t now_ns,std::int64_t game_tick) noexcept {
@@ -300,8 +383,24 @@ public:
         if(!inventory_.reserve)
             return result(GnasherMechanicalEvent::rejected,ReloadEvent::no_ammo);
         target_=(std::min)({3u,config_.capacity-inventory_.loaded,inventory_.reserve});
-        inserted_=0;reload_start_tick_=last_game_tick_=game_tick;reload_active_=true;
+        inserted_=0;close_requested_=false;reload_start_tick_=last_game_tick_=game_tick;reload_active_=true;
         break_stroke();return result(GnasherMechanicalEvent::reload_started,ReloadEvent::started);
+    }
+    // Receipt for the original action already admitted from THIS raw sample.
+    // Dispatcher latency may delay this receipt; it never refreshes tracking
+    // or moves the four-second start away from original ReloadStartTime.
+    GnasherMechanicalDecision accept_original_reload(GnasherReloadAcceptance const& acceptance) noexcept {
+        if(!acceptance.accepted||!identity_matches(acceptance.identity)||
+           acceptance.source_sequence!=sequence_||acceptance.source_sync_ns!=last_ns_||
+           !inventory_matches(acceptance.observed)||acceptance.observed.revision<inventory_.revision||
+           acceptance.source_admitted_ns<acceptance.source_sync_ns||
+           acceptance.source_admitted_ns-acceptance.source_sync_ns>100000000)
+            return result(GnasherMechanicalEvent::rejected);
+        auto next=*this;next.inventory_.revision=acceptance.observed.revision;
+        const auto decision=next.begin_reload(acceptance.identity,acceptance.source_admitted_ns,
+            acceptance.original_start_game_tick);
+        if(decision.event==GnasherMechanicalEvent::reload_started)*this=next;
+        return decision;
     }
     // Serial is a monotonically issued visual-ammo instance token, never an
     // object address. The adapter verifies the left-shoulder source and ammo
@@ -320,6 +419,17 @@ public:
             return result(GnasherMechanicalEvent::rejected);
         held_round_=0;feed_.reset();feed_armed_=false;
         return result(GnasherMechanicalEvent::round_released,ReloadEvent::released);
+    }
+    // Called for an authenticated fresh support-grab intent, never passive snap.
+    // Keep the original target/clock and reject unsettled held ammunition.
+    GnasherMechanicalDecision request_close(GnasherIdentity const& identity,
+        std::int64_t now_ns) noexcept {
+        if(!identity_matches(identity)||!fresh(now_ns)||!ready_||!reload_active_||close_requested_||
+           held_round_||inventory_request_.token||cycle_request_.token||animation_owns_hands())
+            return result(GnasherMechanicalEvent::rejected);
+        close_requested_=true;break_stroke();
+        if(!mechanism_pending_){reload_active_=false;return result(GnasherMechanicalEvent::reload_cancelled,ReloadEvent::cancelled);}
+        return result(GnasherMechanicalEvent::none,ReloadEvent::mechanism_needed);
     }
     GnasherMechanicalDecision cancel_reload(GnasherIdentity const& identity) noexcept {
         if(!identity_matches(identity)||!reload_active_||inventory_request_.token||cycle_request_.token)
@@ -347,14 +457,24 @@ public:
         return result(GnasherMechanicalEvent::inventory_committed,
             inserted_==target_?ReloadEvent::mechanism_needed:ReloadEvent::inserted);
     }
-    GnasherMechanicalDecision after_original_shot(GnasherShotReceipt const& receipt) noexcept {
+    GnasherMechanicalDecision accept_original_shot(GnasherShotReceipt const& receipt,
+        GnasherShotAcceptance const& accepted) noexcept {
         if(!identity_matches(receipt.identity)||!identity_matches(receipt.observed.identity)||
            !receipt.original_event_sequence||receipt.original_event_sequence<=last_shot_event_)
             return result(GnasherMechanicalEvent::rejected);
+        if(!accepted.accepted||!identity_matches(accepted.identity)||
+           accepted.original_event_sequence!=receipt.original_event_sequence||
+           !source_matches(accepted.source_sequence,accepted.source_sync_ns)||
+           !inventory_matches(accepted.before)||accepted.before.revision!=inventory_.revision||
+           accepted.source_admitted_ns<accepted.source_sync_ns||
+           accepted.source_admitted_ns-accepted.source_sync_ns>100000000||
+           receipt.monotonic_ns<accepted.source_admitted_ns)return result(GnasherMechanicalEvent::rejected);
         // A new authenticated original shot with divergent ammo or an illegal
         // gate means the model lost synchronization. Repeated old receipts
         // are harmless; a new unexpected shot must fail closed.
-        if(!can_request_fire(receipt.monotonic_ns)||receipt.game_tick<last_game_tick_||
+        // This is a receipt for an already admitted original call. Returning
+        // late cannot renew input, but does not erase its genuine -1 either.
+        if(!can_request_fire(accepted.source_admitted_ns)||receipt.game_tick<last_game_tick_||
            receipt.observed.revision<=inventory_.revision||
            receipt.observed.loaded!=inventory_.loaded-1||
            receipt.observed.reserve!=inventory_.reserve)
@@ -363,6 +483,11 @@ public:
         last_game_tick_=receipt.game_tick;mechanism_pending_=true;ready_=false;
         waiting_recovery_=true;break_stroke();
         return result(GnasherMechanicalEvent::shot_recorded);
+    }
+    GnasherMechanicalDecision after_original_shot(GnasherShotReceipt const& receipt) noexcept {
+        const GnasherShotAcceptance accepted{identity_,receipt.original_event_sequence,sequence_,last_ns_,
+            receipt.monotonic_ns,inventory_,true};
+        return accept_original_shot(receipt,accepted);
     }
     GnasherMechanicalDecision acknowledge_cycle(GnasherCycleReceipt const& receipt,
         GnasherInventory const& observed) noexcept {
@@ -379,30 +504,70 @@ public:
         return result(GnasherMechanicalEvent::cycle_accepted,completion);
     }
 
-    GnasherMechanicalDecision observe(GnasherMechanicalSample const& sample) noexcept {
-        if(!bound_)return result(GnasherMechanicalEvent::rejected);
-        if(!identity_matches(sample.identity))return invalidate();
+    GnasherMechanicalDecision observe(GnasherMechanicalSample const& sample,
+        GnasherProducerMotion const* motion=nullptr) noexcept {
+        if(!bound_){observation_rejection_=1;return result(GnasherMechanicalEvent::rejected);}
+        if(hold_suspended_){observation_rejection_=2;return result(GnasherMechanicalEvent::rejected);}
+        if(!identity_matches(sample.identity)){auto d=invalidate();observation_rejection_=3;return d;}
         if(!sample.sequence||sample.sequence<=sequence_||sample.monotonic_ns<=0||
            sample.monotonic_ns<=last_ns_||sample.game_tick<last_game_tick_){
-            tracking_lost();return result(GnasherMechanicalEvent::rejected);
+            observation_rejection_=4;tracking_lost();break_stroke();return result(GnasherMechanicalEvent::rejected);
         }
         const auto gap=last_ns_?sample.monotonic_ns-last_ns_:0;
+        auto motion_trial=lever_;auto motion_result=GnasherMotionResult::rejected;
+        if(motion&&pose_continuity_&&tracked_&&ready_&&gap>config_.travel.maximum_sample_gap_ns&&
+           stage()==GnasherMechanicalStage::lever&&!animation_owns_hands_&&!waiting_recovery_&&
+           !held_round_&&!inventory_request_.token&&!cycle_request_.token&&
+           !sample.original_animation_active&&sample.original_ready&&
+           sample.left_tracked&&sample.right_tracked&&sample.left_front_held&&sample.right_handle_held&&
+           !sample.left_round_serial&&sample.support_grasp_token&&
+           sample.support_grasp_token==last_support_token_&&
+           motion->support_grasp_token==last_support_token_&&motion->identity==identity_&&
+           last_reference_generation_&&sample.reference_generation==last_reference_generation_&&
+           motion->reference_generation==last_reference_generation_&&
+           motion->lever.count>=2&&motion->lever.count<=motion->lever.points.size()){
+            auto const& first=motion->lever.points[0];
+            auto const& tail=motion->lever.points[motion->lever.count-1];
+            Pose main{};double angle{};
+            if(first.sequence==sequence_&&first.monotonic_ns==last_ns_&&
+               tail.sequence==sample.sequence&&tail.monotonic_ns==sample.monotonic_ns&&
+               lever_geometry(sample,main,angle)&&std::abs(angle-tail.lever_angle_radians)<=.0002)
+                motion_result=observe_gnasher_motion(motion_trial,config_.travel,motion->lever);
+        }
         sequence_=sample.sequence;last_ns_=sample.monotonic_ns;last_game_tick_=sample.game_tick;
+        last_reference_generation_=sample.reference_generation;
         if(sample.original_animation_active){
-            const bool entered=!animation_owns_hands_;
-            animation_owns_hands_=true;ready_=false;tracking_lost();
+            observation_rejection_=5;const bool entered=!animation_owns_hands_;
+            animation_owns_hands_=true;ready_=false;tracking_lost();break_stroke();
             return result(entered?GnasherMechanicalEvent::animation_handoff:
                 GnasherMechanicalEvent::none);
         }
-        const bool valid=sample.left_tracked&&sample.right_tracked&&
-            gears_vr::stereo_pose_valid(sample.left_grip)&&
-            gears_vr::stereo_pose_valid(sample.right_grip)&&sample.right_handle_held;
-        if(!valid){tracking_lost();ready_=false;return result(GnasherMechanicalEvent::rejected);}
-        if(pose_continuity_&&(gap>config_.travel.maximum_sample_gap_ns||
-           !continuous(previous_left_,sample.left_grip,double(gap)/1e9)||
-           !continuous(previous_right_,sample.right_grip,double(gap)/1e9))){
-            tracking_lost();ready_=false;return result(GnasherMechanicalEvent::rejected);
+        const bool pose_valid=gears_vr::stereo_pose_valid(sample.left_grip)&&
+            gears_vr::stereo_pose_valid(sample.right_grip);
+        if(!pose_valid){observation_rejection_=6;tracking_lost();break_stroke();ready_=false;return result(GnasherMechanicalEvent::rejected);}
+        const bool valid=sample.left_tracked&&sample.right_tracked&&sample.right_handle_held;
+        if(!valid){observation_rejection_=7;tracking_lost();ready_=false;return result(GnasherMechanicalEvent::rejected);}
+        if(pose_continuity_&&gap>config_.travel.maximum_sample_gap_ns&&
+           motion_result==GnasherMotionResult::rejected){
+            observation_rejection_=8;tracking_lost();ready_=false;
+            // A new authenticated pose can baseline an idle loaded gun after
+            // sparse GT consumption. This consumes no stroke, grant or debt.
+            // Active mechanics still suspend below; fire independently checks
+            // this sample's ORIGINAL timestamp and exact inventory readback.
+            if(!reload_active_&&!mechanism_pending_&&!held_round_&&!inventory_request_.token&&
+               !cycle_request_.token&&!animation_owns_hands_&&!waiting_recovery_&&
+               inventory_.loaded>0&&sample.original_ready){
+                previous_left_=sample.left_grip;previous_right_=sample.right_grip;
+                pose_continuity_=tracked_=ready_=true;observation_rejection_=0;
+                return result(GnasherMechanicalEvent::none);
+            }
+            return result(GnasherMechanicalEvent::rejected);
         }
+        if(pose_continuity_&&!lever_.suspended()&&(!continuous(previous_left_,sample.left_grip,double(gap)/1e9)||
+           !continuous(previous_right_,sample.right_grip,double(gap)/1e9))){
+            observation_rejection_=9;tracking_lost();break_stroke();ready_=false;return result(GnasherMechanicalEvent::rejected);
+        }
+        observation_rejection_=0;
         previous_left_=sample.left_grip;previous_right_=sample.right_grip;
         pose_continuity_=tracked_=true;ready_=sample.original_ready;
         if(!ready_){break_stroke();return result(GnasherMechanicalEvent::none);}
@@ -430,29 +595,50 @@ public:
             if(!inventory_.reserve||inventory_.loaded>=config_.capacity)return invalidate();
             const auto request_token=token();if(!request_token)return invalidate();
             inventory_request_={identity_,request_token,held_round_,inventory_.revision,
-                inventory_.loaded,inventory_.reserve,inventory_.loaded+1,inventory_.reserve-1};
+                inventory_.loaded,inventory_.reserve,inventory_.loaded+1,inventory_.reserve-1,
+                sample.sequence,sample.monotonic_ns,sample.reference_generation};
             return result(GnasherMechanicalEvent::request_inventory_commit,
                 ReloadEvent::inserted,request_token);
         }
         if(stage()!=GnasherMechanicalStage::lever){lever_.reset();return result(GnasherMechanicalEvent::none);}
         feed_.reset();
-        if(!sample.left_front_held||sample.left_round_serial){lever_.reset();return result(GnasherMechanicalEvent::rejected);}
+        if(!sample.left_front_held||sample.left_round_serial||!sample.support_grasp_token){
+            lever_.suspend();return result(GnasherMechanicalEvent::rejected);}
         Pose main{};double angle{};
-        if(!lever_geometry(sample,main,angle)){lever_.reset();return result(GnasherMechanicalEvent::rejected);}
-        if(lever_.phase()==LeverPhase::unarmed)
+        if(!lever_geometry(sample,main,angle)){
+            if(!lever_.suspended()){lever_.reset();last_support_token_=0;}
+            return result(GnasherMechanicalEvent::rejected);}
+        if(lever_.phase()!=LeverPhase::unarmed&&sample.support_grasp_token!=last_support_token_)lever_.suspend();
+        const LeverPoseSample lever_sample{identity_.weapon,identity_.world,identity_.space_epoch,
+            sample.sequence,sample.monotonic_ns,angle,true,true,true};
+        if(lever_.suspended()){
+            if(sample.support_grasp_token<=last_support_token_||
+               !lever_.reattach(lever_sample,config_.travel,config_.regrasp_angle_tolerance_radians))
+                return result(GnasherMechanicalEvent::rejected);
+            last_support_token_=sample.support_grasp_token;
+            // A regrasp itself never moves the mechanism or emits completion.
+            return result(GnasherMechanicalEvent::none);
+        }
+        if(lever_.phase()==LeverPhase::unarmed){
             lever_.arm(identity_.weapon,identity_.world,identity_.space_epoch);
-        const bool complete=lever_.observe({identity_.weapon,identity_.world,identity_.space_epoch,
-            sample.sequence,sample.monotonic_ns,angle,true,true,true},config_.travel);
+            last_support_token_=sample.support_grasp_token;
+        }
+        bool complete{};
+        if(motion_result!=GnasherMotionResult::rejected){
+            lever_=motion_trial;complete=motion_result==GnasherMotionResult::completed;
+        }else complete=lever_.observe(lever_sample,config_.travel);
         auto d=result(GnasherMechanicalEvent::none);d.drive_lever=true;
         d.main_pose=main;d.lever_angle_radians=angle;
+        d.lever_returning=complete||lever_.phase()==LeverPhase::return_home;
         if(!complete)return d;
         const auto request_token=token();if(!request_token)return invalidate();
         const auto completion=reload_active_?
-            (config_.perfect_end_ticks>0&&sample.game_tick>=reload_start_tick_&&
-             sample.game_tick-reload_start_tick_<=config_.perfect_end_ticks?
+            (inserted_==target_&&inserted_>0&&config_.game_ticks_per_second>0&&
+             sample.game_tick>=reload_start_tick_&&
+             sample.game_tick-reload_start_tick_<=4*config_.game_ticks_per_second?
                 ReloadEvent::perfect:ReloadEvent::ordinary):ReloadEvent::cycled;
         cycle_request_={identity_,request_token,sample.game_tick,
-            MechanismAction::lever_down_return,completion};
+            MechanismAction::lever_down_return,completion,sample.sequence,sample.monotonic_ns};
         d.event=GnasherMechanicalEvent::request_original_cycle;d.reload_event=completion;
         d.request_token=request_token;return d;
     }

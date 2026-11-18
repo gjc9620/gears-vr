@@ -132,12 +132,27 @@ struct HammerOfDawnRequest {
     std::int64_t valid_until_ns{};
     bool requires_pose{},owned_aim{},owned_fire{};
 };
+// Complete original stop readback, tied to this weapon incarnation/use. A
+// returned input call or hidden laser alone cannot discharge beam ownership.
+struct HammerOfDawnStopReadback {
+    std::uint64_t weapon{},weapon_generation{},use_cycle{},original_event_serial{};
+    bool verified{},target_withdrawn{},beam_inactive{},laser_inactive{},
+         valid_target_emitter_inactive{},loop_sound_stopped{},pending_fire_cleared{};
+    bool complete(HammerOfDawnIdentity const& id,std::uint64_t cycle,
+                  std::uint64_t event) const noexcept {
+        return weapon==id.weapon&&weapon_generation==id.weapon_generation&&
+            use_cycle==cycle&&original_event_serial==event&&event&&verified&&
+            target_withdrawn&&beam_inactive&&laser_inactive&&
+            valid_target_emitter_inactive&&loop_sound_stopped&&pending_fire_cleared;
+    }
+};
 struct HammerOfDawnReceipt {
     HammerOfDawnStamp stamp{};
     std::uint64_t request_token{},instance_config{},original_event_serial{};
     HammerOfDawnOriginalState original{};
     HammerOfDawnResources resources{};
     bool accepted{},original_resource_change_verified{};
+    HammerOfDawnStopReadback stop{};
 };
 struct HammerOfDawnEffectReceipt {
     HammerOfDawnStamp stamp{};
@@ -200,16 +215,18 @@ class HammerOfDawnInteraction {
         return original_.current_instance_verified&&original_.equipped&&original_.ordinary_player&&
             original_.input_allowed&&!original_.animation_owns_hands;
     }
-    bool target_valid() const noexcept {
+    // Negative target/occlusion results are valid ORIGINAL query results.
+    // Keep feeding the original Tick; it owns grace, warmup and re-entry.
+    // Missing/stale/wrong-ray certificates still withdraw all input.
+    bool target_query_current() const noexcept {
         return target_.frame_ticket==pose_.frame_ticket&&target_.target_certificate&&
-            target_.original_check_serial&&target_.original_conditions_passed&&
-            target_.original_target_valid&&target_.occlusion_clear&&
+            target_.original_check_serial&&
             target_.checked_from_same_weapon_ray;
     }
     bool use_allowed(std::int64_t ns) const noexcept {
         return !interrupted_&&hands_==HammerOfDawnHands::vr&&fresh(ns)&&
             original_input_allowed()&&original_.manager_enabled&&original_.conditions_allow_use&&
-            original_.resources_allow_use&&target_valid()&&
+            original_.resources_allow_use&&target_query_current()&&
             config_.original_r_semantics_verified&&config_.original_release_semantics_verified&&
             config_.non_firing_cancel_verified&&config_.original_conditions_and_target_check_verified&&
             config_.original_effects_and_recoil_preserved&&
@@ -321,7 +338,7 @@ public:
         const auto request_event=reconcile(s.stamp);
         if(pending_.token||cancel_needed_)return request_event;
         const bool restored=hands_!=HammerOfDawnHands::vr;
-        if(pose_.left_tracked)hands_=HammerOfDawnHands::vr;
+        hands_=HammerOfDawnHands::vr; // Main-hand use does not acquire a left-hand lease.
         if(!aim_level_&&!owns_aim_)aim_armed_=true;
         if(!fire_level_&&!owns_fire_)fire_armed_=true;
         if(restored&&hands_==HammerOfDawnHands::vr)return HammerOfDawnEvent::hands_restored;
@@ -404,6 +421,12 @@ public:
         consume(r.stamp);last_original_event_=r.original_event_serial;resources_=r.resources;
         original_=r.original;pending_={};dispatched_=false;
         if(r.accepted){
+            if(owns_fire_&&(action==HammerOfDawnAction::release_original_fire||
+               action==HammerOfDawnAction::cancel_original_inputs)&&
+               !r.stop.complete(config_.identity,use_cycle_,r.original_event_serial)){
+                interrupted_=cancel_needed_=true;
+                return reconcile(r.stamp); // Keep exact old-owner recovery debt.
+            }
             if(action==HammerOfDawnAction::press_original_aim)owns_aim_=true;
             if(action==HammerOfDawnAction::press_original_fire)owns_fire_=true;
             if(action==HammerOfDawnAction::release_original_aim){owns_aim_=false;release_aim_=false;}

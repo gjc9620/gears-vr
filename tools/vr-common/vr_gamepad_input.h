@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include "controller_continuity_frame.h"
 #include <array>
 #include <algorithm>
@@ -31,8 +32,8 @@ class Route {
     hc::TrackedInput previous_{};hc::Publisher publisher_{};
     State base_{},returned_{};std::uint32_t packet_{};
     std::array<std::int64_t,7> pulse_{};
-    std::uint16_t blocked_{},menu_direction_{};bool axes_blocked_{},known_{},axes_owned_{},menu_navigation_{};
-    std::int64_t stamp_{};
+    std::uint16_t blocked_{},menu_direction_{},physical_buttons_{},consumed_{};bool axes_blocked_{},known_{},axes_owned_{},menu_navigation_{};
+    std::int64_t stamp_{};bool look_suppressed_{},look_needs_neutral_{};
     static std::int16_t axis(float value) noexcept {
         return static_cast<std::int16_t>(std::lround(std::clamp(double(value),-1.,1.)*(value<0?32768.:32767.)));
     }
@@ -49,7 +50,7 @@ class Route {
             hc::detail::same_key(previous_.input,t.input);
     }
 public:
-    void invalidate() noexcept {base_={};pulse_={};blocked_=menu_direction_=0;axes_blocked_=known_=axes_owned_=menu_navigation_=false;stamp_=0;}
+    void invalidate() noexcept {base_={};pulse_={};blocked_=menu_direction_=physical_buttons_=consumed_=0;axes_blocked_=known_=axes_owned_=menu_navigation_=false;stamp_=0;look_suppressed_=look_needs_neutral_=false;}
     bool observe(vr::ControllerInputFrame const& f,hc::TrackedInput const& t,hc::Publisher publisher,
                  std::int64_t now,bool physical_input_allowed,bool allow_sim=false) noexcept {
         const bool simulated=f.source==vr::StereoSource::MetaOperatorSimulated;
@@ -65,6 +66,7 @@ public:
         axes_owned_=!menu_hint||f.display_mode!=1;
         std::uint16_t raw{};
         for(auto const& button:buttons_)if(f.hands[button.hand].buttons&f.hands[button.hand].buttons_active&button.raw)raw|=button.pad;
+        physical_buttons_=raw;consumed_&=physical_buttons_;
         // Some runtimes reserve Menu for their system. Both thumb clicks are
         // an in-VR fallback; suppress their separate gameplay clicks in it.
         const bool chord=(raw&(left_thumb|right_thumb))==(left_thumb|right_thumb);
@@ -91,12 +93,12 @@ public:
             if(now>=old_sync&&now-old_sync<=100000000&&f.sync_ns>old_sync&&f.sync_ns-old_sync<=100000000){
                 for(unsigned i=0;i<buttons_.size();++i){auto const& button=buttons_[i];
                     if(f.hands[button.hand].pressed[button.control]>previous_.input.hands[button.hand].pressed[button.control]&&
-                       !(blocked_&button.pad))pulse_[i]=old_sync; // Conservative ORIGINAL edge bound.
+                       !((blocked_|consumed_)&button.pad))pulse_[i]=old_sync; // Conservative ORIGINAL edge bound.
                 }
             }
         }
         if(boundary||display_changed||navigation_changed)axes_blocked_=!neutral_axes;
-        blocked_&=raw;next.buttons&=std::uint16_t(~blocked_);
+        blocked_&=raw;next.buttons&=std::uint16_t(~(blocked_|consumed_));
         if(chord){
             const bool previous_chord=!boundary&&
                 (previous_.input.hands[0].buttons&previous_.input.hands[0].buttons_active&vr::controller_stick_click)&&
@@ -119,6 +121,17 @@ public:
         menu_navigation_=navigation;
         base_=next;previous_=t;publisher_=publisher;stamp_=f.sync_ns;known_=true;return true;
     }
+    // Used by an independently authenticated gameplay owner AFTER it accepts
+    // an input. Unlike a temporary fence, consumption must never replay that
+    // pulse on handoff, and a held button stays suppressed until physical
+    // release. Record physical levels BEFORE thumb-chord translation so a
+    // pause chord cannot accidentally rearm a still-held R3 on chord exit.
+    void consume_buttons(std::uint16_t mask) noexcept {
+        if(!known_)return;
+        for(unsigned i=0;i<buttons_.size();++i)if(mask&buttons_[i].pad)pulse_[i]=0;
+        consumed_|=std::uint16_t(mask&physical_buttons_);
+        base_.buttons&=std::uint16_t(~mask);
+    }
     std::uint16_t pending_buttons(std::int64_t now)const noexcept {
         if(!known_||now<stamp_||now-stamp_>100000000)return 0;
         auto bits=base_.buttons;
@@ -126,7 +139,7 @@ public:
             if(pulse_[i]&&now>=pulse_[i]&&now-pulse_[i]<=100000000)bits|=buttons_[i].pad;
         return bits;
     }
-    State sample(std::int64_t now,bool game_consumer,std::uint32_t& packet,std::uint16_t fenced=0) noexcept {
+    State sample(std::int64_t now,bool game_consumer,std::uint32_t& packet,std::uint16_t fenced=0,bool suppress_look=false) noexcept {
         State value{};
         if(known_&&now>=stamp_&&now-stamp_<=100000000){
             value=base_;
@@ -135,10 +148,26 @@ public:
                 if(pulse_[i]){value.buttons|=buttons_[i].pad;if(game_consumer&&!(fenced&buttons_[i].pad))pulse_[i]=0;}
             }
         }else invalidate();
-        value.buttons&=std::uint16_t(~fenced);
+        const bool look_neutral=std::abs(int(value.rx))<4916&&std::abs(int(value.ry))<4916;
+        if(look_suppressed_&&!suppress_look&&!look_neutral)look_needs_neutral_=true;
+        if(look_neutral)look_needs_neutral_=false;
+        look_suppressed_=suppress_look;
+        if(suppress_look||look_needs_neutral_)value.rx=value.ry=0;
+        value.buttons&=std::uint16_t(~(fenced|consumed_));
         if(!(value==returned_)){returned_=value;++packet_;}
         packet=packet_;return value;
     }
     bool axes_owned()const noexcept{return known_&&axes_owned_;}
+};
+// Native mounted Scene arms a restriction; only an actual neutral right-axis
+// game poll acknowledges it. Ordinary authenticated handoff/stop clears it.
+class MountedLookVeto {
+    std::atomic<unsigned> state_{}; //0 ordinary,1 armed,2 zero game poll observed
+public:
+    bool arm_ready() noexcept {unsigned expected=0;state_.compare_exchange_strong(expected,1,std::memory_order_acq_rel);return ready();}
+    bool suppressed() const noexcept {return state_.load(std::memory_order_acquire)!=0;}
+    bool ready() const noexcept {return state_.load(std::memory_order_acquire)==2;}
+    void game_poll_zero() noexcept {unsigned expected=1;state_.compare_exchange_strong(expected,2,std::memory_order_acq_rel);}
+    void clear() noexcept {state_.store(0,std::memory_order_release);}
 };
 }

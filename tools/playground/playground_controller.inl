@@ -70,6 +70,14 @@ uptr find_instance(const wchar_t* value){
     for(int i=0;i<a.count;++i){const auto p=get<uptr>(a.data+size_t(i)*8);if(instance(p,value))return p;}
     return 0;
 }
+bool named_field(uptr object,const wchar_t* value){
+#if defined(GEARS_PLAYGROUND_FIELD_NAME_PREFIX) && GEARS_PLAYGROUND_FIELD_NAME_PREFIX
+    // Both ordinary text readers return true only after copying a real NUL.
+    wchar_t text[128];return name(object,text,128,value)&&!_wcsicmp(text,value);
+#else
+    return named(object,value); // Existing three-argument fixture seam.
+#endif
+}
 uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(component_names::enabled){
@@ -86,16 +94,14 @@ uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
     for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
         auto f=get<uptr>(cls+0x80);
         for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68))
-            if(named(f,value)&&(!kind||named(get<uptr>(f+0x50),kind)))return f;
+            if(named_field(f,value)&&(!kind||named_field(get<uptr>(f+0x50),kind)))return f;
     }
     return 0;
 }
-#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
 // Addresses only, local to one non-invoking observation. Match the original
 // untyped field's first name in derived-to-base order, even for a bad type.
 // Descriptor validation and a fresh final resolution remain the caller's job.
 #include "query_local_fields.inl"
-#endif
 uptr property(uptr object,const wchar_t* value){return registered(object)?field(get<uptr>(object+0x50),value):0;}
 uptr pointer(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<uptr>(object+get<unsigned>(p+0x94)):0;}
 template<class T>T scalar(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<T>(object+get<unsigned>(p+0x94)):T{};}
@@ -119,6 +125,7 @@ bool deleted(uptr object){
 }
 struct Args {
     Request r{};bool valid{};
+    Args()=default;
     Args(uptr object,const wchar_t* fn){
         r.object=object;r.function=registered(object)?field(get<uptr>(object+0x50),fn,L"Function"):0;
         r.size=r.function?get<unsigned short>(r.function+0x106):0;

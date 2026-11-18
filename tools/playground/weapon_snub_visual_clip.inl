@@ -5,8 +5,28 @@ namespace snub_visual_clip {
 namespace hand=gears_weapon_hand;namespace anim=hammerburst_animation;namespace inv=lancerreload_inventory;
 namespace meta=gripdamage_metadata;
 unsigned failure{};
+bool native_clip_receipt_current() noexcept {
+    const auto& owner=anim::ownership;const auto& lease=lancerreload_state::lease;
+    return owner.active&&!owner.visual_only&&lease.acquired&&owner.serial&&
+        lease.serial==owner.serial&&lease.identity==owner.inventory&&lancerreload_state::owned_state();
+}
+// Static Snub defaults omit WeaponReloadAnim. Confirm the LIVE typed value;
+// never treat a failed AR_Reload observation as permission to select a clip.
+bool no_configured_gun_reload(hand::Frame const& f,std::uint64_t serial) noexcept {
+    if(!serial||!playground::instance(f.weapon.address,L"Weap_COGPistol")||
+       !lancerreload_state::owns(f,serial)||!lancerreload_state::item_owned(f)||!nativeequipment::current(nullptr,f))return false;
+    meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
+    weaponhand::BoolField field{};meta::RawName raw{},again{};meta::NameText name{};
+    if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,f.weapon)||
+       !weaponhand::field(r,f.weapon.address,L"WeaponReloadAnim",L"NameProperty",8,field)||
+       !r.at(f.weapon.address,field.property.offset,raw)||raw.number||
+       !meta::fresh_name(schema.names,raw.index,name)||!meta::exact_text(name,L"None")||
+       !r.at(f.weapon.address,field.property.offset,again)||again.index!=raw.index||again.number!=raw.number||
+       !unified_weapon_fire::retained_metadata(r)||!lancerreload_state::owns(f,serial)||!nativeequipment::current(nullptr,f))return false;
+    return true;
+}
 bool capture_started() noexcept {
-    if(!anim::ownership.active||!anim::ownership.visual_only||!weaponhand::current_gt(nullptr))return false;
+    if(!anim::ownership.active||(!anim::ownership.visual_only&&!native_clip_receipt_current())||!weaponhand::current_gt(nullptr))return false;
     const auto& id=anim::ownership.inventory;auto value=anim::ownership.last;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!meta::tables(base,schema.objects,schema.names))return false;
@@ -28,10 +48,11 @@ bool capture_started() noexcept {
     anim::Observation current{};if(!anim::read_owned(current))return false;
     anim::ownership.last=current;return true;
 }
-anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
+anim::Acquire start(hand::Frame const& f,std::uint64_t transaction,bool native_reload=false) noexcept {
     failure=1;
     if(!transaction||anim::ownership.active||!playground::instance(f.weapon.address,L"Weap_COGPistol")||
        !lancerreload_state::item_owned(f)||!nativeequipment::current(nullptr,f)||!lancer_charging::prepare_reload_name(f))return anim::Acquire::rejected;
+    if(native_reload&&!no_configured_gun_reload(f,transaction))return anim::Acquire::rejected;
     lancermain_asset::Evidence asset{};hand::ObjectIdentity node{};
     if(lancermain_asset::read(f,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready||
        !anim::selected_node(f,node))return anim::Acquire::rejected;
@@ -53,7 +74,7 @@ anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
        !nativelancerfollow::bool_arg(play,L"bLooping",false)||!nativelancerfollow::bool_arg(play,L"bOverride",true)||
        !nativeequipment::current(nullptr,f))return anim::Acquire::rejected;
     anim::ownership={};auto& owner=anim::ownership;owner.inventory=inv::identity(f);owner.serial=transaction;
-    owner.active=owner.visual_only=true;owner.last.weapon=f.weapon;owner.last.component=asset.component;
+    owner.active=true;owner.visual_only=!native_reload;owner.last.weapon=f.weapon;owner.last.component=asset.component;
     owner.last.asset=asset.asset;owner.last.node=node;
     // Durable BEFORE start. Failure is cleanup, not permission to replay Play.
     failure=2;if(!play.run()||!capture_started())return anim::Acquire::recovery_required;
@@ -72,6 +93,8 @@ anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
     c.notify_offset=get<unsigned>(seek.prop(L"bFireNotifies")+0x94);c.notify_mask=get<unsigned>(seek.prop(L"bFireNotifies")+0xd0);
     if(!c.notify_mask||(c.notify_mask&(c.notify_mask-1))||
        !(c.time_offset+4<=c.notify_offset||c.notify_offset+4<=c.time_offset)||!anim::restore_closed_snub())return anim::Acquire::recovery_required;
+    if(native_reload&&!native_clip_receipt_current())return anim::Acquire::recovery_required;
+    if(native_reload&&log_file){fwprintf(log_file,L"snub_native_clip_selected serial=%llu configured_reload_none=1 original_clip=AR_Reload stopped=1 closed=1\n",transaction);fflush(log_file);}
     failure=0;return anim::Acquire::acquired;
 }
 bool restore() noexcept {

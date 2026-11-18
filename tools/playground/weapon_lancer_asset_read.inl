@@ -6,27 +6,104 @@ namespace meta=weaponhand::meta;
 using U32=std::uint32_t;
 enum class Status:U32 {ready,wrong_thread,invalid_identity,unsupported_weapon,invalid_link,
     invalid_component,hidden_component,unsupported_asset,changed};
-struct Evidence {gears_weapon_hand::ObjectIdentity component{},asset{};};
-enum class AssetScope { lancer_only,basic_hold,supported_instant_fire,frag_hold };
+enum class HeldAsset : std::uint32_t;
+struct Evidence {gears_weapon_hand::ObjectIdentity component{},asset{};HeldAsset kind{};};
+enum class AssetScope { lancer_only,basic_hold,supported_instant_fire,frag_hold,hod_use,supported_r2_fire,boomshot_projectile,torque_bow_projectile,gnasher_custom,smoke_hold };
 // Basic visual holding is separate from Lancer muzzle/reload eligibility.
 // Never accept an arbitrary firearm/mesh pair under the broader scope.
-enum class HeldAsset {unknown,lancer,pistol,hammerburst,frag};
+enum class HeldAsset : std::uint32_t {unknown,lancer,pistol,hammerburst,frag,longshot,boltok,gnasher,boomshot,torque_bow,hod,smoke};
 HeldAsset held_asset_name(meta::Reader& r,uptr weapon,AssetScope scope) noexcept {
+    if(scope==AssetScope::smoke_hold)return weaponhand::derives(r,weapon,L"Weap_SmokeGrenade",L"WarfareGame")?
+        HeldAsset::smoke:HeldAsset::unknown;
+    if(scope==AssetScope::gnasher_custom)
+        return weaponhand::derives(r,weapon,L"Weap_Shotgun",L"WarfareGame")?HeldAsset::gnasher:HeldAsset::unknown;
+    if(scope==AssetScope::torque_bow_projectile)
+        return weaponhand::derives(r,weapon,L"Weap_Bow_base",L"WarfareGame")?HeldAsset::torque_bow:HeldAsset::unknown;
+    // Original R2 transport is shared; projectile getter permission is not.
+    if(scope==AssetScope::supported_r2_fire||scope==AssetScope::boomshot_projectile){
+        if(weaponhand::derives(r,weapon,L"Weap_Boomer_base",L"WarfareGame"))return HeldAsset::boomshot;
+        if(scope==AssetScope::boomshot_projectile)return HeldAsset::unknown;
+        if(weaponhand::derives(r,weapon,L"Weap_Shotgun",L"WarfareGame"))return HeldAsset::gnasher;
+        scope=AssetScope::supported_instant_fire;
+    }
     // Frag is deliberately outside firearm/muzzle eligibility. This explicit
     // scope is for its separate original-projectile adapter only.
+    if(scope==AssetScope::hod_use)return weaponhand::derives(r,weapon,L"WEAP_HammerOfDawn",L"warfaregamecontentweapons")?
+        HeldAsset::hod:HeldAsset::unknown;
+    if(scope==AssetScope::basic_hold&&weaponhand::derives(r,weapon,L"WEAP_HammerOfDawn",L"warfaregamecontentweapons"))
+        return HeldAsset::hod;
     if(scope==AssetScope::frag_hold)return weaponhand::derives(r,weapon,L"Weap_FragGrenade",L"WarfareGame")?
         HeldAsset::frag:HeldAsset::unknown;
     if(weaponhand::derives(r,weapon,L"Weap_AssaultRifle",L"WarfareGame"))return HeldAsset::lancer;
     if(scope==AssetScope::lancer_only)return HeldAsset::unknown;
+    if(scope==AssetScope::basic_hold&&weaponhand::derives(r,weapon,L"Weap_Bow_base",L"WarfareGame"))
+        return HeldAsset::torque_bow;
+    // Holding certification only; projectile firing requires its own adapter.
+    if(scope==AssetScope::basic_hold&&weaponhand::derives(r,weapon,L"Weap_Boomer_base",L"WarfareGame"))
+        return HeldAsset::boomshot;
     if(weaponhand::derives(r,weapon,L"Weap_COGPistol",L"WarfareGame"))return HeldAsset::pistol;
     if(weaponhand::derives(r,weapon,L"Weap_LocustAssaultRifle",L"WarfareGame"))return HeldAsset::hammerburst;
+    if(weaponhand::derives(r,weapon,L"Weap_SniperRifle",L"WarfareGame"))return HeldAsset::longshot;
+    // Gnasher basic holding is independent from its unverified multi-pellet fire adapter.
+    if(scope==AssetScope::basic_hold&&weaponhand::derives(r,weapon,L"Weap_Shotgun",L"WarfareGame"))return HeldAsset::gnasher;
+    if((scope==AssetScope::basic_hold||scope==AssetScope::supported_instant_fire)&&
+       weaponhand::derives(r,weapon,L"Weap_LocustPistol",L"WarfareGame"))
+        return HeldAsset::boltok;
     return HeldAsset::unknown;
 }
 bool held_asset_matches(meta::Reader& r,U32 slot,HeldAsset kind) noexcept {
     switch(kind){
+    case HeldAsset::smoke:{
+        if(!r.named(slot,L"Smoke_Grenade"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"COG_Bolo_Grenade")&&
+            weaponhand::derives(r,outer,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
+    case HeldAsset::torque_bow:{
+        if(!r.named(slot,L"TorqueBow"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"Locust_Torquebow")&&
+            weaponhand::derives(r,outer,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
+    case HeldAsset::boomshot:{
+        if(!r.named(slot,L"Locust_Boomshot"))return false;
+        const auto group=r.result.identities[slot].outer;U32 mesh{},package{};
+        if(!group||!r.path(group,mesh)||!r.named(mesh,L"Mesh")||
+           !weaponhand::derives(r,group,L"Package",L"Core"))return false;
+        const auto root=r.result.identities[mesh].outer;
+        return root&&r.path(root,package)&&r.named(package,L"Locust_Boomshot")&&
+            weaponhand::derives(r,root,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
+    case HeldAsset::hod:{
+        if(!r.named(slot,L"COG_HammerofDawn"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"COG_HOD")&&
+            weaponhand::derives(r,outer,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
     case HeldAsset::lancer:return r.named(slot,L"COGAssaultRifle");
     case HeldAsset::pistol:return r.named(slot,L"COG_Pistol");
     case HeldAsset::hammerburst:return r.named(slot,L"Locust_Hammerburst");
+    case HeldAsset::boltok:{
+        if(!r.named(slot,L"Boltock_Pistol"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"Geist_Pistol")&&
+            weaponhand::derives(r,outer,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
+    case HeldAsset::longshot:{
+        if(!r.named(slot,L"LongShot"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"COG_SniperRifle")&&
+            weaponhand::derives(r,outer,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
+    case HeldAsset::gnasher:{
+        if(!r.named(slot,L"COG_Gnasher_Skel"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 group{},package{};
+        if(!outer||!r.path(outer,group)||!r.named(group,L"Mesh")||
+           !weaponhand::derives(r,outer,L"Package",L"Core"))return false;
+        const auto parent=r.result.identities[group].outer;
+        return parent&&r.path(parent,package)&&r.named(package,L"COG_Gnasher")&&
+            weaponhand::derives(r,parent,L"Package",L"Core")&&!r.result.identities[package].outer;
+    }
     case HeldAsset::frag:{
         if(!r.named(slot,L"Frag_Grenade"))return false;
         const auto outer=r.result.identities[slot].outer;U32 package{};
@@ -200,6 +277,7 @@ Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=Ass
     if(!meta::tables(schema.module_base,objects_table,names_table)||!meta::same_table(objects_table,schema.objects)||
        !meta::same_table(names_table,schema.names)||base!=schema.module_base||weaponhand::current_gt(nullptr)!=gt||
        r.result.failure.reason!=meta::Reason::none)return Status::changed;
+    candidate.kind=expected_asset;
     out=candidate;if(observed_kind)*observed_kind=expected_asset;return Status::ready;
 }
 } // namespace lancermain_asset

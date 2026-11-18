@@ -7,7 +7,7 @@ namespace gears_owned_plain_output {
 // unchanged identity mapping into the active owned renderer's runtime extent.
 // Controlled/upscaled quads continue to require their separate output proof.
 inline bool eligible(bool code_attested,bool owned,bool current,bool controlled,
-    uintptr_t caller,const std::array<float,8>& args,const std::array<unsigned,4>& sizes){
+    uintptr_t caller,const std::array<float,8>& args,const std::array<unsigned,4>& sizes,bool campaign_attested=false){
     const auto width=sizes[0],height=sizes[1];
     if(!code_attested||!owned||!current||controlled||
        !width||width%2||!height||width>8192||height>8192)return false;
@@ -20,7 +20,9 @@ inline bool eligible(bool code_attested,bool owned,bool current,bool controlled,
     // renderer's owned output. Shader semantics are not inferred from its RVA.
     const bool copied=(caller==0x2b11a0||caller==0xe27709)&&sizes[2]>=width&&sizes[3]>=height&&
         sizes[2]<=8192&&sizes[3]<=8192;
-    if(!direct&&!copied)return false;
+    // Campaign output uses a separate attested function and exact-size source.
+    const bool campaign=campaign_attested&&caller==0x224baf&&sizes[2]==width&&sizes[3]==height;
+    if(!direct&&!copied&&!campaign)return false;
     const auto half=float(width/2),h=float(height);
     return args==std::array<float,8>{0,0,half,h,0,0,half,h}||
            args==std::array<float,8>{half,0,half,h,half,0,half,h};

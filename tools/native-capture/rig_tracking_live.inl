@@ -88,9 +88,21 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
            !native_session_current(broker,session)||!reference_snapshot(reference,reference_stamp)||!reference_matches(frozen,reference_stamp)||
            !gears_vr::stereo_render_active(stereo_result.sample)||stereo_result.sample.focused!=1||
            !gears_vr::stereo_tracking_valid(stereo_result.sample,simulator_operator)||!source_fresh(stereo_result.sample.received_ns,stamp,api::maximum_age_ns)||
-           !scene_fresh(scene_receipt->scene_qpc,qpc_frequency,stamp,api::maximum_age_ns)||!shared::tracking_for(scene_receipt,stereo_result,selected)||
-           !binding::sample(scene_receipt,first)||!actor_same(first,selected.actor))return fail();
-        std::array<unsigned char,sizeof(gears_anchor::Receipt)> receipt{};memcpy(receipt.data(),scene_receipt,receipt.size());
+           !scene_fresh(scene_receipt->scene_qpc,qpc_frequency,stamp,api::maximum_age_ns)||!shared::tracking_for(scene_receipt,stereo_result,selected))return fail();
+        std::array<unsigned char,sizeof(gears_anchor::Receipt)> receipt{};
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+        // The cover observation already brackets its fields with TWO complete
+        // current actor samples. Use its actual closing actor as this outer
+        // payload's opening observation, before any payload/pose calculation.
+        memcpy(receipt.data(),scene_receipt,receipt.size());
+        cover_context_live::Observation cover_context{};
+        if(!cover_context_live::sample(scene_receipt,cover_context))return fail();
+        first=cover_context.actor;
+#else
+        if(!binding::sample(scene_receipt,first))return fail();
+        memcpy(receipt.data(),scene_receipt,receipt.size());
+#endif
+        if(!actor_same(first,selected.actor))return fail();
         core::CoreSnapshot next{};next.status=api::Status::ready;next.native={session.game_pid,scene_receipt->thread,session.game_start,session.native_started_qpc};
         next.source_ticket=selected.ticket;next.native_reference_revision=reference_stamp;
         next.scene_invocation=scene_receipt->invocation;next.world_generation=first.world_generation;next.reference_generation=stereo_result.reference_generation;
@@ -101,10 +113,6 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
             next.controller_publisher_pid=uint32_t(selected.publisher_pid);next.controller_publisher_start=selected.publisher_start;}
         if(selected.continuity_known){next.flags|=api::producer_continuity_available;next.producer={selected.continuity.stream_epoch,{selected.continuity.tracking_epoch[0],selected.continuity.tracking_epoch[1]}};}
 #if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
-        cover_context_live::Observation cover_context{};
-        if(!cover_context_live::sample(scene_receipt,cover_context)||
-           !binding::same_key(first,cover_context.actor)||first.special_move!=cover_context.actor.special_move||
-           first.scene_invocation!=cover_context.actor.scene_invocation)return fail();
         if(cover_context.cover_type){
             next.flags|=api::cover_key_known;next.cover_link=object(cover_context.link);
             next.cover_slot=cover_context.slot;next.cover_type=cover_context.cover_type;}
@@ -117,13 +125,19 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
         for(unsigned i=0;i<2;++i)if(selected.matched&&gears_vr::controller_pose_usable(selected.hands.hands[i].grip,selected.hands.hands[i].grip_flags,selected.hands.hands[i].grip_active)){
             if(!gears_vr::rig_tracking::pose(base_view,stereo_result.reference,selected.hands.hands[i].grip,stereo_units_per_metre,next.world_grip[i]))return fail();
             next.world_pose_mask|=api::left_grip_pose<<i;}
-        if(!binding::sample(scene_receipt,last)||!actor_same(first,last)||memcmp(receipt.data(),scene_receipt,receipt.size())||!recording.load()||
-           committed_world_generation.load()!=first.world_generation||scene_receipt->thread!=GetCurrentThreadId()||
-           !native_session_current(broker,session)||!reference_matches(frozen,reference_stamp)||!shared::tracking_ticket_current(selected.ticket))return fail();
 #if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
         cover_context_live::Observation closing_cover{};
         if(!cover_context_live::sample(scene_receipt,closing_cover)||!cover_context_live::same(cover_context,closing_cover))return fail();
+        // This is another TWO fresh actor samples around the closing cover
+        // read. Keep the explicit actor comparison: cover::same alone does not
+        // compare actor.scene_invocation. No cross-callback witness is reused.
+        last=closing_cover.actor;
+#else
+        if(!binding::sample(scene_receipt,last))return fail();
 #endif
+        if(!actor_same(first,last)||memcmp(receipt.data(),scene_receipt,receipt.size())||!recording.load()||
+           committed_world_generation.load()!=first.world_generation||scene_receipt->thread!=GetCurrentThreadId()||
+           !native_session_current(broker,session)||!reference_matches(frozen,reference_stamp)||!shared::tracking_ticket_current(selected.ticket))return fail();
         std::lock_guard<std::mutex> lock(mutex);if(stopped.load()||!native_session_current(broker,session)||!reference_matches(frozen,reference_stamp))return false;
         if(have_previous&&next.scene_invocation==previous_payload.scene_invocation&&core::same(next.native,previous_payload.native)){
             if(value.status!=api::Status::ready||loss_seen||memcmp(&next,&previous_payload,sizeof next)||!shared::tracking_ticket_current(source_ticket)){
@@ -146,7 +160,11 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
            (selected.matched&&!source_fresh(next.controllers.received_ns,clock_ns(),api::maximum_age_ns))||!reference_matches(frozen,reference_stamp)||!shared::tracking_ticket_current(selected.ticket)){
             ++rejected;value={};scene_owner_binding={};changed();if(have_previous&&!loss_seen){loss_seen=true;all_epochs();}return false;}
         sequence=publication;binding_generation=generation;observed=epochs;previous_payload=payload;have_previous=true;loss_seen=false;source_ticket=selected.ticket;value_reference_revision=reference_stamp;
-        value=next;if(!changed())return false;if(!reference_matches(frozen,reference_stamp)){value={};scene_owner_binding={};changed();++rejected;return false;}scene_owner_binding=last;++published;return true;
+        value=next;if(!changed())return false;if(!reference_matches(frozen,reference_stamp)){value={};scene_owner_binding={};changed();++rejected;return false;}scene_owner_binding=last;++published;
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+        vr_gamepad_live::ordinary_look_handoff(); // Positively authenticated ordinary source, not a missing mounted read.
+#endif
+        return true;
     }catch(...){return fail();}
 }
 // Internal C++ data request, not a public wire type or owner authentication.

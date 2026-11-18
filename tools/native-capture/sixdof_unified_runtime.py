@@ -203,6 +203,16 @@ class Session:
                     if code!=4:
                         raise RuntimeError('Unified hand stop rejected: '+str(code))
                     time.sleep(.05)
+            # FireDisable2 is an outstanding stop, not a terminal fault. The
+            # already requested HandStop can settle a mechanism that prevented
+            # the original fire tick from reaching its stopped acknowledgement.
+            # Re-read only that same stop after hand quiescence, using the
+            # existing hand deadline and the Native call's two-second reserve.
+            if (result.get('fire_disable_code')==2 and self.hand_needs_stop and
+                    result.get('hand_stop_code') in (0,5) and time.monotonic()+2<=deadline):
+                result['fire_disable_initial_code']=2
+                result['fire_disable_code']=self.bridge.export('PlaygroundVrFireDisable')
+                result['fire_disable_after_hand_stop']=True
             result['drained']=result.get('fire_disable_code',0)==0 and result.get('hand_stop_code',5) in (0,5)
             return result
         finally:

@@ -1,14 +1,18 @@
 // Starter contact/pull and the normal-GT original input handoff. Actual motor,
 // target/execution and visual recovery require separate game observations;
 // submitted gesture/input alone never establishes attack or damage.
+#include "../vr-common/weapon_lancer_owner_grabposes.h"
+#include "../vr-common/weapon_lancer_neutral_socket.h"
 namespace lancersaw_starter {
 namespace hand=gears_weapon_hand;namespace inv=lancerreload_inventory;
 using Phase=gears_weapon::LancerSawPhase;using Event=gears_weapon::LancerSawEvent;
+void consume_sample(hand::Frame const&,hand::Decision const&,gears_weapon::LancerSawSample const&,bool committed_new_grasp=false) noexcept;
 hand::Lease held{};inv::Identity identity{};
 std::uint64_t granted_frame{};std::int64_t last_tick_ns{},completed_ns{};
 gears_weapon::LancerChainsawInteraction interaction;
-bool pulling{},pull_complete{};double shown_pull{};
+bool pulling{},pull_complete{},new_grasp_pending{};double shown_pull{};
 bool locked_rail{},cosmetic_nearby{};inv::Identity cosmetic_identity{};
+unsigned return_phase_bits{~0u},return_phase_rows{};
 inv::Identity rail_identity{};std::uint64_t rail_hold{};
 gears_hand_object_grasp::ReleasedSocket released_socket;
 bool released_socket_preferred(hand::Frame const& f) noexcept {
@@ -38,9 +42,73 @@ bool same_hold(hand::Frame const& f) noexcept {
     return granted_frame&&identity==inv::identity(f)&&held.id==f.press_token&&
         held.kind==hand::LeaseKind::magazine&&hand::lease_valid(held,f.key.lifecycle);
 }
+gears_lancer_neutral_socket::Reference neutral_contact_reference;
+hand::Frame neutral_contact_source{};std::uint64_t neutral_contact_hold{},neutral_contact_stream{};
+std::array<std::uint64_t,2> neutral_contact_tracking{};double neutral_contact_model_scale{},neutral_contact_units{};
+struct ConfiguredGeometry {
+    gears_vr::Pose grip{},wrist{},target{};double units{};
+};
+bool configured_geometry(lancersaw_visual::Observation const& part,
+    gears_committed_interaction::Frame const& actual,ConfiguredGeometry& out) noexcept {
+    gears_vr::Pose gun{};double scale{};
+    const double units=actual.right.units_per_metre;
+    gears_hand_authored_mount::Mount mount{};
+    if(!part.epoch||!hammerburst_runtime::matrix(part.gun,gun,scale)||!std::isfinite(scale)||scale<.1||scale>10||
+       !gears_vr::stereo_pose_valid(actual.physical_left_grip)||
+       !gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
+           gears_hand_authored_mount::Side::left,actual.model_scale,units,mount))return false;
+    const auto& physical=actual.physical_left_grip;
+    const auto local=gears_weapon::rotate(gears_vr::inverse(gun.orientation),
+        {physical.position.x-gun.position.x,physical.position.y-gun.position.y,physical.position.z-gun.position.z});
+    out.grip={{local.x/scale,local.y/scale,local.z/scale},
+        gears_vr::normalized(gears_vr::multiply(gears_vr::inverse(gun.orientation),physical.orientation))};
+    const gears_vr::Pose calibration{mount.calibration.grip_to_wrist_metres,mount.calibration.grip_to_wrist_rotation};
+    if(!gears_lancer_authored_volume::physical_wrist_in_asset(out.grip,calibration,units,scale,out.wrist)||
+       !gears_lancer_owner_grabposes::starter(part.angle,part.pull_raw,out.target))return false;
+    out.units=units/scale;return true;
+}
+bool same_neutral_contact(hand::Frame const& f,gears_committed_interaction::Frame const& actual) noexcept {
+    const auto& old=neutral_contact_source;
+    return neutral_contact_reference.known&&neutral_contact_hold==vrequip::model.hold_generation()&&
+        actual.right.hold_generation==neutral_contact_hold&&neutral_contact_stream==actual.right.producer.stream&&
+        neutral_contact_tracking[0]==actual.right.producer.tracking[0]&&neutral_contact_tracking[1]==actual.right.producer.tracking[1]&&
+        std::abs(neutral_contact_model_scale-actual.model_scale)<1e-6&&neutral_contact_units==actual.right.units_per_metre&&
+        lancer_grasp::selected_starter(f)&&inv::identity(old)==inv::identity(f)&&
+        old.key.registration_cookie==f.key.registration_cookie&&old.key.lifecycle==f.key.lifecycle&&
+        old.key.game_start==f.key.game_start&&old.key.native_started_qpc==f.key.native_started_qpc&&
+        old.key.world_generation==f.key.world_generation&&old.reference_generation==f.reference_generation&&
+        old.stereo.session==f.stereo.session&&old.stereo.space_epoch==f.stereo.space_epoch&&
+        old.controllers.input_epoch==f.controllers.input_epoch&&old.controllers.profile_generation==f.controllers.profile_generation&&
+        f.left_tracked&&f.left_grip_known;
+}
+bool configured_contact(hand::Frame const& f,lancersaw_visual::Observation const& part,
+    gears_committed_interaction::Frame const& actual) noexcept {
+    const auto region=gears_lancer_workbench_profile::starter();ConfiguredGeometry g{};
+    if(!region||!configured_geometry(part,actual,g))return false;
+    const bool snap=gears_lancer_workbench_profile::starter_snap_limits_enabled;
+    if(gears_lancer_neutral_socket::contact(*region,g.grip,g.wrist,g.target,part.part_delta,g.units,snap))return true;
+    // Same selected passive socket only. Current gun/part/controller geometry
+    // above is mandatory; this reference cannot renew time or move the rail.
+    return same_neutral_contact(f,actual)&&gears_lancer_neutral_socket::retained(
+        neutral_contact_reference,*region,g.grip,g.wrist,g.units,snap);
+}
+void remember_neutral_contact(hand::Frame const& f,lancersaw_visual::Observation const& part,
+    gears_committed_interaction::Frame const& actual) noexcept {
+    neutral_contact_reference={};neutral_contact_hold=0;
+    const auto region=gears_lancer_workbench_profile::starter();ConfiguredGeometry g{};
+    if(!region||!configured_geometry(part,actual,g)||!gears_lancer_neutral_socket::acquire(neutral_contact_reference,
+        *region,g.grip,g.wrist,g.target,part.part_delta,g.units,
+        gears_lancer_workbench_profile::starter_snap_limits_enabled))return;
+    neutral_contact_source=f;neutral_contact_hold=vrequip::model.hold_generation();
+    neutral_contact_stream=actual.right.producer.stream;neutral_contact_tracking={actual.right.producer.tracking[0],actual.right.producer.tracking[1]};
+    neutral_contact_model_scale=actual.model_scale;neutral_contact_units=actual.right.units_per_metre;
+}
 bool observed(hand::Frame const& f,gears_weapon::LancerSawSample& sample,bool current_grip) noexcept {
     sample={};observed_gate=1;observed_matrix_gate=0;
-    if(!lancersaw_visual::ready||!lancersaw_visual::visible||!lancersaw_visual::same_binding(f))return false;
+    // A previous tick's expired display update is not current geometry.
+    // observe() below proves the live binding, visible original mesh,
+    // calibrated evaluated bone/epoch and actual matrices in THIS call.
+    if(!lancersaw_visual::same_binding(f))return false;
     lancersaw_visual::Observation handle{};
     observed_gate=2;if(!lancersaw_visual::observe(f,handle))return false;
     gears_committed_interaction::Frame actual{};
@@ -53,8 +121,10 @@ bool observed(hand::Frame const& f,gears_weapon::LancerSawSample& sample,bool cu
     // fixed socket/rest point, so moving the handle cannot reset pull travel.
     const bool attached=(cosmetic_nearby&&cosmetic_identity==inv::identity(f))||released_socket_preferred(f);
     const double acquire=attached?.22:gears_weapon::lancer_contact::starter_radius;
-    observed_gate=7;if(!current_grip&&std::hypot(std::hypot(left.x-visible_grasp.x,left.y-visible_grasp.y),left.z-visible_grasp.z)>
-        acquire*units)return false;
+    observed_gate=7;if(!current_grip){
+        if(gears_lancer_workbench_profile::starter()){if(!configured_contact(f,handle,actual))return false;}
+        else if(std::hypot(std::hypot(left.x-visible_grasp.x,left.y-visible_grasp.y),left.z-visible_grasp.z)>acquire*units)return false;
+    }
     sample.world=f.world.address;sample.pawn=f.pawn.address;sample.weapon=f.weapon.address;
     sample.session=f.stereo.session;sample.space_epoch=f.stereo.space_epoch;sample.input_epoch=f.controllers.input_epoch;
     sample.world_generation=f.key.world_generation;sample.sequence=actual.right.controllers.sequence;
@@ -66,6 +136,8 @@ bool observed(hand::Frame const& f,gears_weapon::LancerSawSample& sample,bool cu
     sample.starter_anchor_m={rest.x/units,rest.y/units,rest.z/units};
     sample.pull_axis_m=handle.axis;sample.original_handle=true;sample.starter_actual_angle=handle.angle;
     sample.original_slide=true;sample.require_full_slide=true;
+    sample.authored_acquisition_enabled=gears_lancer_workbench_profile::starter()!=nullptr;
+    sample.authored_acquisition_contact=sample.authored_acquisition_enabled&&configured_contact(f,handle,actual);
     sample.starter_actual_pull_m=handle.pull_raw*handle.scale/units;
     sample.starter_travel_m=gears_lancer_original_handle::maximum_pull_raw*handle.scale/units;
     sample.starter_grasp_m={handle.grasp.x/units,handle.grasp.y/units,handle.grasp.z/units};
@@ -89,6 +161,12 @@ bool retain_incumbent(hand::Frame const& f,hand::GripGameState& game) noexcept {
         identity==inv::identity(f),game.object_incumbents);
 }
 bool propose(hand::Frame const& f,hand::GripGameState& game,double* distance_metres) noexcept {
+    // Reuse only the existing byte-validated boolean source witness inside
+    // this call. Geometry/input/leases/clocks remain independently current.
+    std::optional<weaponhand::source_validation::Scope> source_reads;
+    if(!weaponhand::source_validation::active&&nativelancerfollow::bound_key_known&&nativelancerfollow::bound_is_lancer&&
+       hand::same(nativelancerfollow::bound_key.weapon,f.weapon)&&
+       nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation())source_reads.emplace(f);
     if(distance_metres)*distance_metres=0;
     proposal_frame=f.key.frame;proposal_gate=1;proposal_observed_gate=proposal_matrix_gate=0;
     proposal_conditions=unsigned(game.main_hand_held)|(unsigned(game.kind==hand::WeaponKind::firearm)<<1)|
@@ -132,6 +210,11 @@ void committed(hand::Frame const& f,hand::Decision const& decision) noexcept {
     held=decision.lease;identity=inv::identity(f);granted_frame=f.key.frame;
     rail_identity=identity;rail_hold=vrequip::model.hold_generation();
     locked_rail=false;released_socket.clear();
+    // This callback runs inside the hand client's existing commit Gate.
+    // Record metadata only: querying that client here revokes its publication.
+    // The normal post-commit tick must independently prove the CURRENT same
+    // grasp/contact before consuming this actually granted new-grasp event.
+    if(decision.new_grant)new_grasp_pending=true;
 }
 void clear_grab(unsigned reason=0,hand::Frame const* source=nullptr) noexcept {
     // Extend the existing bounded gesture receipt; do not sample another
@@ -141,7 +224,7 @@ void clear_grab(unsigned reason=0,hand::Frame const* source=nullptr) noexcept {
         reason,unsigned(interaction.phase()),source?source->key.frame:0,
         source?weaponhand::clock_ns(nullptr)-source->controllers.sync_ns:-1,
         unsigned(pulling),unsigned(pull_complete),unsigned(lancersaw_original::active()));fflush(log_file);}
-    held={};identity={};granted_frame=0;completed_ns=0;pulling=pull_complete=false;interaction.reset();
+    held={};identity={};granted_frame=0;completed_ns=0;pulling=pull_complete=new_grasp_pending=false;interaction.reset();
     grasp_parent={};grasp_lifetime={};grasp_input.reset();grasp_hold=0;grasp_pin_known=false;}
 bool pin_existing_grasp(hand::Frame const& f) noexcept {
     if(grasp_pin_known)return true;
@@ -162,8 +245,8 @@ bool retain_grasp_during_pose_gap(uptr pc) noexcept {
        grasp_hold!=vrequip::model.hold_generation()||
        !vrequip::model.held_for(grasp_parent.world.address,grasp_parent.pawn.address,grasp_parent.weapon.address)||
        !weaponhand::client.existing_action_lifetime_on_gt(grasp_lifetime))return false;
-    const auto begin=weaponhand::clock_ns(nullptr);hand::GripGameState game{};
-    if(begin<=0||!weaponhand::observe_source(nullptr,grasp_parent,begin,game)||
+    const auto begin=weaponhand::clock_ns(nullptr);weaponhand::HoldSourceObservation game{};
+    if(begin<=0||!weaponhand::observe_hold_source(nullptr,grasp_parent,begin,game)||
        !game.known||!game.main_hand_held||game.busy||game.animation_owns_hands)return false;
     gears_lancer_saw_input::Observation actual{};
     if(!lancersaw_original::context(lancersaw_original::actors(grasp_parent),actual)||
@@ -230,10 +313,60 @@ void observe_pull_input(hand::Frame const& f) noexcept {
 }
 void reset_after_drain() noexcept {
     if(lancersaw_original::active())return;
-    clear_grab();shown_pull=0;locked_rail=cosmetic_nearby=false;released_socket.clear();cosmetic_identity=rail_identity={};rail_hold=0;last_tick_ns=0;events=sample_rows=0;previous_sample_ms=0;lancersaw_visual::restore();lancersaw_original::reset_after_drain();
+    neutral_contact_reference={};neutral_contact_hold=0;clear_grab();shown_pull=0;locked_rail=cosmetic_nearby=false;released_socket.clear();cosmetic_identity=rail_identity={};rail_hold=0;last_tick_ns=0;events=sample_rows=0;previous_sample_ms=0;lancersaw_visual::restore();lancersaw_original::reset_after_drain();
+}
+// Consume one actual fresh observation. Shared by early/fallback ordering;
+// no new timestamp, pose, acquisition or Native writer is introduced.
+void consume_sample(hand::Frame const& f,hand::Decision const& decision,
+    gears_weapon::LancerSawSample const& sample,bool committed_new_grasp) noexcept {
+    const auto gap=previous_sample_ms&&sample.created_ms>=previous_sample_ms?sample.created_ms-previous_sample_ms:0;
+    previous_sample_ms=sample.created_ms;
+    if(!sample.left_grip_down){interaction.observe(sample);return;}
+    if(!same_hold(f)||pull_complete){
+        if(!same_hold(f)&&ungranted_rows++<12&&log_file){
+            fwprintf(log_file,L"lancer_starter_ungranted frame=%llu token=%llu proposal_frame=%llu proposal_gate=%u proposal_observed_gate=%u proposal_matrix_gate=%u proposal_conditions=%u route_frame=%llu route_magazine_pending=%u route_selected_socket=%u decision=%u new_grant=%u lease_kind=%u left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g\n",
+                f.key.frame,f.press_token,proposal_frame,proposal_gate,proposal_observed_gate,proposal_matrix_gate,proposal_conditions,route_frame,unsigned(route_magazine_pending),unsigned(route_selected_socket),unsigned(decision.status),decision.new_grant,unsigned(decision.lease.kind),
+                sample.left_palm_m.x,sample.left_palm_m.y,sample.left_palm_m.z,sample.starter_anchor_m.x,sample.starter_anchor_m.y,sample.starter_anchor_m.z);fflush(log_file);}
+        return;
+    }
+    if(new_grasp_pending){
+        if(!nativeequipment::current(nullptr,f))return;
+        interaction.reset();new_grasp_pending=false;committed_new_grasp=true;
+    }
+    const auto decision_model=interaction.observe(sample,committed_new_grasp);
+    const auto event=decision_model.event;
+    const auto bridges=interaction.bridged_samples();
+    if(event==Event::pull_began)pulling=true;
+    if(pulling&&!grasp_pin_known)pin_existing_grasp(f);
+    if(pulling)shown_pull=std::clamp(interaction.pull_metres()/sample.starter_travel_m,0.,1.)*gears_lancer_original_handle::maximum_pull_raw;
+    if(event==Event::request_original_hold){
+        pull_complete=true;pulling=false;completed_ns=std::int64_t(sample.created_ms)*1000000;
+    }else if(event==Event::interrupted){clear_grab(6,&f);}
+    if(((event!=Event::none&&events++<24)||(pulling&&sample_rows++<32))&&log_file){
+        fwprintf(log_file,L"lancer_starter_gesture event=%u frame=%llu sequence=%llu token=%llu pull_raw=%.6g complete=%u original_input_owed=%u gap_ms=%llu left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g axis=%.6g,%.6g,%.6g input_bridged_samples=%llu\n",
+            unsigned(event),f.key.frame,sample.sequence,f.press_token,shown_pull,unsigned(pull_complete),unsigned(lancersaw_original::active()),gap,
+            sample.left_palm_m.x,sample.left_palm_m.y,sample.left_palm_m.z,sample.starter_anchor_m.x,sample.starter_anchor_m.y,sample.starter_anchor_m.z,
+            sample.pull_axis_m.x,sample.pull_axis_m.y,sample.pull_axis_m.z,bridges);fflush(log_file);
+    }
 }
 void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
+    std::optional<weaponhand::source_validation::Scope> source_reads;
+    if(!weaponhand::source_validation::active&&nativelancerfollow::bound_key_known&&nativelancerfollow::bound_is_lancer&&
+       hand::same(nativelancerfollow::bound_key.weapon,f.weapon)&&
+       nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation())source_reads.emplace(f);
     const auto now=weaponhand::clock_ns(nullptr);
+    // Classify this same owned rail's transition without another game read.
+    // First partial/full return cases share a small fixed receipt budget.
+    if(locked_rail){
+        const unsigned bits=unsigned(lancersaw_original::active())|(unsigned(granted_frame!=0)<<1)|
+            (unsigned(f.left_tracked!=0)<<2)|(unsigned(f.left_grip_known!=0)<<3);
+        if(bits!=return_phase_bits&&return_phase_rows<8&&log_file){
+            fwprintf(log_file,L"lancer_starter_return_phase frame=%llu bits=%u shown_pull=%.9g tick_gap_ns=%lld source_age_ns=%lld\n",
+                f.key.frame,bits,shown_pull,last_tick_ns>0?now-last_tick_ns:0,now-f.controllers.sync_ns);
+            fflush(log_file);++return_phase_rows;
+        }
+        return_phase_bits=bits;
+    }
     // A locked mechanical pose belongs only to this exact weapon hold. Do
     // not carry it to another Lancer, a reused address or a later stow lease.
     if(rail_hold&&(rail_hold!=vrequip::model.hold_generation()||!(rail_identity==inv::identity(f)))){
@@ -281,12 +414,32 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
         }
         last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,f.left_tracked&&f.left_grip_known&&f.left_grip_down);return;
     }
+    // Workbench owner policy: after the authenticated motor tail has ended,
+    // a released rail springs home at32raw/s (0.32m/s in the authored100raw/m).
+    // Retain its weapon association, not the old action lease. A new actual
+    // grasp interrupts return; missing/stale Frames never advance this spring.
+    const bool returning_rail=locked_rail&&!granted_frame&&f.left_tracked&&f.left_grip_known;
+    if(returning_rail){
+        const double dt=last_tick_ns>0&&now>=last_tick_ns?std::clamp(double(now-last_tick_ns)/1e9,0.,.1):0.;
+        shown_pull=std::max(0.,shown_pull-32.*dt);
+        if(shown_pull==0){locked_rail=false;released_socket.clear();}
+    }
     if(!idle_reload(f)){
         clear_grab(2,&f);
         // Only a mechanically acquired rail has a locked position. Reloading
         // before the first C grasp must not permanently lock cosmetic deploy.
-        if(rail_hold)locked_rail=true;
-        last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,false,locked_rail);return;
+        if(rail_hold&&shown_pull>0&&!returning_rail)locked_rail=true;
+        last_tick_ns=now;
+        // The sole Native Compose owner retains its acknowledged mechanical
+        // rest target and validates the current owner on each original compose.
+        // Rebinding/re-submitting that same closed C during magazine work
+        // spends the hand frame's lifetime without any mechanical change.
+        // Never defer a moving/locked rail, motor, pending fold or restoration.
+        if(!rail_hold&&lancersaw_visual::defer_closed_reload(f)){
+            lancersaw_visual::last_cost={}; // No stale setter cost in this tick's existing receipt.
+            lancersaw_visual::hide();return;
+        }
+        lancersaw_visual::tick(f,shown_pull,returning_rail,locked_rail&&!returning_rail);return;
     }
     // Journal a REAL known Grip release before the arbiter's released lease
     // clears the action. Keep the mechanical position, not an action permit.
@@ -297,7 +450,8 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
        (decision.status!=hand::DecisionStatus::granted&&decision.status!=hand::DecisionStatus::retained))){clear_grab(3,&f);}
     if(!f.left_tracked||!f.left_grip_known||!f.left_grip_down){
         if(!f.left_tracked||!f.left_grip_known){locked_rail=false;shown_pull=0;}
-        clear_grab(4,&f);
+        if(!gears_weapon::preserve_lancer_neutral_witness(f.left_tracked!=0,
+            f.left_grip_known!=0,f.left_grip_down!=0,granted_frame!=0,interaction.phase()))clear_grab(4,&f);
     }
     if(!same_hold(f)){
         if(!locked_rail)shown_pull=0;
@@ -318,7 +472,25 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
         }
         lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||lancersaw_original::active());return;
     }
-    lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||nearby,locked_rail);
+    // An already granted C action reads the CURRENT evaluated handle/input
+    // before redundant cosmetic setters spend this frame's source lifetime.
+    // The original observed() contact/geometry and exact current-source guard
+    // still apply. Consume once; never replay a sample after visual work.
+    gears_weapon::LancerSawSample early_sample{};
+    const bool owned_sample=same_hold(f);
+    // A genuine released contact must reach the gesture model before visual
+    // setters spend this frame too. Otherwise its first admitted sample may
+    // already be held, which correctly cannot invent a new press edge.
+    // No synthetic neutral: require known/tracked actual released input, no
+    // existing part lease, and observed(false)'s current visible contact.
+    const bool neutral_sample=!granted_frame&&f.left_tracked&&f.left_grip_known&&
+        !f.left_grip_down&&decision.lease.kind==hand::LeaseKind::none;
+    if((owned_sample||neutral_sample)&&lancersaw_original::prepared()&&observed(f,early_sample,owned_sample)&&
+       nativeequipment::current(nullptr,f)){
+        consume_sample(f,decision,early_sample);
+        lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||nearby||returning_rail,locked_rail&&!returning_rail);return;
+    }
+    lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||nearby||returning_rail,locked_rail&&!returning_rail);
     if(!lancersaw_visual::ready){
         if(pulling&&sample_rows++<32&&log_file){fwprintf(log_file,
             L"lancer_starter_sample visual_ready=0 visual_gate=%u asset_gate=%u frame=%llu sync_ns=%lld previous_sample_ms=%llu\n",
@@ -336,30 +508,6 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
             unsigned(input_continuity_known),input_continuity_sequence);fflush(log_file);}
         return;
     }
-    const auto gap=previous_sample_ms&&sample.created_ms>=previous_sample_ms?sample.created_ms-previous_sample_ms:0;
-    previous_sample_ms=sample.created_ms;
-    if(!sample.left_grip_down){interaction.observe(sample);return;}
-    if(!same_hold(f)||pull_complete){
-        if(!same_hold(f)&&ungranted_rows++<12&&log_file){
-            fwprintf(log_file,L"lancer_starter_ungranted frame=%llu token=%llu proposal_frame=%llu proposal_gate=%u proposal_observed_gate=%u proposal_matrix_gate=%u proposal_conditions=%u route_frame=%llu route_magazine_pending=%u route_selected_socket=%u decision=%u new_grant=%u lease_kind=%u left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g\n",
-                f.key.frame,f.press_token,proposal_frame,proposal_gate,proposal_observed_gate,proposal_matrix_gate,proposal_conditions,route_frame,unsigned(route_magazine_pending),unsigned(route_selected_socket),unsigned(decision.status),decision.new_grant,unsigned(decision.lease.kind),
-                sample.left_palm_m.x,sample.left_palm_m.y,sample.left_palm_m.z,sample.starter_anchor_m.x,sample.starter_anchor_m.y,sample.starter_anchor_m.z);fflush(log_file);}
-        return;
-    }
-    const auto decision_model=interaction.observe(sample);
-    const auto event=decision_model.event;
-    const auto bridges=interaction.bridged_samples();
-    if(event==Event::pull_began)pulling=true;
-    if(pulling&&!grasp_pin_known)pin_existing_grasp(f);
-    if(pulling)shown_pull=std::clamp(interaction.pull_metres()/sample.starter_travel_m,0.,1.)*gears_lancer_original_handle::maximum_pull_raw;
-    if(event==Event::request_original_hold){
-        pull_complete=true;pulling=false;completed_ns=std::int64_t(sample.created_ms)*1000000;
-    }else if(event==Event::interrupted){clear_grab(6,&f);}
-    if(((event!=Event::none&&events++<24)||(pulling&&sample_rows++<32))&&log_file){
-        fwprintf(log_file,L"lancer_starter_gesture event=%u frame=%llu sequence=%llu token=%llu pull_raw=%.6g complete=%u original_input_owed=%u gap_ms=%llu left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g axis=%.6g,%.6g,%.6g input_bridged_samples=%llu\n",
-            unsigned(event),f.key.frame,sample.sequence,f.press_token,shown_pull,unsigned(pull_complete),unsigned(lancersaw_original::active()),gap,
-            sample.left_palm_m.x,sample.left_palm_m.y,sample.left_palm_m.z,sample.starter_anchor_m.x,sample.starter_anchor_m.y,sample.starter_anchor_m.z,
-            sample.pull_axis_m.x,sample.pull_axis_m.y,sample.pull_axis_m.z,bridges);fflush(log_file);
-    }
+    consume_sample(f,decision,sample);
 }
 } // namespace lancersaw_starter

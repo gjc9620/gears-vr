@@ -21,7 +21,10 @@ private:
             for(U32 i=0;i<depth;++i)if(parents[i]==cls)return false;
             parents[depth++]=cls;meta::Structure s{};if(!r.structure(cls,s))return false;
             if(depth==1)extent=s.extent;
-            auto address=s.children;std::array<uptr,meta::max_search> seen{};U32 searched{};
+            // Walk reads only [0,searched), and each entry is assigned before
+            // searched advances. Do not clear the unused maximum-sized tail
+            // on every class/observation; it contains no retained authority.
+            auto address=s.children;std::array<uptr,meta::max_search> seen;U32 searched{};
             weapon_metadata_parse::Walk traversal;
             while(address){
                 if(searched==seen.size())return false;

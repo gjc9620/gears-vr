@@ -20,7 +20,7 @@ struct WeaponPoseOwner {
     Identity weapon{},component{},asset{};std::uint64_t hold_generation{};
 };
 enum class Stage {empty,reserved,mesh_created,mesh_rooted,lod_created,prepared,
-    resources_queued,component_created,ready,visible,retiring,failed};
+    resources_queued,component_created,ready,visible,retiring,failed,original_mesh_ready};
 enum class Creation {rejected,pending,ready};
 struct Resource {
     Owner owner{};Identity mesh{},component{};
@@ -33,6 +33,9 @@ struct Resource {
     gears_vr::Matrix last_weapon_basis{};
     uptr lod{};bool mesh_root{},component_root{},mesh_bound{},attached{},lod_constructed{},lod_allocation_dispatched{};
     bool resources_queued{},publication_withdrawn{};
+    // Only the transient component is ours in this mode. The existing mesh's
+    // root, buffers, render resources and lifetime always remain original.
+    bool borrowed_mesh{};playground::Vector original_scale{1,1,1};
 };
 template<class Current>
 bool read_scene_matrix(hand::Frame const&,Handle,std::uint64_t,std::array<float,16>&,Current&&) noexcept;
@@ -71,8 +74,12 @@ bool current(Owner const& owner,hand::Frame const& f) noexcept {
     if(end>=begin)source_cost.ns+=end-begin;
     return result;
 }
+bool weapon_pose_links(hand::Frame const&,WeaponPoseOwner const&) noexcept;
 bool weapon_owner(hand::Frame const& f,WeaponPoseOwner& out) noexcept {
-    if(!nativelancerfollow::bound_key_known||!nativelancerfollow::bound_is_lancer||!nativelancerfollow::mount.bound()||
+    // Concrete geometry eligibility belongs to the current consumer, which
+    // reads its original parts before this display path. The shared resource
+    // still authenticates this exact held mount and its current mutable links.
+    if(!nativelancerfollow::bound_key_known||!nativelancerfollow::mount.bound()||
        !hand::same(f.weapon,nativelancerfollow::bound_key.weapon)||
        !vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)||
        !vrequip::model.hold_generation()||vrequip::model.hold_generation()!=nativelancerfollow::bound_key.hold_generation||
@@ -80,8 +87,10 @@ bool weapon_owner(hand::Frame const& f,WeaponPoseOwner& out) noexcept {
        nativelancerfollow::bound_session!=f.stereo.session||nativelancerfollow::bound_space!=f.stereo.space_epoch||
        nativelancerfollow::bound_input!=f.controllers.input_epoch||nativelancerfollow::bound_world!=f.key.world_generation||
        nativelancerfollow::bound_reference!=f.reference_generation)return false;
-    out={nativelancerfollow::bound_key.weapon,nativelancerfollow::bound_key.component,
-        nativelancerfollow::bound_key.asset,nativelancerfollow::bound_key.hold_generation};return true;
+    const WeaponPoseOwner selected{nativelancerfollow::bound_key.weapon,nativelancerfollow::bound_key.component,
+        nativelancerfollow::bound_key.asset,nativelancerfollow::bound_key.hold_generation};
+    if(!weapon_pose_links(f,selected))return false;
+    out=selected;return true;
 }
 bool same_weapon(WeaponPoseOwner const& owner,hand::Frame const& f) noexcept {
     WeaponPoseOwner now{};
@@ -308,24 +317,76 @@ bool native_function(playground::Args const& call,const wchar_t* label,const wch
         (get<unsigned>(call.r.function+0xf4)&0x400)!=0&&
         weaponhand::executable(reinterpret_cast<FARPROC>(get<uptr>(call.r.function+0x114)),GetModuleHandleW(nullptr));
 }
-bool pointer_field(Identity const& id,const wchar_t* label,uptr& value,bool component=false) noexcept {
+bool pointer_field_at(Identity const& id,uptr p,uptr& value,bool component=false) noexcept {
     value=0;if(!object(id))return false;
-    const auto p=playground::property(id.address,label);
     const auto extent=get<unsigned>(id.klass+0x88);
     if(!registered(p)||!playground::named(get<uptr>(p+0x50),component?L"ComponentProperty":L"ObjectProperty")||
        get<unsigned>(p+0x70)!=1||get<unsigned>(p+0x74)!=8)return false;
     const auto offset=get<unsigned>(p+0x94);
     return offset<=extent&&8<=extent-offset&&copy(&value,id.address+offset,8)&&object(id);
 }
-bool boolean(Identity const& id,const wchar_t* label,bool& value) noexcept {
+bool pointer_field(Identity const& id,const wchar_t* label,uptr& value,bool component=false) noexcept {
+    value=0;if(!object(id))return false;
+    return pointer_field_at(id,playground::property(id.address,label),value,component);
+}
+bool boolean_at(Identity const& id,uptr p,bool& value) noexcept {
     value=false;if(!object(id))return false;
-    const auto p=playground::property(id.address,label);
     const auto extent=get<unsigned>(id.klass+0x88);
     if(!registered(p)||!playground::named(get<uptr>(p+0x50),L"BoolProperty")||
        get<unsigned>(p+0x70)!=1||get<unsigned>(p+0x74)!=4)return false;
     const auto offset=get<unsigned>(p+0x94),mask=get<unsigned>(p+0xd0);unsigned bits{};
     if(!mask||(mask&(mask-1))||offset>extent||4>extent-offset||!copy(&bits,id.address+offset,4))return false;
     value=(bits&mask)!=0;return object(id);
+}
+bool boolean(Identity const& id,const wchar_t* label,bool& value) noexcept {
+    value=false;if(!object(id))return false;
+    return boolean_at(id,playground::property(id.address,label),value);
+}
+bool weapon_pose_links(hand::Frame const& f,WeaponPoseOwner const& owner) noexcept {
+    if(!object(f.weapon)||!object(owner.component)||!object(owner.asset))return false;
+    const wchar_t* weapon_labels[]={L"Mesh",L"Instigator"};
+    const wchar_t* component_labels[]={L"SkeletalMesh",L"HiddenGame"};
+    std::array<uptr,2> weapon_fields{},component_fields{};
+    if(!playground::fields_strict(f.weapon.klass,weapon_labels,weapon_fields)||
+       !playground::fields_strict(owner.component.klass,component_labels,component_fields))return false;
+    const auto mesh_field=weapon_fields[0],instigator_field=weapon_fields[1];
+    const auto asset_field=component_fields[0],hidden_field=component_fields[1];
+    if(!registered(mesh_field)||!registered(asset_field)||!registered(hidden_field)||!registered(instigator_field))return false;
+    const auto kind=get<uptr>(mesh_field+0x50);
+    const bool component=playground::named(kind,L"ComponentProperty");
+    if(!component&&!playground::named(kind,L"ObjectProperty"))return false;
+    struct FieldShape {Identity descriptor{};uptr next{};unsigned dimension{},bytes{};unsigned long long flags{};unsigned offset{},mask{};};
+    const auto selection=[](uptr field,bool is_boolean,FieldShape& out) noexcept {
+        struct Prefix {uptr next;unsigned dimension,bytes;unsigned long long flags;} prefix{};
+        static_assert(sizeof(Prefix)==24);
+        if(!nativeequipment::identify(nullptr,field,out.descriptor)||
+           !copy(&prefix,field+0x68,sizeof prefix)||!copy(&out.offset,field+0x94,4)||
+           (is_boolean&&!copy(&out.mask,field+0xd0,4)))return false;
+        out.next=prefix.next;out.dimension=prefix.dimension;out.bytes=prefix.bytes;out.flags=prefix.flags;return true;
+    };
+    const uptr fields[]={mesh_field,asset_field,hidden_field,instigator_field};
+    std::array<FieldShape,4> before{};
+    for(unsigned i=0;i<before.size();++i)if(!selection(fields[i],i==2,before[i]))return false;
+    uptr mesh{},asset{},pawn{};bool hidden{};
+    if(!pointer_field_at(f.weapon,mesh_field,mesh,component)||mesh!=owner.component.address||
+       !pointer_field_at(owner.component,asset_field,asset)||asset!=owner.asset.address||
+       !pointer_field_at(f.weapon,instigator_field,pawn)||pawn!=f.pawn.address||
+       !boolean_at(owner.component,hidden_field,hidden)||hidden)return false;
+    // Repeat the actual field selections and values; no cached Frame, source
+    // eligibility, component or hidden-state result crosses a call.
+    const bool consistent=pointer_field_at(f.weapon,mesh_field,mesh,component)&&mesh==owner.component.address&&
+        pointer_field_at(owner.component,asset_field,asset)&&asset==owner.asset.address&&
+        pointer_field_at(f.weapon,instigator_field,pawn)&&pawn==f.pawn.address&&
+        boolean_at(owner.component,hidden_field,hidden)&&!hidden&&object(owner.asset);
+    if(!consistent)return false;
+    for(unsigned i=0;i<before.size();++i){FieldShape after{};const auto& prior=before[i];
+        if(!selection(fields[i],i==2,after)||!hand::same(prior.descriptor,after.descriptor)||
+           prior.next!=after.next||prior.dimension!=after.dimension||prior.bytes!=after.bytes||
+           prior.flags!=after.flags||prior.offset!=after.offset||prior.mask!=after.mask)return false;
+    }
+    std::array<uptr,2> final_weapon{},final_component{};
+    return playground::fields_strict(f.weapon.klass,weapon_labels,final_weapon)&&final_weapon==weapon_fields&&
+        playground::fields_strict(owner.component.klass,component_labels,final_component)&&final_component==component_fields;
 }
 // Only newly constructed, privately rooted components reach this setter.
 bool configure_bool(Resource& r,const wchar_t* label,bool desired) noexcept {
@@ -347,6 +408,19 @@ bool object_call(Identity const& id,const wchar_t* label,const wchar_t* owner,
     return call.r.size==8&&native_function(call,label,owner)&&
         hammerburst_animation::input_field(call,call.prop(parameter),kind,8)&&
         call.set(parameter,value).valid&&call.run()&&object(id);
+}
+bool held_weapon_material(hand::Frame const& f,Identity& out) noexcept {
+    out={};lancermain_asset::Evidence mesh{};
+    if(lancermain_asset::read(f,mesh,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready)return false;
+    playground::Args call(mesh.component.address,L"GetMaterial");
+    const auto in=call.prop(L"ElementIndex"),result=call.prop(L"ReturnValue");
+    if(!native_function(call,L"GetMaterial",L"MeshComponent")||
+       !hammerburst_animation::input_field(call,in,L"IntProperty",4)||!vrequip::result_property(call,L"ObjectProperty",8)||
+       !(get<unsigned>(in+0x94)+4<=get<unsigned>(result+0x94)||get<unsigned>(result+0x94)+8<=get<unsigned>(in+0x94))||
+       !call.set(L"ElementIndex",0).run()||!nativeequipment::current(nullptr,f))return false;
+    const auto address=call.output<uptr>();
+    return playground::instance(address,L"MaterialInterface")&&nativeequipment::identify(nullptr,address,out)&&
+        nativeequipment::current(nullptr,f);
 }
 bool bind_light_environment(hand::Frame const& f,Handle handle,std::uint64_t owner_generation,
     Identity const& environment,bool known_empty) noexcept {
@@ -374,19 +448,7 @@ bool hidden(Resource& r,bool value) noexcept {
        !nativelancerfollow::bool_arg(call,L"NewHidden",value)||!call.run())return false;
     bool actual{};return boolean(r.component,L"HiddenGame",actual)&&actual==value;
 }
-bool bind_mesh(Resource& r,uptr mesh) noexcept {
-    if(!r.component_root||!object(r.component))return false;
-    if(mesh&&(!r.mesh_root||!object(r.mesh)||mesh!=r.mesh.address))return false;
-    uptr before{};
-    if(!pointer_field(r.component,L"StaticMesh",before))return false;
-    if(before==mesh){r.mesh_bound=mesh!=0;return true;}
-    // Journal before dispatch: a successful call followed by an expired read
-    // must still be detached during cleanup, never repeated as a new resource.
-    if(mesh)r.mesh_bound=true;
-    if(!object_call(r.component,L"SetStaticMesh",L"StaticMeshComponent",L"NewMesh",L"ObjectProperty",mesh))return false;
-    uptr actual{};if(!pointer_field(r.component,L"StaticMesh",actual)||actual!=mesh)return false;
-    r.mesh_bound=mesh!=0;return true;
-}
+#include "weapon_part_bind_mesh.inl"
 bool attachment(Resource& r,bool desired) noexcept {
     if(!gt()||!r.component_root||!object(r.component))return false;
     bool attached{};
@@ -452,29 +514,7 @@ bool engine_rotation_axes(hand::Frame const& f,Resource const& resource,
     failure=118;if(!gears_weapon::lancer_starter_rotation_basis_valid(result))return false;
     cache[cursor++%cache.size()]={resource.owner,function,rotation,result,true};out=result;return true;
 }
-bool cleanup(Resource& r) noexcept {
-    if(!gt())return false;
-    r.publication_withdrawn=true;r.stage=Stage::retiring;
-    // Failed raw LOD construction is quarantined. Native GC must not destroy
-    // unconstructed vtables. Preserve the root and stop resource reuse.
-    if(r.lod_allocation_dispatched&&!r.lod_constructed){r.stage=Stage::failed;faulted=true;failure=80;return false;}
-    if(r.component_root){
-        if(!hidden(r,true)||!attachment(r,false)||(r.mesh_bound&&!bind_mesh(r,0)))return false;
-        if(r.lighting_bound||r.lighting_assigned){
-            uptr environment{};
-            if(!pointer_field(r.component,L"LightEnvironment",environment,true)||
-               (environment&&!object_call(r.component,L"SetLightEnvironment",L"PrimitiveComponent",L"NewLightEnvironment",L"ComponentProperty",0)))return false;
-            r.lighting_bound=r.lighting_assigned=false;
-        }
-        if(!unroot(r.component,r.component_root))return false;
-        r.component={}; // No dereference after releasing the private root.
-    }
-    if(r.mesh_root){
-        if(!unroot(r.mesh,r.mesh_root))return false;
-        r.mesh={}; // Engine GC/BeginDestroy owns its render fence/resources.
-    }
-    r={};outstanding.fetch_sub(1,std::memory_order_acq_rel);return true;
-}
+#include "weapon_part_asset_cleanup.inl"
 bool drain() noexcept {
     if(!gt())return false;
     bool clean=true;
@@ -548,6 +588,28 @@ Creation create(hand::Frame const& f,std::uint64_t owner_generation,geometry::Pr
         return Creation::rejected;
     }
 }
+#include "weapon_part_existing_static_reserve.inl"
+// Overrides belong to OUR component. Never SetMaterial on the source component
+// or edit a shared Material/MIC to disguise a different texture/UV contract.
+#include "weapon_part_material_schema.inl"
+bool original_materials(hand::Frame const& f,Resource& r) noexcept {
+    if(!r.borrowed_mesh)return true;
+    if(!r.component_root||!object(r.component)||!object(r.mesh)||r.mesh_root||
+       r.materials.empty()||r.materials.size()>32)return false;
+    for(unsigned element=0;element<r.materials.size();++element){
+        const auto& slot_material=r.materials[element];
+        playground::Args setter(r.component.address,L"SetMaterial"),getter(r.component.address,L"GetMaterial");
+        if(!object(slot_material)||!playground::instance(slot_material.address,L"MaterialInterface")||
+           !material_schema(setter,true)||!material_schema(getter,false)||
+           !current(r.owner,f))return false;
+        if(!setter.set(L"ElementIndex",int(element)).valid||!setter.set(L"Material",uptr(slot_material.address)).run()||
+           !object(r.component)||!object(slot_material)||!material_schema(setter,true)||
+           !material_schema(getter,false)||!current(r.owner,f)||
+           !getter.set(L"ElementIndex",int(element)).run()||getter.output<uptr>()!=slot_material.address||
+           !object(slot_material)||!object(r.mesh)||!material_schema(getter,false)||!current(r.owner,f))return false;
+    }
+    return true;
+}
 Creation advance(hand::Frame const& f,Handle handle,std::uint64_t owner_generation) noexcept {
     auto r=find(handle);
     if(!gt()||inside_create||!r||r->owner.generation!=owner_generation)return Creation::rejected;
@@ -576,6 +638,7 @@ Creation advance(hand::Frame const& f,Handle handle,std::uint64_t owner_generati
         case Stage::mesh_rooted:
             failure=3;if(!prepare_mesh(f,*r,r->input,r->materials))throw 3;
             r->input={};r->materials.clear();return Creation::pending;
+        case Stage::original_mesh_ready:
         case Stage::resources_queued:{
             Identity klass{};
             if(!find_class(L"StaticMeshComponent",klass))throw 4;
@@ -591,9 +654,11 @@ Creation advance(hand::Frame const& f,Handle handle,std::uint64_t owner_generati
                               L"BlockRigidBody",L"bUsePrecomputedShadows"})
                 if(!configure_bool(*r,property,false))throw 5;
             if(!current(r->owner,f))return Creation::pending;
-            const playground::Vector unit{1,1,1};failure=6;
-            if(!set_absolute(*r)||!transform_call(*r,L"SetScale3D",L"NewScale3D",L"Vector",&unit)||
-               !bind_mesh(*r,r->mesh.address))throw 6;
+            const playground::Vector component_size=r->borrowed_mesh?r->original_scale:playground::Vector{1,1,1};failure=6;
+            failure=61;if(!set_absolute(*r))throw 6;
+            failure=62;if(!transform_call(*r,L"SetScale3D",L"NewScale3D",L"Vector",&component_size))throw 6;
+            failure=63;if(!bind_mesh(*r,r->mesh.address))throw 6;
+            failure=64;if(!original_materials(f,*r))throw 6;
             // A setter may expire the frame after succeeding. Its exact
             // binding remains journaled; readiness itself grants no pose.
             r->stage=Stage::ready;failure=0;return Creation::ready;
@@ -621,7 +686,7 @@ Creation create_weapon_part(hand::Frame const& f,std::uint64_t owner_generation,
 // component owner and normal cleanup. It cannot create a left-hand grant or
 // transfer any ammunition. A magazine resource cannot enter this path.
 bool stage_weapon_pose(hand::Frame const& f,Handle handle,std::uint64_t owner_generation,
-    gears_vr::Viewpoint const& pose,gears_vr::Vector const& scale,bool visible,WeaponPoseRequest& request) noexcept {
+    gears_vr::Viewpoint const& pose,gears_vr::Vector const& scale,bool visible,WeaponPoseRequest& request,bool preparation=false) noexcept {
     request={};
     auto r=find(handle);if(!gt()||!r)return false;
     const auto rejected=[&]() noexcept {
@@ -633,7 +698,7 @@ bool stage_weapon_pose(hand::Frame const& f,Handle handle,std::uint64_t owner_ge
     };
     const auto bound=[&]() noexcept {return same(r->owner,f)&&same_weapon(r->weapon_pose,f)&&
         object(r->weapon_pose.weapon)&&object(r->weapon_pose.component)&&object(r->weapon_pose.asset);};
-    const auto checked=[&]() noexcept {return current(r->owner,f)&&bound();};
+    const auto checked=[&]() noexcept {return bound()&&current(r->owner,f);};
     if(r->owner.generation!=owner_generation||!r->lighting_bound||r->publication_withdrawn||
        (r->stage!=Stage::ready&&r->stage!=Stage::visible)||!r->weapon_pose.hold_generation||
        !bound()||!gears_vr::finite(pose.position)||std::abs(pose.position.x)>1e8||std::abs(pose.position.y)>1e8||
@@ -672,10 +737,35 @@ bool stage_weapon_pose(hand::Frame const& f,Handle handle,std::uint64_t owner_ge
     const bool rotation_changed=!r->weapon_pose_known||gears_vr::to_rotator_units(prior.rotation.pitch)!=rotation.pitch||
         gears_vr::to_rotator_units(prior.rotation.yaw)!=rotation.yaw||gears_vr::to_rotator_units(prior.rotation.roll)!=rotation.roll;
     const bool scale_changed=!r->weapon_pose_known||float(prior_scale.x)!=scaling.x||float(prior_scale.y)!=scaling.y||float(prior_scale.z)!=scaling.z;
-    failure=101;if(translation_changed&&(!transform_call(*r,L"SetTranslation",L"NewTranslation",L"Vector",&position)||!checked()))return rejected();
-    failure=102;if(rotation_changed&&(!transform_call(*r,L"SetRotation",L"NewRotation",L"Rotator",&rotation)||!checked()))return rejected();
-    failure=103;if(scale_changed&&(!transform_call(*r,L"SetScale3D",L"NewScale3D",L"Vector",&scaling)||!checked()))return rejected();
-    failure=104;if(!attachment(*r,true)||!checked())return rejected();
+    const auto setter=[&](unsigned gate,wchar_t const* function,wchar_t const* field,wchar_t const* type,void const* value) noexcept {
+        failure=gate;const auto began=weaponhand::clock_ns(nullptr);
+        const bool called=transform_call(*r,function,field,type,value);
+        const auto returned=weaponhand::clock_ns(nullptr);
+        const bool valid=called&&checked();const auto ended=weaponhand::clock_ns(nullptr);
+        static unsigned preparation_rows{},active_rows{};
+        auto& rows=preparation?preparation_rows:active_rows;
+        if(!valid&&log_file&&rows++<16){
+            fwprintf(log_file,L"weapon_part_setter_rejected frame=%llu slot=%u preparation=%u gate=%u called=%u check_ran=%u check_ok=%u setter_ns=%lld postcheck_ns=%lld begin_age_ns=%lld input_age_ns=%lld\n",
+                f.key.frame,handle.slot,unsigned(preparation),gate,unsigned(called),unsigned(called),unsigned(valid),
+                returned-began,ended-returned,began-f.controllers.sync_ns,ended-f.controllers.sync_ns);fflush(log_file);}
+        return valid;
+    };
+    failure=101;if(translation_changed&&!setter(101,L"SetTranslation",L"NewTranslation",L"Vector",&position))return rejected();
+    failure=102;if(rotation_changed&&!setter(102,L"SetRotation",L"NewRotation",L"Rotator",&rotation))return rejected();
+    failure=103;if(scale_changed&&!setter(103,L"SetScale3D",L"NewScale3D",L"Vector",&scaling))return rejected();
+    failure=104;
+    const auto attachment_began=weaponhand::clock_ns(nullptr);
+    const bool attached=attachment(*r,true);
+    const auto attachment_ended=weaponhand::clock_ns(nullptr);
+    const bool after_attachment=attached&&checked();
+    if(!after_attachment){
+        static unsigned attachment_rows{};
+        if(log_file&&attachment_rows++<16){const auto ended=weaponhand::clock_ns(nullptr);
+            fwprintf(log_file,L"weapon_part_attachment_rejected frame=%llu slot=%u attached=%u check_ran=%u check_ok=%u attachment_ns=%lld postcheck_ns=%lld input_age_ns=%lld\n",
+                f.key.frame,handle.slot,unsigned(attached),unsigned(attached),unsigned(after_attachment),attachment_ended-attachment_began,
+                ended-attachment_ended,ended-f.controllers.sync_ns);fflush(log_file);}
+        return rejected();
+    }
     // Original setters defer attached-component transforms. Stage the whole
     // three-part batch, request the original owner's component update once,
     // then acknowledge actual matrices. Staging never publishes visibility
@@ -684,25 +774,33 @@ bool stage_weapon_pose(hand::Frame const& f,Handle handle,std::uint64_t owner_ge
         translation_changed,rotation_changed,scale_changed,engine_basis};return true;
 }
 template<std::size_t N>
-bool flush_weapon_poses(hand::Frame const& f,std::array<WeaponPoseRequest,N> const& requests) noexcept {
-    static_assert(N==1||N==3);
-    if(!gt())return false;
+bool flush_weapon_poses(hand::Frame const& f,std::array<WeaponPoseRequest,N> const& requests,
+    std::size_t count=N) noexcept {
+    static_assert(N==1||N==3||N==7);
+    if(!gt()||!count||count>N)return false;
     const auto checked=[&]() noexcept {
-        for(unsigned i=0;i<requests.size();++i){
+        for(std::size_t i=0;i<count;++i){
             const auto& request=requests[i];auto r=find(request.handle);
             if(!r||!request.frame||request.frame!=f.key.frame||
                request.owner_generation!=requests[0].owner_generation||r->owner.generation!=request.owner_generation||
                r->publication_withdrawn||!r->attached||!r->lighting_bound||
                (r->stage!=Stage::ready&&r->stage!=Stage::visible)||!r->weapon_pose.hold_generation||
-               !current(r->owner,f)||!same_weapon(r->weapon_pose,f)||!object(r->component)||
-               !object(r->weapon_pose.weapon)||!object(r->weapon_pose.component)||!object(r->weapon_pose.asset))return false;
-            for(unsigned j=0;j<i;++j)if(request.handle.slot==requests[j].handle.slot)return false;
+               !same_weapon(r->weapon_pose,f)||!object(r->component)||
+               !object(r->weapon_pose.weapon)||!object(r->weapon_pose.component)||!object(r->weapon_pose.asset)||
+               !same(r->owner,f))return false;
+            if constexpr(N!=7){if(!current(r->owner,f))return false;}
+            for(std::size_t j=0;j<i;++j)if(request.handle.slot==requests[j].handle.slot)return false;
+        }
+        if constexpr(N==7){
+            auto first=find(requests[0].handle);
+            return first&&current(first->owner,f);
         }
         return true;
     };
     failure=109;if(!checked())return false;
-    bool changed=false;for(auto const& request:requests)
+    bool changed=false;for(std::size_t i=0;i<count;++i){auto const& request=requests[i];
         changed=changed||request.translation_changed||request.rotation_changed||request.scale_changed;
+    }
     if(!changed)return true;
     // Use the supported original Actor interface, on the same current owner,
     // rather than writing LocalToWorld or pretending an old matrix is current.
@@ -727,7 +825,7 @@ bool flush_weapon_poses(hand::Frame const& f,std::array<WeaponPoseRequest,N> con
     static unsigned update_rows{};
     if(log_file&&update_rows++<8){const auto ended=weaponhand::clock_ns(nullptr);
         fwprintf(log_file,L"weapon_part_component_update frame=%llu parts=%u collision_update_requested=0 transform_only_requested=1 current_after=%u elapsed_ns=%lld input_age_ns=%lld native_rva=%llx\n",
-            f.key.frame,unsigned(N),unsigned(acknowledged),ended-update_began_ns,ended-f.controllers.sync_ns,get<uptr>(call.r.function+0x114)-base);fflush(log_file);}
+            f.key.frame,unsigned(count),unsigned(acknowledged),ended-update_began_ns,ended-f.controllers.sync_ns,get<uptr>(call.r.function+0x114)-base);fflush(log_file);}
     return acknowledged;
 }
 bool acknowledge_weapon_pose(hand::Frame const& f,WeaponPoseRequest const& request) noexcept {
@@ -743,8 +841,8 @@ bool acknowledge_weapon_pose(hand::Frame const& f,WeaponPoseRequest const& reque
     };
     const auto checked=[&]() noexcept {return request.frame&&request.frame==f.key.frame&&
         r->owner.generation==owner_generation&&!r->publication_withdrawn&&r->attached&&r->lighting_bound&&
-        (r->stage==Stage::ready||r->stage==Stage::visible)&&current(r->owner,f)&&same_weapon(r->weapon_pose,f)&&
-        object(r->component)&&object(r->weapon_pose.weapon)&&object(r->weapon_pose.component)&&object(r->weapon_pose.asset);};
+        (r->stage==Stage::ready||r->stage==Stage::visible)&&same_weapon(r->weapon_pose,f)&&
+        object(r->component)&&object(r->weapon_pose.weapon)&&object(r->weapon_pose.component)&&object(r->weapon_pose.asset)&&current(r->owner,f);};
     const auto& prior=r->last_weapon_pose;
     const bool translation_changed=request.translation_changed,rotation_changed=request.rotation_changed,scale_changed=request.scale_changed;
     const playground::Vector position{float(pose.position.x),float(pose.position.y),float(pose.position.z)};
@@ -777,6 +875,90 @@ bool acknowledge_weapon_pose(hand::Frame const& f,WeaponPoseRequest const& reque
     failure=108;if(!checked())return rejected();
     r->last_weapon_pose=pose;r->last_weapon_scale=scale;r->last_weapon_basis=request.engine_basis;r->weapon_pose_known=true;
     r->stage=visible?Stage::visible:Stage::ready;r->visibility_revoke=false;r->weapon_pose_pending=false;failure=0;return true;
+}
+
+bool acknowledge_weapon_poses(hand::Frame const& f,
+    std::array<WeaponPoseRequest,7> const& requests,std::size_t count,
+    unsigned* failed_index=nullptr,bool* read_only=nullptr) noexcept {
+    if(read_only)*read_only=false;
+    if(failed_index)*failed_index=~0u;
+    if(!gt()||!count||count>requests.size())return false;
+    const auto fail=[&](std::size_t i) noexcept {
+        if(failed_index)*failed_index=unsigned(i);
+        if(i<count){auto r=find(requests[i].handle);
+            if(r&&r->owner.generation==requests[i].owner_generation)r->weapon_pose_known=false;}
+        return false;
+    };
+    const auto generation=requests[0].owner_generation;
+    std::array<Resource*,7> targets{};
+    for(std::size_t i=0;i<count;++i){
+        if(!requests[i].frame||requests[i].frame!=f.key.frame||
+           requests[i].owner_generation!=generation)return fail(i);
+        for(std::size_t j=0;j<i;++j)
+            if(requests[i].handle.slot==requests[j].handle.slot)return fail(i);
+        targets[i]=find(requests[i].handle);
+        if(!targets[i])return fail(i);
+    }
+    const auto common=targets[0]->weapon_pose;
+    const auto checked_resource=[&](std::size_t i,bool steady) noexcept {
+        auto r=targets[i];auto const& request=requests[i];
+        return r&&find(request.handle)==r&&request.frame&&request.frame==f.key.frame&&
+            request.owner_generation==generation&&
+            r->owner.generation==request.owner_generation&&!r->publication_withdrawn&&
+            r->attached&&r->lighting_bound&&
+            (r->stage==Stage::ready||r->stage==Stage::visible)&&
+            r->weapon_pose.hold_generation&&
+            hand::same(r->weapon_pose.weapon,common.weapon)&&
+            hand::same(r->weapon_pose.component,common.component)&&
+            hand::same(r->weapon_pose.asset,common.asset)&&
+            r->weapon_pose.hold_generation==common.hold_generation&&
+            same(r->owner,f)&&object(r->component)&&
+            (!steady||((r->stage==Stage::visible)==request.visible&&!r->visibility_revoke));
+    };
+    // The three original weapon objects are identical for every request.
+    // Recheck them at BOTH read-only boundaries; no Engine call occurs inside.
+    const auto checked_common=[&]() noexcept {
+        return object(common.weapon)&&object(common.component)&&object(common.asset)&&same_weapon(common,f);
+    };
+    failure=108;
+    bool visibility_change{};
+    for(std::size_t i=0;i<count;++i){
+        if(!checked_resource(i,false))return fail(i);
+        auto r=targets[i];
+        if(((r->stage==Stage::visible)!=requests[i].visible)||r->visibility_revoke)
+            visibility_change=true;
+    }
+    if(visibility_change){
+        for(std::size_t i=0;i<count;++i)
+            if(!acknowledge_weapon_pose(f,requests[i]))return fail(i);
+        return true;
+    }
+    if(!checked_common()||!current(targets[0]->owner,f))return fail(0);
+    if(read_only)*read_only=true;
+    std::array<std::array<float,16>,7> actual{};
+    for(std::size_t i=0;i<count;++i){
+        const auto checked=[&]() noexcept {return checked_resource(i,true);};
+        failure=105;
+        if(!read_scene_matrix(f,requests[i].handle,requests[i].owner_generation,
+            actual[i],checked))return fail(i);
+        failure=106;
+        if(!gears_weapon::lancer_starter_matches_draw(actual[i],requests[i].pose,
+            requests[i].scale,&requests[i].engine_basis))return fail(i);
+    }
+    failure=108;
+    for(std::size_t i=0;i<count;++i)
+        if(!checked_resource(i,true))return fail(i);
+    if(!checked_common()||!current(targets[0]->owner,f))return fail(0);
+    for(std::size_t i=0;i<count;++i){
+        auto r=targets[i];
+        r->last_weapon_pose=requests[i].pose;
+        r->last_weapon_scale=requests[i].scale;
+        r->last_weapon_basis=requests[i].engine_basis;
+        r->weapon_pose_known=true;
+        r->stage=requests[i].visible?Stage::visible:Stage::ready;
+        r->visibility_revoke=false;r->weapon_pose_pending=false;
+    }
+    failure=0;return true;
 }
 bool set_pose(hand::Frame const& f,Handle handle,std::uint64_t owner_generation,hand::Decision const& decision,
     gears_vr::Viewpoint const& pose,bool visible) noexcept {

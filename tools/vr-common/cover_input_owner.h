@@ -52,6 +52,16 @@ private:
     CoverInputOwner const* origin_=nullptr;
     std::uint64_t serial_=0;
 };
+// Value-only export of the exact observed input and logical ownership that
+// produced a completed owner commit. This is not a Native permission.
+struct CoverInputGrabSnapshot {
+    std::uint64_t lifecycle=0,frame=0,press_token=0;
+    CoverObservation cover{};
+    CoverControllerResult hand{};
+    CoverResult interaction{};
+    CoverOwnership ownership{};
+    LeftHandInteractionLease lease{};
+};
 struct CoverInputOwnerDecoded {
     CoverInputOwnerTicket ticket;
     std::uint64_t press_token=0,continuity_generation=0;
@@ -275,6 +285,32 @@ public:
         return result_;
     }
 
+    // Additive read-only export. Only the exact completed ticket can read the
+    // committed input; every rejection leaves out byte-identical.
+    bool grab_snapshot(CoverInputOwnerTicket ticket,CoverInputGrabSnapshot& out) const noexcept {
+        if(!current(ticket)||phase_!=Phase::committed||!snapshot_valid_||!decoded_.accepted||
+           !has_controllers_||!result_.accepted||prepared_hand_.sequence!=controllers_.sequence||
+           prepared_hand_.observed_ns!=controllers_.received_ns)return false;
+        CoverInputGrabSnapshot next{};
+        next.lifecycle=frozen_.lifecycle;next.frame=frozen_.frame;
+        next.press_token=decoded_.press_token;next.cover=prepared_cover_;
+        next.hand=hand_;next.hand.hand=prepared_hand_;next.interaction=result_.interaction;
+        if(next.interaction.owns_left_hand){
+            if(cover_lease_.kind!=LeftHandInteraction::cover||!cover_lease_.id||
+               cover_lease_.lifecycle!=frozen_.lifecycle||next.interaction.request_id!=cover_lease_.id||
+               !(result_.left_hand.lease.kind==cover_lease_.kind&&result_.left_hand.lease.lifecycle==cover_lease_.lifecycle&&
+                 result_.left_hand.lease.id==cover_lease_.id)||
+               (!result_.left_hand.new_grant&&result_.left_hand.status!=LeftHandInteractionStatus::retained))return false;
+            next.ownership={CoverLeftHandOwner::cover,cover_lease_.id};next.lease=cover_lease_;
+        }else{
+            if(cover_lease_.kind==LeftHandInteraction::cover)return false;
+            if(result_.left_hand.lease.kind!=LeftHandInteraction::none){
+                next.ownership={CoverLeftHandOwner::other,0};next.lease=result_.left_hand.lease;
+            }else next.ownership={CoverLeftHandOwner::free,0};
+        }
+        out=next;return true;
+    }
+
     // Native must call this serialized barrier for recenter/reference, world,
     // pawn or registration-cookie changes, even OUTSIDE cover. The input
     // adapter only knows session/space. It is not reset; tokens never rewind.
@@ -482,6 +518,7 @@ private:
             number_same(a.range.min_right,b.range.min_right)&&number_same(a.range.max_right,b.range.max_right)&&
             number_same(a.range.min_up,b.range.min_up)&&number_same(a.range.max_up,b.range.max_up)&&
             same(a.right_axis_tracking,b.right_axis_tracking)&&same(a.up_axis_tracking,b.up_axis_tracking)&&
+            a.pull_mode==b.pull_mode&&
             a.edge.id==b.edge.id&&a.edge.kind==b.edge.kind&&a.edge.allowed==b.edge.allowed&&
             a.edge.within_acquisition_reach==b.edge.within_acquisition_reach;
     }

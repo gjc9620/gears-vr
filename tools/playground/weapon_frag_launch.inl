@@ -1,6 +1,51 @@
 // One lexical original AnimNotifyThrow dispatch. Native still owns every
 // CallFunction/original call; this subscriber only replaces two typed vector
 // results within this exact original Frag invocation. No hook or replay.
+// Local display-only result substitution on the existing Native subscriber.
+// Keep SimulationDir, the original Tick, StopSimulation and projectile chain.
+namespace fragpreview {
+namespace callabi=gears_weapon_call;
+struct Pending {callabi::Invocation call{};frag_original::Entry entry{};std::uint64_t hold{};bool active{};};
+std::array<Pending,4> pending{};
+std::uint64_t suppressed{};
+bool current(Pending const& p) noexcept {
+    const auto& source=fragpreparation::journal.source;
+    return weaponhand::current_gt(nullptr)&&fragpreparation::owed()&&fragpreparation::journal.prepared&&
+        vrequip::model.hold_generation()==p.hold&&
+        vrequip::model.held_for(source.world.address,source.pawn.address,source.weapon.address)&&
+        weaponhand::client.existing_action_lifetime_on_gt(fragpreparation::journal.lifetime)&&
+        weapon_part_assets::object(source.weapon)&&weapon_part_assets::object(source.pawn)&&
+        playground::pointer(source.pawn.address,L"Weapon")==source.weapon.address&&
+        playground::pointer(source.weapon.address,L"Instigator")==source.pawn.address;
+}
+void begin(callabi::Invocation const& call) noexcept {
+    if(!weaponhand::current_gt(nullptr)||!fragpreparation::owed()||!fragpreparation::journal.prepared||
+       !callabi::invocation_valid(call)||call.thread_id!=GetCurrentThreadId()||
+       call.self!=fragpreparation::journal.source.weapon.address||!playground::named(call.callee,L"ShouldDrawTrajectoryPrediction"))return;
+    frag_original::Entry entry{};
+    if(!frag_original::bind(call.self,frag_original::Method::prediction,entry)||entry.function.address!=call.callee||
+       !call.result||(call.result&3)||call.result>UINTPTR_MAX-4)return;
+    Pending candidate{call,entry,vrequip::model.hold_generation(),true};
+    if(!current(candidate))return;
+    for(auto& p:pending)if(!p.active){p=candidate;return;}
+}
+bool returned(callabi::Invocation const& call) noexcept {
+    for(auto& p:pending)if(p.active&&p.call.call_id==call.call_id){
+        frag_original::Entry fresh{};
+        if(!callabi::same(p.call,call)||!current(p)||
+           !frag_original::bind(call.self,frag_original::Method::prediction,fresh)||!frag_original::same(fresh,p.entry))return false;
+        const auto mask=fresh.parameters[0].mask;unsigned before{};bool changed{};
+        if(fresh.count!=1||!mask||!copy(&before,call.result,4)||!current(p)||
+           !unified_weapon_fire::compare_word(call.result,before,before&~mask,changed)||!changed)return false;
+        ++suppressed;p={};return true;
+    }
+    return true;
+}
+bool cleanup(callabi::Invocation const& call) noexcept {
+    for(auto& p:pending)if(p.active&&p.call.call_id==call.call_id){const bool same=callabi::same(p.call,call);p={};return same;}
+    return true;
+}
+}
 namespace fraglaunch {
 namespace hand=gears_weapon_hand;namespace meta=gripdamage_metadata;namespace callabi=gears_weapon_call;
 using Vector=playground::Vector;
@@ -47,6 +92,7 @@ bool original_method(uptr receiver,wchar_t const* owner_label,wchar_t const* lab
         weaponshot::hash_script(script.data,unsigned(script.count),hash)&&nativeequipment::identify(nullptr,call.r.function,out);
 }
 void begin(callabi::Invocation const& call) noexcept {
+    fragpreview::begin(call);
     if(!weaponhand::current_gt(nullptr)||!journal.active||journal.fault)return;
     if(call.self==journal.source.weapon.address&&call.callee==journal.base_throw.function.address){
         if(++journal.throws!=1)journal.fault=true;return;
@@ -82,6 +128,7 @@ void begin(callabi::Invocation const& call) noexcept {
     journal.fault=true;
 }
 bool returned(callabi::Invocation const& call) noexcept {
+    if(!fragpreview::returned(call))return false;
     if(!weaponhand::current_gt(nullptr)||!journal.active)return true;
     // Notification is invoked by the original base AnimNotifyThrow, outside
     // the ThrowGrenade caller. Count it without redirecting its arguments.
@@ -113,6 +160,7 @@ bool returned(callabi::Invocation const& call) noexcept {
     *slot_ptr={};return true;
 }
 bool cleanup(callabi::Invocation const& call) noexcept {
+    if(!fragpreview::cleanup(call))return false;
     if(!weaponhand::current_gt(nullptr))return true;
     for(auto& p:journal.pending)if(p.live&&p.call.call_id==call.call_id){
         const bool okay=!p.uncertain&&callabi::same(p.call,call);p={};journal.fault=true;return okay;}
@@ -154,6 +202,7 @@ bool install_direction() noexcept {
 }
 struct Result {
     bool token_taken{},dispatched{},returned{},direction_restored{},original_once{};
+    unsigned preflight_stage{};
     std::int64_t executed_ns{};
     hand::ObjectIdentity projectile{};
     Vector actual_position{},actual_velocity{};
@@ -234,27 +283,33 @@ Result invoke_once(hand::Frame const& source,gears_weapon::BoloGrenadeInteractio
     Result result{};
     if(!weaponhand::current_gt(nullptr))return result;
     const auto request=owner.pending_request();
-    if(journal.active||journal.direction_words||!nativeequipment::current(nullptr,source)||!weaponcall::ready()||
-       request.action!=gears_weapon::BoloAction::launch_original||!request.token||request.binding!=owner.binding_token()||
+    result.preflight_stage=1;
+    if(journal.active||journal.direction_words||!nativeequipment::current(nullptr,source)||!weaponcall::ready())return result;
+    result.preflight_stage=2;
+    if(request.action!=gears_weapon::BoloAction::launch_original||!request.token||request.binding!=owner.binding_token()||
        request.identity.world!=source.world.address||request.identity.pawn!=source.pawn.address||
        request.identity.controller!=source.controller.address||request.identity.weapon!=source.weapon.address||
        request.identity.world_generation!=source.key.world_generation||
        request.identity.xr_session!=source.stereo.session||request.identity.space_epoch!=source.stereo.space_epoch||
-       request.identity.input_epoch!=source.controllers.input_epoch||request.identity.profile_generation!=source.controllers.profile_generation||
-       !request.executable_at(weaponhand::clock_ns(nullptr),request.identity,request.binding,request.motion_epoch,request.reference_generation)||
-       !fragpreparation::ready(source,request.original_preparation_serial))return result;
+       request.identity.input_epoch!=source.controllers.input_epoch||request.identity.profile_generation!=source.controllers.profile_generation)return result;
+    result.preflight_stage=3;
+    if(!request.executable_at(weaponhand::clock_ns(nullptr),request.identity,request.binding,request.motion_epoch,request.reference_generation))return result;
+    result.preflight_stage=4;
+    if(!fragpreparation::ready(source,request.original_preparation_serial))return result;
     journal={};journal.source=source;
     lancermain_asset::Evidence asset{};
-    if(lancermain_asset::read(source,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready||
-       !nativeequipment::attached_frame(source,asset.component.address)||
-       !frag_original::bind(source.weapon.address,frag_original::Method::notify,journal.notify)||
-       !frag_original::bind(source.weapon.address,frag_original::Method::base_throw,journal.base_throw)||
-       !frag_original::bind(source.weapon.address,frag_original::Method::origin,journal.origin)||
-       !frag_original::bind(source.weapon.address,frag_original::Method::velocity,journal.velocity)||
-       !original_method(source.weapon.address,L"WarWeapon",L"ConsumeAmmo",journal.consume)||
-       !original_method(source.weapon.address,L"Weap_Grenade",L"GrenadeThrownNotification",journal.notification)||
-       !weaponhand::client.capture_existing_action_lifetime_on_gt(source.key,journal.lifetime)||
-       !collision_plan(source,request.launch,journal.plan)||!nativeequipment::current(nullptr,source))return result;
+    result.preflight_stage=5;
+    if(lancermain_asset::read(source,asset,lancermain_asset::AssetScope::frag_hold)!=lancermain_asset::Status::ready)return result;
+    result.preflight_stage=6;if(!nativeequipment::attached_frame(source,asset.component.address))return result;
+    result.preflight_stage=7;if(!frag_original::bind(source.weapon.address,frag_original::Method::notify,journal.notify))return result;
+    result.preflight_stage=8;if(!frag_original::bind(source.weapon.address,frag_original::Method::base_throw,journal.base_throw))return result;
+    result.preflight_stage=9;if(!frag_original::bind(source.weapon.address,frag_original::Method::origin,journal.origin))return result;
+    result.preflight_stage=10;if(!frag_original::bind(source.weapon.address,frag_original::Method::velocity,journal.velocity))return result;
+    result.preflight_stage=11;if(!original_method(source.weapon.address,L"WarWeapon",L"ConsumeAmmo",journal.consume))return result;
+    result.preflight_stage=12;if(!original_method(source.weapon.address,L"Weap_Grenade",L"GrenadeThrownNotification",journal.notification))return result;
+    result.preflight_stage=13;if(!weaponhand::client.capture_existing_action_lifetime_on_gt(source.key,journal.lifetime))return result;
+    result.preflight_stage=14;if(!collision_plan(source,request.launch,journal.plan))return result;
+    result.preflight_stage=15;if(!nativeequipment::current(nullptr,source))return result;
     // The token is consumed exactly once, only after preflight is ready. A
     // later uncertain original call cannot be retried with that preparation.
     const auto taken=owner.take_request();

@@ -135,6 +135,21 @@ public:
                       hand_to_mesh_.z)>250){reset();return false;}
         return true;
     }
+    // Derive a NEW mount from an unchanged baseline. A contact delta is in
+    // original grip axes; mesh, muzzle and support consume the same result.
+    bool adjusted_contact(gears_vr::Pose const& delta,double units,WeaponMeshFollow& out) const noexcept {
+        const auto q=delta.orientation;const double norm=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
+        if(!bound_||!gears_vr::finite(delta.position)||!std::isfinite(norm)||std::abs(norm-1.)>1e-6||
+           !std::isfinite(units)||units<10||units>500)return false;
+        if(std::hypot(std::hypot(delta.position.x,delta.position.y),delta.position.z)>.05)return false;
+        const auto inverse=gears_vr::transpose(gears_vr::rotation_matrix(delta.orientation));
+        auto candidate=*this;
+        candidate.hand_to_mesh_=gears_vr::transform(inverse,{hand_to_mesh_.x-delta.position.x*units,
+            hand_to_mesh_.y-delta.position.y*units,hand_to_mesh_.z-delta.position.z*units});
+        candidate.hand_to_mesh_rotation_=gears_vr::multiply(inverse,hand_to_mesh_rotation_);
+        if(!rigid_basis(candidate.hand_to_mesh_rotation_)||!gears_vr::finite(candidate.hand_to_mesh_))return false;
+        out=candidate;return true;
+    }
     bool solve(gears_vr::Viewpoint const& right_hand,gears_vr::Viewpoint& out) const noexcept {
         if(!bound_||!plausible(right_hand))return false;
         const auto hand_basis=gears_vr::ue_matrix(right_hand.rotation);

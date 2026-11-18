@@ -1,6 +1,7 @@
 #pragma once
 #include "pose_math.h"
 #include "weapon_lancer_contact_dimensions.h"
+#include "weapon_lancer_authored_volume.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -60,9 +61,25 @@ inline bool lancer_feed_world(std::array<float,16> const& mesh,
 // Removal starts by pinching the visible installed body, not by satisfying
 // the insertion orientation. This capsule is contact only, never a stroke.
 inline bool lancer_magazine_grab(std::array<float,16> const& mesh,gears_vr::Vector palm,double units,
-    double* distance_metres=nullptr) noexcept {
+    double* distance_metres=nullptr,gears_lancer_authored_volume::Volume const* authored=nullptr) noexcept {
     LancerFeedWorld feed{};
     if(!std::isfinite(units)||units<10||units>500||!gears_vr::finite(palm)||!lancer_feed_world(mesh,feed))return false;
+    if(authored){
+        // feed_world has validated an affine, proper uniform mesh matrix.
+        // Invert its actual basis and scale, then convert the asset-local
+        // point once. A world translation/rotation/scale cannot move the
+        // authored trigger relative to its installed magazine.
+        const gears_vr::Vector delta{palm.x-mesh[12],palm.y-mesh[13],palm.z-mesh[14]};
+        double p[3]{};
+        for(unsigned i=0;i<3;++i){
+            const double x=mesh[i*4],y=mesh[i*4+1],z=mesh[i*4+2];
+            p[i]=(delta.x*x+delta.y*y+delta.z*z)/(x*x+y*y+z*z);
+        }
+        const auto point=gears_lancer_authored_volume::asset_point_to_workbench({p[0],p[1],p[2]});
+        if(distance_metres)*distance_metres=std::hypot(std::hypot(point.x-authored->local.position.x,
+            point.y-authored->local.position.y),point.z-authored->local.position.z);
+        return gears_lancer_authored_volume::contains(*authored,point);
+    }
     const gears_vr::Vector d{palm.x-feed.point_raw.x,palm.y-feed.point_raw.y,palm.z-feed.point_raw.z};
     const double depth=d.x*feed.outward_axis.x+d.y*feed.outward_axis.y+d.z*feed.outward_axis.z;
     const double along=std::clamp(depth,0.,lancer_contact::magazine_axis_length*units);

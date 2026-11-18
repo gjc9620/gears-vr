@@ -110,7 +110,7 @@ bool result_current(state::Lease const& l) noexcept {
     return current;
 }
 bool parent_current() noexcept {
-    const auto& l=completed.schema;Array script{};
+    const auto& l=drawing_lease();Array script{};
     if(!parent.valid||parent.serial!=l.serial||!object(parent.function)||!object(parent.query)||
        !object(parent.weapon_property)||!object(parent.draw_property)||!object(parent.result_property)||
        get<unsigned>(parent.function.address+0x88)!=parent.extent||
@@ -129,7 +129,7 @@ bool parent_current() noexcept {
 }
 bool parent_arguments(ParentQuery const& s,bool returned) noexcept {
     gears_ui_call_boundary::Frame frame{};uptr locals{},weapon{};unsigned ar{};
-    const auto& l=completed.schema;
+    const auto& l=drawing_lease();
     if(!gears_ui_call_boundary::frame(weaponshot::read,s.call.caller_frame,frame)||frame.node!=parent.function.address||
        frame.object!=l.ui_hud.address||frame.previous!=s.frame.previous||frame.code!=s.frame.code+(returned?1:0)||
        !copy(&locals,s.call.caller_frame+0x30,8)||locals!=s.locals||!locals||locals>UINTPTR_MAX-parent.extent||
@@ -141,19 +141,20 @@ void begin_parent(abi::Invocation const& call) noexcept {
     // Only this original HUD expression receives a presentation result. No
     // weapon/Pawn IsReloading state is retained or changed, including the
     // second same-function query which orders ammunition-icon drawing.
-    if(!completed.active||!parent.valid||call.callee!=parent.query.address||call.self!=completed.schema.identity.weapon.address)return;
+    const auto& l=drawing_lease();
+    if(!drawing_owned(l)||!parent.valid||call.callee!=parent.query.address||call.self!=l.identity.weapon.address)return;
     ++parent.query_calls;
-    if(call.hand_cookie!=completed.schema.identity.registration||call.native_started_qpc!=completed.schema.identity.native_start||
-       !call.result||(call.result&3)||!result_current(completed.schema)||!parent_current())return;
+    if(call.hand_cookie!=l.identity.registration||call.native_started_qpc!=l.identity.native_start||
+       !call.result||(call.result&3)||!result_current(l)||!state::ui_hud_current(l)||!parent_current())return;
     ParentQuery s{};s.call=call;
     if(!gears_ui_call_boundary::frame(weaponshot::read,call.caller_frame,s.frame)||s.frame.node!=parent.function.address||
-       s.frame.object!=completed.schema.ui_hud.address||s.frame.code<parent.script.data+gears_lancer_reload_parent::prefix||
+       s.frame.object!=l.ui_hud.address||s.frame.code<parent.script.data+gears_lancer_reload_parent::prefix||
        s.frame.code-parent.script.data>unsigned(parent.script.count)-(s.bytes.size()-gears_lancer_reload_parent::prefix)||
        !copy(&s.locals,call.caller_frame+0x30,8)||!parent_arguments(s,false)||
        !copy(s.bytes.data(),s.frame.code-gears_lancer_reload_parent::prefix,s.bytes.size())||
        !gears_lancer_reload_parent::direct_bar_gate(s.bytes,unsigned(s.frame.code-parent.script.data)-gears_lancer_reload_parent::prefix,
            unsigned(parent.script.count),parent.weapon_property.address,parent.query.address,parent.draw_property.address,
-           completed.schema.ui_draw_function.address))return;
+           l.ui_draw_function.address))return;
     ++parent.gate_matches;
     for(auto& slot:parent_queries)if(!slot.active){s.active=true;slot=s;return;}
 }
@@ -161,11 +162,13 @@ bool return_parent(abi::Invocation const& call) noexcept {
     ParentQuery* slot=nullptr;for(auto& s:parent_queries)if(s.active&&s.call.call_id==call.call_id){slot=&s;break;}
     if(!slot)return true;const auto s=*slot;*slot={};
     std::array<unsigned char,gears_lancer_reload_parent::span> bytes{};
-    if(!abi::same(s.call,call)||!result_current(completed.schema)||!parent_current()||!parent_arguments(s,true)||
+    if(!abi::same(s.call,call)||!drawing_owned(drawing_lease())||!result_current(drawing_lease())||!parent_current()||!parent_arguments(s,true)||
        !copy(bytes.data(),s.frame.code-gears_lancer_reload_parent::prefix,bytes.size())||bytes!=s.bytes)return true;
-    unsigned before_result{},after{};if(!copy(&before_result,call.result,4)||before_result>1||before_result==1)return true;
-    const unsigned visible=1;
-    if(state::ui_store(call.result,&visible,4)&&copy(&after,call.result,4)&&after==1){++parent.result_updates;return true;}
+    unsigned before_result{},after{};if(!copy(&before_result,call.result,4)||before_result>1||before_result==0)return true;
+    // Hide ONLY the attested DrawWeaponInfo active-reload branch. Other
+    // IsReloading calls, ammunition, reward timing and physical reload stay original.
+    const unsigned visible=0;
+    if(state::ui_store(call.result,&visible,4)&&copy(&after,call.result,4)&&after==0){++parent.result_updates;return true;}
     if(!copy(&after,call.result,4))return false;
     return after==before_result||(after==visible&&state::ui_store(call.result,&before_result,4));
 }
@@ -479,93 +482,10 @@ bool binding(abi::Invocation const& call) noexcept {
     }
     return true;
 }
-void begin(abi::Invocation const& call) noexcept {
-    begin_parent(call);
-    observe_body(call);
-    begin_drawing(call);
-    if(!binding(call))return;
-    auto& l=drawing_lease();Slot s{};l.ui_draw_gate=1;
-    if(!gears_ui_call_boundary::frame(weaponshot::read,call.caller_frame,s.frame)||
-       s.frame.node!=l.ui_draw_function.address||s.frame.object!=l.ui_hud.address||
-       s.frame.code<l.ui_draw_script.data||s.frame.code>l.ui_draw_script.data+uptr(l.ui_draw_script.count)-s.code.size()||
-       !copy(&s.locals,call.caller_frame+0x30,8)||!s.locals||s.locals>UINTPTR_MAX-l.ui_locals_extent||
-       !copy(s.code.data(),s.frame.code,s.code.size()))return;
-    l.ui_draw_gate=2;
-    for(unsigned i=0;i<4;++i){uptr property{};std::memcpy(&property,s.code.data()+i*9+1,8);
-        // Exact four local-variable out arguments, followed by EndFunctionParms.
-        if(s.code[i*9]!=0x00||property!=l.ui_local_properties[i].address)return;
-        s.destinations[i]=s.locals+l.ui_local_offsets[i];s.desired[i]=l.ui_wanted[i+1];
-    }
-    if(s.code[36]!=0x16)return;
-    l.ui_draw_gate=3;
-    // GetActiveReloadValues is inside this exact DrawActionReloadBar frame.
-    // Only its enclosing invocation may borrow the presentation clock.
-    for(auto const& draw:drawings)if(draw.active&&draw.serial==l.serial&&
-       draw.call.self==s.frame.object&&draw.call.caller_frame==s.frame.previous&&
-       draw.call.call_id<call.call_id)s.draw_call_id=draw.call.call_id;
-    s.call=call;s.serial=l.serial;s.active=true;
-    for(auto& slot:slots)if(!slot.active){slot=s;return;}
-}
-bool returned(abi::Invocation const& call) noexcept {
-    if(!return_parent(call))return false;
-    if(!shape_body(call))return false;
-    observe_canvas_return(call);
-    Slot* found=nullptr;for(auto& slot:slots)if(slot.active&&slot.call.call_id==call.call_id){found=&slot;break;}
-    if(!found)return true;const auto s=*found;*found={};
-    if(!abi::same(s.call,call)||s.serial!=drawing_lease().serial||!binding(call))return true;
-    gears_ui_call_boundary::Frame after{};uptr locals{};std::array<unsigned char,37> code{};
-    if(!gears_ui_call_boundary::frame(weaponshot::read,call.caller_frame,after)||
-       after.node!=s.frame.node||after.object!=s.frame.object||after.previous!=s.frame.previous||after.code!=s.frame.code+s.code.size()||
-       !copy(&locals,call.caller_frame+0x30,8)||locals!=s.locals||!copy(code.data(),s.frame.code,code.size())||code!=s.code)return true;
-    auto& l=drawing_lease();l.ui_draw_gate=4;
-    auto desired=s.desired;
-    DrawScope* drawing=nullptr;
-    for(auto& draw:drawings)if(draw.active&&draw.call.call_id==s.draw_call_id){drawing=&draw;break;}
-    gears_lancer_reload_display::Plan display{};float now{},fade{},flash{};
-    const bool result_display=&l==&completed.schema;
-    const bool readable=drawing&&!drawing->scope.owned&&clock_current(*drawing)&&
-        read_float(l.identity.world.address+l.ui_clock_offsets[1],now)&&
-        read_float(l.ui_hud.address+l.hud_fade_offset,fade)&&
-        read_float(l.ui_hud.address+l.hud_flash_offset,flash)&&
-        read_float(drawing->scope.addresses[0],drawing->scope.before[0])&&
-        (result_display||drawing->scope.before[0]==l.reward_start)&&
-        read_float(drawing->scope.addresses[1],drawing->scope.before[1]);
-    float duration{};
-    const bool display_ready=readable&&(result_display?
-        (state::ui_float(l.identity.weapon.address,L"ReloadDuration",duration)&&
-         gears_lancer_reload_display::result_plan(now,completed.completed,duration,fade,flash,display)):
-        gears_lancer_reload_display::plan(now,l.reward_start,l.ui_wanted[0],fade,flash,desired,display));
-    if(display_ready)desired=display.window;
-    std::array<float,4> original_values{},checked{};
-    for(unsigned i=0;i<4;++i)if(!copy(&original_values[i],s.destinations[i],4)||!std::isfinite(original_values[i]))return true;
-    unsigned changed=0;
-    for(;changed<4;++changed){
-        if(!state::ui_store(s.destinations[changed],&desired[changed],4)||
-           !copy(&checked[changed],s.destinations[changed],4)||checked[changed]!=desired[changed])break;
-    }
-    if(changed!=4){
-        bool restored=true;
-        for(unsigned i=0;i<=changed&&i<4;++i){float value{};
-            if(!copy(&value,s.destinations[i],4)){restored=false;continue;}
-            if(value==original_values[i])continue;
-            if(value!=desired[i]||!state::ui_store(s.destinations[i],&original_values[i],4))restored=false;
-        }
-        return restored;
-    }
-    ++l.ui_draw_updates;l.ui_draw_gate=5;
-    l.ui_draw_original=original_values;l.ui_draw_current=checked;
-    if(display_ready){
-        drawing->scope.wanted={{display.draw_start,display.marker}};
-        if(!drawing->scope.apply(read_float,write_float))return !drawing->scope.owned;
-        ++l.ui_display_scopes;if(display.ordinary)++l.ui_display_late;
-        l.ui_display_last={{l.reward_start,display.draw_start,now-l.reward_start,display.marker}};
-        l.ui_fade_durations={{fade,flash}};
-        // One bounded normal-GT receipt when the display becomes ordinary.
-        // This is presentation only; no reward or mechanical completion.
-        l.ui_draw_gate=display.ordinary?7:6;
-    }
-    return place(s.locals,drawing);
-}
+// Central reload progress was removed by the owner. Keep only the exact
+// parent branch suppression; do not adapt original textures/marker/timing.
+void begin(abi::Invocation const& call) noexcept {begin_parent(call);}
+bool returned(abi::Invocation const& call) noexcept {return return_parent(call);}
 bool cleanup(abi::Invocation const& call) noexcept {
     for(auto& slot:parent_queries)if(slot.active&&slot.call.call_id==call.call_id)slot={};
     for(auto& slot:slots)if(slot.active&&slot.call.call_id==call.call_id)slot={};

@@ -1,5 +1,6 @@
 #pragma once
 #include "weapon_pose_solver.h"
+#include "weapon_snub_part_contact.h"
 #include <cstddef>
 #include <limits>
 namespace gears_weapon {

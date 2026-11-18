@@ -37,6 +37,8 @@
 #include "armspan_ui_bridge.h"
 #include "armspan_card_pixels.h"
 #include "xr_delivery_counter.h"
+#include "headset_fps_state.h"
+#include "headset_fps_pixels.h"
 #include "../vr-common/support_diagnostics.h"
 #include "focus_diagnostics.h"
 ID3D12Device* support_device{}; // Observed only while the owning local device is alive.
@@ -475,16 +477,18 @@ int main(int argc, char** argv) {
         }
         else return 2;
     }
+#if !defined(GEARS_XR_ISOLATED_SIMULATOR_TEST) || !GEARS_XR_ISOLATED_SIMULATOR_TEST
+    if(simulator_operator&&(continuous_session||controller_input)){
+        fprintf(stderr,"Continuous simulator input requires the isolated test probe\n");return 2;
+    }
+#endif
     int seconds=atoi(argv[1]);
-    if(continuous_session){if(strcmp(argv[1],"0")||!stereo_game_pid||explicit_stereo_duration||simulator_operator||!continuous_owner_pid||!continuous_owner_creation)return 2;}
+    if(continuous_session){if(strcmp(argv[1],"0")||!stereo_game_pid||explicit_stereo_duration||!continuous_owner_pid||!continuous_owner_creation)return 2;}
     else if(seconds<3 || seconds>((bridge_pid||(stereo_game_pid&&stereo_producer_seconds==120))?180:60) || (bridge_pid && !test_render)) return 2;
     if(!continuous_session&&(continuous_owner_pid||continuous_owner_creation))return 2;
     if(explicit_stereo_duration&&(!stereo_game_pid||seconds<int(stereo_producer_seconds+10)))return 2;
     if(simulator_operator&&!stereo_game_pid)return 2;
     if(controller_input&&!stereo_pid)return 2;
-#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
-    if(controller_input&&simulator_operator){fprintf(stderr,"Normal hand continuity candidate requires RuntimeTracked source 0\n");return 2;}
-#endif
     if(explicit_render_scale&&!stereo_game_pid)return 2;
     if(diagnostic_outage&&!stereo_game_pid)return 2;
     if(diagnostic_image_tickets&&!stereo_game_pid)return 2;
@@ -571,20 +575,37 @@ int main(int argc, char** argv) {
         xr_check(xrGetInstanceProperties(instance,&properties),"runtime properties");
         simulated_runtime=!strcmp(properties.runtimeName,"OpenXR Simulator Runtime")||!strcmp(properties.runtimeName,"Meta XR Simulator");
         fprintf(stderr,"runtime_name=%s runtime_version=%llu simulator_operator=%u\n",properties.runtimeName,properties.runtimeVersion,unsigned(simulator_operator));
-        if(simulator_operator && (strcmp(properties.runtimeName,"Meta XR Simulator") ||
-            !GetModuleHandleW(L"SIMULATOR.dll") || !GetModuleHandleW(L"XrApiLayer_METAX_operator.dll")))
-            throw std::runtime_error("Synthetic input requires verified Meta simulator runtime and loaded Operator layer");
+        if(simulator_operator){
+            const bool operator_layer=GetModuleHandleW(L"XrApiLayer_METAX_operator.dll")!=nullptr;
+            bool recognized=operator_layer&&!strcmp(properties.runtimeName,"Meta XR Simulator")&&
+                GetModuleHandleW(L"SIMULATOR.dll")!=nullptr;
+#if defined(GEARS_XR_ISOLATED_SIMULATOR_TEST) && GEARS_XR_ISOLATED_SIMULATOR_TEST
+            wchar_t isolated[2]{};
+            recognized=recognized||(operator_layer&&
+                !strcmp(properties.runtimeName,"OpenXR Simulator Runtime")&&
+                GetModuleHandleW(L"openxr_simulator.dll")!=nullptr&&
+                GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",isolated,2)==1&&isolated[0]==L'1'&&
+                GetEnvironmentVariableW(L"GEARSVR_INSTANCE_ROOT",nullptr,0)>1);
+#endif
+            if(!recognized)
+                throw std::runtime_error("Synthetic input requires a verified simulator runtime and loaded Operator layer");
+        }
         XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};system_info.formFactor=XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
         XrSystemId system{};xr_check(xrGetSystem(instance,&system_info,&system),"xrGetSystem");
+        uint32_t max_composition_layers=1;
         {XrSystemProperties observed{XR_TYPE_SYSTEM_PROPERTIES};
             XrSystemUserPresencePropertiesEXT presence_properties{XR_TYPE_SYSTEM_USER_PRESENCE_PROPERTIES_EXT};
             if(user_presence_enabled)observed.next=&presence_properties;
             const auto properties_result=xrGetSystemProperties(instance,system,&observed);
             focus_diagnostics.capabilities(properties_result,user_presence_advertised,user_presence_enabled,
                 XR_SUCCEEDED(properties_result)&&presence_properties.supportsUserPresence==XR_TRUE,"system_properties");
-            if(XR_SUCCEEDED(properties_result))
-            gears_support::system(stdout,observed.systemName,observed.vendorId,observed.trackingProperties.positionTracking==XR_TRUE,
-                observed.trackingProperties.orientationTracking==XR_TRUE,observed.graphicsProperties.maxSwapchainImageWidth,observed.graphicsProperties.maxSwapchainImageHeight);}
+            if(XR_SUCCEEDED(properties_result)){
+                // OpenXR exposes per-runtime layer limits through the system
+                // property; this optional overlay is disabled if it cannot fit.
+                if(observed.graphicsProperties.maxLayerCount)max_composition_layers=observed.graphicsProperties.maxLayerCount;
+                gears_support::system(stdout,observed.systemName,observed.vendorId,observed.trackingProperties.positionTracking==XR_TRUE,
+                    observed.trackingProperties.orientationTracking==XR_TRUE,observed.graphicsProperties.maxSwapchainImageWidth,observed.graphicsProperties.maxSwapchainImageHeight);
+            }}
         gears_eye_chain::Limits stereo_limits{};
         if(stereo_game_pid) {
             XrSystemProperties system_properties{XR_TYPE_SYSTEM_PROPERTIES};
@@ -669,6 +690,32 @@ int main(int argc, char** argv) {
             nullptr,{"tracking_recovery_card_reset_enter","tracking_recovery_card_reset_completed"}};
         if(stereo_game_pid&&!armspan_ui_mode)tracking_recovery_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::tracking_lost));
         unsigned tracking_recovery_card_layers{};
+        // Small session-owned gameplay FPS panel. Its dynamic-card pixels and
+        // swapchain are reused; text is refreshed at most once per second.
+        std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> fps_panel{
+            nullptr,{"fps_panel_reset_enter","fps_panel_reset_completed"}};
+        unsigned fps_disabled{};
+        // Only known optional resource exhaustion/unsupported format may be
+        // ignored. Unknown XR/device/ownership failures retain the normal exit.
+        const auto optional_fps_error=[&](std::exception const& error){
+            if(xr_gpu_teardown_unsafe||FAILED(device->GetDeviceRemovedReason()))return false;
+            if(dynamic_cast<std::bad_alloc const*>(&error))return true;
+            const std::string message=error.what();
+            if(message=="No transition-card 8-bit SDR format"||message=="No transition-card formats")return true;
+            if(message=="Create transition-card swapchain: "+std::to_string(XR_ERROR_OUT_OF_MEMORY)||
+               message=="Create transition-card swapchain: "+std::to_string(XR_ERROR_LIMIT_REACHED))return true;
+            const auto suffix=": "+std::to_string(static_cast<long>(E_OUTOFMEMORY));
+            return message.rfind("Create transition-card ",0)==0&&message.size()>=suffix.size()&&
+                message.compare(message.size()-suffix.size(),suffix.size(),suffix)==0;
+        };
+        if(stereo_game_pid&&!armspan_ui_mode&&max_composition_layers>=2){
+            try{fps_panel.reset(new TransitionCard(device.Get(),queue.Get(),headset_fps_pixels::rgba("--")));}
+            catch(std::exception const& error){if(!optional_fps_error(error))throw;
+                fprintf(stderr,"FPS panel optional creation failure: %s\n",error.what());++fps_disabled;}
+        }
+        else if(stereo_game_pid&&!armspan_ui_mode)++fps_disabled;
+        gears_fps_display::Rate fps_rate;std::string fps_last_text,fps_printed_text;std::uint64_t fps_next_text{};unsigned fps_layers{};fps_printed_text="";
+        std::uint64_t fps_uploaded_qpc{};double fps_uploaded_value{};bool fps_uploaded_available{};
         std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> armspan_card{
             nullptr,{"armspan_card_reset_enter","armspan_card_reset_completed"}};
         gears_armspan_ui::Content armspan_content{gears_armspan_ui::Phase::waiting,0,armspan_ui.language()};
@@ -1123,10 +1170,49 @@ int main(int argc, char** argv) {
                     end.layerCount=0;startup_quad_queued=stereo_menu_queued=false;
                 }
             }
+            // Build the actual submit list separately. The original primary
+            // layer stays byte-for-byte the same pointer; the optional FPS panel
+            // is appended only when its own owned swapchain and capacity allow.
+            XrCompositionLayerQuad fps_quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
+            bool fps_queued=false;
+            const XrCompositionLayerBaseHeader* submit_layers[2]{};
+            XrFrameEndInfo submit_end=end;
+            if(end.layerCount==1&&end.layers==layers&&end.layers[0]&&
+               projection_frame_status==ProjectionStatus::submitted&&stereo_game_pid&&
+               !stereo_menu_queued&&!startup_quad_queued&&!window_fallback_queued&&
+               !transition_panel_queued&&!world_handoff_panel_queued&&!startup_wait_card_queued&&
+               !tracking_recovery_card_queued&&fps_panel){
+                try{
+                    const auto fps_now=gears_vr::monotonic_ns();
+                    fps_rate.render_text(uint64_t(fps_now),delivered_images.distinct);
+                    if(fps_rate.text[0]&&fps_last_text!=fps_rate.text&&
+                       (!fps_next_text||uint64_t(fps_now)>=fps_next_text)){
+                        if(fps_panel->set_pixels(headset_fps_pixels::rgba(fps_rate.text))){fps_last_text=fps_rate.text;fps_next_text=uint64_t(fps_now)+1000000000ULL;fps_uploaded_qpc=uint64_t(fps_now);fps_uploaded_value=fps_rate.fps;fps_uploaded_available=fps_rate.available;}
+                    }
+                if(fps_panel->render(fps_quad)){
+                    // Small local-space upper-left badge; no game projection
+                    // or startup/card evidence is replaced.
+                    fps_quad.space=view_space;fps_quad.pose.orientation.w=1;
+                    fps_quad.pose.position={-0.72f,0.42f,-1.25f};fps_quad.size={0.46f,0.138f};
+                    fps_quad.subImage.imageRect.offset={std::int32_t(headset_fps_pixels::panel_x),std::int32_t(headset_fps_pixels::panel_y)};fps_quad.subImage.imageRect.extent={std::int32_t(headset_fps_pixels::panel_width),std::int32_t(headset_fps_pixels::panel_height)};
+                    submit_layers[0]=end.layers[0];
+                    submit_layers[1]=reinterpret_cast<const XrCompositionLayerBaseHeader*>(&fps_quad);
+                    submit_end.layers=submit_layers;submit_end.layerCount=2;fps_queued=true;
+                }
+                }catch(std::exception const& error){if(!optional_fps_error(error))throw;
+                    fprintf(stderr,"FPS panel optional failure: %s\n",error.what());fps_panel.reset();++fps_disabled;}
+                // The optional upload may wait. Keep the existing stop boundary
+                // ahead of the actual submission, including its primary proof.
+                if(continuous_session){if(const auto* reason=continuous_control.requested()){
+                    startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
+                    submit_end=end;fps_queued=false;startup_handoff_queued=false;
+                }}
+            }
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
-                [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
+                [&]{return xrEndFrame(session,&submit_end);},[]{return xr_wait_diagnostics::current_context;},
                 [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
             xr_check(ended,"xrEndFrame");
+            if(fps_queued&&ended==XR_SUCCESS){++fps_layers;if(fps_last_text!=fps_printed_text){printf("{\"headset_game_fps\":%.3f,\"display_text\":\"%s\",\"available\":%s,\"distinct_accepted\":%llu,\"qpc_ns\":%llu,\"primary_projection_included\":true}\n",fps_uploaded_value,fps_last_text.c_str(),fps_uploaded_available?"true":"false",delivered_images.distinct,fps_uploaded_qpc);fflush(stdout);fps_printed_text=fps_last_text;}}
             if(armspan_card_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
                 ++armspan_card_layers;
                 if(!armspan_saved_presented&&armspan_submission.content.phase==gears_armspan_ui::Phase::saved){
@@ -1268,6 +1354,18 @@ int main(int argc, char** argv) {
             if(stereo_game_pid)projection_evidence.record(ended==XR_SUCCESS?projection_frame_status:ProjectionStatus::session_lost,gears_vr::monotonic_ns());
             if(stereo_game_pid)delivered_images.observe(ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
                 end.layerCount==1&&end.layers==layers&&stereo_screen,stereo_screen?stereo_screen->delivery_key():gears_xr_delivery::Key{});
+            if(stereo_game_pid&&stereo_screen&&fps_panel){
+                const auto now_ns=gears_vr::monotonic_ns();
+                const bool distinct=delivered_images.distinct!=fps_rate.last_delivery;
+                if(distinct&&fps_panel&&ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
+                   end.layerCount==1&&end.layers==layers){
+                    if(fps_rate.session!=delivered_images.last.session||fps_rate.generation!=delivered_images.last.generation)
+                        fps_next_text=0;
+                    fps_rate.observe(uint64_t(now_ns),delivered_images.last.session,delivered_images.last.generation,delivered_images.distinct);
+                }
+                // Count only the frame that just succeeded. Upload and freeze
+                // its display value together at the next pre-submit update.
+            }
             if(diagnostic_outage||diagnostic_image_tickets){
                 outage_diagnostics::Row row;
                 // Observation follows xrEndFrame. Ticket validation used an earlier
@@ -1386,6 +1484,7 @@ int main(int argc, char** argv) {
         if(stereo_game_pid)printf("{\"source_rebuild_evidence\":true,\"rebuilds\":%u,\"last_submitted_generation\":%llu,\"current_generation\":%llu,\"current_generation_submitted\":%s}\n",
             source_rebuilds,last_submitted_resource_generation,stereo_screen?stereo_screen->resource_generation():0,
             stereo_screen&&last_submitted_resource_generation==stereo_screen->resource_generation()?"true":"false");
+        if(stereo_game_pid)printf("{\"headset_fps_panel\":true,\"layers\":%u,\"disabled\":%u,\"xr_loops_not_counted\":true,\"panel_counts_as_game_frames\":false}\n",fps_layers,fps_disabled);
         if(stereo_game_pid)printf("{\"xr_delivery\":true,\"packet_version\":%u,\"slot_count\":%u,\"distinct_submissions\":%llu,\"repeated_submissions\":%llu,\"invalid_submission_keys\":%llu,\"transport_acquired\":%llu,\"transport_acknowledged\":%llu,\"transport_discarded\":%llu,\"successful_xrEndFrame_required\":true}\n",
             gears_vr::gpu_packet_version,gears_gpu_slots::count,delivered_images.distinct,delivered_images.repeated,delivered_images.rejected,
             retired_transport_acquired+(stereo_screen?stereo_screen->transport_acquired():0),
@@ -1416,6 +1515,7 @@ int main(int argc, char** argv) {
                 armspan_pixels_metadata.rendered_language==gears_armspan_ui::Language::chinese?"zh-CN":"en",armspan_pixels_metadata.fallback?"true":"false");
             display_ok=display_ok&&armspan_card_layers>0;
         }
+        fps_panel.reset();
         stereo_screen.reset();
         armspan_card.reset();
         tracking_recovery_card.reset();

@@ -2,9 +2,15 @@
 // Native worker configures/initializes before Scene admission or exports can
 // register. This module creates one stable Broker, never an input/hand owner.
 namespace full_body_c0_native_live {bool body_mount_source_current(gears_body_main_mount_provider::Source const&) noexcept;}
+namespace troika_scene_tracking {bool geometry_current(gears_troika_geometry::Source const&) noexcept;}
+namespace troika_control_live {
+bool decide(gears_troika_geometry::Request const&,gears_troika_geometry::Response const&,gears_troika_control::Decision&) noexcept;
+bool complete(gears_troika_geometry::Request const&,gears_troika_control::Decision const&,bool) noexcept;
+}
 namespace weapon_part_visibility_live {bool pending() noexcept;void request_drain() noexcept;}
 namespace lancer_handle_morph_live {bool pending() noexcept;void request_drain() noexcept;}
 namespace lancer_original_handle_live {bool pending() noexcept;void request_drain() noexcept;}
+namespace boltok_original_live {bool pending() noexcept;void request_drain() noexcept;}
 namespace weapon_hand_runtime {
 namespace api=::gears_weapon_hand;
 namespace call_api=::gears_weapon_call;
@@ -38,6 +44,11 @@ inline api::BrokerBackend make_backend() {
     auto result=api::weapon_hand_win32_backend();
 #if defined(GEARS_BODY_MAIN_MOUNT_SOURCE) && GEARS_BODY_MAIN_MOUNT_SOURCE
     result.body_mount_current=[](void*,body_mount_api::Source const& source)noexcept{return full_body_c0_native_live::body_mount_source_current(source);};
+#endif
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+    result.troika_geometry_current=[](void*,gears_troika_geometry::Source const& source)noexcept{return troika_scene_tracking::geometry_current(source);};
+    result.troika_control_decide=[](void*,gears_troika_geometry::Request const& q,gears_troika_geometry::Response const& g,gears_troika_control::Decision& d)noexcept{return troika_control_live::decide(q,g,d);};
+    result.troika_control_complete=[](void*,gears_troika_geometry::Request const& q,gears_troika_control::Decision const& d,bool accepted)noexcept{return troika_control_live::complete(q,d,accepted);};
 #endif
     return result;
 #endif
@@ -152,6 +163,44 @@ api::Reply unregister(std::uint64_t cookie) noexcept {
     try {return b->unregister(cookie);}catch(...){detail::fault();return api::Reply::invalid;}
 }
 
+api::Reply attach_troika_control(gears_troika_control::Registration const* input,api::RegistrationResult* output,bool consumer_owned) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    gears_troika_control::Registration registration{};api::RegistrationResult result{};
+    if(!api::weapon_broker_win32::copy(&registration,input,sizeof registration)||!api::weapon_broker_win32::copy(&result,output,sizeof result)){detail::fault();return api::Reply::invalid;}
+    try{const auto reply=b->attach_troika_control(&registration,&result,consumer_owned);
+        if(reply==api::Reply::accepted&&!api::weapon_broker_win32::copy(output,&result,sizeof result)){detail::fault();return api::Reply::invalid;}
+        return reply;
+    }catch(...){detail::fault();return api::Reply::invalid;}
+}
+api::MainMountQueryResult transact_troika_control(gears_troika_geometry::Source const& source,gears_troika_control::Decision& output,gears_troika_geometry::Response& geometry) noexcept {
+    detail::Call call;output={};geometry={};api::MainMountQueryResult result{};
+    if(detail::admission_closed.load()||detail::stop_requested.load())return result;
+    auto* b=current();if(!b)return result;
+    result=b->transact_troika_control(source,output,geometry);
+    if(detail::admission_closed.load()||detail::stop_requested.load()){output={};geometry={};result.code=api::MainMountQueryResult::Code::unavailable;}
+    return result;
+}
+api::Reply attach_troika_geometry(gears_troika_geometry::Registration const* input,api::RegistrationResult* output,bool consumer_owned) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    gears_troika_geometry::Registration registration{};api::RegistrationResult result{};
+    if(!api::weapon_broker_win32::copy(&registration,input,sizeof registration)||!api::weapon_broker_win32::copy(&result,output,sizeof result)){detail::fault();return api::Reply::invalid;}
+    try{const auto reply=b->attach_troika_geometry(&registration,&result,consumer_owned);
+        if(reply==api::Reply::accepted&&!api::weapon_broker_win32::copy(output,&result,sizeof result)){detail::fault();return api::Reply::invalid;}
+        return reply;
+    }catch(...){detail::fault();return api::Reply::invalid;}
+}
+api::MainMountQueryResult query_troika_geometry(gears_troika_geometry::Source const& source,gears_troika_geometry::Response& output) noexcept {
+    detail::Call call;output={};api::MainMountQueryResult result{};
+    if(detail::admission_closed.load()||detail::stop_requested.load())return result;
+    auto* b=current();if(!b)return result;
+    result=b->query_troika_geometry(source,output);
+    if(detail::admission_closed.load()||detail::stop_requested.load()){output={};result.code=api::MainMountQueryResult::Code::unavailable;}
+    return result;
+}
 api::Reply attach_main_mount_provider(mount_api::Registration const* input,api::RegistrationResult* output,bool consumer_owned) noexcept {
     detail::Call call;
     if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
@@ -315,6 +364,7 @@ void request_stop() noexcept {
     detail::stop_requested.store(true);detail::admission_closed.store(true);
     weapon_part_visibility_live::request_drain();
     lancer_original_handle_live::request_drain();
+    boltok_original_live::request_drain();
     lancer_handle_morph_live::request_drain();
     if(auto* b=current())try {b->invalidate(api::InvalidateReason::native_stopping);}catch(...){detail::fault();}
 }
@@ -337,12 +387,12 @@ void worker_tick() noexcept {
 }
 
 bool retained() noexcept {
-    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending())return true;
+    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending()||boltok_original_live::pending())return true;
     if(detail::unknown_fault.load()||detail::calls.load())return true;
     auto* b=current();return b&&(b->cookie()||b->pin_retained()||b->pending_callbacks()||b->pending_transactions()||b->pending_aux_scopes()||b->aux_debt()||b->pending());
 }
 bool cleanup_ready() noexcept {
-    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending())return false;
+    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending()||boltok_original_live::pending())return false;
     if(!detail::admission_closed.load()||detail::unknown_fault.load()||detail::calls.load())return false;
     auto* b=current();return !b||(!b->cookie()&&!b->pin_retained()&&!b->pending_callbacks()&&!b->pending_transactions()&&!b->pending_aux_scopes()&&!b->aux_debt()&&!b->pending()&&
         b->availability()==api::Availability::absent_quiescent);

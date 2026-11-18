@@ -33,9 +33,23 @@ def mark_launch_stage(path,identity,stage):
     if (receipt.get('kind')!='reservation_birth' or receipt.get('schema')!=1 or
             receipt.get('game_identity')!=identity or stage not in ('injection_attempted','prime_attempted')):
         raise RuntimeError('Reservation birth receipt identity differs')
+    previous=dict(receipt)
     receipt[stage]=True
     temporary=path.with_name(path.name+'.tmp')
-    temporary.write_text(json.dumps(receipt),encoding='utf-8');temporary.replace(path)
+    temporary.write_text(json.dumps(receipt),encoding='utf-8')
+    # Retry publication of this one immutable payload only. No launch, remote
+    # call, injection or prime is retried, and a changed receipt is not adopted.
+    for attempt in range(6):
+        try:
+            if attempt and json.loads(path.read_text(encoding='utf-8'))!=previous:
+                raise RuntimeError('Reservation birth receipt changed during publication')
+            temporary.replace(path)
+            return
+        except OSError as error:
+            if getattr(error,'winerror',None) not in (5,32,33) or attempt==5:
+                error.add_note(f'Birth stage publication failed: stage={stage}, attempts={attempt+1}; injection state remains unknown; no automatic injection retry')
+                raise
+            time.sleep(.025)
 
 
 def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_time=None,

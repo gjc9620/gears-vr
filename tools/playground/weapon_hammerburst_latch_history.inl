@@ -60,7 +60,7 @@ bool advance(hand::Frame const& f,gears_weapon::HammerburstLatchSample const& cu
     else return false;
     gate=6;relative::Segment segment{};
     if(!relative::build(previous.raw,sampled.raw,history,control,sampled.mount,sampled.size,segment)||segment.count<3)return false;
-    std::array<gears_weapon::HammerburstLatchSample,9> points{};
+    std::array<gears_weapon::HammerburstLatchSample,input::motion_history_capacity+1> points{};
     points[0]=previous.sample;
     for(unsigned i=1;i<segment.count;++i){auto const& p=segment.points[i];
         points[i]={p.position,p.sequence,std::uint64_t(p.sync_ns/1000000),current.grip_token,true,true};

@@ -37,11 +37,12 @@ bool draw(hand::Frame const& f,gears_vr::Vector center,double radius) noexcept {
             call.r.function,get<uptr>(call.r.function+0x114),reinterpret_cast<uptr>(GetModuleHandleW(nullptr)));
         fflush(log_file);native_logged=true;
     }
-    const wchar_t* fields[]={L"Center",L"Radius",L"Segments",L"R",L"G",L"B",L"bPersistentLines"};
+    const wchar_t* parameter_names[]={L"Center",L"Radius",L"Segments",L"R",L"G",L"B",L"bPersistentLines"};
     const wchar_t* kinds[]={L"StructProperty",L"FloatProperty",L"IntProperty",L"ByteProperty",L"ByteProperty",L"ByteProperty",L"BoolProperty"};
-    const unsigned bytes[]={12,4,4,1,1,1,4};std::uint64_t occupied{};
+    const unsigned bytes[]={12,4,4,1,1,1,4};std::uint64_t occupied{};std::array<uptr,7> located{};
+    if(!playground::fields(call.r.function,parameter_names,located))return false;
     for(unsigned i=0;i<7;++i){
-        const auto p=call.prop(fields[i]);
+        const auto p=located[i];
         if(!hammerburst_animation::input_field(call,p,kinds[i],bytes[i]))return false;
         const auto offset=get<unsigned>(p+0x94);
         for(unsigned n=0;n<bytes[i];++n){const auto bit=std::uint64_t(1)<<(offset+n);if(occupied&bit)return false;occupied|=bit;}
@@ -49,10 +50,17 @@ bool draw(hand::Frame const& f,gears_vr::Vector center,double radius) noexcept {
             if(!registered(type)||!playground::named(type,L"Vector")||get<unsigned>(type+0x88)!=12)return false;}
     }
     const playground::Vector point{float(center.x),float(center.y),float(center.z)};
-    return call.set(L"Center",point).set(L"Radius",float(radius)).set(L"Segments",12)
-        .set(L"R",static_cast<unsigned char>(255)).set(L"G",static_cast<unsigned char>(225))
-        .set(L"B",static_cast<unsigned char>(0)).valid&&
-        nativelancerfollow::bool_arg(call,L"bPersistentLines",false)&&enclosed_current(f)&&call.run();
+    const auto bool_offset=get<unsigned>(located[6]+0x94),bool_mask=get<unsigned>(located[6]+0xd0);
+    if(!bool_mask||(bool_mask&(bool_mask-1))||bool_offset>call.r.size||4>call.r.size-bool_offset)return false;
+    const auto write=[&](unsigned i,const void* value) noexcept {
+        std::memcpy(call.r.params+get<unsigned>(located[i]+0x94),value,bytes[i]);return true;
+    };
+    const float draw_radius=float(radius);const int segments=12;
+    const unsigned char red=255,green=225,blue=0;unsigned persistent{};
+    std::memcpy(&persistent,call.r.params+bool_offset,4);
+    persistent&=~bool_mask;
+    return write(0,&point)&&write(1,&draw_radius)&&write(2,&segments)&&write(3,&red)&&
+        write(4,&green)&&write(5,&blue)&&write(6,&persistent)&&enclosed_current(f)&&call.run();
 }
 void tick(uptr pc) noexcept {
     if(lancerreload_runtime::stop_requested.load(std::memory_order_acquire)||hb::stage==hb::Stage::recovering||
@@ -62,6 +70,9 @@ void tick(uptr pc) noexcept {
     // for its unchanged 100 ms continuity/freshness budget. Show the region
     // again when released, before a new grab.
     if(hb::stroke.active())return;
+    if(!nativelancerfollow::bound_is_hammerburst||!nativelancerfollow::bound_key_known||
+       !nativelancerfollow::plan.valid||!hand::same(nativelancerfollow::bound_key.weapon,nativelancerfollow::plan.source.weapon)||
+       nativelancerfollow::plan.source.key.frame==last_frame)return;
     // An optional outline cannot exist without this same held geometry/plan.
     // This is only an early rejection; drawing still performs all live checks.
     if(!hb::geometry.known||!nativelancerfollow::plan.valid||!hb::geometry_current(nativelancerfollow::plan.source))return;
@@ -72,6 +83,7 @@ void tick(uptr pc) noexcept {
     switch(hb::stage){
     case hb::Stage::idle:{int used{};if(!lancerreload_inventory::integer(f.weapon.address,L"AmmoUsedCount",used)||used<=0)return;step=1;break;}
     case hb::Stage::acquiring:case hb::Stage::opening:case hb::Stage::closing:step=1;break;
+    case hb::Stage::opened:if(!hb::opened_contact_current(f))return;step=4;break;
     case hb::Stage::waiting_ammo:step=2;break;
     case hb::Stage::old_magazine:case hb::Stage::new_magazine:step=3;break;
     default:return;
@@ -94,7 +106,11 @@ void tick(uptr pc) noexcept {
         const gears_vr::Viewpoint grip{right.position,gears_vr::ue_angles(gears_vr::rotation_matrix(right.orientation))};
         std::array<float,16> raw{};hb::P gun{};double size{};
         if(!nativelancerfollow::mount.model_matrix(grip,raw)||!hb::matrix(raw,gun,size))return;
-        const auto local=step==1?hb::contact():hb::feed.port_in_weapon.position;
+        // The opened latch requires a released hand and a fresh magazine grab.
+        // Show the same authenticated authored magazine contact used by that action.
+        const auto local=step==4?hb::opened_contact.grip.position:
+            step==1?hb::contact():hb::feed.port_in_weapon.position;
+        if(step==4)radius=.06*rig.units_per_metre;
         world=hb::add(gun.position,hb::scale(gears_weapon::rotate(gun.orientation,local),size*rig.units_per_metre));
         radius*=size;
     }

@@ -7,6 +7,8 @@
 #include "../vr-common/body_main_mount_provider.h"
 #include "../vr-common/committed_hand_consumer.h"
 #include "../vr-common/weapon_lancer_wrist_mount.h"
+#include "../vr-common/troika_mounted_geometry.h"
+#include "../vr-common/troika_mounted_control.h"
 #include "weapon_action_boundary_state.h"
 #include <atomic>
 #include <chrono>
@@ -25,6 +27,8 @@
 namespace gears_weapon_hand {
 namespace call=::gears_weapon_call;
 namespace hand_visual=::gears_committed_hand_consumer;
+namespace troika_geometry=::gears_troika_geometry;
+namespace troika_control=::gears_troika_control;
 namespace action=::gears_weapon_action;
 namespace boundary=::gears_weapon_boundary;
 namespace boundary_state=::gears_weapon_boundary_state;
@@ -104,6 +108,14 @@ struct BrokerBackend {
     bool (*body_mount_current)(void*,body_mount::Source const&) noexcept{};
     bool (*hand_visual_module)(void*,hand_visual::Registration const&,ModulePin) noexcept{};
     bool (*hand_visual_notify)(void*,hand_visual::Registration const&,hand_visual::Notice const*,std::uint32_t&) noexcept{};
+    bool (*troika_geometry_module)(void*,troika_geometry::Registration const&,ModulePin) noexcept{};
+    bool (*troika_geometry_prepare)(void*,troika_geometry::Registration const&,troika_geometry::Request const*,troika_geometry::Response*,std::uint32_t&) noexcept{};
+    bool (*troika_geometry_current)(void*,troika_geometry::Source const&) noexcept{};
+    bool (*troika_control_module)(void*,troika_control::Registration const&,ModulePin) noexcept{};
+    bool (*troika_control_commit)(void*,troika_control::Registration const&,troika_geometry::Request const*,troika_geometry::Response const*,troika_control::Decision const*,std::uint32_t&) noexcept{};
+    // Fixed Native-only sole-owner adapters. Never supplied by registration.
+    bool (*troika_control_decide)(void*,troika_geometry::Request const&,troika_geometry::Response const&,troika_control::Decision&) noexcept{};
+    bool (*troika_control_complete)(void*,troika_geometry::Request const&,troika_control::Decision const&,bool) noexcept{};
 };
 
 namespace weapon_broker_win32 {
@@ -294,6 +306,38 @@ inline bool body_mount_prepare(void*,body_mount::Registration const& r,body_moun
     reply=r.prepare(r.context,input,output);return true;
 #endif
 }
+inline bool troika_geometry_module(void*,troika_geometry::Registration const& r,ModulePin pin_value) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t module{};return pin_value.handle&&pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.prepare),module)&&module==pin_value.module;
+#else
+    (void)r;(void)pin_value;return false;
+#endif
+}
+inline bool troika_geometry_prepare(void*,troika_geometry::Registration const& r,troika_geometry::Request const* input,troika_geometry::Response* output,std::uint32_t& reply) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {reply=r.prepare(r.context,input,output);return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    reply=r.prepare(r.context,input,output);return true;
+#endif
+}
+inline bool troika_control_module(void*,troika_control::Registration const& r,ModulePin p) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t image{};return p.handle&&p.module&&executable_image(reinterpret_cast<std::uintptr_t>(r.commit),image)&&image==p.module;
+#else
+    (void)r;(void)p;return false;
+#endif
+}
+inline bool troika_control_commit(void*,troika_control::Registration const& r,troika_geometry::Request const* q,
+    troika_geometry::Response const* g,troika_control::Decision const* d,std::uint32_t& reply) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {reply=r.commit(r.geometry.context,q,g,d);return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    reply=r.commit(r.geometry.context,q,g,d);return true;
+#endif
+}
 inline bool hand_visual_module(void*,hand_visual::Registration const& r,ModulePin p) noexcept {
 #if defined(_WIN32)
     std::uintptr_t image{};return p.handle&&p.module&&executable_image(reinterpret_cast<std::uintptr_t>(r.notify),image)&&image==p.module;
@@ -317,7 +361,9 @@ inline BrokerBackend weapon_hand_win32_backend() noexcept {
         weapon_broker_win32::action_module,weapon_broker_win32::action_begin,weapon_broker_win32::action_returned,weapon_broker_win32::action_unwind,
         weapon_broker_win32::main_mount_module,weapon_broker_win32::main_mount_prepare,
         weapon_broker_win32::body_mount_module,weapon_broker_win32::body_mount_prepare,nullptr,
-        weapon_broker_win32::hand_visual_module,weapon_broker_win32::hand_visual_notify};
+        weapon_broker_win32::hand_visual_module,weapon_broker_win32::hand_visual_notify,
+        weapon_broker_win32::troika_geometry_module,weapon_broker_win32::troika_geometry_prepare,nullptr,
+        weapon_broker_win32::troika_control_module,weapon_broker_win32::troika_control_commit,nullptr,nullptr};
 }
 
 class Broker {
@@ -374,6 +420,14 @@ class Broker {
     hand_visual::Registration hand_visual_registration_{};bool hand_visual_attached_{};
     struct BodyMountWork {body_mount::Request request{},shadow{};body_mount::Response response{};Frame committed{};};
     BodyMountWork body_mount_work_{};
+    troika_geometry::Registration troika_geometry_registration_{};bool troika_geometry_attached_{};
+    std::uint64_t next_troika_geometry_query_{1},troika_geometry_attempted_{};
+    struct TroikaGeometryWork {troika_geometry::Request request{},shadow{};troika_geometry::Response response{};};
+    TroikaGeometryWork troika_geometry_work_{};
+    troika_control::Registration troika_control_registration_{};bool troika_control_attached_{};
+    struct TroikaControlWork {troika_geometry::Request request{},shadow{};troika_geometry::Response response{},response_shadow{};
+        troika_control::Decision decision{},decision_shadow{};};
+    TroikaControlWork troika_control_work_{};
     inline static const body_mount::Response empty_body_mount_response_{};
     struct RetiredCookie {
         std::uint64_t cookie{},native_started_qpc{},game_start{};std::uint32_t game_pid{};
@@ -756,6 +810,28 @@ public:
                 source.left_tracked&&source.left_grip_known&&source.left_grip_down;
         }catch(...){return false;}
     }
+    // Cosmetic fixed finger profile only. Copy this broker's ACTUAL current
+    // committed part frame; never replace a historical Frame timestamp.
+    bool copy_part_visibility_frame(Frame& output,unsigned* diagnostic=nullptr) noexcept {
+        unsigned stage=1;const auto failed=[&]()noexcept{if(diagnostic)*diagnostic=stage;return false;};
+        if(diagnostic)*diagnostic=0;
+        try {
+            if(reentrant())return failed();stage=2;if(action_barrier())return failed();
+            stage=3;if(backend_.thread(backend_.context)!=game_thread_)return failed();
+            std::lock_guard<std::mutex> lock(mutex_);auto const& source=frozen_;
+            stage=4;if(!current_thread(source))return failed();
+            stage=5;if(!published_||stopping_||state_.load()!=State::active||aux_debt_.load())return failed();
+            stage=6;if(!have_commit_||phase_invalid_||action_invalidation_pending_||action_debt_.load())return failed();
+            stage=7;if(!revocation_.frame_current(frame_stamp_))return failed();
+            stage=8;if(!active_now(source,backend_.clock_ns(backend_.context)))return failed();
+            stage=9;if(!same(committed_.key,source.key)||committed_.release_required||
+               (committed_.status!=DecisionStatus::granted&&committed_.status!=DecisionStatus::retained)||
+               (committed_.lease.kind!=LeaseKind::magazine&&committed_.lease.kind!=LeaseKind::ammo)||
+               !lease_valid(committed_.lease,source.key.lifecycle)||committed_.lease.id!=source.press_token)return failed();
+            stage=10;if(!source.left_tracked||!source.left_grip_known||!source.left_grip_down)return failed();
+            snapshot(output,source);return true;
+        }catch(...){stage=11;return failed();}
+    }
     // Neutral proximity fitting has no left action lease. It may not borrow
     // part/support admission or fabricate a press. The caller publishes only
     // a cosmetic socket to the existing C0 solver, never to the action owner.
@@ -770,6 +846,22 @@ public:
                 committed_.lease.kind==LeaseKind::none&&source.left_tracked&&
                 source.controllers.hands[0].squeeze_active==1&&
                 !control_held(source.controllers.hands[0],gears_vr::control_squeeze);
+        }catch(...){return false;}
+    }
+    // Native C0 only: copy the CURRENT already committed broker frame.
+    // Fixed socket geometry never borrows its registration's old input permit.
+    bool copy_socket_visibility_frame(Frame& output) noexcept {
+        try {
+            if(reentrant()||action_barrier()||backend_.thread(backend_.context)!=game_thread_)return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            const auto& source=frozen_;
+            if(!current_thread(source)||!published_||stopping_||state_.load()!=State::active||aux_debt_.load()||
+               !have_commit_||phase_invalid_||action_invalidation_pending_||action_debt_.load()||
+               !revocation_.frame_current(frame_stamp_)||!active_now(source,backend_.clock_ns(backend_.context))||
+               !same(committed_.key,source.key)||committed_.lease.kind!=LeaseKind::none||!source.left_tracked||
+               source.controllers.hands[0].squeeze_active!=1||
+               control_held(source.controllers.hands[0],gears_vr::control_squeeze))return false;
+            snapshot(output,source);return true;
         }catch(...){return false;}
     }
     bool admit_support_visibility(Frame const& source) noexcept {
@@ -813,6 +905,8 @@ public:
     bool draining() const noexcept {const auto s=state_.load();return s==State::draining||s==State::quiescent||s==State::collecting||action_debt();}
     bool pending() const noexcept {const auto s=state_.load();return callbacks_.load()||transactions_.load()||aux_scopes_.load()||aux_debt_.load()||action_pending()||(s!=State::empty&&s!=State::active);}
 
+#include "troika_geometry_broker.inl"
+#include "troika_control_broker.inl"
     Reply attach_main_mount_provider(mount::Registration const* input,RegistrationResult* output,bool consumer_owned) {
         if(reentrant())return Reply::reentrant;
         mount::Registration r{};RegistrationResult result{};
@@ -1399,6 +1493,8 @@ public:
         remember_retired_locked();
         pin_={};registration_={};main_mount_registration_={};main_mount_attached_=false;body_mount_registration_={};body_mount_attached_=false;call_registration_={};call_attached_.store(false);action_registration_={};action_attached_.store(false);
         hand_visual_registration_={};hand_visual_attached_=false;
+        troika_geometry_registration_={};troika_geometry_attached_=false;troika_geometry_attempted_=0;
+        troika_control_registration_={};troika_control_attached_=false;
         (void)revocation_.publish({});action_context_.store(0);published_=false;cookie_.store(0);pin_retained_.store(false);authorization_.store(false);
         phase_invalid_=invalidate_running_=invalidate_failed_=final_invalidate_=false;invalidate_done_=true;have_attempt_=have_commit_=false;
         state_.store(State::empty);refresh_locked();return Reply::quiescent;

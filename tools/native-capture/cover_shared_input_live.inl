@@ -36,6 +36,9 @@ unsigned grip_handoff_count{};
 // rejection may occur in a later Scene.
 std::atomic<uint64_t> goal_absent_epoch{};
 bool have_previous{},interrupted=true,cached_owned{},cached_action_fallback{};
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+bool mounted_context_active{};
+#endif
 gears_vr::StereoResult cached_stereo{};
 gears_vr::StereoMatrix cached_view{};
 // Data-only receipt of the ONE original matching_input selection. Reader-side
@@ -50,7 +53,7 @@ struct TrackingBundle {
 } tracking;
 gears_hand_continuity::InputBridge continuity_bridge;
 bool continuity_enabled{},continuity_open{},continuity_attempted{};uint64_t continuity_last_open{},continuity_pid{},continuity_start{};
-void select_continuity(TrackingBundle& selected,int64_t stamp){
+template<class Selection> void select_continuity(Selection& selected,int64_t stamp){
     if(!continuity_enabled)return;
     if(!selected.matched||!selected.available){continuity_bridge.close();continuity_open=false;return;}
     if(continuity_open&&(continuity_pid!=selected.publisher_pid||continuity_start!=selected.publisher_start)){
@@ -64,9 +67,18 @@ void select_continuity(TrackingBundle& selected,int64_t stamp){
        publisher.pid==selected.publisher_pid&&publisher.start==selected.publisher_start&&gears_hand_continuity::same_input(companion.input,selected.hands)){
         selected.continuity=companion;selected.continuity_known=true;}
 }
+// Completed owner authority only, never diagnostics.latest. All non-atomic
+// fields are confined to the admitted Scene GT under stereo_mutex.
+struct GrabKey {
+    binding::Binding actor{};neutral::EyeSample eye{};
+    uint64_t invocation{},lifecycle{},tracking_ticket{},action{},cookie{},revision{};
+    int64_t scene_qpc{},family_qpc{},renderer_qpc{};unsigned thread{};
+};
+gears_cover_grab_receipt::Store<GrabKey> grab_receipt;
 std::atomic<uint64_t> tracking_revision{1};std::atomic<bool> tracking_exhausted{};
 bool tracking_ticket_current(uint64_t ticket){return ticket&&!tracking_exhausted.load()&&ticket==tracking_revision.load();}
 void clear_tracking(){
+    grab_receipt.clear();
     auto value=tracking_revision.load();if(value==UINT64_MAX)tracking_exhausted=true;else tracking_revision=value+1;
     tracking={};
 }
@@ -90,6 +102,36 @@ bool same_eye(neutral::EyeSample const& a,neutral::EyeSample const& b){return ca
     a.transition_word==b.transition_word&&a.transition_mask==b.transition_mask&&a.transition==b.transition&&
     a.pawn_location.x==b.pawn_location.x&&a.pawn_location.y==b.pawn_location.y&&a.pawn_location.z==b.pawn_location.z&&
     a.neutral_eye_world.x==b.neutral_eye_world.x&&a.neutral_eye_world.y==b.neutral_eye_world.y&&a.neutral_eye_world.z==b.neutral_eye_world.z;}
+GrabKey grab_key(gears_anchor::Receipt const& scene,binding::Binding const& actor,
+    neutral::EyeSample const& eye,uint64_t action,uint64_t cookie,uint64_t revision){
+    return {actor,eye,scene.invocation,diagnostics.lifecycle,tracking_revision.load(),action,cookie,revision,
+        scene.scene_qpc,scene.family_qpc,scene.renderer_qpc,scene.thread};
+}
+bool same_grab_key(GrabKey const& a,GrabKey const& b){
+    return a.invocation==b.invocation&&a.lifecycle==b.lifecycle&&a.thread==b.thread&&
+        a.scene_qpc==b.scene_qpc&&a.family_qpc==b.family_qpc&&a.renderer_qpc==b.renderer_qpc&&
+        a.tracking_ticket==b.tracking_ticket&&tracking_ticket_current(a.tracking_ticket)&&
+        a.action==b.action&&a.cookie==b.cookie&&a.revision==b.revision&&
+        binding::same_key(a.actor,b.actor)&&a.actor.scene_invocation==b.actor.scene_invocation&&
+        a.actor.special_move==b.actor.special_move&&same_eye(a.eye,b.eye)&&
+        a.eye.scene_invocation==b.eye.scene_invocation;
+}
+// Read against the caller's already-admitted actual Scene/actor/eye. The C0
+// caller separately binds these to its immutable V3 parent source and L2 receipt.
+bool read_grab(gears_anchor::Receipt const* scene,binding::Binding const& actor,
+    neutral::EyeSample const& eye,gears_cover_grab_receipt::Value& out){
+    const auto thread=GetCurrentThreadId();
+    if(!grab_receipt.on_thread(thread)||!scene||scene->thread!=thread||
+       actor.scene_invocation!=scene->invocation||eye.scene_invocation!=scene->invocation)return false;
+    auto* broker=runtime::current();
+    if(!broker||broker->action_barrier())return false;
+    const auto action=broker->action_generation(),cookie=broker->cookie(),revision=broker->lifecycle_revision();
+    const auto key=grab_key(*scene,actor,eye,action,cookie,revision);
+    gears_cover_grab_receipt::Value next{};
+    if(!grab_receipt.read(input::participant,key,thread,same_grab_key,next)||broker->action_barrier()||
+       broker->action_generation()!=action||broker->cookie()!=cookie||broker->lifecycle_revision()!=revision)return false;
+    out=next;return true;
+}
 void invalidate(wire::InvalidateReason reason) noexcept {
     clear_tracking();
     interrupted=true;cached_owned=cached_action_fallback=false;
@@ -128,6 +170,15 @@ struct Pending {
     }}
 };
 bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gears_vr::StereoResult const& stereo){
+#if defined(GEARS_TROIKA_MOUNTED_SOURCE) && GEARS_TROIKA_MOUNTED_SOURCE
+    if(anchor_config.mounted_enabled){
+        if(!mounted_context_active){invalidate(wire::InvalidateReason::context_lost);troika_control_live::interrupt_locked();mounted_context_active=true;}
+        if(!troika_scene_tracking::prepare(scene,stereo)||!troika_scene_tracking::control_mapping_ready())troika_control_live::interrupt_locked();
+        return false; // No cover view or ordinary hand Frame from mounted data.
+    }
+    if(mounted_context_active){troika_control_live::interrupt_locked();invalidate(wire::InvalidateReason::context_lost);mounted_context_active=false;}
+    troika_scene_tracking::clear();
+#endif
     if(!runtime::enabled){clear_tracking();return input::enabled?input::prepare(scene,view,stereo):camera::prepare(scene,view);}
     ++diagnostics.attempts;if(input::enabled)++input::diagnostics.attempts;bool owned{};
     try{
@@ -208,7 +259,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         }
         diagnostics.cookie=next.cookie;diagnostics.revision=next.revision;
         if(!epochs(next)){++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;}
-        const auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame hands{};
+        auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame hands{};
         gears_vr::ControllerMatchingRead matching{};
         const bool matched=input::matching_input(stereo,stamp,hands,&matching);
         TrackingBundle selection{};selection.actor=actor;selection.eye=eye;memcpy(&selection.stereo,&stereo,sizeof stereo);
@@ -286,6 +337,11 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         }
         if(committed&&!action_current()){committed=false;++diagnostics.action_raced;}
         const auto result=input::participant.complete(decoded.ticket,committed,input::left_hand_owner);
+        if(cover&&committed&&result.accepted&&action_current()&&actor.scene_invocation==scene->invocation&&
+           eye.scene_invocation==scene->invocation&&scene->thread==GetCurrentThreadId())
+            grab_receipt.publish(input::participant,decoded.ticket,
+                grab_key(*scene,actor,eye,action_generation,next.cookie,next.revision),
+                decoded.interaction_control,scene->thread,frame.lifecycle,frame.frame);
         if(decoded.press_token){
             GripHandoffObservation row{frame.frame,decoded.press_token,unsigned(candidate.left_hand.status),
                 unsigned(candidate.left_hand.lease.kind),unsigned(weapon.incumbents[0].kind),unsigned(weapon.incumbents[1].kind),

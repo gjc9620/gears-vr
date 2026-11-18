@@ -13,8 +13,10 @@ namespace mount=gears_weapon_main_mount_provider;
 namespace hand=gears_weapon_hand;
 namespace rig=gears_rig_tracking;
 inline constexpr std::uint32_t version=5; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
-enum class HoldKind:std::uint32_t {unknown,firearm,frag};
-inline bool hold_kind_valid(HoldKind k) noexcept {return k==HoldKind::firearm||k==HoldKind::frag;}
+enum class HoldKind:std::uint32_t {unknown,firearm,frag,boltok,boomshot=4};
+inline bool hold_kind_valid(HoldKind k) noexcept {
+    return k==HoldKind::firearm||k==HoldKind::frag||k==HoldKind::boltok||k==HoldKind::boomshot;
+}
 inline constexpr std::uint64_t tracking_age_ns=40000000;
 inline constexpr std::uint64_t scene_age_ns=50000000;
 inline constexpr std::uint64_t equipment_age_ns=50000000;

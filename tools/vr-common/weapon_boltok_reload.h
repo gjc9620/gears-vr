@@ -35,7 +35,7 @@ enum class BoltokReloadStage : std::uint8_t {
 enum class BoltokReloadEvent : std::uint8_t {
     rejected,invalid,full,no_ammo,started,grabbed,released,step_completed,
     inventory_requested,inventory_committed,completion_requested,perfect,ordinary,
-    fire_requested,shot_recorded,ready_observed,interrupted
+    fire_requested,shot_recorded,ready_observed,interrupted,inspection_completed
 };
 struct BoltokReloadIdentity {
     std::uint64_t world{},pawn{},weapon{},world_generation{},binding_generation{},
@@ -92,7 +92,11 @@ struct BoltokReloadPlan {
     std::array<BoltokReloadStep,24> steps{};
     unsigned count{};
     bool current_instance_verified{},original_order_verified{};
-    bool valid(BoltokInventory const& inventory) const noexcept {
+    // Optional authenticated branch for each step boundary. Zero means no
+    // calibrated direct close from that state; never infer it from the last
+    // normal step or skip a required mechanical action.
+    std::array<BoltokReloadStep,24> early_closures{};
+    bool valid(BoltokInventory const& inventory,bool allow_inspection=false) const noexcept {
         if(!inventory.valid()||!(identity==inventory.identity)||!generation||!original_reload_serial||
            !initial_state||!final_ready_state||!current_instance_verified||
            !original_order_verified||!count||count>steps.size()||
@@ -101,7 +105,7 @@ struct BoltokReloadPlan {
         auto state=initial_state;
         std::uint32_t rounds=0;
         const auto target=(std::min)(inventory.capacity-inventory.loaded,inventory.reserve);
-        if(!target)return false;
+        if(!target&&!allow_inspection)return false;
         for(unsigned i=0;i<count;++i){
             auto const& s=steps[i];
             if(!s.parts||(s.parts&~BoltokPartMask{0x7ff})||!s.phase_id||!s.contact_id||
@@ -133,6 +137,8 @@ struct BoltokReloadStart {
     BoltokPerfectWindow perfect{};
     std::uint64_t r3_press_edge{};
     bool original_reload_accepted{},automatic_refill_held{};
+    std::int64_t accepted_begin_tick{-1}; // Authenticated original begin, not opening endpoint.
+    bool mechanical_ownership_verified{}; // Existing original-animation owner, including inspection.
 };
 enum class BoltokAmmoKind : std::uint8_t {other,spent_case,snub_magazine,live_boltok_ammunition};
 struct BoltokAmmoReceipt {
@@ -210,7 +216,7 @@ class BoltokReload {
     std::uint64_t sequence_{},next_token_{},reload_serial_{},last_r3_{},last_trigger_{},
         last_original_event_{},last_item_{},held_item_{},motion_floor_{};
     std::int64_t ns_{},tick_{},started_tick_{},last_action_tick_{},motion_floor_ns_{};
-    std::uint32_t held_{},shot_cost_{};
+    std::uint32_t held_{},shot_cost_{},opening_loaded_{};
     unsigned cursor_{};
     bool original_ready_{},last_left_tracked_{},motion_floor_tracked_{};
 
@@ -235,8 +241,8 @@ class BoltokReload {
         return token&&r.token==token&&r.original_event_sequence>last_original_event_&&
             r.observed.identity==identity_;
     }
-    bool motion(BoltokReloadStamp const& s,BoltokMotionReceipt const& r) const noexcept {
-        auto const& step=plan_.steps[cursor_];
+    bool motion_step(BoltokReloadStamp const& s,BoltokMotionReceipt const& r,
+                     BoltokReloadStep const& step) const noexcept {
         return s.left_tracked&&r.original_reload_serial==reload_serial_&&
             r.plan_generation==plan_.generation&&r.phase_id==step.phase_id&&r.parts==step.parts&&
             r.contact_id==step.contact_id&&r.travel_id==step.travel_id&&
@@ -251,6 +257,9 @@ class BoltokReload {
                 std::int64_t(r.tracked_samples-1)*r.maximum_sample_gap_ns&&
             r.measured_6dof_travel&&r.continuous&&r.complete_travel&&r.aligned&&
             r.player_driven&&r.left_grip_held;
+    }
+    bool motion(BoltokReloadStamp const& s,BoltokMotionReceipt const& r) const noexcept {
+        return motion_step(s,r,plan_.steps[cursor_]);
     }
     std::uint64_t token() noexcept {
         if(next_token_==(std::numeric_limits<std::uint64_t>::max)())return 0;
@@ -269,7 +278,8 @@ class BoltokReload {
         }
         const auto request_token=token();
         if(!request_token)return invalidate();
-        const auto result=perfect_.current_instance_verified&&
+        const auto result=inventory_.loaded==opening_loaded_?BoltokReloadEvent::inspection_completed:
+            perfect_.current_instance_verified&&
             last_action_tick_-started_tick_<=perfect_.end_ticks?
             BoltokReloadEvent::perfect:BoltokReloadEvent::ordinary;
         completion_request_={identity_,request_token,reload_serial_,plan_.generation,
@@ -315,28 +325,66 @@ public:
         if(!s.left_tracked)break_motion();
         return BoltokReloadEvent::ready_observed;
     }
-    BoltokReloadEvent begin_r3(BoltokReloadStart const& s,std::int64_t now) noexcept {
+private:
+    BoltokReloadEvent begin_activation(BoltokReloadStart const& s,std::uint64_t activation,
+                                       std::int64_t now,bool physical=false) noexcept {
         if(stage_!=BoltokReloadStage::ready||!accepts(s.stamp,now))return BoltokReloadEvent::rejected;
-        if(!s.r3_press_edge||s.r3_press_edge<=last_r3_||
+        if(!activation||activation<=last_r3_||
            !counts(s.inventory,inventory_.loaded,inventory_.reserve)||
            s.inventory.revision!=inventory_.revision)return BoltokReloadEvent::invalid;
-        if(inventory_.loaded==inventory_.capacity){
-            consume(s.stamp);last_r3_=s.r3_press_edge;return BoltokReloadEvent::full;
+        if(!physical&&inventory_.loaded==inventory_.capacity){
+            consume(s.stamp);last_r3_=activation;return BoltokReloadEvent::full;
         }
-        if(!inventory_.reserve){
-            consume(s.stamp);last_r3_=s.r3_press_edge;return BoltokReloadEvent::no_ammo;
+        if(!physical&&!inventory_.reserve){
+            consume(s.stamp);last_r3_=activation;return BoltokReloadEvent::no_ammo;
         }
-        if(!s.original_reload_accepted||!s.automatic_refill_held||!s.plan.valid(inventory_)||
+        const bool inspection=physical&&(!inventory_.reserve||inventory_.loaded==inventory_.capacity);
+        if((!s.original_reload_accepted&&!inspection)||!s.automatic_refill_held||
+           (physical&&!s.mechanical_ownership_verified)||!s.plan.valid(inventory_,inspection)||
            s.plan.original_reload_serial<=reload_serial_||s.perfect.end_ticks<0||
            (s.perfect.current_instance_verified&&(!(s.perfect.identity==identity_)||
             s.perfect.original_reload_serial!=s.plan.original_reload_serial||
             s.perfect.plan_generation!=s.plan.generation||s.perfect.end_ticks<=0)))
             return BoltokReloadEvent::invalid;
-        consume(s.stamp);last_r3_=s.r3_press_edge;reload_serial_=s.plan.original_reload_serial;
+        consume(s.stamp);last_r3_=activation;reload_serial_=s.plan.original_reload_serial;
         plan_=s.plan;perfect_=s.perfect;cursor_=0;started_tick_=tick_;last_action_tick_=tick_;
+        opening_loaded_=inventory_.loaded;
         original_ready_=false;break_motion();
         stage_=plan_.steps[0].kind==BoltokStepKind::insert_ammunition?
             BoltokReloadStage::take_ammunition:BoltokReloadStage::mechanism;
+        return BoltokReloadEvent::started;
+    }
+public:
+    // Legacy offline protocol entry. Production VR uses begin_grab_open below;
+    // a button alone is not evidence that the support/cylinder was opened.
+    BoltokReloadEvent begin_r3(BoltokReloadStart const& s,std::int64_t now) noexcept {
+        return begin_activation(s,s.r3_press_edge,now);
+    }
+    // The adapter supplies the real arbiter press token and measured opening
+    // stroke. Never synthesize R3, replay the opening, or accept bulk ammo on
+    // this physical path. A rejected opening leaves every clock/token intact.
+    BoltokReloadEvent begin_grab_open(BoltokReloadStart const& s,std::uint64_t grip_token,
+                                     BoltokMotionReceipt const& opening,std::int64_t now) noexcept {
+        if(!s.plan.count||s.plan.count>s.plan.steps.size()||s.inventory.capacity!=6||
+           s.accepted_begin_tick<tick_||s.accepted_begin_tick>s.stamp.game_tick||
+           s.plan.steps[0].kind!=BoltokStepKind::move_original_parts||s.plan.count<2||
+           s.plan.steps[s.plan.count-1].kind!=BoltokStepKind::move_original_parts)
+            return BoltokReloadEvent::invalid;
+        for(unsigned i=0;i<s.plan.count;++i)
+            if(s.plan.steps[i].kind==BoltokStepKind::insert_ammunition&&s.plan.steps[i].rounds!=1)
+                return BoltokReloadEvent::invalid;
+        // Check against the pre-opening motion floor, not the endpoint that
+        // begin_activation consumes. The supplied trajectory must span actual
+        // tracked samples since this binding's last observation.
+        auto probe=*this;probe.plan_=s.plan;probe.reload_serial_=s.plan.original_reload_serial;
+        probe.cursor_=0;
+        if(!probe.motion(s.stamp,opening))return BoltokReloadEvent::rejected;
+        auto candidate=*this;
+        const auto result=candidate.begin_activation(s,grip_token,now,true);
+        if(result!=BoltokReloadEvent::started)return result;
+        candidate.started_tick_=s.accepted_begin_tick;
+        candidate.advance(); // Opening is already physically complete.
+        *this=candidate;
         return BoltokReloadEvent::started;
     }
     BoltokReloadEvent grab_left_shoulder(BoltokReloadStamp const& s,BoltokAmmoReceipt const& r,
@@ -366,6 +414,27 @@ public:
            plan_.steps[cursor_].kind!=BoltokStepKind::move_original_parts||!motion(s,r))
             return BoltokReloadEvent::rejected;
         consume(s);last_action_tick_=tick_;return advance();
+    }
+    BoltokReloadEvent close_early(BoltokReloadStamp const& s,BoltokMotionReceipt const& r,
+                                  std::int64_t now) noexcept {
+        // No closure with held ammo, an unresolved original write, or an
+        // unmeasured shortcut. The branch must be in the authenticated plan.
+        if(stage_!=BoltokReloadStage::take_ammunition||!accepts(s,now))
+            return BoltokReloadEvent::rejected;
+        const auto& close=plan_.early_closures[cursor_];
+        if(close.kind!=BoltokStepKind::move_original_parts||close.rounds||!close.parts||
+           (close.parts&~BoltokPartMask{0x7ff})||!close.phase_id||!close.contact_id||!close.travel_id||
+           close.before_state!=plan_.steps[cursor_].before_state||
+           close.after_state!=plan_.final_ready_state||close.before_state==close.after_state||
+           !motion_step(s,r,close))return BoltokReloadEvent::rejected;
+        const auto request_token=token();if(!request_token)return invalidate();
+        consume(s);last_action_tick_=tick_;break_motion();
+        const auto result=inventory_.loaded==opening_loaded_?
+            BoltokReloadEvent::inspection_completed:BoltokReloadEvent::ordinary;
+        completion_request_={identity_,request_token,reload_serial_,plan_.generation,
+            plan_.final_ready_state,inventory_.revision,started_tick_,last_action_tick_,result};
+        stage_=BoltokReloadStage::completion_pending;
+        return BoltokReloadEvent::completion_requested;
     }
     BoltokReloadEvent insert_ammunition(BoltokReloadStamp const& s,BoltokInsertionReceipt const& r,
                                          std::int64_t now) noexcept {

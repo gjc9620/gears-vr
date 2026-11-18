@@ -57,7 +57,16 @@ bool read_bytes(uptr object,uptr offset,void* destination,std::size_t bytes) noe
     return bytes<=~uptr(0)-address&&copy(destination,address,bytes);
 }
 template<class T>bool read_at(uptr object,uptr offset,T& destination) noexcept {
+#if defined(GEARS_PLAYGROUND_FIXED_COPY_VALUE) && GEARS_PLAYGROUND_FIXED_COPY_VALUE
+    if constexpr(sizeof(T)==4||sizeof(T)==8){
+        const auto bytes=sizeof(destination);void* pointer=&destination;
+        if(!object||!pointer||!bytes||offset>~uptr(0)-object)return false;
+        const auto address=object+offset;
+        return bytes<=~uptr(0)-address&&copy_value(destination,address);
+    }else return read_bytes(object,offset,&destination,sizeof(destination));
+#else
     return read_bytes(object,offset,&destination,sizeof(destination));
+#endif
 }
 bool same_table(Table const& first,Table const& second) noexcept {
     return first.data==second.data&&first.count==second.count&&first.capacity==second.capacity;
@@ -73,6 +82,15 @@ bool registered_known(Table const& objects,uptr object,U32& index) noexcept {
     return object&&read_at(object,8,index)&&index<U32(objects.count)&&
         read_at(objects.data,uptr(index)*8,slot)&&slot==object;
 }
+// Optional synchronous Native parsing prerequisite observer, active only during qualification.
+using SemanticNameObserver=void(*)(void*,uptr,U32,U32,bool) noexcept;
+inline thread_local SemanticNameObserver semantic_name_observer{};
+inline thread_local void* semantic_name_context{};
+inline thread_local std::uint64_t semantic_name_events{};
+inline void semantic_name_success(uptr entry,U32 index,U32 length,bool cold) noexcept {
+    ++semantic_name_events; // All successful events, including temporarily foreign/unobserved ones.
+    if(semantic_name_observer)semantic_name_observer(semantic_name_context,entry,index,length,cold);
+}
 bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
     text={};text.index=index;U32 entry_index{};
     if(index>=U32(names.count)||!read_at(names.data,uptr(index)*8,text.entry)||!text.entry||
@@ -87,7 +105,7 @@ bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
         if(!read_bytes(text.entry,20,text.units.data(),(std::size_t(bound)+1)*sizeof(wchar_t)))return false;
         for(U32 i=0;i<bound;++i)if(!text.units[i])return false;
         if(text.units[bound])return false;
-        text.length=bound;return true;
+        text.length=bound;semantic_name_success(text.entry,index,bound,false);return true;
     }
     {
         // Native participant callbacks can run without a parsing workspace.
@@ -110,7 +128,7 @@ bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
                 const auto i=at+n;
                 if(!text.units[i]){
                     text.length=i;if(i)weapon_metadata_parse::remember_length(text.entry,index,i);
-                    return i!=0;
+                    if(i)semantic_name_success(text.entry,index,i,true);return i!=0;
                 }
             }
             at+=count;
@@ -121,7 +139,7 @@ bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
     for(U32 i=0;i<max_name_units;++i){
         if(!read_at(text.entry,20+uptr(i)*sizeof(wchar_t),text.units[i]))return false;
         if(!text.units[i]){text.length=i;
-            return i!=0;}
+            if(i)semantic_name_success(text.entry,index,i,true);return i!=0;}
     }
     return false; // Never manufacture the terminating NUL.
 #endif

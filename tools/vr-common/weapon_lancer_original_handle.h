@@ -19,19 +19,44 @@ inline constexpr double maximum_angle=1.5707963267948966;
 inline constexpr double maximum_pull_raw=8.;
 // Deployment is cosmetic; sliding is a physical interaction. A neutral
 // proximity socket can unfold the crossbar without borrowing a part lease,
-// but can never move the rail in EITHER direction. A released slider remains
-// locked; ordinary zero-stroke folding may still finish without a new grasp.
+// but cannot push the rail. An explicitly released cosmetic spring may only
+// reduce travel with the same deployment angle; it never grants an action.
 inline bool update_admitted(double angle,double pull,double before_angle,double before_pull,
-    bool render,bool part,bool socket) noexcept {
+    bool render,bool part,bool socket,bool return_home=false) noexcept {
     for(const double v:{angle,before_angle})if(!std::isfinite(v)||v<0||v>maximum_angle)return false;
     for(const double v:{pull,before_pull})if(!std::isfinite(v)||v<0||v>maximum_pull_raw)return false;
     if(!render)return false;
-    if(pull!=before_pull)return part;
+    if(pull!=before_pull)return part||(return_home&&pull<before_pull&&angle==before_angle);
     if(angle>before_angle)return part||socket;
     if(angle<before_angle)return part||before_pull==0;
     return true;
 }
+// Render is always evaluated by the caller. The part/socket observers have
+// identical reentrancy guards and otherwise only read broker state. Read them
+// only when the unchanged policy actually needs their result; never retain an
+// admission across calls or skip the caller's update/receipt/restore service.
+template<class Part,class Socket>
+inline bool update_admitted_lazy(double angle,double pull,double before_angle,double before_pull,
+    bool render,Part&& part,Socket&& socket,bool return_home=false) noexcept {
+    if(!update_admitted(angle,pull,before_angle,before_pull,render,true,true,return_home))return false;
+    if(pull!=before_pull){
+        if(return_home&&pull<before_pull&&angle==before_angle)return true;
+        return part();
+    }
+    if(angle>before_angle)return part()||socket();
+    if(angle<before_angle)return before_pull==0||part();
+    return true;
+}
 struct DisplayTarget {double angle{},pull{};};
+// During an unrelated reload, an unbound handle needs no new owner, and an
+// already acknowledged original closed/rest target needs no repeated setter.
+// This never applies to unfolding, sliding, pending calibration or restoration.
+inline bool defer_closed_reload(bool live,bool stopping,bool restoring,bool calibrated,
+    bool accepted_known,DisplayTarget accepted,double deployment) noexcept {
+    if(stopping||restoring)return false;
+    if(!live)return true;
+    return calibrated&&accepted_known&&accepted.angle==0.&&accepted.pull==0.&&deployment==0.;
+}
 // Once Grip is released, lock the last acknowledged display request exactly.
 // Reconstructed float geometry is an observation, not a new rail command. A
 // tiny readback difference must not demand a part lease that just ended.

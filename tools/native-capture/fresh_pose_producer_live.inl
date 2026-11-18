@@ -6,6 +6,8 @@
 #include "per_bone_overwrite_source.h"
 #include "cached_pose_overwrite_source.h"
 #include "cached_pose_memcpy_certificate.h"
+#include "mirrored_pose_overwrite_source.h"
+#include "mirrored_pose_overwrite_certificate.h"
 #include <new>
 namespace fresh_pose_producer_live {
 bool enabled{},per_bone_witness_enabled{};std::array<void*,3> targets{},originals{};bool own_entries();
@@ -49,6 +51,9 @@ std::atomic<uint64_t> per_bone_started{},per_bone_finished{};
 std::array<std::atomic<uint64_t>,6> per_bone_rejections{};
 struct PerBoneWitness {gears_per_bone_overwrite::Source before{};gears_anchor::Identity identity{};};
 struct CachedWitness;
+struct MirrorWitness {gears_mirrored_pose_overwrite::Source before{};};
+std::atomic<uint64_t> mirror_started{},mirror_finished{},mirror_rejected{};
+gears_mirrored_pose_overwrite::Observation mirror_observation{};std::atomic<bool> mirror_observed{};std::atomic<unsigned> mirror_bad_code{};
 struct SequenceFailureObservation {unsigned context{},root_snapshot{},root_same{},root_return_epoch{},sequence_snapshot{},sequence_same{},sequence_return{},local_same{},desired_same{};
     uint32_t root_before{},root_after{},mesh{},sequence_before{},sequence_after{},time_before{},time_after{};int32_t node70_before{},node70_after{},cache_before{},cache_after{},link_before{},link_after{};};
 SequenceFailureObservation sequence_failure{};std::atomic<bool> sequence_failure_known{};
@@ -62,6 +67,7 @@ struct Call {Call* previous{};Call const* counter_self{};uint64_t serial{};unsig
     gears_sequence_set_overwrite::Source sequence_set_before{};bool sequence_set_active{};
     PerBoneWitness* per_bone{};
     CachedWitness* cached{};
+    MirrorWitness* mirror{};
     alignas(::Scope) unsigned char blend_scope_bytes[sizeof(::Scope)]{};::Scope* blend_scope{};
 #endif
 };
@@ -207,6 +213,16 @@ void blend_begin(Call& c,pose::CallPacket const& p,uintptr_t ra){
     c.blend_chain=true;
     if(!blend::blend(c.blend_before)){
         observe_cover_forward(c.blend_before);
+        if(gears_mirrored_pose_overwrite::child_index(c.blend_before)<16){
+            c.mirror=new(std::nothrow) MirrorWitness;
+            gears_mirrored_pose_overwrite::Source repeat{};
+            gears_mirrored_pose_overwrite::Observation observation{};
+            bool okay=c.mirror&&gears_mirrored_pose_overwrite::snapshot(safe_copy,c.blend_before,c.mirror->before,false,&observation)&&
+                gears_mirrored_pose_overwrite::snapshot(safe_copy,c.blend_before,repeat)&&
+                gears_mirrored_pose_overwrite::same(c.mirror->before,repeat);
+            if(okay)for(unsigned i=0;i<gears_mirrored_pose_certificate::chunks.size();++i)if(!phase::digest(gears_mirrored_pose_certificate::chunks[i])){mirror_bad_code=i+1;okay=false;break;}
+            if(!okay){if(!mirror_observed.load()){mirror_observation=observation;mirror_observed.store(true,std::memory_order_release);}++mirror_rejected;return;}
+        }else{
         const auto child=blend::full_weight_child(c.blend_before);
         uintptr_t table{},method{};
         if(!child||!read(table,child)||!field(method,table,0x270)){++blend_rejections[8];return;}
@@ -227,16 +243,23 @@ void blend_begin(Call& c,pose::CallPacket const& p,uintptr_t ra){
         {std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);
             if(!lock.owns_lock()||!binding::metadata_current()||!binding::identity(child,c.sequence_identity,true)){++blend_rejections[11];return;}}
         c.sequence_active=true;
+        }
     }
     c.blend_tick=f.active?f.tick:0;c.blend_active=true;
-    if(!native_atom_overwrite_live::blend_begin(c.blend_ticket,c.blend_before.mesh_epoch)){++blend_rejections[6];c.blend_active=false;}else if(c.sequence_active){++sequence_started;if(c.sequence_set_active)++sequence_set_started;}
+    if(!native_atom_overwrite_live::blend_begin(c.blend_ticket,c.blend_before.mesh_epoch)){++blend_rejections[6];c.blend_active=false;}else if(c.mirror)++mirror_started;else if(c.sequence_active){++sequence_started;if(c.sequence_set_active)++sequence_set_started;}
 }
 void blend_return(Call& c,bool returned){
     if(!c.blend_active)return;namespace blend=gears_root_blend_overwrite;
     blend::Source after{},again{};auto const& before=c.blend_before;bool valid=returned&&blend_world_current()&&root_code_current()&&
         blend::snapshot(safe_copy,base,before.root,before.mesh,before.mesh+0x27c,before.mesh+0x28c,after,true)&&
         blend::snapshot(safe_copy,base,before.root,before.mesh,before.mesh+0x27c,before.mesh+0x28c,again,true)&&
-        blend::same(after,again)&&(c.sequence_active?(blend::same(before,after,false)&&after.root_epoch==before.mesh_epoch):blend::returned(before,after));
+        blend::same(after,again)&&((c.sequence_active||c.mirror)?(blend::same(before,after,false)&&after.root_epoch==before.mesh_epoch):blend::returned(before,after));
+    if(valid&&c.mirror){
+        namespace mirror=gears_mirrored_pose_overwrite;mirror::Source last{},repeat{};
+        valid=mirror::snapshot(safe_copy,after,last,true)&&mirror::snapshot(safe_copy,after,repeat,true)&&
+            mirror::same(last,repeat)&&mirror::returned(before,after,c.mirror->before,last);
+        if(valid)for(auto const& chunk:gears_mirrored_pose_certificate::chunks)if(!phase::digest(chunk)){valid=false;break;}
+    }
     if(valid&&c.sequence_active&&c.sequence_set_active){
         namespace set=gears_sequence_set_overwrite;set::Source last{},repeat{};
         valid=set::snapshot(safe_copy,base,c.sequence_set_before.node,before.mesh,last)&&
@@ -270,7 +293,7 @@ void blend_return(Call& c,bool returned){
         sequence_failure_known.store(true,std::memory_order_release);
     }
     const bool completed=native_atom_overwrite_live::blend_return(c.blend_ticket,valid);
-    if(!completed)++blend_rejections[7];else if(c.sequence_active){++sequence_finished;if(c.sequence_set_active)++sequence_set_finished;}c.blend_active=false;
+    if(!completed)++blend_rejections[7];else if(c.mirror)++mirror_finished;else if(c.sequence_active){++sequence_finished;if(c.sequence_set_active)++sequence_set_finished;}c.blend_active=false;
 }
 #else
 bool blend_world_current()noexcept{return false;}void blend_begin(Call&,pose::CallPacket const&,uintptr_t){}void blend_return(Call&,bool){}
@@ -510,6 +533,7 @@ void release(Call& c) noexcept {
 #if defined(GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT) && GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT
     delete c.per_bone;c.per_bone=nullptr;
     delete c.cached;c.cached=nullptr;
+    delete c.mirror;c.mirror=nullptr;
     if(c.blend_scope){if(c.blend_scope==reinterpret_cast<::Scope*>(c.blend_scope_bytes)){c.blend_scope->~Scope();c.blend_scope=nullptr;}else debt();}
 #endif
     const bool counted=c.counter_self==&c&&c.counter_owned&&c.counter_thread==GetCurrentThreadId();
@@ -580,7 +604,7 @@ bool configure(wchar_t const* ini,FILE* f){
     if(!wcscmp(b,L"1")){if(enabled||!hand::enabled||!phase::certified)return false;enabled=true;}record_call_tree=!wcscmp(t,L"1");
     if(f)fprintf(f,"fresh_pose_compiled=1 fresh_pose_enabled=%u fresh_pose_record_call_tree=%u writer=0 fresh_certified=0\n",unsigned(enabled),unsigned(record_call_tree));return true;}
 void request_drain(){stopping=true;}
-void summary(FILE* f){cached_summary(f);if(f){fprintf(f,"per_bone_overwrite_started=%llu per_bone_overwrite_finished=%llu ",per_bone_started.load(),per_bone_finished.load());
+void summary(FILE* f){cached_summary(f);if(f){if(mirror_observed.load(std::memory_order_acquire)){auto const& o=mirror_observation;fprintf(f,"mirror_failure_stage=%u mirror_failure_bad_index=%u mirror_failure_reference_count=%d mirror_failure_reference_capacity=%d mirror_failure_table_count=%d mirror_failure_table_capacity=%d mirror_failure_axes=%u mirror_failure_code=%u ",o.stage,o.bad_index,o.reference.count,o.reference.capacity,o.mirror.count,o.mirror.capacity,o.axes,mirror_bad_code.load());}fprintf(f,"mirror_overwrite_started=%llu mirror_overwrite_finished=%llu mirror_overwrite_rejected=%llu ",mirror_started.load(),mirror_finished.load(),mirror_rejected.load());fprintf(f,"per_bone_overwrite_started=%llu per_bone_overwrite_finished=%llu ",per_bone_started.load(),per_bone_finished.load());
     for(unsigned i=0;i<per_bone_rejections.size();++i)fprintf(f,"per_bone_rejected_%u=%llu ",i,per_bone_rejections[i].load());}
 base_entry_summary(f);if(f&&sequence_failure_known.load(std::memory_order_acquire)){const auto& d=sequence_failure;
     fprintf(f,"sequence_failure_context=%u sequence_failure_root_snapshot=%u sequence_failure_root_same=%u sequence_failure_root_epoch=%u sequence_failure_child_snapshot=%u sequence_failure_child_same=%u sequence_failure_child_return=%u sequence_failure_local_same=%u sequence_failure_desired_same=%u sequence_failure_root_before=%u sequence_failure_root_after=%u sequence_failure_mesh=%u sequence_failure_child_before=%u sequence_failure_child_after=%u sequence_failure_time_before=%u sequence_failure_time_after=%u sequence_failure_node70_before=%d sequence_failure_node70_after=%d sequence_failure_cache_before=%d sequence_failure_cache_after=%d sequence_failure_link_before=%d sequence_failure_link_after=%d ",

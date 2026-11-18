@@ -51,6 +51,28 @@ std::uint64_t private_trajectory_total() noexcept {
 unsigned muzzle_prepare_failure_logs{};
 unsigned execute_failure_logs{};
 lr::Actors actors(wh::Frame const& f) noexcept {return {f.world,f.controller,f.pawn,f.mesh,f.weapon};}
+// Class names are routing hints only. Both preparers independently certify the
+// exact current asset, held source and return schemas; neither renews a stamp.
+bool projectile_candidate(wh::Frame const& source) noexcept {
+    return playground::instance(source.weapon.address,L"Weap_Boomer_base");
+}
+bool shotgun_candidate(wh::Frame const& source) noexcept {
+    return playground::instance(source.weapon.address,L"Weap_Shotgun");
+}
+bool muzzle_ready_for(wh::Frame const& source,std::int64_t reserve) noexcept {
+    return shotgun_candidate(source)?gnasher_muzzle::ready_for(source,reserve):
+        projectile_candidate(source)?boomshot_fire::ready_for(source,reserve):
+        unified_weapon_fire::ready_for(source,reserve);
+}
+bool prepare_muzzle(wh::Frame const& source,wh::GripGameState const& game) noexcept {
+    return shotgun_candidate(source)?gnasher_muzzle::prepare(source,game):
+        projectile_candidate(source)?boomshot_fire::prepare(source,game):
+        unified_weapon_fire::prepare_current(source,game);
+}
+void clear_muzzle_sources() noexcept {
+    unified_weapon_fire::clear_source();boomshot_fire::clear_source();gnasher_muzzle::clear_source();
+}
+
 // A negative scheduling hint only. Actual fire still authenticates the live
 // actor, Lancer class, held mount, source and result schemas on its normal path.
 // Holding a pistol must not pay Lancer metadata cost every PlayerTick.
@@ -67,7 +89,7 @@ bool held_lancer_candidate() noexcept {
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,h.weapon))return false;
     const bool lancer=lancermain_asset::held_asset_name(r,h.weapon.address,
-        lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::HeldAsset::unknown;
+        lancermain_asset::AssetScope::supported_r2_fire)!=lancermain_asset::HeldAsset::unknown;
     if(r.result.failure.reason!=meta::Reason::none)return false;
     candidate_hold=h;candidate_is_lancer=lancer;candidate_class_known=true;return lancer;
 }
@@ -95,8 +117,8 @@ bool name_current(Name const& name,wchar_t first) noexcept {
         copy(text,entry+20,sizeof text)&&text[0]==first&&text[1]==L'2'&&!text[2];
 }
 bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,bool* source_current=nullptr,
-    wh::GripGameState const* copied_game=nullptr) noexcept {
-    out={};if(source_current)*source_current=false;
+    wh::GripGameState const* copied_game=nullptr,bool* physical_lancer=nullptr) noexcept {
+    out={};if(source_current)*source_current=false;if(physical_lancer)*physical_lancer=false;
     if(!weaponhand::current_gt(nullptr)||!lr::valid(expected))return false;
     // This identity-only value is solely for fresh metadata observation. It
     // is never published, passed to Input, or used to renew tracking lifetime.
@@ -130,9 +152,10 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,expected.controller)||
         !weaponhand::object(r,expected.weapon))return false;
     // Historical Game::lancer means eligibility for this original R2 owner.
-    // Only these explicit instant-fire profiles enter; reload remains Lancer-only.
-    const bool lancer=lancermain_asset::held_asset_name(r,expected.weapon.address,
-        lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::HeldAsset::unknown;
+    // Explicit supported R2 profiles enter; each gun keeps its own reload and getter scope.
+    const auto asset_kind=lancermain_asset::held_asset_name(r,expected.weapon.address,
+        lancermain_asset::AssetScope::supported_r2_fire);
+    const bool lancer=asset_kind!=lancermain_asset::HeldAsset::unknown;
     if(r.result.failure.reason!=meta::Reason::none)return false;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
     if(!aim_fields.begin(r,expected.controller.address)||!aim_fields.boolean(r,weaponhand::AimObserveFields::held_flag,held))return false;
@@ -172,6 +195,7 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
         !lr::same_fire_observation(before,after))return false;
     if(source_current&&!weaponhand::client.armed()){*source_current=false;return false;}
     out={expected,true,lancer,after.main_hand_held,after.animation_owns_hands,after.busy,true,bool(held.bits&held.mask)};
+    if(physical_lancer)*physical_lancer=asset_kind==lancermain_asset::HeldAsset::lancer;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
     out.l2_known=out.toggle_known=true;
     out.l2_held=bool(target_key.bits&target_key.mask);
@@ -213,13 +237,13 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
         lancermain_asset::Evidence asset{};
 #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
         lancermain_asset::HeldAsset observed_kind{};
-        if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire,&observed_kind)!=lancermain_asset::Status::ready||
+        if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_r2_fire,&observed_kind)!=lancermain_asset::Status::ready||
             !nativeequipment::attached_frame(*source,asset.component.address)||
             !nativeequipment::current(nullptr,*source))return reject(L"attachment");
         hb_press=observed_kind==lancermain_asset::HeldAsset::hammerburst;
         if(hb_press&&!hammerburst_burst_event::prepare_press(*source))return gears_weapon::OriginalR2Execution::not_ready;
 #else
-        if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready||
+        if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_r2_fire)!=lancermain_asset::Status::ready||
             !nativeequipment::attached_frame(*source,asset.component.address)||
             !nativeequipment::current(nullptr,*source))return reject(L"attachment");
 #endif
@@ -239,7 +263,7 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
     // deferred by Input within the ORIGINAL press intent's fixed deadline.
     // Each attempt still needs its own <=100ms source and dispatch reserve.
     if(action==gears_weapon::OriginalR2Action::press&&unified_weapon_fire::manual_profile()&&
-       !unified_weapon_fire::ready_for(*source,20000000)){
+       !muzzle_ready_for(*source,20000000)){
         unified_weapon_fire::ReadinessEvidence evidence{};
         if(log_file&&execute_failure_logs<8&&unified_weapon_fire::readiness_evidence(*source,20000000,evidence)){
             fwprintf(log_file,L"native_lancer_execute_not_ready frame=%llu valid=%u same_frame=%u frame_current=%u reserved_frame_current=%u held=%u registration=%u live=%u reserved_live=%u epoch=%u sync_age_ns=%lld stereo_age_ns=%lld frame_age_ns=%lld sample_age_ns=%lld render_age_ns=%lld\n",
@@ -307,7 +331,23 @@ bool ammo(lr::Actors const& owner,int& count,bool& key_down) noexcept {
     count=value;key_down=after.r2_held;return true;
 }
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+bool bow_route_neutral() noexcept {
+    if(input.owns_press()||aim_owns()||lancerrefire::has_initial_debt()||lancerrefire::release_required()||
+       longshot_scope_owner::owed()||hod_input::owed()||hod_aim::owed()||
+       fragpreparation::outstanding.load(std::memory_order_acquire))return false;
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::cleanup_pending())return false;
+#endif
+    return true;
+}
+#include "weapon_boomshot_fire_neutral.inl"
+#endif
 void pre_original_held_shot(uptr pc) noexcept {
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(mode.load(std::memory_order_acquire)==running&&unified_weapon_fire::manual_profile()&&bow_route_neutral()&&
+       torquebow_input::before_original_tick(pc))return;
+#endif
     // Both HUD queries and automatic shots execute inside original PlayerTick.
     // Refresh an already-held Lancer even with R2 up, using the current Native
     // publication. A new equip/press still belongs to the post-equipment path.
@@ -318,13 +358,35 @@ void pre_original_held_shot(uptr pc) noexcept {
     wh::Frame frame{};wh::GripGameState game{};
     if(!weaponhand::client.copy_frame_on_gt(frame,game)||frame.controller.address!=pc||
        !game.known||!game.main_hand_held||game.animation_owns_hands||game.busy){
-        unified_weapon_fire::clear_source();return;
+        clear_muzzle_sources();return;
     }
-    if(unified_weapon_fire::ready_for(frame,20000000))return;
-    nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
-    if(!unified_weapon_fire::prepare_current(frame,game))unified_weapon_fire::clear_source();
+    if(!muzzle_ready_for(frame,20000000)){
+        nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
+        if(!prepare_muzzle(frame,game))clear_muzzle_sources();
+    }
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    hammerburst_burst_event::pre_original_released_refire(frame);
+#endif
 }
 #endif
+// Scheduling only: an owned release, uncertain release, stopping, scope or
+// other original owner always retains the existing fire-first path.
+bool longshot_mechanism_neutral(wh::Frame const& frame) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(mode.load(std::memory_order_acquire)!=running||!unified_weapon_fire::manual_profile()||
+       (input.owns_press()||aim_owns()||input.awaiting_release()||lancerrefire::has_initial_debt()||lancerrefire::release_required()||fragpreparation::outstanding.load(std::memory_order_acquire)||longshot_scope_owner::owed()||!bow_route_neutral()||torquebow_input::pending()))return false;
+    const auto& right=frame.controllers.hands[1];
+    if(right.trigger_active!=1||!std::isfinite(right.trigger)||right.trigger<0||right.trigger>.35f)return false;
+    lr::Game game{};
+    if(!read_game(actors(frame),&frame,game)||!game.lancer||!game.r2_known||game.r2_held)return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    if(!game.l2_known||game.l2_held)return false;
+#endif
+    return mode.load(std::memory_order_acquire)==running&&!(input.owns_press()||aim_owns()||input.awaiting_release()||lancerrefire::has_initial_debt()||lancerrefire::release_required()||fragpreparation::outstanding.load(std::memory_order_acquire)||longshot_scope_owner::owed()||!bow_route_neutral()||torquebow_input::pending())&&nativeequipment::current(nullptr,frame);
+#else
+    return false;
+#endif
+}
 void tick(uptr pc) noexcept {
     const auto state=mode.load(std::memory_order_acquire);if(state!=running&&state!=stopping)return;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
@@ -335,17 +397,31 @@ void tick(uptr pc) noexcept {
 #endif
     const bool quiet=weaponhand::current_gt(nullptr)&&nativeequipment::domain_ready();
     if(!lr::tick_admitted(quiet,pc,0,0))return;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    const bool bow_neutral=bow_route_neutral();
+    // Bow is an independent original Charge owner, never generic R2/instant
+    // eligibility. Retained Bow debt gets cleanup even after selection loss;
+    // it cannot start input while another original owner has obligations.
+    if(unified_weapon_fire::manual_profile()&&(torquebow_input::pending()||bow_neutral)&&
+       torquebow_input::tick(pc,state==running&&bow_neutral)){
+        clear_muzzle_sources();
+        if(bow_neutral)input.reset_drained(); // Only a proven unowned legacy intent; no original call.
+        if(state==stopping&&!torquebow_input::pending()&&bow_neutral)mode.store(stopped,std::memory_order_release);
+        return;
+    }
+#endif
     // Equipment must first commit a real held binding. Repeated fire metadata
     // reads while unheld starve its input baseline on the same GT. No source
     // or R2 state is fabricated here; an owed release and stopping still take
     // the complete existing path, even after equipment clears the binding.
     if(state==running&&unified_weapon_fire::manual_profile()&&
        !input.owns_press()&&!aim_owns()&&!input.has_actors()&&!held_lancer_candidate()){
-        unified_weapon_fire::clear_source();return;
+        clear_muzzle_sources();return;
     }
     const auto source_started=weaponhand::clock_ns(nullptr);
     wh::Frame frame{};wh::GripGameState copied_game{};wh::Decision copied_decision{};
-    const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game,copied_decision);
+    wh::FrameReadObservation source_observation{};
+    const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game,copied_decision,&source_observation);
     lr::Continuity continuity{};
     gears_current_tracking::Failure continuity_failure{};
     const auto native_selected_before=nativeequipment::input_continuity_native_selected;
@@ -396,12 +472,12 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         // Reuse only an already admitted ray for THIS exact Native Frame and
         // its original clock, with dispatch reserve. Otherwise prepare once.
-        const bool cached_ray=state==running&&prepare_source&&unified_weapon_fire::ready_for(frame,20000000);
+        const bool cached_ray=state==running&&prepare_source&&muzzle_ready_for(frame,20000000);
         if(state==running&&prepare_source&&!cached_ray&&preparation_budget)nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
 #endif
-        muzzle_ready=state==running&&prepare_source&&unified_weapon_fire::ready_for(frame,20000000);
+        muzzle_ready=state==running&&prepare_source&&muzzle_ready_for(frame,20000000);
         if(state==running&&prepare_source&&!muzzle_ready&&preparation_budget)
-            muzzle_ready=unified_weapon_fire::prepare_current(frame,copied_game)&&unified_weapon_fire::ready_for(frame,20000000);
+            muzzle_ready=prepare_muzzle(frame,copied_game)&&muzzle_ready_for(frame,20000000);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         static std::uint64_t refresh_reported{};static unsigned refresh_rows{};
         if(refresh_reported!=nativelancerfollow::muzzle_reprepared){
@@ -423,8 +499,8 @@ void tick(uptr pc) noexcept {
             fflush(log_file);++muzzle_prepare_failure_logs;
         }
     }
-    bool current{};lr::Game game{};
-    if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
+    bool current{},retained_event_release_required{},physical_lancer{};lr::Game game{};
+    if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game,&physical_lancer);
     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
     if(have_source&&lancerreload_runtime::blocks_fire(frame.weapon)){
         game.main_hand_held=false;muzzle_ready=false;
@@ -433,18 +509,19 @@ void tick(uptr pc) noexcept {
     const auto aim_game=game;
 #endif
     if(unified_weapon_fire::manual_profile()){
-        game.press_ready=muzzle_ready&&unified_weapon_fire::ready_for(frame,20000000);
+        game.press_ready=muzzle_ready&&muzzle_ready_for(frame,20000000);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
         game.retain_owned_for_muzzle=current&&input.owns_press()&&lancerrefire::certified_for(frame);
-        game.defer_new_press_for_muzzle=current&&nativelancerfollow::bound_is_lancer&&nativelancerfollow::bound_key_known&&
+        game.defer_new_press_for_muzzle=current&&(nativelancerfollow::bound_is_lancer||nativelancerfollow::bound_is_longshot||nativelancerfollow::bound_is_hammerburst||gnasher_muzzle::defer_new_press(frame))&&nativelancerfollow::bound_key_known&&
             wh::same(nativelancerfollow::bound_key.weapon,frame.weapon)&&
             nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation();
-        if(lancerrefire::release_required()){
+        retained_event_release_required=lancerrefire::release_required();
+        if(retained_event_release_required){
             game.press_ready=false;game.retain_owned_for_muzzle=false;game.defer_new_press_for_muzzle=false;
         }
 #endif
         if(!game.press_ready){
-            unified_weapon_fire::clear_source();
+            clear_muzzle_sources();
             // Retain the authenticated actor/R2 state for an owed release, but
             // never keep an automatic burst down after losing its muzzle source.
             // An observed UP baseline is still allowed without a muzzle;
@@ -457,7 +534,19 @@ void tick(uptr pc) noexcept {
     // PG's reload consumer makes game.busy true. Let that existing owner win
     // now, rather than sending one stock aim press and cancelling next tick.
     const bool part_input_reserved=current&&wh::part_reserves_secondary_trigger(frame,copied_decision);
-    const bool aim_allowed=state==running&&current&&!part_input_reserved&&aim_game.main_hand_held&&
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    const bool scope_target_owned=current&&longshot_scope_owner::owns_target(frame);
+#else
+    constexpr bool scope_target_owned=false;
+#endif
+    // Lancer aims through its tracked physical gun. Its secondary trigger is
+    // also a component grab input; forwarding it to stock shoulder targeting
+    // introduced camera/FOV/reticle transitions as component admission changed.
+    // Only the closing-checked current Lancer class selects this policy. Other
+    // weapons keep their existing targeting. advance still drains any owed
+    // original release, including on source loss or equipment changes.
+    const bool physical_lancer_interaction=unified_weapon_fire::manual_profile()&&physical_lancer;
+    const bool aim_allowed=state==running&&current&&!physical_lancer_interaction&&!scope_target_owned&&!part_input_reserved&&aim_game.main_hand_held&&
         !aim_game.animation&&!aim_game.busy&&frame.controllers.hands[0].trigger_active==1&&
         nativeequipment::current(nullptr,frame);
     const auto aim_result=aim.advance(current?frame.controllers:gears_vr::ControllerInputFrame{},
@@ -471,8 +560,18 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     const bool initial_owed_before=lancerrefire::has_initial_debt();
 #endif
+    // Existing tick scalars only. Capture the actual admission before advance.
+    std::array<unsigned,8> longshot_dispatch_flags{{unsigned(game.main_hand_held),unsigned(game.animation),
+        unsigned(game.busy),unsigned(game.press_ready),unsigned(game.defer_new_press_for_muzzle),
+        unsigned(input.awaiting_release()),0,0}};
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    const bool r2_owned_before=input.owns_press();
+#endif
     const auto result=input.advance(current?&frame:nullptr,current,game,weaponhand::clock_ns(nullptr),
-        [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr,current?&game:nullptr);},
+        [&](gears_weapon::OriginalR2Action a,std::uint64_t c){
+            const auto executed=execute(a,c,current?&frame:nullptr,current?&game:nullptr);
+            if(a==gears_weapon::OriginalR2Action::press){++longshot_dispatch_flags[6];longshot_dispatch_flags[7]=unsigned(executed)+1;}
+            return executed;},
         state==stopping,continuity_matched?&continuity:nullptr);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     // ButtonPress may synchronously capture the real first BeginState AFTER
@@ -482,6 +581,7 @@ void tick(uptr pc) noexcept {
     // still requires the same fresh Frame, cohort and20ms dispatch reserve.
     if(current&&!initial_owed_before&&lancerrefire::has_initial_debt())lancerrefire::service(pc);
 #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(current&&r2_owned_before&&!input.owns_press())hammerburst_burst_event::after_release(frame);
     hammerburst_burst_event::after_tick(current?&frame:nullptr);
 #endif
     if(current)lancerrefire::deliver_ready(frame);
@@ -631,9 +731,12 @@ void tick(uptr pc) noexcept {
             unsigned(ammo_known),count,unsigned(key_down),post_ammo_samples,ammo_reads);fflush(log_file);}
     }
     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_longshot_r2_source_trace.inl"
+#endif
     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
-        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u\n",
+        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u held=%u animation=%u busy=%u press_ready=%u defer_eligible=%u awaiting_release_before=%u retained_event_release_required=%u\n",
             unsigned(result),unsigned(input.source_status()),state,unsigned(input.owns_press()),unsigned(game.known),unsigned(game.r2_held),
             current?frame.key.frame:0,current?frame.controllers.sequence:0,
             current?frame.controllers.hands[1].pressed[gears_vr::control_trigger]:0,
@@ -643,17 +746,24 @@ void tick(uptr pc) noexcept {
             current?frame.controllers.sync_ns:0,now,unsigned(ammo_known),count,previous_sync,previous_observed,
             now-observation_started,action_finished-now,unsigned(ammo_queried),diagnostic_finished-action_finished,ready_after_ammo,
             copy_finished-source_started,now-source_started,unsigned(continuity_matched),unsigned(input.continuous_poll_gap()),
-            unsigned(have_source),frame.key.frame,have_source?now-frame.controllers.sync_ns:-1,unsigned(preparation_budget),unsigned(continuity_failure),unsigned(continuity_native_selected));
+            unsigned(have_source),frame.key.frame,have_source?now-frame.controllers.sync_ns:-1,unsigned(preparation_budget),unsigned(continuity_failure),unsigned(continuity_native_selected),
+            longshot_dispatch_flags[0],longshot_dispatch_flags[1],longshot_dispatch_flags[2],longshot_dispatch_flags[3],
+            longshot_dispatch_flags[4],longshot_dispatch_flags[5],unsigned(retained_event_release_required));
         fflush(log_file);++logs;
     }
     previous_status=unsigned(result);previous_source=unsigned(input.source_status());if(ammo_known)last_ammo=count;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
     static unsigned previous_aim{~0u},aim_logs{};static bool previous_part_reserved{};
     if(log_file&&aim_logs<24&&(previous_aim!=unsigned(aim_result)||previous_part_reserved!=part_input_reserved)){
-        fwprintf(log_file,L"native_lancer_l2 status=%u mode=%u owned=%u game_known=%u game_l2=%u toggle=%u allow=%u part_reserved=%u frame=%llu sequence=%llu left_trigger=%.3f\n",
+        fwprintf(log_file,L"native_lancer_l2 status=%u mode=%u owned=%u game_known=%u game_l2=%u toggle=%u allow=%u part_reserved=%u frame=%llu sequence=%llu left_trigger=%.3f source_failure=%u source_difference=%u source_frame=%llu source_sequence=%llu source_age_ns=%lld disarm_reason=%u source_press=%llu source_down=%u candidate_flags=%u candidate_decision=%u candidate_lease=%u\n",
             unsigned(aim_result),state,unsigned(aim_owns()),unsigned(aim_game.known),unsigned(aim_game.l2_held),
             unsigned(aim_game.toggle_targeting),unsigned(aim_allowed),unsigned(part_input_reserved),current?frame.key.frame:0,
-            current?frame.controllers.sequence:0,current?double(frame.controllers.hands[0].trigger):0.);
+            current?frame.controllers.sequence:0,current?double(frame.controllers.hands[0].trigger):0.,
+            unsigned(source_observation.failure),source_observation.game_difference,
+            source_observation.frame,source_observation.sequence,source_observation.input_age_ns,
+            weaponhand::client.last_disarm_reason(),(unsigned long long)source_observation.press_token,
+            source_observation.left_grip_down,source_observation.candidate.flags,
+            source_observation.candidate.decision,source_observation.candidate.lease);
         fflush(log_file);++aim_logs;
     }
     previous_aim=unsigned(aim_result);previous_part_reserved=part_input_reserved;
@@ -671,6 +781,16 @@ void tick(uptr pc) noexcept {
     }
 }
 bool yield_for_native_equipment(wh::Frame const& frame) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(!torquebow_input::yield_for_equipment(frame))return false;
+#endif
+    if(!longshot_scope_owner::yield(frame))return false;
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(!hod_input::yield_for_equipment(frame))return false;
+    if(!hod_aim::yield_for_equipment(frame))return false;
+#endif
+#endif
     const auto state=mode.load(std::memory_order_acquire);if(state==off||state==stopped)return true;
     if(state!=running||!weaponhand::current_gt(nullptr)||!nativeequipment::current(nullptr,frame))return false;
     lr::Game game{};if(!read_game(actors(frame),&frame,game))return false;
@@ -713,6 +833,9 @@ DWORD enable(){
             GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
     }
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::consumer_compiled())return 4;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(torquebow_input::pending())return 4;
+#endif
     if(!button_name(L'R',r2)||!input.reset_drained())return 3;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
     if(aim_owns()||!button_name(L'L',l2))return 3;
@@ -731,6 +854,13 @@ DWORD disable(){
     if(unified_weapon_fire::manual_profile())unified_weapon_fire::set_running(false);
     auto state=mode.load(std::memory_order_acquire);if(state==off)return 0;if(state==fault)return 4;
     if(state==running){mode.store(stopping,std::memory_order_release);state=stopping;}
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    // The original Frag preparation blocks fire tick until its OWN stop is
+    // settled. Request the same existing GT cleanup before waiting for fire
+    // shutdown; do not wait for the later HandStop to break that dependency.
+    if(state==stopping&&fragpreparation::outstanding.load(std::memory_order_acquire))
+        fragpreparation::stop_requested.store(true,std::memory_order_release);
+#endif
     const auto end=GetTickCount64()+2000;
     while(state==stopping&&GetTickCount64()<end){Sleep(1);state=mode.load(std::memory_order_acquire);}
     if(state==stopping)return 2;if(state==fault)return 4;if(state!=stopped)return 3;

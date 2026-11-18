@@ -1,5 +1,7 @@
 #pragma once
 #include "weapon_reload_geometry.h"
+#include "controller_continuity_frame.h"
+#include <array>
 
 // Geometry observations only. The caller must still own the current real
 // Frame/grant and validate the producer, controls and fixed weapon mapping.
@@ -27,9 +29,10 @@ inline bool seated(FeedSample const& s,FeedPortMount const& m) noexcept {
         length(difference(delta,scaled(axis,depth)))<=m.lateral_tolerance_metres&&
         std::abs(q.x*t.x+q.y*t.y+q.z*t.z+q.w*t.w)>=std::cos(m.maximum_orientation_error_radians*.5);
 }
+namespace detail {
 inline bool advance(FeedInsertionStroke& stroke,FeedSample const& previous,FeedSample const& current,
-                    FeedSample const* points,unsigned count,FeedPortMount const& mount,FeedResult& out) noexcept {
-    if(!mount.valid()||!points||count<3||count>9||!same_sample(points[0],previous)||
+                    FeedSample const* points,unsigned capacity,unsigned count,FeedPortMount const& mount,FeedResult& out) noexcept {
+    if(!mount.valid()||!points||count<3||count>capacity||capacity>gears_hand_continuity::motion_history_capacity+1||!same_sample(points[0],previous)||
        !same_sample(points[count-1],current))return false;
     for(unsigned i=0;i<count;++i){const auto& s=points[i];
         if(!s.weapon||!s.item||!s.world||!s.space_epoch||!s.sequence||s.monotonic_ns<=0||!s.tracked||!s.item_held||
@@ -55,5 +58,18 @@ inline bool advance(FeedInsertionStroke& stroke,FeedSample const& previous,FeedS
         else {result=trial.observe(points[i],mount);inserted=result==FeedResult::inserted;}
     }
     stroke=trial;out=inserted?FeedResult::inserted:result;return true;
+}
+}
+// Preserve the original pointer API's9-point bound. The live expanded path
+// passes an owned array, so its real compile-time storage bounds the count.
+inline bool advance(FeedInsertionStroke& stroke,FeedSample const& previous,FeedSample const& current,
+                    FeedSample const* points,unsigned count,FeedPortMount const& mount,FeedResult& out) noexcept {
+    return detail::advance(stroke,previous,current,points,9,count,mount,out);
+}
+template<std::size_t N>
+inline bool advance(FeedInsertionStroke& stroke,FeedSample const& previous,FeedSample const& current,
+                    std::array<FeedSample,N> const& points,unsigned count,FeedPortMount const& mount,FeedResult& out) noexcept {
+    static_assert(N<=gears_hand_continuity::motion_history_capacity+1,"Actual producer bound");
+    return detail::advance(stroke,previous,current,points.data(),unsigned(N),count,mount,out);
 }
 }

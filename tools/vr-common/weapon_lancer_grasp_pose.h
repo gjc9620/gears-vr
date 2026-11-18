@@ -9,10 +9,28 @@ namespace vr=gears_vr;namespace grasp=gears_hand_object_grasp;
 // about wrist Z, so put Z along that barrel, X into its side, and Y upward.
 // The former Y180 pose put finger curl along the barrel instead of around it.
 inline const vr::Quaternion wrist_in_part{0,std::sqrt(.5),std::sqrt(.5),0};
+// E is a flat tab beside the receiver, not a round C handle. Pair this
+// part-local wrist with the loading finger table: the original side-facing
+// frame cleared E alone but put index/middle fingers inside the receiver.
+inline constexpr vr::Quaternion loading_wrist_in_part{
+    .35355339059327373,.6123724356957946,.6123724356957946,-.35355339059327373};
 // Centre the original barrel inside this C-specific finger loop. This is a
 // cosmetic wrist mount only; the real grasp point and physical rail stay put.
-inline constexpr vr::Vector starter_contact_in_wrist{10,0,0};
+// Original full-skin cylinder fit; component rail/contact ownership unchanged.
+inline constexpr vr::Vector starter_contact_in_wrist{9.0833910565836415,-4.0678969357332599,0.35535626325030734};
 inline constexpr vr::Vector loading_contact_in_wrist{9.75,-4.6,-2.1};
+// Original C685 skin and the paired authored C finger pads. A centre-only
+// +/-3 fit can place the index pad beyond the end of the actual crossbar.
+// Keep the whole authored pad span on it; this is NOT a physical travel or
+// release bound. The opposite barrel-direction branch mirrors that span.
+inline bool starter_skin_slide_limits(double direction,double scale,double& low,double& high) noexcept {
+    if((direction!=1.&&direction!=-1.)||!std::isfinite(scale)||scale<=0)return false;
+    constexpr double barrel_low=20.065379712529424,barrel_high=33.489185256451954;
+    constexpr double centre=25.0155129328,pad_low=-6.157650975126031,pad_high=5.7468604155024545;
+    const double lo=direction>0?pad_low:-pad_high,hi=direction>0?pad_high:-pad_low;
+    low=(barrel_low-centre-lo+.05)*scale;high=(barrel_high-centre-hi-.05)*scale;
+    return std::isfinite(low)&&std::isfinite(high)&&low<=high;
+}
 // A cylinder constrains the finger-row direction, but does not prescribe a
 // palm roll from the wrist-to-centre POSITION vector. Project the actual
 // wrist orientation onto that axis with the shortest rotation instead.
@@ -67,6 +85,11 @@ inline bool part_grip(grasp::Kind kind,vr::Quaternion gun,vr::Quaternion motion,
         if(!cylinder_orientation(physical_wrist.orientation,barrel,direction,wrist))return false;
     }
     if(kind==grasp::Kind::loading){
+        // Use E's authored opposing-face pinch rather than deriving palm roll
+        // from the controller's approach around C's circular barrel. Keep
+        // the original bounded comfort correction below; raw input, contact,
+        // stroke and the captured PartFit are independent of this skin goal.
+        wrist=vr::normalized(vr::multiply(part,loading_wrist_in_part));
         // E is a small index/thumb pinch on a tab, not C's cylindrical Grip.
         // The old barrel-aligned palm could turn a naturally approaching
         // wrist almost backwards and push the sleeve across the eye. Fit
@@ -139,15 +162,13 @@ struct PartFit {
             const vr::Vector raw_grip{physical.position.x-wrist_offset.x*unit,
                 physical.position.y-wrist_offset.y*unit,physical.position.z-wrist_offset.z*unit};
             const auto axis=vr::transform(vr::rotation_matrix(part),{0,1,0});
-            // A cylindrical grasp need not stay at its exact centre. The
-            // original685-vertex C group spans Y20.065..33.489; the centre
-            // Y25.016 +/-3raw units stays on that handle. Choose the nearest
-            // bounded axial skin fit while it unfolds. The common large-C
-            // skin envelope also retains ordinary mechanical overtravel.
-            // No radial contact or physical input change is manufactured.
+            // Fit the entire finger-pad span, rather than only the contact
+            // centre, to the original handle's axial extent. This remains a
+            // skin correction; raw contact, stroke and release are unchanged.
             const double along=(raw_grip.x-result.position.x)*axis.x+
                 (raw_grip.y-result.position.y)*axis.y+(raw_grip.z-result.position.z)*axis.z;
-            const double slide=std::clamp(along,-3.*scale,3.*scale);
+            double low{},high{};if(!starter_skin_slide_limits(starter_direction,scale,low,high))return false;
+            const double slide=std::clamp(along,low,high);
             result.position={result.position.x+axis.x*slide,result.position.y+axis.y*slide,result.position.z+axis.z*slide};
         }
         if(!vr::stereo_pose_valid(result))return false;out=result;return true;

@@ -14,6 +14,13 @@ namespace gears_weapon {
 enum class LancerSawPhase : std::uint8_t {
     idle, pulling, waiting_for_hold, running, waiting_for_execution, animation, deploying, rail_off
 };
+// An idle, actually observed release is input history, not a held action or
+// cached pose. Repeated neutral callbacks must not erase it before the real
+// next press. Tracking/input uncertainty or any active grasp still resets.
+inline bool preserve_lancer_neutral_witness(bool tracked,bool known,bool down,
+    bool has_grasp,LancerSawPhase phase) noexcept {
+    return tracked&&known&&!down&&!has_grasp&&phase==LancerSawPhase::idle;
+}
 enum class LancerSawEvent : std::uint8_t {
     none, pull_began, request_original_hold, hold_started,
     request_original_acquire, animation_handoff, request_original_release,
@@ -75,6 +82,8 @@ struct LancerSawSample {
     double starter_actual_pull_m{},starter_travel_m{};
     Vector rail_hand_m{}; // Physical grip relative to the same current weapon, in metres.
     bool original_handle{},original_slide{},local_rail{},require_full_slide{};
+    // Current adapter-owned geometry witness only; never an input/grant.
+    bool authored_acquisition_enabled{},authored_acquisition_contact{};
     bool lancer_active{},right_owns_weapon{},right_tracked{},left_tracked{},
          left_grip_down{},game_can_melee{},original_hold{},
          original_execution{},original_ready{},original_button_held{};
@@ -254,7 +263,7 @@ public:
              phase_==LancerSawPhase::waiting_for_execution);
     }
 
-    LancerSawDecision observe(LancerSawSample const& s) noexcept {
+    LancerSawDecision observe(LancerSawSample const& s,bool committed_new_grasp=false) noexcept {
         // Keep the original paired animation in charge through an XR tracking
         // outage or recenter. Releasing B at the entry edge can call the
         // original EndFire and cancel the attack. Wait until the original
@@ -323,10 +332,16 @@ public:
               s.starter_travel_m<.01||s.starter_travel_m>.3||!std::isfinite(s.starter_actual_pull_m)||
               s.starter_actual_pull_m<-.002||s.starter_actual_pull_m>s.starter_travel_m+.003)))))
             return interrupted();
-        if(!world_){
-            bind(s);sequence_=s.sequence;last_ms_=s.created_ms;
-            previous_left_grip_=s.left_grip_down;
-            return {};
+        const bool first_sample=!world_;
+        if(first_sample){
+            bind(s);
+            // Native's actual new part grant is an independent grab event,
+            // not an invented released input. Ordinary cold-held samples
+            // still establish history only and never start a gesture.
+            if(!committed_new_grasp){
+                sequence_=s.sequence;last_ms_=s.created_ms;
+                previous_left_grip_=s.left_grip_down;return {};
+            }
         }
         // Slow game callbacks are not producer tracking loss. The companion
         // advances on missing source frames or actual hand-tracking loss and
@@ -336,20 +351,23 @@ public:
             (original_slide_&&(phase_==LancerSawPhase::waiting_for_hold||phase_==LancerSawPhase::running||phase_==LancerSawPhase::rail_off)))&&input_chain_&&
             input_geometry_begin_ms_<=last_ms_&&input_ms_>=last_ms_&&
             (input_ms_<=s.created_ms?s.created_ms-input_ms_<=250:input_ms_-s.created_ms<=100);
-        if(!identity_matches(s)||s.sequence<sequence_||s.created_ms<last_ms_||
-           (s.created_ms-last_ms_>(witnessed?250u:100u)&&!input_bridge))return interrupted();
-        if(s.sequence==sequence_)return {LancerSawEvent::none,phase_};
-        if(s.created_ms==last_ms_)return interrupted();
-        if(s.created_ms-last_ms_>250&&input_bridge)++bridged_samples_;
-        const double frame_seconds=double(s.created_ms-last_ms_)/1000.;
+        if(!first_sample){
+            if(!identity_matches(s)||s.sequence<sequence_||s.created_ms<last_ms_||
+               (s.created_ms-last_ms_>(witnessed?250u:100u)&&!input_bridge))return interrupted();
+            if(s.sequence==sequence_)return {LancerSawEvent::none,phase_};
+            if(s.created_ms==last_ms_)return interrupted();
+            if(s.created_ms-last_ms_>250&&input_bridge)++bridged_samples_;
+        }
+        const double frame_seconds=first_sample?0.:double(s.created_ms-last_ms_)/1000.;
         sequence_=s.sequence;last_ms_=s.created_ms;
-        const bool grip_pressed=s.left_grip_down&&!previous_left_grip_;
+        const bool grip_pressed=s.left_grip_down&&(!previous_left_grip_||committed_new_grasp);
         previous_left_grip_=s.left_grip_down;
 
         if(phase_==LancerSawPhase::idle){
             if(grip_pressed&&s.left_tracked&&s.game_can_melee&&
                !s.original_hold&&!s.original_execution&&
-               length(difference(s.left_palm_m,s.original_slide?s.starter_grasp_m:s.starter_anchor_m))<=(s.original_slide?.14:.07)){
+               (s.original_slide&&s.authored_acquisition_enabled?s.authored_acquisition_contact:
+                length(difference(s.left_palm_m,s.original_slide?s.starter_grasp_m:s.starter_anchor_m))<=(s.original_slide?.14:.07))){
                 phase_=LancerSawPhase::pulling;phase_start_ms_=s.created_ms;
                 start_left_=s.left_palm_m;start_anchor_=s.starter_anchor_m;
                 start_relative_=difference(s.left_palm_m,s.starter_anchor_m);

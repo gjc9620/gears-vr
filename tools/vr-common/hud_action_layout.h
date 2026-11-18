@@ -13,9 +13,25 @@ inline bool plan(float clip_x,float clip_y,std::array<float,2> const& before_lay
        !std::isfinite(before_layout[0])||before_layout[0]<0||before_layout[0]>clip_x||
        !std::isfinite(before_layout[1])||before_layout[1]<0||before_layout[1]>=clip_y)return false;
     // DrawActionInfo computes Y=ClipY-SafeZoneBottom-subtitle/text/icon sizes.
-    // Keep the stock prompt readable above/left of normal held-weapon space.
-    out={{clip_x*.24f,clip_y*.72f}};return true;
+    // 48572 still shows the old prompt across the inspected rifle. Use the
+    // lower-right HUD area, separate from the upper-right ammo panel, while
+    // preserving the original text/icon sizing and action semantics.
+    out={{clip_x*.84f,clip_y*.08f}};return true;
 }
+// Original panel X=ClipX-SafeZoneRight-frameUL*ResScaleSmall. Borrow only
+// those two SafeZone values during UpdateWeaponIndicator; keep scaling intact.
+inline bool weapon_panel_plan(float clip_x,float clip_y,float frame_ul,float resolution,
+    std::array<float,2> const& before,std::array<float,2>& out) noexcept {
+    for(float v:{clip_x,clip_y,frame_ul,resolution,before[0],before[1]})if(!std::isfinite(v))return false;
+    if(clip_x<128||clip_x>16384||clip_y<128||clip_y>16384||frame_ul<1||frame_ul>4096||
+       resolution<=0||resolution>16||before[0]<0||before[0]>=clip_x||before[1]<0||before[1]>=clip_y)return false;
+    if(frame_ul*resolution>clip_x*.60f)return false;
+    // 31424 confirms the central placement is applied but still crosses the
+    // raised weapon. Keep the complete panel inside the existing HUD plane's
+    // upper-right margin; this does not move the separately placed reload bar.
+    out={{clip_x*.04f,clip_y*.02f}};return true;
+}
+
 template<std::size_t N>struct FloatScope {
     static_assert(N>0&&N<=2);
     std::array<std::uintptr_t,N> addresses{};

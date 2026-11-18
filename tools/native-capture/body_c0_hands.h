@@ -1,11 +1,17 @@
 #pragma once
 #include "../vr-common/weapon_two_hand_hold.h"
+#include "../vr-common/weapon_boltok_close_support.h"
 #include "full_body_c0_planner.h"
 #include "hand_core_target_adapter.h"
 #include "../vr-common/free_hand_eye_targets.h"
 #include "../vr-common/hand_shoulder_pose.h"
 #include "../vr-common/hand_finger_pose.h"
 #include "../vr-common/hand_object_grasp.h"
+#include "../vr-common/weapon_boomshot_owner_grabposes.h"
+#include "../vr-common/weapon_boomshot_grasp_pose.h"
+#include "../vr-common/hand_main_acquisition_fit.h"
+#include "../vr-common/pose_editor.h"
+#include "../vr-common/weapon_boltok_aim_grip.h"
 
 // Owned-buffer composition only. No clock query, address dereference, engine
 // invocation or write permission. The caller authenticates this SAME live
@@ -40,6 +46,25 @@ struct Workspace {
     gears_hand_object_grasp::Target left_visual{}; // Caller-authenticated cosmetic goal only.
     gears_hand_object_grasp::BlendState left_blend{};
     gears_hand_object_grasp::BlendState right_blend{};
+    gears_hand_main_acquisition::Fit main_acquisition{};
+    std::uint64_t main_acquisition_hold{};
+    std::array<std::uint64_t,9> main_acquisition_context{};
+    double main_acquisition_seconds{};bool main_acquisition_apply{};
+    // Current caller-authenticated LOCAL finger data only. Main wrist/gun
+    // geometry still comes exclusively from the accepted held mount.
+    std::array<gears_vr::Quaternion,15> right_authored_pose{};
+    bool right_authored_known{}; bool boomshot_aim{}; bool boomshot_carrier_fingers{};
+    bool boltok_aim{}; // Current admitted body-mount kind; reset by live caller each Compose.
+    gears_pose_editor::Config editor{}; // Current optional config, never an admission source.
+    gears_pose_editor::Config editor_left{};
+    std::uint64_t editor_applied[2]{};
+    // Current separately admitted part FINGERS only, never an old wrist goal.
+    std::array<gears_vr::Quaternion,15> left_authored_pose{};
+    bool left_fingers_only_known{};
+    gears_hand_object_grasp::Kind left_fingers_only_kind{};
+    std::uint64_t left_fingers_only_token{},left_fingers_only_profile{};
+    std::uint64_t left_visual_token{},left_visual_profile{}; // Last admitted dynamic fit, not a tracking pose.
+
     std::array<std::uint64_t,16> grasp_context{};
     bool left_visual_applied{};
     std::array<std::uint64_t,2> finger_available{{UINT64_MAX,UINT64_MAX}}; // Owned full model by default; live caller supplies current LOD DesiredBones.
@@ -61,7 +86,8 @@ inline Status convert(adapter::Status s) noexcept {
 }
 inline bool fingers(body::Model const& model,body::Workspace& w,unsigned side,double amount,
     std::array<std::uint64_t,2> const& available,gears_hand_fingers::Shape shape=gears_hand_fingers::Shape::free,
-    double shape_weight=1.,double trigger=0.,gears_hand_fingers::PoseBlend* blend=nullptr) noexcept {
+    double shape_weight=1.,double trigger=0.,gears_hand_fingers::PoseBlend* blend=nullptr,
+    gears_vr::Quaternion const* authored=nullptr,gears_pose_editor::Config const* editor=nullptr) noexcept {
     if(side>1||!std::isfinite(amount)||amount<0||amount>1)return false;
     // Five three-joint finger branches only. Preserve27/28 and51/52 weapon
     // helpers, forearm helpers, all translations/scales and the wrist itself.
@@ -72,8 +98,9 @@ inline bool fingers(body::Model const& model,body::Workspace& w,unsigned side,do
         if(amount==0&&!blend){std::memcpy(w.pose.local[i].q,model.reference[i].q,16);continue;}
         auto const& open=model.reference[i].q;body::Quat q{};
         const body::Quat reference{open[0],open[1],open[2],open[3]};
-        if(!gears_hand_fingers::rotation(side,n,amount,reference,q,shape,shape_weight,trigger)||
+        if(!gears_hand_fingers::rotation(side,n,amount,reference,q,shape,shape_weight,trigger,authored)||
            (blend&&!blend->joint(n,reference,q,q)))return false;
+        if(editor)q=gears_pose_editor::finger(*editor,n,q);
         if(q.x==reference.x&&q.y==reference.y&&q.z==reference.z&&q.w==reference.w)
             std::memcpy(w.pose.local[i].q,open,16);
         else if(!body::d::set_quat(w.pose.local[i],q))return false;
@@ -95,6 +122,7 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
         range(&work,sizeof work),range(&inout,sizeof inout)};
     if(!disjoint(ranges,7))return detail::fail(Status::alias);
     work.solved_mask=0;
+    work.editor_applied[0]=work.editor_applied[1]=0;
     work.left_visual_applied=false;
     if(right_mount!=adapter::MountKind::free_hand&&right_mount!=adapter::MountKind::held_lancer&&right_mount!=adapter::MountKind::held_frag)return detail::fail(Status::binding,1,adapter::Status::unknown_mount);
     (void)now;(void)allow_sim;
@@ -113,11 +141,18 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
     for(double value:angles)if(!std::isfinite(value)||value<0||value>1e-4)return detail::fail(Status::invalid_body);
     if(!std::isfinite(inout.report.pelvis_projection)||inout.report.pelvis_projection<0)return detail::fail(Status::invalid_body);
     for(unsigned i=0;i<16;++i)w.component.m[i]=frame.component_to_world.values[i];
+    // Match the cover planner's observed rigid auxiliary representations.
+    // Only the certified passive bones qualify, and their local bytes below
+    // must remain untouched by both the body candidate and this hand solve.
+    const bool cover=(source.flags&core::rig::cover_key_known)&&source.cover_type&&
+        source.cover_slot>=0&&hand::identity_valid(source.cover_link);
     if(!similarity(w.component)||std::abs(length(row(w.component,0))-1)>2e-5||
-       validate(frame.local.data(),model.parents.data(),body::bones,w.component)!=body::ik::Status::okay||
-       validate(inout.local.data(),model.parents.data(),body::bones,w.component)!=body::ik::Status::okay)return detail::fail(Status::invalid_body);
+       gears_cover_passive_atoms::validate(frame.local.data(),model.parents.data(),body::bones,w.component,cover)!=body::ik::Status::okay||
+       gears_cover_passive_atoms::validate(inout.local.data(),model.parents.data(),body::bones,w.component,cover)!=body::ik::Status::okay)return detail::fail(Status::invalid_body);
     std::array<std::uint64_t,2> changed{};
     for(unsigned i=0;i<body::bones;++i){
+        if(cover&&gears_cover_passive_atoms::auxiliary(i,model.parents[i],frame.local[i])&&
+           std::memcmp(&frame.local[i],&inout.local[i],sizeof(body::Atom)))return detail::fail(Status::invalid_body);
         if(!unit_animation_scale(frame.local[i].scale)||std::memcmp(&frame.local[i].scale,&inout.local[i].scale,4)||
            (i&&std::memcmp(frame.local[i].translation,inout.local[i].translation,12)))return detail::fail(Status::invalid_body);
         if(std::memcmp(&frame.local[i],&inout.local[i],sizeof(body::Atom)))changed[i/64]|=std::uint64_t(1)<<(i%64);
@@ -141,6 +176,7 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
             gears_weapon_lancer_wrist_mount::Profile held{};
             if(!gears_weapon_lancer_wrist_mount::marcus115(model.signature,frame.model_scale,source.units_per_metre,held))return detail::fail(Status::binding,side);
             b.authored_mount=held.mount;
+            if(work.boomshot_aim&&!gears_boomshot_owner_grabposes::main_calibration(frame.model_scale,source.units_per_metre,b.authored_mount.calibration))return detail::fail(Status::binding,side);
         }else if(!mount::marcus115(model.signature,static_cast<mount::Side>(side),frame.model_scale,source.units_per_metre,b.authored_mount))return detail::fail(Status::binding,side);
         const auto prepared=prepare(b,side);
         if(independent&&prepared==adapter::Status::hand_untracked)continue;
@@ -150,20 +186,60 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
     gears_hand_object_grasp::Target visual_goals[2]{work.left_visual,{}};
     if(work.left_visual.kind==gears_hand_object_grasp::Kind::support&&!work.left_visual.passive_socket){
         visual_goals[0]={};gears_weapon_two_hand::Solution support{};
+        const auto left_support_world=[&](body::Pose const& world_grip) noexcept {
+            auto support_goal=work.left_visual;
+            support_goal.grip=world_grip;support_goal.weight=1.;support_goal.passive_socket=false;
+            return support_goal; // Preserve the admitted authored finger locals/preset.
+        };
         if(independent&&side_prepared[0]&&side_prepared[1]){
-            visual_goals[0]={gears_hand_object_grasp::Kind::support,
+            visual_goals[0]=left_support_world(
                 {work.eye_targets[0].grip_world.position,gears_vr::normalized(gears_vr::multiply(
-                    work.eye_targets[1].grip_world.orientation,work.left_visual.grip.orientation))},1.};
+                    work.eye_targets[1].grip_world.orientation,work.left_visual.grip.orientation))});
         }
-        if(independent&&side_prepared[0]&&side_prepared[1]&&right_mount==adapter::MountKind::held_lancer&&
+        const bool close_support=work.left_visual_profile==gears_boltok_close_support::profile;
+        if(close_support){
+            visual_goals[0]={};body::Pose goal{};
+            if(independent&&side_prepared[0]&&side_prepared[1]&&
+               gears_boltok_close_support::world(work.eye_targets[1].grip_world,work.eye_targets[0].grip_world,
+                   work.left_visual.grip,frame.units_per_metre,goal))visual_goals[0]=left_support_world(goal);
+        }
+        if(!close_support&&independent&&side_prepared[0]&&side_prepared[1]&&right_mount==adapter::MountKind::held_lancer&&
            gears_weapon_two_hand::solve(work.eye_targets[1].grip_world,work.eye_targets[0].grip_world,
                work.left_visual.grip,frame.units_per_metre,support)){
-            visual_goals[0]={gears_hand_object_grasp::Kind::support,support.left,1.};
+            visual_goals[0]=left_support_world(support.left);
             visual_goals[1]={gears_hand_object_grasp::Kind::support,support.right,1.};
         }
     }
-    for(unsigned side=0;side<2;++side){
+    const bool relative_socket=independent&&right_mount==adapter::MountKind::held_lancer&&
+        (work.left_visual.kind==gears_hand_object_grasp::Kind::support||
+         work.left_visual.kind==gears_hand_object_grasp::Kind::starter)&&work.left_visual.passive_socket&&
+        work.left_visual.passive_relative_socket;
+    for(unsigned order=0;order<2;++order){
+        const unsigned side=relative_socket?1u-order:order;
         if(!side_prepared[side])continue;
+        if(relative_socket&&side==0){
+            visual_goals[0]={};
+            if(side_prepared[1]&&(work.solved_mask&2)&&gears_weapon_two_hand::geometry(work.left_visual.grip)){
+                const auto& wrist=work.solutions[1].wrist;
+                const auto& calibration=work.bindings[1].authored_mount.calibration;
+                const auto rotation=gears_vr::normalized(gears_vr::multiply(wrist.orientation,
+                    gears_vr::inverse(calibration.grip_to_wrist_rotation)));
+                const auto offset=gears_vr::transform(gears_vr::rotation_matrix(rotation),calibration.grip_to_wrist_metres);
+                const gears_vr::Vector parent{wrist.position.x-offset.x*frame.units_per_metre,
+                    wrist.position.y-offset.y*frame.units_per_metre,wrist.position.z-offset.z*frame.units_per_metre};
+                const auto delta=gears_vr::transform(gears_vr::rotation_matrix(rotation),work.left_visual.grip.position);
+                const gears_vr::Pose goal{{parent.x+delta.x*frame.units_per_metre,parent.y+delta.y*frame.units_per_metre,
+                    parent.z+delta.z*frame.units_per_metre},gears_vr::normalized(gears_vr::multiply(rotation,work.left_visual.grip.orientation))};
+                const auto physical=work.eye_targets[0].grip_world.position;
+                const double distance=gears_weapon_two_hand::length({goal.position.x-physical.x,goal.position.y-physical.y,goal.position.z-physical.z})/frame.units_per_metre;
+                const bool retained=work.left_blend.kind==work.left_visual.kind&&
+                    work.left_blend.preset==work.left_visual.preset&&work.left_blend.weight>0;
+                if(std::isfinite(distance)&&distance<=(retained?.22:.14)){
+                    visual_goals[0]=work.left_visual;visual_goals[0].grip=goal;
+                    visual_goals[0].passive_relative_socket=false;
+                }
+            }
+        }
         auto& b=work.bindings[side];
         if(independent){
             // Upper-arm deformation helpers9/33 are a separate skin branch
@@ -175,6 +251,14 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
             const unsigned helper=side?33u:9u;
             if(model.parents[helper]!=int(b.authored_mount.chain[0]))return detail::fail(Status::reference,side);
             std::memcpy(w.pose.local[helper].q,model.reference[helper].q,16);
+            if(right_mount==adapter::MountKind::held_lancer){
+                // Independent Lancer hands replace the animation's wrist
+                // twist. Its distal skin helper must use the same reference
+                // relation, not retain the previous aiming/reload roll.
+                const unsigned fore_twist=side?53u:29u;
+                if(model.parents[fore_twist]!=int(b.authored_mount.chain[1]))return detail::fail(Status::reference,side);
+                std::memcpy(w.pose.local[fore_twist].q,model.reference[fore_twist].q,16);
+            }
             if(!body::d::rebuild(model,w))return detail::fail(Status::numerical,side);
         }
         // Fixed-length solve. The current body-only C0 elbow is an explicit
@@ -195,15 +279,55 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
         };
         work.physical_wrist[side]=work.computed_wrist[side];
         if(independent&&!reachable_target(work.physical_wrist[side]))return detail::fail(Status::numerical,side);
+        if(independent&&side==1&&right_mount==adapter::MountKind::held_lancer&&
+           work.main_acquisition_hold&&work.main_acquisition_seconds>0){
+            const std::array<std::uint64_t,9> acquisition_context{{source.native.game_start,
+                source.native.native_started_qpc,source.world_generation,source.mesh.address,
+                source.weapon.address,source.weapon.registry_index,source.weapon.name_index,
+                source.weapon.name_number,work.main_acquisition_hold}};
+            // A temporary unavailable mount/skin frame is NOT a new pickup.
+            // Retain only this cosmetic deadline for the same real hold; all
+            // current source/profile/pose admission remains outside this state.
+            if(work.main_acquisition_context!=acquisition_context){
+                work.main_acquisition.reset();
+                if(!work.main_acquisition.arm(now,work.main_acquisition_seconds))return detail::fail(Status::numerical,side);
+                work.main_acquisition_context=acquisition_context;
+            }
+            if(work.main_acquisition_apply&&
+               double(now-work.main_acquisition.started_ns)<work.main_acquisition_seconds*1e9){
+                mount::Mount free{};gears_hand_wrist::Calibration fitted{};double weight{};
+                if(!mount::marcus115(model.signature,mount::Side::right,frame.model_scale,frame.units_per_metre,free)||
+                   !work.main_acquisition.sample(now,work.main_acquisition_seconds,free.calibration,b.authored_mount.calibration,fitted,weight)||
+                   gears_hand_wrist::native_wrist_target(work.eye_targets[side].grip_world,fitted,frame.units_per_metre,input.target)!=gears_hand_wrist::Status::okay)
+                    return detail::fail(Status::numerical,side);
+            }
+        }
         if(independent){
             // Preserve computed_wrist/eye_targets as the physical observation.
             // Only the existing single C0 skin solve receives the visual pose.
             auto adjusted=input.target;
             auto& blend=side?work.right_blend:work.left_blend;
+            const bool keep_relative=!side&&right_mount==adapter::MountKind::held_lancer&&
+                gears_hand_object_grasp::keep_relative_fit(work.left_fingers_only_known,
+                    work.left_fingers_only_kind,blend.kind,blend.preset,
+                    work.left_fingers_only_token,work.left_visual_token,
+                    work.left_fingers_only_profile,work.left_visual_profile);
             if(blend.update(visual_goals[side],work.eye_targets[side].grip_world,
-               b.authored_mount.calibration,frame.units_per_metre,now,adjusted)){
+               b.authored_mount.calibration,frame.units_per_metre,now,adjusted,keep_relative)){
                 input.target=adjusted;if(!side)work.left_visual_applied=true;
             }
+        }
+        if(independent&&side==0&&right_mount==adapter::MountKind::held_lancer&&
+           work.left_visual.kind!=gears_hand_object_grasp::Kind::none&&
+           work.editor_left.revision&&gears_pose_editor::valid(work.editor_left))
+            input.target=gears_pose_editor::adjusted_grip(work.editor_left,input.target,frame.units_per_metre);
+        if(independent&&right_mount==adapter::MountKind::held_lancer){
+            // This is the solver's NEUTRAL twist basis, not a replacement
+            // tracked/visual target. An animated wrist/forearm relation would
+            // otherwise leak stock animation roll into an identical VR grasp.
+            const auto& q=model.reference[chain[2]].q;
+            input.wrist.orientation=gears_vr::normalized(gears_vr::multiply(
+                input.elbow.orientation,{q[0],q[1],q[2],q[3]}));
         }
         input.share_forearm_twist=true;
         if(independent){
@@ -239,7 +363,35 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
             shoulder_input.clavicle=body::d::pose(w.pose.world[clavicle]);shoulder_input.up=row(w.component,2);
             shoulder_input.outward=body::d::sub(inout.shoulders_world[side].position,inout.shoulders_world[1-side].position);
             shoulder_input.units_per_metre=frame.units_per_metre;
-            solved=gears_hand_shoulder::solve(shoulder_input,work.shoulder_solutions[side]);
+            // Use the existing cosmetic attach/release weight, not a new
+            // time/source/permission. Each blended arm is re-solved at fixed
+            // lengths with the same wrist target in this sole C0 writer.
+            if(side==0&&right_mount==adapter::MountKind::held_lancer&&
+               work.left_blend.kind==gears_hand_object_grasp::Kind::support){
+                // Use the authenticated rig's wrist-to-knuckle direction,
+                // rather than treating a wrist basis axis as the whole hand.
+                // MCP positions are fixed local translations, independent of
+                // the cosmetic finger rotations and actual controller pose.
+                gears_vr::Vector hand_forward{};
+                for(unsigned finger:{12u,15u,18u,21u}){
+                    if(model.parents[finger]!=int(chain[2]))return detail::fail(Status::reference,side);
+                    const auto* p=model.reference[finger].translation;
+                    hand_forward=body::d::add(hand_forward,{p[0],p[1],p[2]});
+                }
+                if(!two::detail::unit(hand_forward,shoulder_input.arm.wrist_forward_local))
+                    return detail::fail(Status::reference,side);
+                // The folded Lancer side handle lies beside the forearm.
+                // Blend toward an outward/downward elbow only while attached,
+                // retaining the neutral endpoint, wrist and fixed bone lengths.
+                const auto outward=body::d::sub(inout.shoulders_world[side].position,inout.shoulders_world[1-side].position);
+                const auto up=row(w.component,2);const double width=length(outward),up_length=length(up);
+                if(width<1e-6||up_length<1e-6)return detail::fail(Status::numerical,side);
+                if(work.left_blend.preset==gears_hand_object_grasp::Preset::support_surface)
+                    shoulder_input.attached_body_pole={true,body::d::add(input.shoulder.position,
+                        body::d::sub(mul(outward,1.5/width),mul(up,1/up_length)))};
+                solved=gears_hand_shoulder::solve_body_pole_blend(shoulder_input,
+                    (std::clamp)(work.left_blend.weight,0.,1.),work.shoulder_solutions[side]);
+            }else solved=gears_hand_shoulder::solve(shoulder_input,work.shoulder_solutions[side]);
             if(solved==two::Status::solved){
                 auto const& shoulder=work.shoulder_solutions[side];work.solutions[side]=shoulder.arm;
                 if(shoulder.adjusted&&!body::d::world_rotation(model,w,clavicle,shoulder.clavicle.orientation))
@@ -255,10 +407,16 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
         // Main-hand holding has its own wrap, independent of stock animation
         // and of whether the user keeps squeezing after acquiring the gun.
         auto shape=side==0&&work.left_blend.kind!=gears_hand_object_grasp::Kind::none?
-            static_cast<gears_hand_fingers::Shape>(work.left_blend.kind):gears_hand_fingers::Shape::free;
+            gears_hand_object_grasp::finger_shape(work.left_blend.kind,work.left_blend.preset):gears_hand_fingers::Shape::free;
         double closure=work.finger_closure[side];
-        if(side==0&&work.left_visual.kind!=gears_hand_object_grasp::Kind::none&&shape!=gears_hand_fingers::Shape::free)
-            closure=1.; // The admitted grasp, not button type, selects its preset.
+        // The already admitted authored skin keeps the SAME120ms wrist
+        // release tail, even for neutral auto-snap or index acquisition.
+        // Raw squeeze must not independently zero finger closure mid-tail.
+        // No target/contact/lease is retained; BlendState still reaches zero.
+        const bool authored_tail=side==0&&work.left_visual_applied&&work.left_blend.weight>0&&
+            shape==gears_hand_fingers::Shape::authored;
+        if(side==0&&(work.left_visual.kind!=gears_hand_object_grasp::Kind::none||authored_tail)&&shape!=gears_hand_fingers::Shape::free)
+            closure=1.; // The admitted grasp/tail, not button type, selects its preset.
         else if(side==0&&shape==gears_hand_fingers::Shape::magazine)
             closure=std::max(work.finger_pinch[side],closure);
         else if(side==0&&shape==gears_hand_fingers::Shape::loading)
@@ -274,10 +432,25 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
         if(side&&right_mount==adapter::MountKind::held_lancer)closure=work.finger_closure[side];
 #endif
         if(side&&right_mount==adapter::MountKind::held_frag){shape=gears_hand_fingers::Shape::grenade;closure=1.;}
+        const bool authored_boomshot=!side&&work.boomshot_aim&&work.finger_closure[0]>.5;
+        if(authored_boomshot){shape=gears_hand_fingers::Shape::authored;closure=1.;}
+        const bool authored_main=side&&right_mount==adapter::MountKind::held_lancer&&work.right_authored_known;
+        const bool authored_part=!side&&right_mount==adapter::MountKind::held_lancer&&work.left_fingers_only_known;
+        const auto& edit=side?work.editor:work.editor_left;
+        bool editor_current=(authored_main||authored_part||(!side&&work.left_visual_applied&&
+            work.left_visual.kind!=gears_hand_object_grasp::Kind::none))&&edit.revision&&gears_pose_editor::valid(edit);
+        for(unsigned n=side?36u:12u;editor_current&&n<(side?51u:27u);++n)
+            if(!(work.finger_available[n/64]&(std::uint64_t(1)<<(n%64))))editor_current=false;
+        if(authored_main||authored_part){shape=gears_hand_fingers::Shape::authored;closure=1.;}
         if(independent&&(!work.finger_blend[side].begin(now)||
            !detail::fingers(model,w,side,closure,work.finger_available,shape,
-               side==0&&work.left_visual_applied?work.left_blend.weight:1.,work.finger_pinch[side],&work.finger_blend[side])))
+               authored_part?1.:side==0&&work.left_visual_applied&&!authored_boomshot?work.left_blend.weight:1.,work.finger_pinch[side],&work.finger_blend[side],
+               authored_part?work.left_authored_pose.data():authored_main?work.right_authored_pose.data():
+               side==0&&(work.left_blend.preset==gears_hand_object_grasp::Preset::support_surface||
+                         work.left_blend.preset==gears_hand_object_grasp::Preset::authored)?
+                   work.left_blend.authored_pose.data():nullptr,editor_current?&edit:nullptr)))
             return detail::fail(Status::numerical,side);
+        if(independent&&editor_current)work.editor_applied[side]=edit.revision;
         work.solved_mask|=1u<<side;
     }
     // Both hands must succeed before there is any candidate publication.
@@ -331,7 +504,32 @@ inline Result compose_eye_current(body::Model const& model,body::Frame const& fr
         [&](adapter::ModelBinding const& binding,unsigned side){
             auto const result=free::prepare_one(work.eye_frame,work.tracking_frame,side,
                 binding.authored_mount.calibration,frame.units_per_metre,work.eye_targets[side]);
-            if(result){work.computed_wrist[side]=work.eye_targets[side].wrist_world;return adapter::Status::okay;}
+            if(result){
+                work.computed_wrist[side]=work.eye_targets[side].wrist_world;
+                if(side==1&&work.boomshot_aim&&right_mount==adapter::MountKind::held_lancer){
+                    auto const& input_hand=c.hands[1];
+                    if(gears_vr::controller_pose_usable(input_hand.aim,input_hand.aim_flags,input_hand.aim_active)){
+                        free::HandTarget aim_target{};
+                        if(free::wrist_from_eye(desired_eye,t.head,input_hand.aim,binding.authored_mount.calibration,frame.units_per_metre,aim_target)!=free::HandStatus::ready)
+                            return adapter::Status::numerical_failure;
+                        const gears_vr::Pose anchor{work.eye_targets[side].grip_world.position,aim_target.grip_world.orientation};
+                        if(gears_hand_wrist::native_wrist_target(anchor,binding.authored_mount.calibration,frame.units_per_metre,work.computed_wrist[side])!=gears_hand_wrist::Status::okay)
+                            return adapter::Status::numerical_failure;
+                    }
+                }
+                if(side==1&&work.boltok_aim&&right_mount==adapter::MountKind::held_lancer){
+                    auto const& hand=c.hands[1];
+                    if(!gears_vr::controller_pose_usable(hand.aim,hand.aim_flags,hand.aim_active))return adapter::Status::hand_untracked;
+                    gears_hand_wrist::Calibration neutral{};free::HandTarget aim{};
+                    if(!gears_boltok_aim_grip::neutral_calibration(binding.authored_mount.calibration,neutral)||
+                       free::wrist_from_eye(desired_eye,t.head,hand.aim,neutral,frame.units_per_metre,aim)!=free::HandStatus::ready)
+                        return adapter::Status::numerical_failure;
+                    const gears_vr::Pose anchor{work.eye_targets[side].grip_world.position,aim.grip_world.orientation};
+                    if(gears_hand_wrist::native_wrist_target(anchor,neutral,frame.units_per_metre,work.computed_wrist[side])!=gears_hand_wrist::Status::okay)
+                        return adapter::Status::numerical_failure;
+                }
+                return adapter::Status::okay;
+            }
             return result.hand==free::HandStatus::untracked?adapter::Status::hand_untracked:adapter::Status::numerical_failure;
         },true);
 }

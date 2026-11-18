@@ -78,7 +78,12 @@ bool read(hand::Frame const& frame,Counts& out) noexcept {
     out={};
     if(!nativeequipment::current(nullptr,frame)||
        (!playground::instance(frame.weapon.address,L"Weap_AssaultRifle")&&
+        !playground::instance(frame.weapon.address,L"Weap_Bow_base")&&
+        !playground::instance(frame.weapon.address,L"Weap_Boomer")&&
         !playground::instance(frame.weapon.address,L"Weap_LocustAssaultRifle")&&
+        !playground::instance(frame.weapon.address,L"Weap_SniperRifle")&&
+        !playground::instance(frame.weapon.address,L"Weap_Shotgun")&&
+        !playground::instance(frame.weapon.address,L"Weap_LocustPistol")&&
         !playground::instance(frame.weapon.address,L"Weap_COGPistol"))||
        !vrequip::model.held_for(frame.world.address,frame.pawn.address,frame.weapon.address))return false;
     Counts a{},b{};

@@ -5,6 +5,7 @@
 namespace hammerburst_burst_cancel {
 namespace meta=gripdamage_metadata;
 namespace hand=gears_weapon_hand;
+unsigned last_failure_gate{}; // Last existing check reached; zero is success.
 template<std::size_t N,std::size_t P>
 bool owner(meta::Reader& r,unsigned slot,wchar_t const(&label)[N],wchar_t const(&package_name)[P]) noexcept {
     unsigned kind{},package{};
@@ -67,36 +68,48 @@ bool goto_layout(meta::Reader& r,playground::Args& call) noexcept {
 // Caller owns the completion debt and must retain it when this returns false.
 // An already ended original Firing state is accepted only with PendingFire UP.
 bool complete(weaponhand::HoldBinding const& held) noexcept {
-    if(!weaponhand::current_gt(nullptr)||!held.known||
-       !lancerrefire::same_hold(held,weaponhand::held_binding)||
-       !weaponhand::client.registration_alive(held.native_cookie,held.native_started))return false;
+    last_failure_gate=1;if(!weaponhand::current_gt(nullptr))return false;
+    last_failure_gate=2;if(!held.known)return false;
+    last_failure_gate=3;if(!lancerrefire::same_hold(held,weaponhand::held_binding))return false;
+    last_failure_gate=4;if(!weaponhand::client.registration_alive(held.native_cookie,held.native_started))return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
+    last_failure_gate=5;
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,held.world)||
        !weaponhand::object(r,held.controller)||!weaponhand::object(r,held.pawn)||!weaponhand::object(r,held.weapon)||
        !lancerrefire::hammerburst_refire::receiver(r,held.weapon.address))return false;
     vrfire::lr::Game game{};
-    if(!vrfire::read_game(vrfire::input.actors(),nullptr,game)||!game.known||!game.r2_known||game.r2_held||
-       !hand::same(game.actors.world,held.world)||!hand::same(game.actors.controller,held.controller)||
-       !hand::same(game.actors.pawn,held.pawn)||!hand::same(game.actors.weapon,held.weapon)||
-       !pending_up(r,held.weapon.address))return false;
+    last_failure_gate=6;
+    if(!vrfire::read_game(vrfire::input.actors(),nullptr,game))return false;
+    last_failure_gate=7;if(!game.known||!game.r2_known)return false;
+    last_failure_gate=8;if(game.r2_held)return false;
+    last_failure_gate=9;
+    if(!hand::same(game.actors.world,held.world)||!hand::same(game.actors.controller,held.controller)||
+       !hand::same(game.actors.pawn,held.pawn)||!hand::same(game.actors.weapon,held.weapon))return false;
+    last_failure_gate=10;if(!pending_up(r,held.weapon.address))return false;
     Name current{};meta::NameText text{};
+    last_failure_gate=11;
     if(!lancerrefire::state_name(r,held.weapon.address,current)||
        !meta::fresh_name(schema.names,current.index,text))return false;
-    if(!meta::exact_text(text,L"WeaponFiring"))return true;
+    if(!meta::exact_text(text,L"WeaponFiring")){last_failure_gate=0;return true;}
     const auto state=playground::field(held.weapon.klass,L"BurstDelaying",L"State");
     unsigned state_slot{},state_type{},state_owner{};
+    last_failure_gate=12;
     if(!state||!r.path(state,state_slot)||!r.named(state_slot,L"BurstDelaying")||
        !r.path(schema.identities[state_slot].klass,state_type)||!weaponhand::core_type(r,state_type,L"State")||
        !r.path(schema.identities[state_slot].outer,state_owner)||
        !owner(r,state_owner,L"Weap_LocustAssaultRifle",L"WarfareGame"))return false;
     playground::Args go(held.weapon.address,L"GotoState");
-    if(!goto_layout(r,go)||!pending_up(r,held.weapon.address)||
-       !lancerrefire::same_hold(held,weaponhand::held_binding)||!weaponhand::object(r,held.weapon))return false;
+    last_failure_gate=13;if(!goto_layout(r,go))return false;
+    last_failure_gate=14;if(!pending_up(r,held.weapon.address))return false;
+    last_failure_gate=15;
+    if(!lancerrefire::same_hold(held,weaponhand::held_binding)||!weaponhand::object(r,held.weapon))return false;
     const auto destination=schema.identities[state_slot].name;
     Name name{destination.index,destination.number};
-    if(!go.set(L"NewState",name).valid||!go.run()||
-       !lancerrefire::state_name(r,held.weapon.address,current)||current.index!=name.index||current.number!=name.number||
-       !pending_up(r,held.weapon.address))return false;
-    return true; // Normal Firing.EndState cleared the original refire timer.
+    last_failure_gate=16;if(!go.set(L"NewState",name).valid)return false;
+    last_failure_gate=17;if(!go.run())return false;
+    last_failure_gate=18;
+    if(!lancerrefire::state_name(r,held.weapon.address,current)||current.index!=name.index||current.number!=name.number)return false;
+    last_failure_gate=19;if(!pending_up(r,held.weapon.address))return false;
+    last_failure_gate=0;return true; // Normal Firing.EndState cleared the original refire timer.
 }
 }

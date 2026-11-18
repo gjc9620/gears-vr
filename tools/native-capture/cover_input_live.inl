@@ -3,6 +3,7 @@
 // All game reads are recertified through neutral::context. The bridge reads
 // only the current game's authenticated controller-v3 mapping, never input APIs.
 #include "cover_pose_role.h"
+#include "cover_controller_match_retry.h"
 namespace cover_input_live {
 namespace camera=cover_camera_live;
 namespace neutral=cover_neutral_eye_live;
@@ -32,7 +33,7 @@ uint64_t grab_reference_ready{},grab_reference_rejected{};
 uint64_t uncomposed_view_rejected{};
 gears_vr::CoverRange last_grab_range{};gears_vr::CoverEdgeObservation last_grab_edge{};
 bool prepare_grab_points(gears_anchor::Receipt const* scene,neutral::EyeSample const& eye,gears_vr::CoverInputOwnerFrame& frame){
-    frame.cover.range={};frame.cover.edge={};
+    frame.cover.range={};frame.cover.edge={};frame.cover.pull_mode=gears_vr::CoverPullMode::directional_down;
     const bool okay=grab_points_provider&&grab_points_provider(scene,eye,frame);
     if(okay)++grab_reference_ready;else {++grab_reference_rejected;frame.cover.range={};frame.cover.edge={};}
     last_grab_range=frame.cover.range;last_grab_edge=frame.cover.edge;return okay;
@@ -56,6 +57,7 @@ ULONGLONG last_open{};
 bool attempted_open{},bridge_open{},interrupted=true;
 struct Diagnostics {
     unsigned long long attempts{},camera_owned{},rejected{},matched{},missing{},targets{},target_rejected{},bindings{};
+    struct MatchRetryDiagnostics {unsigned long long attempts{},recovered{},exhausted{};} match_retry;
     std::array<unsigned long long,12> controller_status{};
     gears_vr::CoverInputOwnerResult latest{};
     gears_vr::Vector hand_world{};
@@ -81,14 +83,30 @@ bool update_epochs(neutral::EyeSample const& eye,gears_vr::StereoResult const& s
     if(!first&&next.cover!=epochs.cover)++diagnostics.bindings;
     epochs=next;last_eye=eye;last_session=stereo.sample.session;last_space=stereo.sample.space_epoch;last_reference=stereo.reference_generation;return true;
 }
-bool matching_input(gears_vr::StereoResult const& stereo,std::int64_t stamp,gears_vr::ControllerInputFrame& out,
+bool matching_input(gears_vr::StereoResult const& stereo,std::int64_t& stamp,gears_vr::ControllerInputFrame& out,
     gears_vr::ControllerMatchingRead* diagnostic=nullptr){
     if(diagnostic)*diagnostic={};
     const auto clock=GetTickCount64();
     if(!bridge_open&&(!attempted_open||clock-last_open>=1000)){
         attempted_open=true;last_open=clock;bridge_open=controllers.open(GetCurrentProcessId(),false);
     }
-    if(bridge_open&&controllers.read_matching(stereo.sample,stamp,out,simulator_operator,nullptr,diagnostic))return true;
+    if(bridge_open){
+        auto read=[&](gears_vr::StereoSample const& pinned,std::int64_t now,
+                      gears_vr::ControllerInputFrame& selected,bool allow_sim,bool& contended,
+                      gears_vr::ControllerMatchingRead& detail){
+            return controllers.read_matching(pinned,now,selected,allow_sim,&contended,&detail);
+        };
+        auto clock_now=[](){return gears_vr::monotonic_ns();};
+        auto pause=[](){YieldProcessor();};
+        gears_cover_controller_match_retry::RetryInfo info{};
+        const bool matched=gears_cover_controller_match_retry::read_matching_retry(
+            stereo.sample,stamp,out,simulator_operator,read,clock_now,pause,&info);
+        if(diagnostic)*diagnostic=info.last_read;
+        if(info.attempts>1)diagnostics.match_retry.attempts+=info.attempts-1;
+        if(info.recovered)++diagnostics.match_retry.recovered;
+        if(info.exhausted)++diagnostics.match_retry.exhausted;
+        if(matched)return true;
+    }
     if(bridge_open){std::uint64_t pid{},start{};if(!controllers.publisher_identity(pid,start)){
         controllers.close();bridge_open=false;
     }}
@@ -133,7 +151,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     if(!update_epochs(eye,stereo)){interrupted=true;++diagnostics.rejected;return true;}
     gears_vr::CoverTrackingBasis axes{};
     if(!gears_vr::cover_tracking_basis(stereo.reference,axes)){interrupted=true;++diagnostics.rejected;return true;}
-    const auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame input{};
+    auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame input{};
     const bool matched=matching_input(stereo,stamp,input);
     if(matched)++diagnostics.matched;else ++diagnostics.missing;
     gears_vr::CoverInputOwnerFrame frame{};frame.lifecycle=1;frame.frame=scene->invocation;
@@ -198,6 +216,8 @@ bool configure(const wchar_t* ini,FILE* file){
 }
 bool camera_frame_aligned(){return diagnostics.frame&&camera::diagnostics.last==camera::Reason::applied&&camera::diagnostics.latest_invocation==diagnostics.frame;}
 void summary(FILE* file){
+    fprintf(file,"cover_input_match_retry_attempts=%llu cover_input_match_retry_recovered=%llu cover_input_match_retry_exhausted=%llu ",
+        diagnostics.match_retry.attempts,diagnostics.match_retry.recovered,diagnostics.match_retry.exhausted);
     const auto& r=diagnostics.latest;
     const auto& interaction=r.interaction;
     fprintf(file,"cover_input_interaction_phase=%u cover_input_interaction_edge=%llu cover_input_interaction_owns=%u cover_input_interaction_request=%llu cover_input_virtual=%.9g,%.9g cover_input_offset_certified=%u ",

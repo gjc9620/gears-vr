@@ -1,6 +1,7 @@
 // Owner-marked FRONT charging handle. B has no player interaction.
 // Actual physical hand travel drives only the private original-vertex morph;
 // observed render uploads, release and mechanical return gate completion.
+#include "../vr-common/weapon_lancer_owner_grabposes.h"
 namespace lancer_charging {
 namespace hand=gears_weapon_hand;
 namespace inv=lancerreload_inventory;
@@ -49,6 +50,32 @@ inv::Identity pending_identity{};std::uint64_t pending_frame{};std::int64_t pend
 hand::FrameKey contact_key{};std::uint64_t contact_token{};bool contact_proposed{};
 std::uint64_t last_sample{},last_pose_frame{};unsigned failure{},pose_rows{};
 double last_observed{};
+bool current_geometry(hand::Frame const& f) noexcept;
+struct ObservedRegionPart {
+    inv::Identity identity{};double raw{};std::int64_t at_ns{};std::uint64_t upload{},owner_handle{};bool known{};
+};
+ObservedRegionPart region_part;
+bool authored_contact(hand::Frame const& f,P const& local_hand,double raw_distance,std::int64_t observed_ns,
+    std::uint64_t upload,std::int64_t now,double mesh_scale) noexcept {
+    const auto region=gears_lancer_workbench_profile::charging();
+    if(!region||!current_geometry(f)||!upload||observed_ns<=0||now<observed_ns||now-observed_ns>100000000||
+       !std::isfinite(raw_distance)||raw_distance<0||raw_distance>gears_weapon::lancer_front::travel_raw+.001)return false;
+    const double units=nativelancerfollow::bound_units;
+    if(!gears_lancer_authored_volume::contains_moving_asset_point(*region,mul(local_hand.position,units),
+        {{0,0,raw_distance*.01},{}}))return false;
+    if(!gears_lancer_workbench_profile::charging_snap_limits_enabled)return true;
+    if(!std::isfinite(mesh_scale)||mesh_scale<.1||mesh_scale>10)return false;
+    // Same neutral physical left mount as existing Lancer support, expressed
+    // in the current mesh frame. The cosmetic fitted wrist is never input.
+    gears_hand_authored_mount::Mount mount{};
+    if(!gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
+        gears_hand_authored_mount::Side::left,1,units,mount))return false;
+    P physical{};
+    if(!gears_lancer_authored_volume::physical_wrist_in_asset({mul(local_hand.position,units),local_hand.orientation},
+        {mount.calibration.grip_to_wrist_metres,mount.calibration.grip_to_wrist_rotation},units,mesh_scale,physical))return false;
+    P target=gears_lancer_owner_grabposes::loading_wrist_in_gun;target.position.y-=raw_distance;
+    return gears_lancer_authored_volume::wrist_snap(*region,physical,target,units/mesh_scale);
+}
 unsigned contact_gate{},local_gate{};double contact_distance{-1};std::uint64_t contact_sequence{};
 unsigned capture_gate{};uptr capture_node{};std::array<wchar_t,64> capture_name{};
 hand::Decision last_decision{};
@@ -83,7 +110,7 @@ bool discover(hand::Frame const& f) noexcept {
     failure=22;if(!gears_weapon::lancer_front::geometry(nativelancerfollow::bound_units,g.slide))return false;
     g.known=true;geometry=g;return current_geometry(f);
 }
-bool local_hand(hand::Frame const& f,P& left,std::uint64_t& sequence,std::uint64_t& ms) noexcept {
+bool local_hand(hand::Frame const& f,P& left,std::uint64_t& sequence,std::uint64_t& ms,double& mesh_scale) noexcept {
     local_gate=1;
     // This also runs inside Native's proposal callback. Its Frame is
     // already authenticated there; recursively copying/observing that same
@@ -112,7 +139,7 @@ bool local_hand(hand::Frame const& f,P& left,std::uint64_t& sequence,std::uint64
         gears_vr::normalized(gears_vr::multiply(inverse,lq))};
     sequence=f.controllers.sequence;ms=std::uint64_t(f.controllers.sync_ns/1000000);
     local_gate=5;if(!sequence||!ms||!gears_vr::stereo_pose_valid(left))return false;
-    local_gate=0;return true;
+    mesh_scale=size;local_gate=0;return true;
 }
 // Arbitration can precede the runtime consumer. Retain only this granted
 // token, never a hand pose, so a new current publication can finish the same
@@ -166,10 +193,17 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     }
     contact_gate=6;if(!current_geometry(f))return;
     contact_gate=3;if(!release_seen||stroke.phase()!=gears_weapon::lancer_front::Stroke::Phase::idle)return;
-    P left{};std::uint64_t seq{},ms{};
-    contact_gate=4;if(!local_hand(f,left,seq,ms))return;
+    P left{};std::uint64_t seq{},ms{};double mesh_scale{};
+    contact_gate=4;if(!local_hand(f,left,seq,ms,mesh_scale))return;
     contact_distance=length(sub(left.position,geometry.slide.closed_contact));contact_sequence=seq;
-    game.request_magazine=contact_distance<=geometry.slide.contact_radius;contact_gate=game.request_magazine?0:5;
+    if(gears_lancer_workbench_profile::charging()){
+        const bool actual_current=region_part.known&&region_part.identity==geometry.identity&&region_part.upload&&
+            lancerhandle_visual::ready_for(f)&&region_part.owner_handle==lancerhandle_visual::current_handle()&&
+            region_part.at_ns>0&&now>=region_part.at_ns&&now-region_part.at_ns<=100000000;
+        if(!actual_current){game.magazine_observation_pending=true;return;}
+        game.request_magazine=authored_contact(f,left,region_part.raw,region_part.at_ns,region_part.upload,now,mesh_scale);
+    }else game.request_magazine=contact_distance<=geometry.slide.contact_radius;
+    contact_gate=game.request_magazine?0:5;
     if(game.request_magazine){contact_key=f.key;contact_token=f.press_token;contact_proposed=true;}
 }
 void release_gesture() noexcept {
@@ -183,7 +217,7 @@ bool restore() noexcept {
     // the private instance table. The targets remain rooted until that receipt.
     ownership.retiring=true;
     if(!lancerhandle_visual::restore())return false;
-    ownership={};geometry={};stroke.reset();release_gesture();last_observed=0;return true;
+    ownership={};geometry={};region_part={};stroke.reset();release_gesture();last_observed=0;return true;
 }
 bool actual_part(hand::Frame const& f,gears_lancer_handle_morph::Receipt const& r,double& distance) noexcept {
     const auto now=weaponhand::clock_ns(nullptr);
@@ -206,8 +240,8 @@ Result step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         discover(f);return Result::waiting;}
     float game_time{};
     if(!lancerreload_state::time_field(f.world.address,L"TimeSeconds",game_time))return Result::waiting;
-    P left{};std::uint64_t sequence{},ms{};
-    const bool tracked=local_hand(f,left,sequence,ms);
+    P left{};std::uint64_t sequence{},ms{};double mesh_scale{};
+    const bool tracked=local_hand(f,left,sequence,ms,mesh_scale);
     failure=3;
     if(!f.left_tracked||!f.left_grip_known)return Result::waiting;
     if(!f.left_grip_down){
@@ -235,13 +269,21 @@ Result step(hand::Frame const& f,hand::Decision const& decision) noexcept {
        !lancerhandle_visual::set_distance(f,raw_distance,receipt))return Result::waiting;
     double actual{};failure=5;
     if(!actual_part(f,receipt,actual))return Result::waiting;
+    // Preserve only this existing actual upload observation, with its original
+    // timestamp and instance identity. Propose never polls Native recursively.
+    if(gears_lancer_workbench_profile::charging())
+        region_part={geometry.identity,receipt.actual_distance_raw,receipt.actual_at_ns,receipt.actual_upload_serial,receipt.handle,true};
     if(stroke.phase()==Phase::idle){
         if(ownership.active){ownership={};release_gesture();release_seen=!f.left_grip_down;}
         if(!f.left_grip_down||!release_seen||!tracked||!fresh_grant(f,decision)||
            !contact_proposed||contact_key.frame!=pending_frame||contact_token!=f.press_token||
            !(pending_identity==inv::identity(f)))return Result::waiting;
         failure=6;
-        if(!stroke.begin(geometry.slide,{left.position,sequence,ms,f.press_token,true,true},actual))return Result::waiting;
+        const gears_weapon::HammerburstLatchSample begin_sample{left.position,sequence,ms,f.press_token,true,true};
+        if(gears_lancer_workbench_profile::charging()){
+            if(!authored_contact(f,left,receipt.actual_distance_raw,receipt.actual_at_ns,receipt.actual_upload_serial,
+                weaponhand::clock_ns(nullptr),mesh_scale)||!stroke.begin_in_region(geometry.slide,begin_sample,actual))return Result::waiting;
+        }else if(!stroke.begin(geometry.slide,begin_sample,actual))return Result::waiting;
         ownership={inv::identity(f),true,false};held=decision.lease;armed=true;release_seen=false;
         last_sample=sequence;last_observed=actual;last_pose_frame=receipt.actual_upload_serial;
         if(log_file){fwprintf(log_file,L"lancer_charging_grasp frame=%llu sequence=%llu hand=%.9g,%.9g,%.9g front=1 travel_m=%.9g\n",

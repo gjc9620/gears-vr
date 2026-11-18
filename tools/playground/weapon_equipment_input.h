@@ -142,6 +142,13 @@ public:
     // Drop the input baseline; never reuse a previously emitted serial.
     void reset() noexcept {bound_=continuity_known_=index_eligible_=false;router_.reset();evidence_={};}
     Evidence const& evidence() const noexcept {return evidence_;}
+    // Read-planning only, never a press/continuity grant. next() can consume a
+    // historical squeeze witness only for an increased counter in this bound
+    // cohort. Baselines, releases and index acquisition use current tracking.
+    bool needs_recorded_right_press(Frame const& f,Calibration const& calibration,std::uint64_t cursor) const noexcept {
+        return bound_&&cursor!=UINT64_MAX&&same(cohort_,cohort(f,calibration))&&
+            f.controllers.hands[1].pressed[gears_vr::control_squeeze]>pressed_;
+    }
     bool next(Frame const& f,Calibration const& calibration,std::int64_t now_ns,
               std::uint64_t now_ms,std::uint64_t& cursor,Event& out,Continuity const* continuity=nullptr,bool allow_index_acquire=false) noexcept {
         evidence_={Status::quiet,serial_,f.controllers.sequence,f.controllers.hands[1].last_squeeze_press_sequence,

@@ -69,6 +69,13 @@ public:
     Cas exchange(std::uintptr_t,Block const&,Block const&) noexcept override{return Cas::fault_unknown;}
     Verdict fresh(View const&,ReceiptRef,FreshEvidence&) noexcept override{return Verdict::denied;}
 };
+// This accounts for Native resources only. Game field overwrite debt is
+// deliberately preserved by Kernel::pending(), including after shutdown.
+inline unsigned stopped_pod_resource_pending(bool permanently_stopped,unsigned callbacks,unsigned obligations,unsigned completed_fields) noexcept {
+    const auto total=std::uint64_t(callbacks)+obligations;
+    if(permanently_stopped&&!callbacks&&completed_fields&&obligations==completed_fields)return 0;
+    return total>UINT_MAX?UINT_MAX:unsigned(total);
+}
 class Kernel;
 class Lease {
     friend class Kernel;
@@ -93,10 +100,12 @@ class Kernel {
     std::atomic<bool> stopping_{},failed_{},consumed_{},original_exception_{};
     std::atomic<Failure> failure_{};
     End ending_{};bool ended_{},commit_finished_{},consumer_verified_{};
+    // Successful authenticated consumption/return; never a fresh receipt.
+    std::atomic<bool> completed_consumed_output_{};
     View view() const noexcept{return {stamp_,source_,plan_,desired_,units_.data(),count_};}
     static bool owes(UnitState s) noexcept {return s==UnitState::applied||s==UnitState::uncertain||s==UnitState::conflict;}
     void sync() noexcept {unsigned n{};for(unsigned i=0;i<count_;++i)n+=unsigned(owes(units_[i].state));outstanding_=n;}
-    void fail(Failure why) noexcept {failed_=true;stopping_=true;
+    void fail(Failure why) noexcept {completed_consumed_output_=false;failed_=true;stopping_=true;
         if(why==Failure::hard)failure_=why;
         else {auto expected=Failure::none;failure_.compare_exchange_strong(expected,why);}}
     void debt() noexcept {fail(Failure::hard);unsigned x=protocol_.load();while(x!=UINT_MAX&&!protocol_.compare_exchange_weak(x,x+1)){};}
@@ -178,6 +187,10 @@ public:
         return mask; // Owned diagnostic data, never a retirement receipt.
     }
     unsigned outstanding_fields() const noexcept{return outstanding_.load();}
+    bool completed_consumed_output() const noexcept {
+        return completed_consumed_output_.load()&&!active_.load()&&!failed_.load()&&
+            !protocol_.load()&&!original_exception_.load();
+    }
     unsigned protocol_debt() const noexcept{return protocol_.load();}
     bool failed() const noexcept{return failed_.load();}
     bool stopping() const noexcept{return stopping_.load();} // read-only first-failure diagnostics
@@ -224,6 +237,7 @@ public:
         if(stopping_.load())return result(Code::stopped);
         const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&source,sizeof source),body::d::range(&plan,sizeof plan),body::d::range(&stamp,sizeof stamp),body::d::range(&desired,sizeof desired),body::d::range(&lease,sizeof lease),{stamp.binding.local,body::bones*sizeof(body::Atom)}};
         if(!body::d::disjoint(ranges,7)||lease.kernel_||lease.closed_||lease.self_!=reinterpret_cast<std::uintptr_t>(&lease)||!shape(stamp,source,plan,desired))return result(Code::invalid_plan);
+        completed_consumed_output_=false;
         stamp_=stamp;source_=source;plan_=plan;desired_=desired;count_=0;units_={};consumed_=false;commit_finished_=false;consumer_verified_=false;ended_=false;
         for(unsigned bone=0;bone<body::bones;++bone)for(unsigned half=0;half<2;++half){
             const auto* before=reinterpret_cast<unsigned char const*>(&source_.local[bone])+half*16;const auto* after=reinterpret_cast<unsigned char const*>(&plan_.local[bone])+half*16;
@@ -261,6 +275,7 @@ public:
     // including its passthrough/failure path. This is NOT permission to invoke
     // an engine function. Once set, even an exception forbids all C0 rollback.
     Result notify_consumer_entry(Backend& b,Lease& lease,Stamp const& actual) noexcept {
+        completed_consumed_output_=false;consumer_verified_=false;
         const bool already=consumed_.exchange(true); // fail closed BEFORE any rejection
         auto c=exact(b,lease,actual);if(c!=Code::prepared)return result(c);
         if(already){debt();return result(Code::already_consumed);}
@@ -277,7 +292,10 @@ public:
         if(ending!=End::before_consumer&&ending!=End::original_returned&&ending!=End::original_threw){debt();return result(Code::wrong_lease);}
         if(b.validate(view(),Stage::scope_end,0)!=Verdict::verified){debt();return result(Code::guard_rejected);}
         if(!consumed_.load())rollback_impl();
-        lease.closed_=true;lease_=nullptr;active_=0;ending_=ending;ended_=true;sync();return result(Code::scope_closed);
+        lease.closed_=true;lease_=nullptr;active_=0;ending_=ending;ended_=true;sync();
+        completed_consumed_output_=ending==End::original_returned&&consumer_verified_&&commit_finished_&&
+            consumed_.load()&&!failed_.load()&&!protocol_.load()&&!original_exception_.load();
+        return result(Code::scope_closed);
     }
     Result retire_fresh(Backend& b,ReceiptRef receipt) noexcept {
         if(!thread_.load()||b.thread_token()!=thread_.load()){debt();return result(Code::wrong_thread);}

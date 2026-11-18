@@ -37,7 +37,7 @@ void capture(hand::Frame const& f,P const& left) noexcept {
 }
 bool advance(hand::Frame const& f,gears_weapon::FeedSample const& current,gears_weapon::FeedResult& result) noexcept {
     gate=4;
-    if(stage!=Stage::new_magazine||feed_item!=current.item||feed_sequence!=prior.sequence||feed_ns!=prior.monotonic_ns||
+    if((stage!=Stage::new_magazine&&stage!=Stage::old_magazine)||feed_item!=current.item||feed_sequence!=prior.sequence||feed_ns!=prior.monotonic_ns||
        !latch_history::same_context(previous,sampled))return false;
     unsigned control{};
     if(f.interaction_control==unsigned(gears_vr::LeftInteractionControl::grip))control=gears_vr::control_squeeze;
@@ -45,7 +45,7 @@ bool advance(hand::Frame const& f,gears_weapon::FeedSample const& current,gears_
     else return false;
     gate=5;relative::Segment segment{};
     if(!relative::build(previous.raw,sampled.raw,history,control,sampled.mount,sampled.size,segment)||segment.count<3)return false;
-    std::array<gears_weapon::FeedSample,9> points{};points[0]=prior;
+    std::array<gears_weapon::FeedSample,input::motion_history_capacity+1> points{};points[0]=prior;
     gate=6;
     for(unsigned i=1;i<segment.count;++i){const auto sequence=segment.points[i].sequence;
         input::TrackedInput const* raw=nullptr;
@@ -56,7 +56,29 @@ bool advance(hand::Frame const& f,gears_weapon::FeedSample const& current,gears_
     gate=7;
     if(!gears_hammerburst_feed_history::same_sample(points[segment.count-1],current))return false;
     points[segment.count-1]=current;
-    if(!gears_hammerburst_feed_history::advance(insertion,prior,current,points.data(),segment.count,feed,result))return false;
+    if(!gears_hammerburst_feed_history::advance(insertion,prior,current,points,segment.count,feed,result))return false;
+    point_count=segment.count;gate=0;return true;
+}
+bool advance_extraction(hand::Frame const& f,gears_weapon::FeedSample const& current) noexcept {
+    gate=4;point_count=0;
+    if(stage!=Stage::old_magazine||prior.item!=current.item||
+       !latch_history::same_context(previous,sampled))return false;
+    unsigned control{};
+    if(f.interaction_control==unsigned(gears_vr::LeftInteractionControl::grip))control=gears_vr::control_squeeze;
+    else if(f.interaction_control==unsigned(gears_vr::LeftInteractionControl::pinch))control=gears_vr::control_trigger;
+    else return false;
+    gate=5;relative::Segment segment{};
+    if(!relative::build(previous.raw,sampled.raw,history,control,sampled.mount,sampled.size,segment)||segment.count<3)return false;
+    std::array<gears_weapon::FeedSample,input::motion_history_capacity+1> points{};points[0]=prior;gate=6;
+    for(unsigned i=1;i<segment.count;++i){const auto sequence=segment.points[i].sequence;
+        input::TrackedInput const* raw=nullptr;
+        for(unsigned n=0;n<history.count;++n)if(history.frames[n].input.sequence==sequence)raw=&history.frames[n];
+        P left{};if(!raw||!project_pose(*raw,sampled,left))return false;
+        points[i]=current;points[i].sequence=sequence;points[i].monotonic_ns=raw->input.sync_ns;points[i].left_grip=left;
+    }
+    gate=7;if(!gears_hammerburst_feed_history::same_sample(points[segment.count-1],current))return false;
+    points[segment.count-1]=current;
+    if(!gears_hammerburst_extraction_history::advance(extraction,prior,current,points,segment.count,feed))return false;
     point_count=segment.count;gate=0;return true;
 }
 void remember(gears_weapon::FeedSample const& sample) noexcept {previous=sampled;prior=sample;}

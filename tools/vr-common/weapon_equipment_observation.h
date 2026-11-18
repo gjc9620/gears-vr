@@ -14,7 +14,8 @@ struct EquipmentObservation {
     std::int64_t begin_ns{},end_ns{};
     GripGameState game{};
     std::uint64_t hold_generation{};
-    ObjectIdentity component{},asset{};
+    ObjectIdentity component{},asset{}; bool boomshot{};
+    bool boltok{}; // Internal classification only; never a Frame or authority.
 };
 // Read-only association for recording completed motion. This is deliberately
 // not an actionable Frame or a fresh game-state observation. Its original

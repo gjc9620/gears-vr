@@ -127,6 +127,16 @@ public:
         if(stage_!=ReloadTxnStage::unbound || !value.valid())return false;
         inventory_=value;stage_=ReloadTxnStage::ready;return true;
     }
+    // Owner-certified rebind after closure only. Preserve nonces and intent/item
+    // floors so late receipts and previously held objects cannot replay.
+    constexpr bool rebind_closed(Inventory const& value) noexcept {
+        if(!mechanical_ready()||!value.valid())return false;
+        ReloadTransaction candidate;
+        candidate.next_token_=next_token_;candidate.last_item_=last_item_;candidate.last_intent_=last_intent_;
+        candidate.last_reload_=value.identity==inventory_.identity?last_reload_:0;
+        candidate.inventory_=value;candidate.stage_=ReloadTxnStage::ready;
+        *this=candidate;return true;
+    }
     constexpr bool sync_idle(Inventory const& value) noexcept {
         if((stage_!=ReloadTxnStage::ready && stage_!=ReloadTxnStage::complete) ||
            !value.valid() || !(value.identity==inventory_.identity) ||
@@ -177,6 +187,17 @@ public:
         const auto quantity=mode_==ReloadTxnMode::magazine ? target_-inserted_ : 1u;
         if(!inventory_.infinite_reserve&&quantity>inventory_.reserve)return false;
         held_=quantity;item_=last_item_=item;stage_=ReloadTxnStage::holding;return true;
+    }
+    // Explicit grouped supply for a round-fed weapon. The original item,
+    // stage, pending-call and nonce checks still run in reserve_item; no old
+    // magazine or removal receipt is fabricated. Existing callers keep their
+    // original one-round reservation unless they explicitly select this API.
+    constexpr bool reserve_group_item(std::uint64_t item) noexcept {
+        if(mode_!=ReloadTxnMode::round||inserted_>=target_)return false;
+        const auto quantity=target_-inserted_;
+        if(!inventory_.infinite_reserve&&quantity>inventory_.reserve)return false;
+        if(!reserve_item(item))return false;
+        held_=quantity;return true;
     }
     // Lancer's disappearing old magazine returns its unspent rounds to the
     // same logical inventory. They already remain in native L, so a new

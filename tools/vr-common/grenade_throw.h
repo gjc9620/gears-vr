@@ -21,8 +21,12 @@ struct GrenadeThrowConfig {
     std::int64_t history_ns{140000000};
     std::int64_t minimum_span_ns{55000000};
     std::int64_t maximum_sample_gap_ns{60000000};
+    // Per-weapon virtual weight. Keep the existing Smoke default; Frag opts
+    // into the owner's 2 kg profile without scaling measured hand velocity.
+    double virtual_mass_kg{mass_kg};
     bool valid() const noexcept {
-        return std::isfinite(gravity_mps2)&&gravity_mps2>0&&gravity_mps2<40&&
+        return std::isfinite(virtual_mass_kg)&&virtual_mass_kg>0&&virtual_mass_kg<=20&&
+            std::isfinite(gravity_mps2)&&gravity_mps2>0&&gravity_mps2<40&&
             std::isfinite(minimum_speed_mps)&&minimum_speed_mps>=0&&
             std::isfinite(maximum_speed_mps)&&maximum_speed_mps>minimum_speed_mps&&
             maximum_speed_mps<=40&&history_ns>=minimum_span_ns&&
@@ -70,7 +74,7 @@ inline bool grenade_world_launch(GrenadeThrowSolution const& tracked,
        !std::isfinite(game_base.rotation.roll)||
        !std::isfinite(units_per_metre)||units_per_metre<10||units_per_metre>500||
        !std::isfinite(tracked.gravity_mps2)||tracked.gravity_mps2<=0||
-       tracked.mass_kg!=GrenadeThrowConfig::mass_kg||!std::isfinite(norm)||norm<.98||norm>1.02)return false;
+       !std::isfinite(tracked.mass_kg)||tracked.mass_kg<=0||tracked.mass_kg>20||!std::isfinite(norm)||norm<.98||norm>1.02)return false;
     const auto inverse=gears_vr::transpose(gears_vr::rotation_matrix(reference.orientation));
     const auto base=gears_vr::ue_matrix(game_base.rotation);
     const auto to_game=[&](Vector xr){return gears_vr::transform(base,
@@ -102,6 +106,13 @@ inline Vector grenade_ballistic_position(GrenadeThrowSolution const& throw_state
     return point;
 }
 
+// Query-local passive receipt. No input, sample or action authority.
+struct GrenadeThrowObservation {
+    std::uint32_t failure{},flags{},sample_count{},cleared_samples{},clear_flags{};
+    std::int64_t span_ns{},last_gap_ns{},last_sync_gap_ns{};
+    std::uint64_t previous_sequence{},target_sequence{},current_sequence{};
+    double last_step_m{},computed_speed_mps{};
+};
 class GrenadeThrowTracker {
     struct Sample {std::int64_t time{};Vector position{};Quaternion orientation{};};
     static constexpr unsigned capacity=24;
@@ -110,6 +121,7 @@ class GrenadeThrowTracker {
     std::uint64_t weapon_{},world_{},reference_generation_{};
     std::uint64_t session_{},space_epoch_{},profile_generation_{},input_epoch_{},last_sequence_{};
     std::uint64_t stream_epoch_{},tracking_epoch_{};
+    std::int64_t last_sync_ns_{};
     unsigned hand_{2};
     Vector grenade_centre_in_grip_m_{};
     bool armed_{};
@@ -126,25 +138,42 @@ class GrenadeThrowTracker {
         }
         samples_[count_++]=value;
     }
-    bool append_input(gears_vr::ControllerInputFrame const& hands,GrenadeThrowConfig const& config) noexcept {
+    bool append_input(gears_vr::ControllerInputFrame const& hands,GrenadeThrowConfig const& config,
+                      bool qualified_source_history=false,GrenadeThrowObservation* diagnostic=nullptr) noexcept {
         if(!session_){session_=hands.session;space_epoch_=hands.space_epoch;
             profile_generation_=hands.profile_generation;input_epoch_=hands.input_epoch;
         }else if(hands.session!=session_||hands.space_epoch!=space_epoch_||
                  hands.profile_generation!=profile_generation_||hands.input_epoch!=input_epoch_)return false;
         if(last_sequence_&&(hands.sequence<=last_sequence_||hands.predicted_time<=samples_[count_-1].time))return false;
+        if(qualified_source_history&&last_sequence_&&hands.sync_ns<=last_sync_ns_)return false;
         const auto& grip=hands.hands[hand_].grip;
         const Sample latest{hands.predicted_time,sum(grip.position,rotate(grip.orientation,grenade_centre_in_grip_m_)),grip.orientation};
         if(count_){
             const auto gap=std::uint64_t(latest.time)-std::uint64_t(samples_[count_-1].time);
             if(gap>std::uint64_t(config.maximum_sample_gap_ns)||
+               (qualified_source_history&&std::uint64_t(hands.sync_ns)-std::uint64_t(last_sync_ns_)>
+                    std::uint64_t(config.maximum_sample_gap_ns))||
                length(difference(latest.position,samples_[count_-1].position))>
-                   config.maximum_speed_mps*(double(gap)/1e9))clear_samples();
+                   config.maximum_speed_mps*(double(gap)/1e9)){
+                if(diagnostic){
+                    ++diagnostic->cleared_samples;
+                    diagnostic->last_gap_ns=std::int64_t(gap);
+                    diagnostic->last_sync_gap_ns=hands.sync_ns-last_sync_ns_;
+                    diagnostic->last_step_m=length(difference(latest.position,samples_[count_-1].position));
+                    diagnostic->clear_flags|=(gap>std::uint64_t(config.maximum_sample_gap_ns)?1u:0u)|
+                        (qualified_source_history&&std::uint64_t(hands.sync_ns)-std::uint64_t(last_sync_ns_)>std::uint64_t(config.maximum_sample_gap_ns)?2u:0u)|
+                        (diagnostic->last_step_m>config.maximum_speed_mps*(double(gap)/1e9)?4u:0u);
+                }
+                clear_samples();
+            }
         }
-        append(latest,config.history_ns);last_sequence_=hands.sequence;return true;
+        append(latest,config.history_ns);last_sequence_=hands.sequence;last_sync_ns_=hands.sync_ns;return true;
     }
-    std::optional<GrenadeThrowSolution> solve(GrenadeThrowConfig const& config) const noexcept {
-        if(count_<4||samples_[count_-1].time-samples_[0].time<config.minimum_span_ns)
-            return std::nullopt;
+    std::optional<GrenadeThrowSolution> solve(GrenadeThrowConfig const& config,GrenadeThrowObservation* diagnostic=nullptr) const noexcept {
+        if(diagnostic){diagnostic->sample_count=count_;diagnostic->span_ns=count_?samples_[count_-1].time-samples_[0].time:0;}
+        if(count_<4||samples_[count_-1].time-samples_[0].time<config.minimum_span_ns){
+            if(diagnostic)diagnostic->failure=5;return std::nullopt;
+        }
         double sum_t{},sum_tt{};
         Vector sum_p{},sum_tp{};
         for(unsigned i=0;i<count_;++i){
@@ -154,17 +183,19 @@ class GrenadeThrowTracker {
             sum_tp=sum(sum_tp,scaled(samples_[i].position,t));
         }
         const double n=double(count_),denominator=n*sum_tt-sum_t*sum_t;
-        if(!std::isfinite(denominator)||denominator<1e-8)return std::nullopt;
+        if(!std::isfinite(denominator)||denominator<1e-8){if(diagnostic)diagnostic->failure=6;return std::nullopt;}
         const auto velocity=scaled(difference(scaled(sum_tp,n),scaled(sum_p,sum_t)),
                                    1/denominator);
         const auto speed=length(velocity);
+        if(diagnostic)diagnostic->computed_speed_mps=speed;
         if(!gears_vr::finite(velocity)||!std::isfinite(speed)||
            speed<config.minimum_speed_mps||speed>config.maximum_speed_mps)
             return std::nullopt;
         GrenadeThrowSolution result{};
         result.release_position=samples_[count_-1].position;
         result.velocity_mps=velocity;
-        result.impulse_kg_mps=scaled(velocity,GrenadeThrowConfig::mass_kg);
+        result.mass_kg=config.virtual_mass_kg;
+        result.impulse_kg_mps=scaled(velocity,config.virtual_mass_kg);
         result.gravity_mps2=config.gravity_mps2;
         result.weapon=weapon_;result.world=world_;result.session=session_;
         result.space_epoch=space_epoch_;result.reference_generation=reference_generation_;
@@ -210,33 +241,52 @@ public:
     // original ring through InputBridge. Historical poses are motion data;
     // they never become synthetic Stereo/Hand Frames. A release still needs
     // a separately authenticated deliberate trigger edge in that same ring.
+    // source_gap_ns is an opt-in bound for ALREADY qualified source rows;
+    // zero preserves the old strict caller behavior. The motion bound remains
+    // config.maximum_sample_gap_ns: larger sync OR predicted-time intervals
+    // clear samples, never contribute velocity, and require a new full span.
     std::optional<GrenadeThrowSolution> advance_history(
         gears_hand_continuity::MotionHistory const& history,gears_vr::ControllerInputFrame const& hands,
         gears_vr::StereoSample const& stereo,
         std::uint64_t weapon,std::uint64_t world,std::uint64_t reference_generation,
         std::int64_t now_ns,std::uint64_t after_sequence,std::uint64_t release_sequence=0,
-        GrenadeThrowConfig const& config={},bool allow_sim=false) noexcept {
+        GrenadeThrowConfig const& config={},bool allow_sim=false,std::int64_t source_gap_ns=0,GrenadeThrowObservation* diagnostic=nullptr) noexcept {
+        if(diagnostic)*diagnostic={};
+        const auto fail_history=[&](std::uint32_t reason) noexcept -> std::optional<GrenadeThrowSolution> {
+            if(diagnostic){diagnostic->failure=reason;diagnostic->sample_count=count_;
+                diagnostic->span_ns=count_?samples_[count_-1].time-samples_[0].time:0;
+                diagnostic->previous_sequence=last_sequence_;}
+            reset();return std::nullopt;
+        };
         if(!armed_||!config.valid()||weapon!=weapon_||world!=world_||reference_generation!=reference_generation_||
-           !history.count||history.count>gears_hand_continuity::motion_history_capacity){reset();return std::nullopt;}
+           !history.count||history.count>gears_hand_continuity::motion_history_capacity||
+           source_gap_ns<0||source_gap_ns>100000000)return fail_history(1);
         const auto& current=history.frames[history.count-1];
         if(!gears_hand_continuity::same_input(current.input,hands)||
-           !gears_hand_continuity::motion_history_valid(history,current,hand_,config.maximum_sample_gap_ns)||
+           !gears_hand_continuity::motion_history_valid(history,current,hand_,source_gap_ns?source_gap_ns:config.maximum_sample_gap_ns)||
            !gears_vr::controller_frame_matches(current.input,stereo,now_ns,allow_sim)||
            (last_sequence_&&current.input.sequence<=last_sequence_)||
            (stream_epoch_&&(stream_epoch_!=current.stream_epoch||tracking_epoch_!=current.tracking_epoch[hand_]))){
-            reset();return std::nullopt;
+            if(diagnostic)diagnostic->flags=
+                (!gears_hand_continuity::same_input(current.input,hands)?1u:0u)|
+                (!gears_hand_continuity::motion_history_valid(history,current,hand_,source_gap_ns?source_gap_ns:config.maximum_sample_gap_ns)?2u:0u)|
+                (!gears_vr::controller_frame_matches(current.input,stereo,now_ns,allow_sim)?4u:0u)|
+                ((last_sequence_&&current.input.sequence<=last_sequence_)?8u:0u)|
+                ((stream_epoch_&&(stream_epoch_!=current.stream_epoch||tracking_epoch_!=current.tracking_epoch[hand_]))?16u:0u);
+            return fail_history(2);
         }
         stream_epoch_=current.stream_epoch;tracking_epoch_=current.tracking_epoch[hand_];
         const auto target=release_sequence?release_sequence:current.input.sequence;
+        if(diagnostic){diagnostic->previous_sequence=last_sequence_;diagnostic->target_sequence=target;diagnostic->current_sequence=current.input.sequence;}
         bool found=!release_sequence;
         for(unsigned i=0;i<history.count;++i)if(history.frames[i].input.sequence==target)found=true;
-        if(!found||(release_sequence&&(target<=after_sequence||target<=last_sequence_))){reset();return std::nullopt;}
+        if(!found||(release_sequence&&(target<=after_sequence||target<=last_sequence_)))return fail_history(3);
         for(unsigned i=0;i<history.count;++i){const auto& h=history.frames[i].input;
             if(h.sequence<=after_sequence||h.sequence<=last_sequence_||h.sequence>target)continue;
-            if(!append_input(h,config)){reset();return std::nullopt;}
+            if(!append_input(h,config,source_gap_ns!=0,diagnostic))return fail_history(4);
         }
         if(!release_sequence)return std::nullopt;
-        const auto result=solve(config);reset();return result;
+        const auto result=solve(config,diagnostic);reset();return result;
     }
 };
 }

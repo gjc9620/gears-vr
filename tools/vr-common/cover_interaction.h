@@ -14,6 +14,10 @@ namespace gears_vr {
 struct CoverOffset { double right=0,up=0; };
 struct CoverRange { double min_right=0,max_right=0,min_up=0,max_up=0; };
 enum class CoverEdgeKind { none,left,right,top };
+// The default preserves the historical single-axis drag semantics. Downward
+// is opt-in: all three L2 points use motion along the fixed down axis, with
+// edge-specific offset signs applied only after the hand is frozen to grab.
+enum class CoverPullMode { generic,directional_down };
 
 // Nonzero monotonic generations, maintained by adapters, not native pointers.
 // world/pawn/cover changes invalidate the persistent offset. A cover generation
@@ -50,6 +54,7 @@ struct CoverObservation {
     // the actual cover/body reference. Neither may follow the live head angle.
     Vector right_axis_tracking{1,0,0},up_axis_tracking{0,1,0};
     CoverEdgeObservation edge;
+    CoverPullMode pull_mode{CoverPullMode::generic};
 };
 struct CoverHandSample {
     std::uint64_t sequence=0;
@@ -159,7 +164,7 @@ private:
             have_cover_=false;offset_={};interrupt();
             return result(CoverStatus::no_cover);
         }
-        if(!valid(cover.epochs)||!valid(cover.range)||
+        if(!valid(cover.epochs)||!valid(cover.range)||!valid(cover.pull_mode)||
            !valid_axes(cover.right_axis_tracking,cover.up_axis_tracking))
             return stop(CoverStatus::invalid);
         if(epochs_&&regressed(cover.epochs,*epochs_))return stop(CoverStatus::replayed);
@@ -209,7 +214,12 @@ private:
                     hand.left_position_metres.y-grab_hand_.y,hand.left_position_metres.z-grab_hand_.z};
                 const double motion=gain_*dot(delta,grab_axis_);
                 if(!finite(delta)||!std::isfinite(motion))return stop(CoverStatus::invalid);
-                if(edge_kind_==CoverEdgeKind::top)candidate.up-=motion;
+                if(grab_pull_mode_==CoverPullMode::directional_down){
+                    const double down=-motion;
+                    if(edge_kind_==CoverEdgeKind::left)candidate.right-=down;
+                    else if(edge_kind_==CoverEdgeKind::right)candidate.right+=down;
+                    else candidate.up+=down;
+                }else if(edge_kind_==CoverEdgeKind::top)candidate.up-=motion;
                 else candidate.right-=motion;
                 if(!std::isfinite(candidate.right)||!std::isfinite(candidate.up))return stop(CoverStatus::invalid);
                 const auto limited=clamped(candidate,cover.range);
@@ -234,7 +244,9 @@ private:
                 return stop(CoverStatus::ownership_conflict);
             requesting_=false;grabbing_=true;
             grab_hand_=hand.left_position_metres;grab_offset_=offset_;
-            grab_axis_=edge_kind_==CoverEdgeKind::top?cover.up_axis_tracking:cover.right_axis_tracking;
+            grab_axis_=cover.pull_mode==CoverPullMode::directional_down?cover.up_axis_tracking:
+                edge_kind_==CoverEdgeKind::top?cover.up_axis_tracking:cover.right_axis_tracking;
+            grab_pull_mode_=cover.pull_mode;
             return result(CoverStatus::okay);
         }
         if(!rising)return result(CoverStatus::needs_release);
@@ -263,6 +275,9 @@ private:
             std::isfinite(r.min_up)&&std::isfinite(r.max_up)&&
             r.min_right<=0&&r.max_right>=0&&r.min_up<=0&&r.max_up>=0;
     }
+    static bool valid(CoverPullMode mode){
+        return mode==CoverPullMode::generic||mode==CoverPullMode::directional_down;
+    }
     static bool valid(CoverEpochs const& e){
         return e.world&&e.pawn&&e.cover&&e.slot&&e.session&&e.space&&e.reference;
     }
@@ -282,6 +297,7 @@ private:
             same_number(a.range.min_right,b.range.min_right)&&same_number(a.range.max_right,b.range.max_right)&&
             same_number(a.range.min_up,b.range.min_up)&&same_number(a.range.max_up,b.range.max_up)&&
             same(a.right_axis_tracking,b.right_axis_tracking)&&same(a.up_axis_tracking,b.up_axis_tracking)&&
+            a.pull_mode==b.pull_mode&&
             a.edge.id==b.edge.id&&a.edge.kind==b.edge.kind&&a.edge.allowed==b.edge.allowed&&
             a.edge.within_acquisition_reach==b.edge.within_acquisition_reach;
     }
@@ -311,6 +327,7 @@ private:
     void interrupt(){
         grabbing_=false;requesting_=false;release_required_=true;previous_down_=true;
         request_id_=0;edge_id_=0;edge_kind_=CoverEdgeKind::none;
+        grab_pull_mode_=CoverPullMode::generic;
     }
     CoverResult stop(CoverStatus status){interrupt();return result(status);}
     CoverResult result(CoverStatus status) const {
@@ -331,6 +348,7 @@ private:
     bool have_cover_=false,offset_certified_=false,release_required_=true,previous_down_=true;
     bool requesting_=false,grabbing_=false;
     CoverEdgeKind edge_kind_=CoverEdgeKind::none;
+    CoverPullMode grab_pull_mode_=CoverPullMode::generic;
     CoverOffset offset_,grab_offset_;
     Vector grab_hand_,grab_axis_;
     std::optional<CoverEpochs> epochs_;

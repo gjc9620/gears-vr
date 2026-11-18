@@ -1,3 +1,4 @@
+#include "lancer_debug_volume_geometry.h"
 // Optional visual inspection of the ACTUAL logical acquisition shapes. This
 // does not create UE colliders, grants, animation writers or persistent lines.
 // Red outlines are real acquisition volumes, cyan axes are pose-only anchors.
@@ -107,8 +108,13 @@ void number(Range const& r,double units,line::Shape& out) noexcept {
         edge(out,p(points[i][0],points[i][1]),p(points[i][2],points[i][3]));
     }
 }
+#include "pose_editor_preview.inl"
 void tick(uptr pc) noexcept {
-    if(!enabled.load(std::memory_order_acquire)||lancerreload_runtime::stop_requested.load(std::memory_order_acquire))return;
+    gears_pose_editor::Config view{};
+    const bool connected=pose_editor_client::read(view,5)&&view.enabled;
+    const bool show_volumes=enabled.load(std::memory_order_acquire)||(connected&&gears_pose_editor::volumes(view));
+    const bool show_poses=connected&&gears_pose_editor::poses(view);
+    if((!show_volumes&&!show_poses)||lancerreload_runtime::stop_requested.load(std::memory_order_acquire))return;
     hand::Frame f{};hand::GripGameState game{};
     if(!weaponhand::client.copy_frame_on_gt(f,game)||f.controller.address!=pc||f.key.frame==last_frame||
        !game.known||!game.main_hand_held||game.animation_owns_hands||!draw::current(f))return;
@@ -121,17 +127,35 @@ void tick(uptr pc) noexcept {
     if(!gears_weapon::lancer_feed_world(m,feed)||!gears_weapon_lancer_foregrip::grip_in_mesh(support))return;
     const double size=std::hypot(std::hypot(double(m[0]),double(m[1])),double(m[2]));
     const V x{m[0]/size,m[1]/size,m[2]/size},y{m[4]/size,m[5]/size,m[6]/size};
-    std::array<Range,9> ranges{};unsigned count{};
+    std::array<Range,9> ranges{};std::array<line::Shape,9> authored_shapes{};unsigned count{};
     auto add=[&](unsigned id,unsigned kind,V center,double radius,double half,unsigned char r,unsigned char g,unsigned char b){
         if(count>=ranges.size()||!gears_vr::finite(center))return false;
         ranges[count++]={id,kind,center,feed.outward_axis,x,y,radius,half,r,g,b};return true;
+    };
+    const bool selected=lancerreload_contact::authored_profile_current(f);
+    const std::array<double,16> identity_delta{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+    const auto authored=[&](unsigned id,gears_lancer_authored_volume::Volume const* volume,
+        bool moving,std::array<double,16> const& delta){
+        if(!volume||count>=ranges.size())return false;
+        lancer_debug_volume::Wire shape{};
+        if(!lancer_debug_volume::volume_wire(*volume,units,size,m,moving,delta,shape)||!shape.count)return false;
+        V center{};
+        for(unsigned i=0;i<shape.count;++i)center=plus(center,plus(shape.lines[i].start,shape.lines[i].end));
+        center=scale(center,1./(2.*shape.count));
+        const auto slot=count;
+        if(!add(id,4,center,volume->radius*100.*size,0,255,40,40))return false;
+        for(unsigned i=0;i<shape.count;++i)if(!edge(authored_shapes[slot],shape.lines[i].start,shape.lines[i].end))return false;
+        return true;
     };
     if(!add(1,0,actual.right.right_grip.position,0,0,70,230,255)||!pose_axes(ranges[count-1],actual.right.right_grip))return;
     // support_geometry() is relative to the main grip; drawing it as world
     // coordinates would be wrong. Project the SAME controller Grip marker
     // through the actual gun component instead of its visible surface marker.
-    add(2,1,line::point(m,support),dim::support_radius*units,0,255,40,40);
-    if(!lancerreload_visual::active)add(3,2,plus(feed.point_raw,scale(feed.outward_axis,dim::magazine_axis_length*units*.5)),
+    if(selected&&gears_lancer_workbench_profile::support())(void)authored(2,gears_lancer_workbench_profile::support(),false,identity_delta);
+    else add(2,1,line::point(m,support),dim::support_radius*units,0,255,40,40);
+    if(!lancerreload_visual::active&&selected&&gears_lancer_workbench_profile::magazine())
+        (void)authored(3,gears_lancer_workbench_profile::magazine(),false,identity_delta);
+    else if(!lancerreload_visual::active)add(3,2,plus(feed.point_raw,scale(feed.outward_axis,dim::magazine_axis_length*units*.5)),
         dim::magazine_radius*units,dim::magazine_axis_length*units*.5,255,40,40);
     if(lancerreload_contact::resume_original&&lancerreload_visual::active&&lancerreload_visual::last_grab_known&&
        hand::same(f.weapon,lancerreload_visual::saved.weapon))
@@ -143,10 +167,24 @@ void tick(uptr pc) noexcept {
     // Acquisition is at the closed contact; the held E stroke is a separate
     // constrained motion, never an enlargement of this initial region.
     gears_weapon::SnubSlideGeometry front{};
-    if(gears_weapon::lancer_front::geometry(units,front))add(6,1,
+    if(selected&&gears_lancer_workbench_profile::charging()){
+        const auto& part=lancer_charging::region_part;const auto now=weaponhand::clock_ns(nullptr);
+        if(lancer_charging::current_geometry(f)&&part.known&&part.identity==lancer_charging::geometry.identity&&part.upload&&
+           lancerhandle_visual::ready_for(f)&&part.owner_handle==lancerhandle_visual::current_handle()&&
+           part.at_ns>0&&now>=part.at_ns&&now-part.at_ns<=100000000&&
+           part.raw>=0&&part.raw<=gears_weapon::lancer_front::travel_raw+.001){
+            auto delta=identity_delta;delta[13]=-part.raw;
+            (void)authored(6,gears_lancer_workbench_profile::charging(),true,delta);
+        }
+    }else if(gears_weapon::lancer_front::geometry(units,front))add(6,1,
         line::point(m,gears_weapon::lancer_front::contact_raw),front.contact_radius*units*size,0,255,40,40);
     lancersaw_visual::Observation saw{};
-    if(lancersaw_visual::observe(f,saw))add(7,1,saw.grasp,dim::starter_radius*units,0,255,40,40);
+    if(lancersaw_visual::observe(f,saw)){
+        if(selected&&gears_lancer_workbench_profile::starter()){
+            if(!std::memcmp(saw.gun.data(),m.data(),sizeof(m)))
+                (void)authored(7,gears_lancer_workbench_profile::starter(),true,saw.part_delta);
+        }else add(7,1,saw.grasp,dim::starter_radius*units,0,255,40,40);
+    }
     add(8,3,plus(feed.point_raw,scale(feed.outward_axis,(dim::snap_near+dim::snap_far)*units*.5)),
         dim::snap_radius*units,(dim::snap_far-dim::snap_near)*units*.5,80,220,255);
     add(9,3,plus(feed.point_raw,scale(feed.outward_axis,(dim::retain_near+dim::retain_far)*units*.5)),
@@ -157,8 +195,10 @@ void tick(uptr pc) noexcept {
     hand::ObjectIdentity line_fn{},sphere_fn{};
     if(!draw::line_call(f,line_call,line_fn)||!sphere_call(f,sphere,sphere_fn))return;
     last_frame=f.key.frame;
-    for(unsigned i=0;i<count;++i){auto const& r=ranges[i];line::Shape shape{};
-        if(r.kind==1){
+    if(show_poses)preview(f,actual,m,units,view,line_call,line_fn);
+    for(unsigned i=0;show_volumes&&i<count;++i){auto const& r=ranges[i];line::Shape shape{};
+        if(r.kind==4)shape=authored_shapes[i];
+        else if(r.kind==1){
             if(!call_current(f,sphere,sphere_fn)||!sphere.set(L"Center",playground::Vector{float(r.center.x),float(r.center.y),float(r.center.z)})
                 .set(L"Radius",float(r.radius)).set(L"R",r.r).set(L"G",r.g).set(L"B",r.b).valid||!sphere.run())return;
         }else if(!wire(r,units,shape))return;

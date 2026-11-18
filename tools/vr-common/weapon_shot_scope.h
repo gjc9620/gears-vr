@@ -129,12 +129,49 @@ public:
         }
         return false;
     }
+    // Separate projectile getter envelope. The hitscan/damage packet() above
+    // deliberately keeps its original role filter. This supplies call identity
+    // only; a gun-specific consumer still authenticates its asset and getter.
+    template<class Read>bool projectile_packet(ObjectIdentity const& weapon,
+            std::uintptr_t caller,Read read,Packet& out) const noexcept {
+        out={};auto const* layer=active();
+        if(!layer||!layer->shot.id||!gears_weapon_hand::same(layer->shot.weapon,weapon)||
+           (layer->shot.root!=Role::war_projectile&&layer->shot.root!=Role::engine_projectile))return false;
+        std::array<std::uintptr_t,gears_ui_call_boundary::frame_limit> seen{};
+        for(unsigned depth=0;depth<seen.size();++depth){
+            if(!caller||caller==layer->caller)return false;
+            for(unsigned i=0;i<depth;++i)if(seen[i]==caller)return false;
+            seen[depth]=caller;gears_ui_call_boundary::Frame frame{};
+            if(!gears_ui_call_boundary::frame(read,caller,frame))return false;
+            if(frame.node==layer->binding.identities[0].address&&frame.object==weapon.address&&
+               frame.previous==layer->caller&&script_pc(layer->binding,frame.code)){
+                out={call_,layer->shot.id,weapon,layer->shot.grip,layer->shot.root,
+                    layer->binding.identities[0],layer->binding.script_hash,layer->binding.role};return true;
+            }
+            caller=frame.previous;
+        }
+        return false;
+    }
     bool current(Packet const& packet) const noexcept {
         auto const* layer=active();
         return layer&&packet.call==call_&&packet.shot==layer->shot.id&&
             gears_weapon_hand::same(packet.weapon,layer->shot.weapon)&&packet.root==layer->shot.root&&
             same_grip(packet.grip,layer->shot.grip)&&gears_weapon_hand::same(packet.mode_function,layer->binding.identities[0])&&
             packet.script_hash==layer->binding.script_hash&&packet.mode==layer->binding.role;
+    }
+    // Receipt-only view at the currently returning invocation. Unlike packet(),
+    // this needs no inner VM caller: the Native subscriber supplies its exact
+    // active token. It never certifies a fresh pose or admits a result write.
+    bool invocation_packet(Token const& token,std::uintptr_t callee,
+                           ObjectIdentity const& weapon,Packet& out) const noexcept {
+        out={};auto const* layer=active();
+        if(!layer||!token.entered||token.call!=call_||
+           depth_!=std::uint64_t(token.previous_depth)+1||
+           !gears_weapon_hand::same(layer->shot.weapon,weapon)||
+           layer->binding.identities[0].address!=callee)return false;
+        out={call_,layer->shot.id,weapon,layer->shot.grip,layer->shot.root,
+            layer->binding.identities[0],layer->binding.script_hash,layer->binding.role};
+        return true;
     }
     bool binding(Binding& out,ObjectIdentity& weapon) const noexcept {
         auto const* layer=active();if(!layer)return false;

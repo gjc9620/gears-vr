@@ -1,3 +1,4 @@
+namespace boomshot_carrier_original {bool restore_visual() noexcept;bool render_visual(gears_committed_hand::Frame const&) noexcept;}
 namespace handrender {
 namespace wire=gears_committed_hand_consumer;
 thread_local bool entered{};
@@ -6,6 +7,7 @@ wire::Result consume(wire::Notice const& notice) noexcept {
     const auto& f=notice.frame;++notices;
     if(notice.kind==wire::Kind::revoke){
         if(nativelancerfollow::active())++revoked;
+        boomshot_carrier_original::restore_visual();
         nativelancerfollow::pre_original_tick(L"pre_compose");
         return nativelancerfollow::faulted?wire::Result::fault:wire::Result::unchanged;
     }
@@ -25,7 +27,8 @@ wire::Result consume(wire::Notice const& notice) noexcept {
     // before attachment matrices are consumed, just as the held gun does.
     // This callback performs no reload transition or inventory action.
     const bool magazine_changed=magazine_ready&&lancerreload_runtime::on_render_result(f,magazine_source);
-    const bool changed=gun_changed||magazine_changed;
+    const bool carrier_changed=boomshot_carrier_original::render_visual(f);
+    const bool changed=gun_changed||magazine_changed||carrier_changed;
     if(changed)++applied;
     if(log_file&&notices.load()<=12){fwprintf(log_file,L"native_hand_visual serial=%llu applied=%u notices=%llu total_applied=%llu revoked=%llu\n",
         f.serial,unsigned(changed),notices.load(),applied.load(),revoked.load());fflush(log_file);}

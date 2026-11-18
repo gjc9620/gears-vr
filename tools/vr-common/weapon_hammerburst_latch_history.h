@@ -1,14 +1,17 @@
 #pragma once
 #include "weapon_hammerburst_latch.h"
 #include <array>
+#include "controller_continuity_frame.h"
 
 namespace gears_weapon {
 // Motion facts only. The live caller must authenticate the original producer
 // ring, unchanged grab/context and fixed gun mount, and authorize the CURRENT
 // Frame independently. No history point is a Frame, lease, seek or bone ack.
+template<std::size_t N>
 inline HammerburstLatchMotion hammerburst_latch_history(
     HammerburstLatchStroke& stroke,HammerburstLatchSample const& current,
-    std::array<HammerburstLatchSample,9> const& original,unsigned count) noexcept {
+    std::array<HammerburstLatchSample,N> const& original,unsigned count) noexcept {
+    static_assert(N<=gears_hand_continuity::motion_history_capacity+1,"Actual producer bound");
     const auto same=[](HammerburstLatchSample const& a,HammerburstLatchSample const& b){
         return a.hand.x==b.hand.x&&a.hand.y==b.hand.y&&a.hand.z==b.hand.z&&
             a.sequence==b.sequence&&a.milliseconds==b.milliseconds&&

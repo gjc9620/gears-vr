@@ -120,7 +120,7 @@ public:
         previous_down_=true;
         const bool deferred=pending_since_>0;
         if(deferred&&(input.now_ns<=pending_last_||input.now_ns<pending_since_||
-           input.now_ns-pending_since_>100000000))return reject(LeftHandInteractionStatus::needs_release,false);
+           input.now_ns-pending_since_>500000000))return reject(LeftHandInteractionStatus::needs_release,false);
         if(deferred)pending_last_=input.now_ns;
         unsigned count=0;LeftHandInteractionLease incumbent{};
         for(auto const& lease:input.incumbents)if(lease.kind!=LeftHandInteraction::none){++count;incumbent=lease;}
@@ -149,7 +149,10 @@ public:
         //46860: the unresolved magazine pair initially hid an otherwise
         // valid fore-end proposal. Once that observation resolves, allow the
         // SAME undispatched press to acquire its uniquely certified support
-        // contact within the ORIGINAL100ms window. Unknown/ambiguous contact,
+        // contact within a bounded500ms press-intent window. This stores no
+        // pose or authority: the caller must still certify fresh actual contact
+        // under its unchanged source-age limits on the granting frame.
+        // Unknown/ambiguous contact,
         // another owner, ammo/cover, timeout or any real interruption still
         // cannot redirect the press. No incumbent has existed on this path.
         const bool resolved_support=chosen==LeftHandInteraction::support&&!request.magazine_observation_pending;

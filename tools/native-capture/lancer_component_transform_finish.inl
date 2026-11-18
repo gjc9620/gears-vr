@@ -71,13 +71,13 @@ bool invoke(uintptr_t method,uintptr_t component) noexcept {
         EXCEPTION_CONTINUE_SEARCH:EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 void finish(Entry const& e,bool returned,bool original_called) noexcept {
-    if(!pending.active||(e.kind!=0&&e.kind!=2))return;
+    if(!pending.active||(e.kind!=0&&e.kind!=2&&e.kind!=3))return;
     const auto p=pending;
     // The first opportunity is immediately after the CLOSED Compose and
     // broker callback return. Do not spend the original40ms input deadline
     // waiting for the rest of outer Tick. Outer Tick can finish only NEW
     // engine-pending work on this same still-current endpoint; never a replay.
-    if(e.kind==2)pending={};
+    if(e.kind==2||e.kind==3)pending={};
     const auto refuse=[](unsigned stage){++rejected;++rejection_stage[stage];};
     const bool entry=e.kind==0?e.invocation==endpoint_value.compose:e.invocation==p.tick;
     if(!returned||!original_called||!e.selected||!entry||e.thread!=GetCurrentThreadId()){refuse(0);return;}

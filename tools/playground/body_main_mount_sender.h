@@ -119,7 +119,8 @@ inline wire::Status response(wire::Request const& request,Parent const& parent,
     if(!policy::lancer::marcus115(g.geometry,g.model_scale,g.units_per_metre,profile))return wire::Status::unsupported_geometry;
     // The live observation reader admits only Frag in the hand-thrown branch;
     // Smoke/other thrown equipment do not inherit this visual profile.
-    out.hold_kind=observation.game.kind==hand::WeaponKind::hand_thrown?wire::HoldKind::frag:wire::HoldKind::firearm;
+    out.hold_kind=observation.boomshot?wire::HoldKind::boomshot:observation.game.kind==hand::WeaponKind::hand_thrown?wire::HoldKind::frag:
+        observation.boltok?wire::HoldKind::boltok:wire::HoldKind::firearm;
     out.query_id=request.query_id;out.hand_lifecycle=request.hand_lifecycle;out.action_generation=request.action_generation;
     out.source=wire::source_key(request.source);out.equipment_begin_ns=observation.begin_ns;out.equipment_end_ns=observation.end_ns;
     auto& m=out.mount;m.query_id=request.query_id;m.key=current.key;m.world=current.world;m.controller=current.controller;

@@ -3,12 +3,20 @@
 // the original PlayerTick runs. No tracking sample or game object is borrowed
 // across that original action; only the fixed grip-to-mesh mount survives.
 #include "../vr-common/hand_contact_equivalence.h"
+#include "../vr-common/weapon_boomshot_direction.h"
+#include "../vr-common/weapon_boomshot_owner_grabposes.h"
+#include "../vr-common/weapon_lancer_authored_support.h"
 #include "../vr-common/weapon_two_hand_hold.h"
 #include "../vr-common/weapon_lancer_foregrip.h"
 #include "../vr-common/weapon_hammerburst_foregrip.h"
+#include "../vr-common/weapon_longshot_foregrip.h"
 #include "../vr-common/weapon_lancer_wrist_mount.h"
 #include "../vr-common/weapon_lancer_sight_zero.h"
 #include "../vr-common/weapon_frag_grasp.h"
+#include "../vr-common/weapon_smoke_grasp.h"
+#include "../vr-common/weapon_boltok_main_grip.h"
+#include "../vr-common/weapon_boltok_aim_grip.h"
+#include "weapon_boltok_main_mount.inl"
 namespace unified_weapon_fire {
 bool held_socket_basis(gears_weapon_hand::Frame const&,uptr,
     std::array<float,16> const&,gears_vr::Matrix&) noexcept;
@@ -31,10 +39,44 @@ using State=gears_weapon::WeaponMeshComponentState<Key>;
 gears_weapon::WeaponMeshComponentLease<Key> lease;
 std::atomic<bool> visible{};
 bool faulted{};
-Key bound_key{};bool bound_key_known{},bound_is_lancer{},bound_is_frag{},bound_is_hammerburst{};
+Key bound_key{};bool bound_key_known{},bound_is_lancer{},bound_is_frag{},bound_is_smoke{},bound_is_hammerburst{},bound_is_longshot{},bound_is_boltok{},bound_is_torque_bow{},bound_is_hod{},bound_is_boomshot{};
 std::uint64_t bound_session{},bound_space{},bound_input{},bound_reference{},bound_world{};
 double bound_units{};
 gears_weapon::WeaponMeshFollow mount;
+bool bind_boomshot_main(gears_vr::Viewpoint const& right,std::array<float,16> const& observed_mesh,double units) noexcept {
+    const auto scale=std::hypot(std::hypot(double(observed_mesh[0]),double(observed_mesh[1])),double(observed_mesh[2]));
+    gears_vr::Quaternion q{};gears_vr::Pose gun{};
+    if(!gears_vr::rig_tracking::detail::quaternion(gears_vr::ue_matrix(right.rotation),q)||
+       !gears_boomshot_owner_grabposes::main_gun_from_grip({right.position,q},scale,units,1.,gun))return false;
+    const auto basis=gears_vr::rotation_matrix(gun.orientation);std::array<float,16> captured{};
+    for(unsigned axis=0;axis<3;++axis)for(unsigned world=0;world<3;++world)captured[axis*4+world]=float(basis[world][axis]*scale);
+    captured[12]=float(gun.position.x);captured[13]=float(gun.position.y);captured[14]=float(gun.position.z);captured[15]=1;
+    return mount.bind(right,captured);
+}
+gears_weapon::WeaponMeshFollow editor_baseline;
+std::uint64_t editor_mount_revision{};
+bool refresh_editor_mount() noexcept {
+    editor_mount_revision=0;
+    if(!bound_is_lancer)return true;
+    mount=editor_baseline;gears_pose_editor::Config edit{};
+    if(!pose_editor_client::read(edit))return true;
+    if(edit.enabled&&!editor_baseline.adjusted_contact(edit.palm,bound_units,mount))return false;
+    editor_mount_revision=edit.revision;return true;
+}
+bool refresh_boltok_aim_mount(rig::Frame const& prepared) noexcept {
+    auto const& input=prepared.controllers.hands[1];
+    if(!(prepared.world_pose_mask&rig::right_grip_pose)||
+       !gears_vr::controller_pose_usable(input.grip,input.grip_flags,input.grip_active)||
+       !gears_vr::controller_pose_usable(input.aim,input.aim_flags,input.aim_active))return false;
+    gears_vr::Pose aim{};
+    if(!gears_vr::rig_tracking::pose(prepared.base_view,prepared.reference,input.aim,prepared.units_per_metre,aim))return false;
+    const auto relative=gears_vr::normalized(gears_vr::multiply(
+        gears_vr::inverse(prepared.world_grip[1].orientation),aim.orientation));
+    const gears_vr::Pose delta{{},gears_vr::inverse(relative)};
+    // Recompute only a current mathematical relation from the immutable
+    // authored contact. No input, permission or previous world pose is cached.
+    return editor_baseline.adjusted_contact(delta,prepared.units_per_metre,mount);
+}
 // Committed endpoint positions are actual palm centres, but their axes are
 // evaluated Wrist axes. Every Lancer consumer reconstructing the held mesh
 // uses this same conversion, including reload contact/initial magazine pose.
@@ -44,8 +86,9 @@ bool endpoint_matrix(gears_vr::Pose const& palm,std::array<float,16>& out) noexc
        !gears_weapon_lancer_wrist_mount::grip_from_palm_endpoint(palm,grip))return false;
     return mount.model_matrix({grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))},out);
 }
-bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
-    if(!bound_key_known||(!bound_is_lancer&&!bound_is_hammerburst)||!mount.bound()||!hand::same(bound_key.weapon,f.weapon)||
+bool support_geometry_with_box(hand::Frame const& f,gears_vr::Pose& out,gears_weapon::SupportBox* box,
+    gears_weapon::SupportRegion* region=nullptr) noexcept try {
+    if(!bound_key_known||(!bound_is_lancer&&!bound_is_hammerburst&&!bound_is_longshot)||!mount.bound()||!hand::same(bound_key.weapon,f.weapon)||
        bound_key.hold_generation!=vrequip::model.hold_generation()||!std::isfinite(bound_units)||bound_units<10||bound_units>500||
        bound_session!=f.stereo.session||bound_space!=f.stereo.space_epoch||bound_input!=f.controllers.input_epoch||
        bound_reference!=f.reference_generation||bound_world!=f.key.world_generation)return false;
@@ -63,25 +106,56 @@ bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
     gears_hand_authored_mount::Mount left{};
     if(!gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
         gears_hand_authored_mount::Side::left,1,100,left))return false;
-    const auto wrist_in_gun=bound_is_hammerburst?gears_weapon_hammerburst_foregrip::wrist_in_mesh():gears_weapon_lancer_foregrip::wrist_in_mesh();
+    const auto wrist_in_gun=bound_is_longshot?gears_weapon_longshot_foregrip::wrist_in_mesh():
+        bound_is_hammerburst?gears_weapon_hammerburst_foregrip::wrist_in_mesh():gears_weapon_lancer_foregrip::wrist_in_mesh();
     gears_vr::Vector p{};
-    if(!(bound_is_hammerburst?gears_weapon_hammerburst_foregrip::grip_in_mesh(p):gears_weapon_lancer_foregrip::grip_in_mesh(p)))return false;
+    if(!(bound_is_longshot?gears_weapon_longshot_foregrip::grip_in_mesh(p):
+         bound_is_hammerburst?gears_weapon_hammerburst_foregrip::grip_in_mesh(p):gears_weapon_lancer_foregrip::grip_in_mesh(p)))return false;
     gears_vr::Pose pose{};
     pose.position={(gun[12]+p.x*gun[0]+p.y*gun[4]+p.z*gun[8])/bound_units,
         (gun[13]+p.x*gun[1]+p.y*gun[5]+p.z*gun[9])/bound_units,
         (gun[14]+p.x*gun[2]+p.y*gun[6]+p.z*gun[10])/bound_units};
     pose.orientation=gears_vr::normalized(gears_vr::multiply(gears_vr::multiply(gun_q,wrist_in_gun),
         gears_vr::inverse(left.calibration.grip_to_wrist_rotation)));
-    if(!gears_weapon_two_hand::geometry(pose))return false;out=pose;return true;
+    if(!gears_weapon_two_hand::geometry(pose))return false;
+    if(box){*box=bound_is_longshot?gears_weapon_longshot_foregrip::contact_box(basis):gears_weapon::SupportBox{};
+        if(box->enabled&&!box->valid())return false;}
+    if(region){
+        *region={};
+        if(bound_is_lancer)if(const auto authored=gears_lancer_workbench_profile::support()){
+            const gears_vr::Vector socket{pose.position.y,pose.position.z,-pose.position.x};
+            if(!gears_lancer_authored_support::from_asset(*authored,gun,bound_units,socket,*region))return false;
+            constexpr gears_vr::Matrix ue_to_xr{{{0,1,0},{0,0,1},{-1,0,0}}};
+            const auto axes=gears_vr::multiply(gears_vr::multiply(ue_to_xr,
+                gears_vr::rotation_matrix(pose.orientation)),gears_vr::transpose(ue_to_xr));
+            gears_vr::Quaternion grip_rotation{};
+            if(!gears_vr::rig_tracking::detail::quaternion(axes,grip_rotation))return false;
+            region->target_grip_in_mount={socket,grip_rotation};
+            const auto t=left.calibration.grip_to_wrist_metres;
+            region->wrist_offset_in_grip={t.y,t.z,-t.x};
+            region->snap_limits_enabled=gears_lancer_workbench_profile::support_snap_limits_enabled;
+            if(!region->valid())return false;
+        }
+    }
+    out=pose;return true;
 }catch(...){return false;}
+bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept {
+    if(playground::instance(f.weapon.address,L"Weap_Boomer_base"))return boomshot_runtime::support_geometry(f,out);
+    return support_geometry_with_box(f,out,nullptr);
+}
 bool fill_support_mount(hand::Frame const& f,hand::GripGameState& game) noexcept {
+    if(playground::instance(f.weapon.address,L"WEAP_HammerOfDawn"))return false;
+
     // Owner contract: neutral proximity fits the hand; only large-object
     // Grip, not an index-trigger pinch, may steer this secondary handguard.
     if(hand::index_pinch(f))return false;
-    gears_vr::Pose g{};if(!support_geometry(f,g))return false;
+    gears_vr::Pose g{};gears_weapon::SupportBox box{};gears_weapon::SupportRegion region{};
+    if(!support_geometry_with_box(f,g,&box,&region))return false;
     game.mount={};game.mount.support_grip_in_weapon={g.position.y,g.position.z,-g.position.x};
     game.mount.support_length_tolerance_metres=.22;game.mount.maximum_support_correction_radians=.8;
     game.acquire_metres=gears_weapon::lancer_contact::support_radius;game.release_metres=.22;game.mount_asset=bound_key.asset;
+    game.support_box=box;
+    game.support_region=region;
     game.mount_revision=bound_key.hold_generation;game.mount_known=game.mount.valid();return game.mount_known;
 }
 // Geometry only, never a retained action grant or live pose. Returning to an
@@ -114,6 +188,7 @@ struct Plan {
     bool valid{};
     rig::Frame prepared{};
     bool applied{};
+    std::uint64_t editor_revision{};
     std::uint64_t endpoint_serial{},endpoint_input{};
     gears_committed_hand::Frame endpoint_result{};
     bool render_owned{};
@@ -338,7 +413,7 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
     // ray is read-only and must not require first replacing that visible gun
     // with the stock attachment. Permit only the SAME bound Lancer/hold; the
     // complete current rig/basis check below still precedes its mount solve.
-    const bool read_owned_visual=phase==Phase::prepare_only&&(bound_is_lancer||bound_is_hammerburst)&&bound_key_known&&
+    const bool read_owned_visual=phase==Phase::prepare_only&&(bound_is_lancer||bound_is_hammerburst||bound_is_boltok||bound_is_torque_bow||bound_is_hod||bound_is_boomshot)&&bound_key_known&&
         lease.dirty()&&lease.key()==bound_key&&hand::same(bound_key.weapon,source.weapon)&&
         bound_key.hold_generation==vrequip::model.hold_generation();
     if(faulted||(lease.dirty()&&!read_owned_visual)||!nativeequipment::current(nullptr,source)){
@@ -357,6 +432,14 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
     if(read.status!=nativeequipment_rig::Status::ready||!(prepared.world_pose_mask&rig::right_grip_pose)||
        !gears_vr::stereo_pose_valid(prepared.world_grip[1])){++rejections;return;}
     auto grip=prepared.world_grip[1];
+    if(playground::instance(source.weapon.address,L"Weap_Boomer_base")){
+        const auto& aim_input=prepared.controllers.hands[1];gears_vr::Pose aim_pose{};
+        if(gears_vr::controller_pose_usable(aim_input.aim,aim_input.aim_flags,aim_input.aim_active)){
+            if(!gears_vr::rig_tracking::pose(prepared.base_view,prepared.reference,aim_input.aim,prepared.units_per_metre,aim_pose)){++rejections;return;}
+            grip.orientation=aim_pose.orientation;
+        }
+    }
+
     gears_vr::Viewpoint right{grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))};
     const bool same_basis=bound_key_known&&hand::same(bound_key.weapon,source.weapon)&&
         bound_key.hold_generation==held&&bound_session==prepared.stereo.session&&
@@ -369,7 +452,9 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         const auto basic=lancermain_asset::read(source,asset,lancermain_asset::AssetScope::basic_hold);
         const bool is_frag=basic!=lancermain_asset::Status::ready&&
             lancermain_asset::read(source,asset,lancermain_asset::AssetScope::frag_hold)==lancermain_asset::Status::ready;
-        if((basic!=lancermain_asset::Status::ready&&!is_frag)||
+        const bool is_smoke=basic!=lancermain_asset::Status::ready&&!is_frag&&
+            lancermain_asset::read(source,asset,lancermain_asset::AssetScope::smoke_hold)==lancermain_asset::Status::ready;
+        if((basic!=lancermain_asset::Status::ready&&!is_frag&&!is_smoke)||
            !nativeequipment::attached_frame(source,asset.component.address)){
             ++rejections;return;
         }
@@ -383,9 +468,19 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         // orientation; no pistol/Hammerburst muzzle eligibility is implied.
         lancermain_asset::Evidence lancer{};
         const bool is_lancer=lancermain_asset::read(source,lancer)==lancermain_asset::Status::ready;
-        bound_is_lancer=is_lancer;bound_is_frag=is_frag;
+        bound_is_lancer=is_lancer;bound_is_frag=is_frag;bound_is_smoke=is_smoke;
         bound_is_hammerburst=basic==lancermain_asset::Status::ready&&
             playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle");
+        bound_is_longshot=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"Weap_SniperRifle");
+        bound_is_boltok=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"Weap_LocustPistol");
+        bound_is_torque_bow=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"Weap_Bow_base");
+        bound_is_hod=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"WEAP_HammerOfDawn");
+        bound_is_boomshot=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"Weap_Boomer_base");
         bool restored_geometry=false;
         for(const auto& saved:saved_mounts){
             if(saved.known&&hand::same(saved.key.weapon,key.weapon)&&
@@ -399,21 +494,38 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         }
         gears_vr::Matrix measured_basis{},wrist_in_mesh{};
         gears_vr::Vector palm_in_mesh{};
-        gears_weapon_frag_grasp::Profile frag{};
+        gears_weapon_frag_grasp::Profile frag{};gears_weapon_smoke_grasp::Profile smoke{};
         const double frag_scale=std::hypot(std::hypot(double(matrix[0]),double(matrix[1])),double(matrix[2]));
         // Never fit the Lancer contact to the tracked grip at pickup: the
         // original gun may still be in the switching animation. Preserve the
         // authored palm marker used by Native, independently of that distance.
+        const bool is_hod=basic==lancermain_asset::Status::ready&&playground::instance(source.weapon.address,L"WEAP_HammerOfDawn");
+        const bool is_gnasher=basic==lancermain_asset::Status::ready&&playground::instance(source.weapon.address,L"Weap_Shotgun");
         const bool bound=restored_geometry||(is_frag?
             (gears_weapon_frag_grasp::marcus115(gears_hand_authored_mount::marcus115_signature,1,prepared.units_per_metre,frag,frag_scale)&&
              mount.bind_mount(right,matrix,frag.palm_in_mesh,frag.wrist_in_mesh,
-                 gears_vr::rotation_matrix(frag.hand.calibration.grip_to_wrist_rotation))):is_lancer?
+                 gears_vr::rotation_matrix(frag.hand.calibration.grip_to_wrist_rotation))):is_smoke?
+            (gears_weapon_smoke_grasp::marcus115(gears_hand_authored_mount::marcus115_signature,1,prepared.units_per_metre,smoke,frag_scale)&&
+             mount.bind_mount(right,matrix,smoke.palm_in_mesh,smoke.wrist_in_mesh,
+                 gears_vr::rotation_matrix(smoke.hand.calibration.grip_to_wrist_rotation))):is_lancer?
             (gears_weapon_lancer_contact::authored(palm_in_mesh,wrist_in_mesh)&&
              unified_weapon_fire::held_socket_basis(source,key.component.address,matrix,measured_basis)&&
              mount.bind_mount(right,matrix,palm_in_mesh,gears_vr::transpose(measured_basis),
                  gears_vr::rotation_matrix(gears_weapon_lancer_wrist_mount::gun_pitch_down))):
+            bound_is_boltok?
+            boltok_main_mount::bind(source,right,matrix,prepared.units_per_metre,mount):
+            bound_is_torque_bow?
+            torquebow_main_mount::bind(source,right,matrix,prepared.units_per_metre,mount):
+            is_gnasher?
+            // Same source-derived raw grip used by the Gnasher recognizer;
+            // no transient original hand-bone or switching-pose recapture.
+            mount.bind_mount(right,matrix,gears_weapon_gnasher_hold::right_grip_mesh_raw.position,
+                gears_vr::rotation_matrix(gears_weapon_gnasher_hold::right_grip_mesh_raw.orientation),
+                gears_vr::Matrix{{{1,0,0},{0,1,0},{0,0,1}}}):
+            playground::instance(source.weapon.address,L"Weap_Boomer_base")?
+            bind_boomshot_main(right,matrix,prepared.units_per_metre):
             (unified_weapon_fire::held_socket_basis(source,key.component.address,matrix,measured_basis)&&
-             mount.bind_oriented(right,matrix,measured_basis)));
+             mount.bind_oriented(right,matrix,is_hod?gears_weapon_hod_geometry::mesh_in_hand(measured_basis):measured_basis)));
         if(!bound){++rejections;return;}
         if(!restored_geometry){
             auto& saved=saved_mounts[next_saved_mount++%saved_mounts.size()];
@@ -426,11 +538,16 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         bound_space=prepared.stereo.space_epoch;bound_input=prepared.controllers.input_epoch;
         bound_reference=prepared.reference_generation;bound_world=prepared.world_generation;
         bound_units=prepared.units_per_metre;
+        editor_baseline=mount;
     }
+    // Always derive from the saved authored baseline, never accumulate edits.
+    // All subsequent contact, model_matrix and muzzle users share this mount.
+    if(!refresh_editor_mount())return;
+    if(bound_is_boltok&&!refresh_boltok_aim_mount(prepared)){++rejections;return;}
     // Frag is visual-only here. Its sole component writer consumes the actual
     // current C0 result below; a raw-controller PostPlayerTick never moves it
     // independently from the rendered reach-resolved hand or grants a shot.
-    if(bound_is_frag)return;
+    if(bound_is_frag||bound_is_smoke)return;
     gears_committed_hand::Frame endpoint{};
     // When a current reach-resolved hand result exists, both the shot and
     // visual mesh use that same palm. A shot must not REQUIRE a later render
@@ -468,7 +585,7 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
             right={grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))};
         }else endpoint={};
     }
-    if(!endpoint.serial&&(bound_is_lancer||bound_is_hammerburst)&&(prepared.world_pose_mask&rig::left_grip_pose)){
+    if(!endpoint.serial&&(bound_is_lancer||bound_is_hammerburst||bound_is_longshot||playground::instance(source.weapon.address,L"Weap_Boomer_base"))&&(prepared.world_pose_mask&rig::left_grip_pose)){
         hand::GripSnapshot snapshot{};gears_vr::Pose geometry{};gears_weapon_two_hand::Solution supported{};
         const bool snapshot_known=weaponhand::client.snapshot_on_gt(snapshot);
         if(!snapshot_known&&source.left_grip_down&&log_file&&support_withdrawal_rows<8){
@@ -490,11 +607,15 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         if(endpoint.serial&&log_file&&endpoint_stage_logs<12){fwprintf(log_file,L"native_lancer_endpoint_plan_failed serial=%llu grip=%.9g,%.9g,%.9g quat=%.9g,%.9g,%.9g,%.9g\n",endpoint.serial,grip.position.x,grip.position.y,grip.position.z,grip.orientation.x,grip.orientation.y,grip.orientation.z,grip.orientation.w);fflush(log_file);++endpoint_stage_logs;}
         ++rejections;return;
     }
+    if(gnasher_runtime::correct_main(source,prepared,target)==gnasher_runtime::MainResult::rejected){
+        ++rejections;return;
+    }
     if(!gears_vr::finite(target.position)){
         ++rejections;return;
     }
     plan={source,key,target,grip,prepared.publication_sequence,true};
     plan.prepared=prepared;
+    plan.editor_revision=editor_mount_revision;
     plan.endpoint_serial=endpoint.serial;plan.endpoint_input=endpoint.controllers.sequence;
     plan.endpoint_result=endpoint;
     endpoint_stage(9,plan);
@@ -586,7 +707,7 @@ bool render_current(Plan const& p,unsigned* diagnostic=nullptr) noexcept {
           f.purpose==gears_committed_hand::Purpose::observed_held_visual)&&
          vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)&&
          vrequip::model.hold_generation()==f.hold_generation&&p.key.hold_generation==f.hold_generation);
-    if(!p.render_owned||(!bound_is_lancer&&!bound_is_frag&&!bound_is_hammerburst)||!bound_key_known||!(p.key==bound_key)||
+    if(!p.render_owned||(!bound_is_lancer&&!bound_is_frag&&!bound_is_smoke&&!bound_is_hammerburst&&!bound_is_boltok&&!bound_is_torque_bow&&!bound_is_hod&&!bound_is_boomshot)||!bound_key_known||!(p.key==bound_key)||
        !enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
        !weaponhand::client.registration_alive(f.parent.registration_cookie,f.parent.native_started_qpc)||
        !eligible||
@@ -614,7 +735,7 @@ void apply() noexcept {
     if(!plan.valid||plan.applied)return;
     // Certified Lancer visual writes belong to the actual C0 result callback.
     // PostPlayerTick still prepares authoritative shots and binds geometry.
-    if((bound_is_lancer||bound_is_frag||bound_is_hammerburst)&&!plan.render_owned)return;
+    if((bound_is_lancer||bound_is_frag||bound_is_smoke||bound_is_hammerburst||bound_is_boltok||bound_is_torque_bow||bound_is_hod||bound_is_boomshot)&&!plan.render_owned)return;
     const Plan wanted_plan=plan;
     const auto& source=wanted_plan.source;
     const auto& key=wanted_plan.key;
@@ -634,8 +755,7 @@ void apply() noexcept {
         endpoint_stage(1,wanted_plan);
         ++rejections;return;
     }
-    State initial{};
-    if(!value_of(key,initial)||!(wanted_plan.render_owned?render_current(wanted_plan):nativeequipment::attached_frame(source,key.component.address))){
+    if(!(wanted_plan.render_owned?render_current(wanted_plan):nativeequipment::attached_frame(source,key.component.address))){
         endpoint_stage(2,wanted_plan);
         ++rejections;return;
     }
@@ -657,12 +777,14 @@ void apply() noexcept {
     if(!std::isfinite(position.x)||!std::isfinite(position.y)||!std::isfinite(position.z)){
         ++rejections;return;
     }
-    Value wanted=initial.value;wanted.absolute[0]=wanted.absolute[1]=true;
-    std::memcpy(wanted.translation.data(),&position,12);
-    std::memcpy(wanted.rotation.data(),&rotation,12);
     Backend backend{key};
     if(!endpoint_current()){endpoint_stage(5,wanted_plan);++rejections;return;}
-    const bool written=lease.acquire(key,wanted,backend);
+    const bool written=lease.acquire_from_current(key,backend,[&](Value const& current){
+        Value wanted=current;wanted.absolute[0]=wanted.absolute[1]=true;
+        std::memcpy(wanted.translation.data(),&position,12);
+        std::memcpy(wanted.rotation.data(),&rotation,12);
+        return wanted;
+    });
     if(!written||!source_current()||!endpoint_current()){
         endpoint_stage(4,wanted_plan);
         if(lease.dirty())pre_original_tick();
@@ -670,6 +792,7 @@ void apply() noexcept {
         ++rejections;return;
     }
     plan.applied=true;
+    if(bound_is_lancer)pose_editor_client::receipt(plan.editor_revision,source.key.frame);
     endpoint_stage(0,wanted_plan);
     ++commits;visible.store(lease.dirty(),std::memory_order_release);
     if(wanted_plan.departing&&log_file&&departing_logs<4){
@@ -725,7 +848,7 @@ bool render_rejected(gears_committed_hand::Frame const& f,unsigned stage,unsigne
     // Failure-only extension of the existing limited endpoint receipts. It
     // performs no new game reads and is private-simulator-only. Startup
     // successes cannot exhaust it before the observed C transition.
-    if(log_file&&render_rejection_rows<16&&(bound_is_lancer||bound_is_hammerburst)&&bound_key_known&&
+    if(log_file&&render_rejection_rows<16&&(bound_is_lancer||bound_is_hammerburst||bound_is_boltok||bound_is_torque_bow||bound_is_hod||bound_is_boomshot)&&bound_key_known&&
        hand::same(bound_key.weapon,f.weapon)&&f.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated){
         ++render_rejection_rows;const auto now=weaponhand::clock_ns(nullptr);
         fwprintf(log_file,L"native_lancer_render_rejected stage=%u detail=%u serial=%llu tick=%llu compose=%llu input=%llu sync_ns=%lld observed_ns=%lld age_ns=%lld purpose=%u dirty=%u faulted=%u bound_hold=%llu result_hold=%llu enabled=%u\n",
@@ -734,14 +857,18 @@ bool render_rejected(gears_committed_hand::Frame const& f,unsigned stage,unsigne
     return false;
 }
 bool on_render_result(gears_committed_hand::Frame const& f) noexcept {
-    if(faulted||(!bound_is_lancer&&!bound_is_frag&&!bound_is_hammerburst)||!bound_key_known||!mount.bound())return render_rejected(f,1);
+    if(faulted||(!bound_is_lancer&&!bound_is_frag&&!bound_is_smoke&&!bound_is_hammerburst&&!bound_is_boltok&&!bound_is_torque_bow&&!bound_is_hod&&!bound_is_boomshot)||!bound_key_known||!mount.bound())return render_rejected(f,1);
     // Revoke/normal pre-PlayerTick must have settled the sole old lease.
     if(lease.dirty())return render_rejected(f,2);
     gears_vr::Pose endpoint_grip{};
-    const bool converted=bound_is_frag?gears_weapon_frag_grasp::grip_from_palm_endpoint(f.right_grip,endpoint_grip):
+    const bool converted=bound_is_boltok?
+        (endpoint_grip=f.right_grip,gears_vr::stereo_pose_valid(endpoint_grip)):
+        bound_is_frag?gears_weapon_frag_grasp::grip_from_palm_endpoint(f.right_grip,endpoint_grip):
         gears_weapon_lancer_wrist_mount::grip_from_palm_endpoint(f.right_grip,endpoint_grip);
     if(!converted)return render_rejected(f,3);
+    if(!refresh_editor_mount())return render_rejected(f,7);
     Plan next{};next.key=bound_key;next.right_grip=endpoint_grip;next.endpoint_result=f;
+    next.editor_revision=editor_mount_revision;
     next.endpoint_serial=f.serial;next.endpoint_input=f.controllers.sequence;next.render_owned=true;
     next.departing=f.purpose==gears_committed_hand::Purpose::free_hand_visual;
     // Metadata/log carrier ONLY. No timestamp is synthesized and this carrier
@@ -752,7 +879,10 @@ bool on_render_result(gears_committed_hand::Frame const& f) noexcept {
     const gears_vr::Viewpoint grip{endpoint_grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(endpoint_grip.orientation))};
     unsigned gate{};
     if(!render_current(next,&gate))return render_rejected(f,4,gate);
-    if(!mount.solve(grip,next.target))return render_rejected(f,5);
+    // Native's Boltok endpoint already has Aim-oriented wrist axes and the
+    // actual palm centre. The neutral baseline avoids applying Aim twice.
+    const auto& render_mount=bound_is_boltok?editor_baseline:mount;
+    if(!render_mount.solve(grip,next.target))return render_rejected(f,5);
     next.valid=true;plan=next;apply();return plan.applied?true:render_rejected(f,6,last_apply_stage);
 }
 } // namespace nativelancerfollow

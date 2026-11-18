@@ -412,7 +412,15 @@ bool read_cover_heading(gears_anchor::Receipt const* scene,cover_neutral_eye_liv
         }
         copy.anchor.neutral_eye_world=eye.neutral_eye_world;
         if(!gears_vr::cover_view_basis(copy.anchor))return deny();
-        output=copy.anchor;++heading_used;return true;
+        // Enter cover facing its authenticated wall basis. Keeping the old
+        // standing heading here points the HMD and hand targets behind the
+        // newly wall-facing body. Physical HMD delta remains independent in
+        // prepare_cover/rig_tracking::pose; no controller or Pawn aim is changed.
+        if(!gears_cover_pose_role::c0_exclusive||!cover_camera_live::facing.ready||
+           !cover_camera_live::same_key(cover_camera_live::facing.key,eye))return deny();
+        const auto aligned=cover_input_live::wall_anchor(eye);
+        if(!gears_vr::cover_view_basis(aligned))return deny();
+        output=aligned;++heading_used;return true;
     }catch(...){return deny();}
 }
 bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& stereo,double units,gears_vr::CoverViewResult& output) noexcept {Call call;

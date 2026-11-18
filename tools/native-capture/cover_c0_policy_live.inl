@@ -48,7 +48,7 @@ bool cover_publication_current(Publication const& p){
 template<class Source>bool prepare_cover_source(Entry const& e,Source const& source){
     auto& s=n::state;cg::State drag{};cover_context_live::CurrentKey before{},after{};
     a::Policy policy{};policy.now_ns=rig::clock_ns();policy.allow_sim=simulator_operator;
-    policy.scope=b::Scope::fixed_cover;policy.posture=b::Posture::preserve_c0;
+    policy.scope=b::Scope::fixed_cover;policy.posture=b::Posture::reference_neutral;
     if(!cover_full_goal_live::read_committed(drag)||!cg::domain(drag,source,policy)||
        !cover_binding(s.context.actor,s.context.source,before)){cover_reason=1;return false;}
     if(a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,

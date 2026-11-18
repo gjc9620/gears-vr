@@ -122,8 +122,8 @@ bool retain_charging_during_pose_gap(uptr pc) noexcept {
        charging_hold!=vrequip::model.hold_generation()||
        !vrequip::model.held_for(charging_parent.world.address,charging_parent.pawn.address,charging_parent.weapon.address)||
        !weaponhand::client.existing_action_lifetime_on_gt(charging_lifetime))return false;
-    const auto begin=weaponhand::clock_ns(nullptr);hand::GripGameState game{};
-    if(begin<=0||!weaponhand::observe_source(nullptr,charging_parent,begin,game)||
+    const auto begin=weaponhand::clock_ns(nullptr);weaponhand::HoldSourceObservation game{};
+    if(begin<=0||!weaponhand::observe_hold_source(nullptr,charging_parent,begin,game)||
        !game.known||!game.main_hand_held||game.busy||game.animation_owns_hands)return false;
     gears_vr::StereoSample stereo{};gears_vr::ControllerInputFrame input{};
     gears_hand_continuity::TrackedInput tracked{};gears_hand_continuity::Publisher publisher{};
@@ -161,8 +161,8 @@ bool retain_magazine_during_pose_gap(uptr pc) noexcept {
        magazine_hold!=vrequip::model.hold_generation()||!lancerreload_visual::alive()||
        !vrequip::model.held_for(magazine_parent.world.address,magazine_parent.pawn.address,magazine_parent.weapon.address)||
        !weaponhand::client.existing_action_lifetime_on_gt(magazine_lifetime))return false;
-    const auto begin=weaponhand::clock_ns(nullptr);hand::GripGameState game{};
-    if(begin<=0||!weaponhand::observe_source(nullptr,magazine_parent,begin,game)||
+    const auto begin=weaponhand::clock_ns(nullptr);weaponhand::HoldSourceObservation game{};
+    if(begin<=0||!weaponhand::observe_hold_source(nullptr,magazine_parent,begin,game)||
        !game.known||!game.main_hand_held||game.busy||game.animation_owns_hands)return false;
     gears_vr::StereoSample stereo{};gears_vr::ControllerInputFrame input{};
     gears_hand_continuity::TrackedInput tracked{};gears_hand_continuity::Publisher publisher{};
@@ -214,8 +214,11 @@ void observe_magazine_notify(uptr object,uptr function) noexcept {
         weaponhand::clock_ns(nullptr));fflush(log_file);}
 }
 void switch_dispatched(hand::Frame const& source) noexcept {
+    gnasher_state::switch_dispatched(source);
     hammerburst_runtime::switch_dispatched(source);
     snub_runtime::switch_dispatched(source);
+    longshot_runtime::switch_dispatched(source);
+    boltok_runtime::switch_dispatched(source);
     // The equipment owner already authenticated and dispatched this call.
     // Record its outcome before it invalidates the next hand publication.
     if(GetCurrentThreadId()==game_thread.load(std::memory_order_acquire)&&stage!=Stage::idle&&
@@ -307,7 +310,7 @@ bool cleanup(unsigned reason,bool keep_seated_grasp=false) noexcept {
     inv::Request pending_request{};
     if(transaction.dispatched_request(pending_request)&&
        !lancerreload_state::restore_partial_insert(pending_request,observer))return false;
-    const bool state=lancerreload_state::recover_owned();
+    const bool state=lancerreload_state::recover_serial(reload_serial);
     if(!charging||!visual||!state||!reconcile_after_exit())return false;
     const bool seated=keep_seated_grasp&&lancerreload_contact::held_after_frame&&
         lancerreload_contact::held.id&&lancerreload_contact::held_identity.valid();
@@ -365,7 +368,7 @@ bool park_owned_reload(bool preserve_charging_state=false) noexcept {
             // ownership until a fresh release/grasp resumes this same hold.
             // Equipment switching still performs the original normal exit.
             if(preserve_charging_state){if(!lancerreload_state::owned_state())return false;}
-            else if(!lancerreload_state::recover_owned())return false;
+            else if(!lancerreload_state::recover_serial(reload_serial))return false;
         }
         completion_exited=!lancerreload_state::lease.acquired;
         parked_charging=true;lancerreload_contact::release();clear_charging_pin();
@@ -377,7 +380,7 @@ bool park_owned_reload(bool preserve_charging_state=false) noexcept {
     if(!lancerreload_visual::stow())return false;
     if(stage==Stage::holding_original&&!transaction.stow_original(original_item))return false;
     if(stage==Stage::holding_new&&!transaction.release_item(replacement_item))return false;
-    if(!lancerreload_state::recover_owned()||!transaction.interrupt())return false;
+    if(!lancerreload_state::recover_serial(reload_serial)||!transaction.interrupt())return false;
     bool display_changed{};
     if(!lancerreload_visual::hide_parked(display_changed))return false;
     parked_display_hold=saved.identity.hold_generation;
@@ -387,7 +390,8 @@ bool park_owned_reload(bool preserve_charging_state=false) noexcept {
     stage=Stage::parked;return true;
 }
 bool blocks_fire(hand::ObjectIdentity const& weapon) noexcept {
-      return lancer_charging::blocks_fire(weapon)||hammerburst_runtime::blocks_fire(weapon)||snub_runtime::blocks_fire(weapon)||
+    if(gnasher_fire::blocks_fire(weapon))return true;
+      return lancer_charging::blocks_fire(weapon)||longshot_runtime::blocks_fire(weapon)||hammerburst_runtime::blocks_fire(weapon)||snub_runtime::blocks_fire(weapon)||boltok_runtime::blocks_fire(weapon)||
           lancersaw_starter::blocks_fire(weapon)||
         (stage!=Stage::idle&&hand::same(weapon,transaction.inventory().identity.weapon));
 }
@@ -407,6 +411,7 @@ bool stow_ready(hand::Frame const& f) noexcept {
         lancerreload_visual::active&&lancerreload_visual::alive();
 }
 bool prepare_stow(hand::Frame const& f,bool& changed) noexcept {
+    if(hammerburst_runtime::park_control::owns_stow(f))return hammerburst_runtime::park_control::prepare_stow(f,changed);
     changed=false;if(!needs_priority()||stow_ready(f))return true;
     if(stage==Stage::holding_original||stage==Stage::holding_new||stage==Stage::waiting_ammo){
         // A genuine shoulder press may suspend an accepted magazine reload,
@@ -432,7 +437,7 @@ bool prepare_stow(hand::Frame const& f,bool& changed) noexcept {
         // reject forever because it is already parked. The existing equipment
         // handoff reacquires a fresh Frame after changed=true. This neither
         // charges the gun nor changes ammo, identity or the reward clock.
-        if(!lancerreload_state::owned_state()||!lancerreload_state::recover_owned())return false;
+        if(!lancerreload_state::owned_state()||!lancerreload_state::recover_serial(reload_serial))return false;
         completion_exited=!lancerreload_state::lease.acquired;
         if(!completion_exited)return false;
         changed=true;return true;
@@ -525,7 +530,7 @@ void step(uptr pc) noexcept {
             // activate its short result display; this is no action authority.
             lancerreload_ui::stage_completion();
             if(!owned.acquired||owned.serial!=reload_serial||!(owned.identity==completion.identity)||
-               !lancerreload_state::recover_owned()){
+               !lancerreload_state::recover_serial(reload_serial)){
                 transaction.require_reconciliation();cleanup(__LINE__);return;
             }
             completion_exited=true;return;
@@ -841,6 +846,7 @@ void step(uptr pc) noexcept {
     observe_wait(1);
     if(source.press_token!=logged_press&&log_file){
         logged_press=source.press_token;const auto& g=lancerreload_contact::last_geometry;
+        const auto& cohort=lancerreload_contact::cohort_failure;
         // This exact already-authenticated observation is also the committed
         // no-candidate observation (copy_frame compares it before returning).
         // Pure geometry/POD only, once per existing press row: distinguish a
@@ -848,13 +854,15 @@ void step(uptr pc) noexcept {
         // read, sample, input edge or permission is introduced for this row.
         double support_distance=-1;
         const bool support_contact=hand::support_contact(source,game,false,&support_distance);
-        fwprintf(log_file,L"lancer_reload_grip token=%llu decision=%u lease=%u sample_failure=%u match=%u depth=%.6g lateral=%.6g axis=%.6g clock=%.6g frame=%llu source_sequence=%llu source_age_ns=%lld support_contact=%u support_distance_m=%.9g mount_known=%u mount_valid=%u magazine_pending=%u magazine_candidate=%u ammo_candidate=%u control=%u\n",
+        fwprintf(log_file,L"lancer_reload_grip token=%llu decision=%u lease=%u sample_failure=%u match=%u depth=%.6g lateral=%.6g axis=%.6g clock=%.6g frame=%llu source_sequence=%llu source_age_ns=%lld support_contact=%u support_distance_m=%.9g mount_known=%u mount_valid=%u magazine_pending=%u magazine_candidate=%u ammo_candidate=%u control=%u cohort=%u pair_sequence=%llu request_sequence=%llu pair_sync_ns=%lld request_sync_ns=%lld pair_control=%u pair_active=%u request_active=%u pair_press=%u request_press=%u pair_release=%u request_release=%u pair_down=%u request_down=%u\n",
             logged_press,unsigned(decision.status),unsigned(decision.lease.kind),lancerreload_contact::sample_failure,
             lancerreload_contact::match_status,g.depth_raw,g.lateral_raw,g.axis_alignment,g.clock_alignment,
             source.key.frame,source.controllers.sequence,weaponhand::clock_ns(nullptr)-source.controllers.sync_ns,
             unsigned(support_contact),support_distance,unsigned(game.mount_known),unsigned(game.mount.valid()),
             unsigned(game.magazine_observation_pending),unsigned(game.request_magazine),unsigned(game.request_ammo),
-            source.interaction_control);fflush(log_file);
+            source.interaction_control,cohort.why,cohort.old_sequence,cohort.new_sequence,
+            cohort.old_sync,cohort.new_sync,cohort.control,cohort.old_active,cohort.new_active,
+            cohort.old_press,cohort.new_press,cohort.old_release,cohort.new_release,cohort.old_down,cohort.new_down);fflush(log_file);
         if(!lancerreload_contact::sample_failure){
             const auto& a=lancerreload_contact::last_actual;const auto p=a.left_grip.position,w=a.left_wrist.position;
             const auto r=a.right.right_grip.position,m=lancerreload_contact::last_magazine_position;
@@ -1186,13 +1194,12 @@ bool idle_support_only(hand::Frame const& source,hand::GripGameState const& game
     lancerreload_ui::service();
     return nativeequipment::current(nullptr,source);
 }
-void tick(uptr pc) noexcept {
-    if(hammerburst_runtime::tick(pc))return;
-    if(snub_runtime::tick(pc))return;
+void tick_selected(uptr pc) noexcept {
     const auto before=stage;
     step(pc);
     lancerreload_visual::extraction_display_enabled=!tracking_suspended&&!equipment_switch_dispatched&&stage==Stage::extracting;
-    lancerreload_visual::set_insertion_assist(!tracking_suspended&&!equipment_switch_dispatched&&
+    lancerreload_visual::set_insertion_assist(gears_lancer_workbench_profile::allow_insertion_assist()&&
+        !tracking_suspended&&!equipment_switch_dispatched&&
         (stage==Stage::holding_original||stage==Stage::holding_new));
     if(before!=stage&&log_file){
         report_insertion();
@@ -1203,6 +1210,13 @@ void tick(uptr pc) noexcept {
         fflush(log_file);
     }
 }
+bool pending_work() noexcept {return stage!=Stage::idle||pending_start.frame||park_pending;}
+// Existing original-state obligations are retired independently of selection.
+void service_unselected(uptr pc,uptr selected) noexcept {
+    const auto owner=transaction.inventory().identity.weapon.address;
+    if((stage!=Stage::idle||pending_start.frame)&&(!owner||owner!=selected))tick_selected(pc);
+}
+void tick(uptr pc) noexcept; // Composition root, after concrete consumers.
 bool prepare_render_result(gears_committed_hand::Frame const& result,hand::Frame& source) noexcept {
     // Collect the actual completed pair BEFORE gun component setters spend its
     // original acquisition deadline. This only queues observations for the

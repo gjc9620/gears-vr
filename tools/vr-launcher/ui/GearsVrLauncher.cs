@@ -78,8 +78,8 @@ namespace GearsVrUi {
             "查看实际尺寸",
             "渲染倍率必须为 0.25–2.0 的数字；构建能力必须为布尔值。",
             "实验版本 · VR 使用运行时推荐尺寸 × 渲染倍率\r\n桌面镜像尺寸独立；请手动进入关卡。",
-            "双目新帧：-- FPS（等待数据）",
-            "双目新帧：",
+            "游戏画面：-- FPS（等待实际提交数据）",
+            "游戏画面：",
             "OpenXR 循环：",
             "第一人称预览",
             "启用 L3＋R3 / E＋R 切换；保留枪身后坐力",
@@ -158,8 +158,8 @@ namespace GearsVrUi {
             "Check eye size",
             "Render scale must be a number from 0.25 to 2.0; build capability must be boolean.",
             "Experimental build · VR uses runtime recommended size × render scale\r\nDesktop mirror resolution is independent. Enter a level manually.",
-            "New stereo frames: -- FPS (waiting for data)",
-            "New stereo frames: ",
+            "Game frames: -- FPS (waiting for actual submissions)",
+            "Game frames: ",
             "OpenXR loop: ",
             "First person preview",
             "L3 + R3 / E + R toggle; weapon recoil retained",
@@ -580,18 +580,19 @@ namespace GearsVrUi {
                     !sample.TryGetValue("rates", out ratesValue) || !sample.TryGetValue("source_states", out statesValue)) return null;
                 var rates = ratesValue as Dictionary<string, object>;
                 var states = statesValue as Dictionary<string, object>;
-                object native, stereo, xr;
+                object native, gameFrames, stereo;
+                // Count the bound game's actual non-TEST Present observations.
+                // XR prediction/submission cadence is never a game-FPS fallback.
                 if (rates == null || states == null || !states.TryGetValue("native", out native) ||
-                    Convert.ToString(native) != "fresh" || !rates.TryGetValue("stereo_pairs_per_second", out stereo) || stereo == null) return null;
-                double fps = Convert.ToDouble(stereo, CultureInfo.InvariantCulture);
+                    Convert.ToString(native) != "fresh" || !rates.TryGetValue("game_present_calls_per_second", out gameFrames) || gameFrames == null) return null;
+                double fps = Convert.ToDouble(gameFrames, CultureInfo.InvariantCulture);
                 if (Double.IsNaN(fps) || Double.IsInfinity(fps) || fps < 0 || fps > 1000) return null;
-                double? xrRate = null;
-                if (rates.TryGetValue("xr_loop_hz", out xr) && xr != null &&
-                    states.TryGetValue("xr", out native) && Convert.ToString(native) == "fresh") {
-                    double hz = Convert.ToDouble(xr, CultureInfo.InvariantCulture);
-                    if (!Double.IsNaN(hz) && !Double.IsInfinity(hz) && hz >= 0 && hz <= 1000) xrRate = hz;
+                double? stereoRate = null;
+                if (rates.TryGetValue("stereo_pairs_per_second", out stereo) && stereo != null) {
+                    double hz = Convert.ToDouble(stereo, CultureInfo.InvariantCulture);
+                    if (!Double.IsNaN(hz) && !Double.IsInfinity(hz) && hz >= 0 && hz <= 1000) stereoRate = hz;
                 }
-                return new double?[] { fps, xrRate };
+                return new double?[] { fps, stereoRate };
             }
         }
         static int SelfTest(string root) {
@@ -679,9 +680,11 @@ namespace GearsVrUi {
                     "{\"kind\":\"repository_vr_launcher\",\"owner_identity\":{\"pid\":123,\"creation_time\":456},\"session_report\":" +
                     new JavaScriptSerializer().Serialize(report) + "}");
                 string telemetry = Path.Combine(runtime, "continuous-stereo-selftest.telemetry.jsonl");
-                File.WriteAllText(telemetry, "{\"event\":\"sample\",\"source_states\":{\"native\":\"fresh\",\"xr\":\"fresh\"},\"rates\":{\"stereo_pairs_per_second\":37.7,\"xr_loop_hz\":120}}\n");
+                File.WriteAllText(telemetry, "{\"event\":\"sample\",\"source_states\":{\"native\":\"fresh\",\"xr\":\"fresh\"},\"rates\":{\"game_present_calls_per_second\":15,\"stereo_pairs_per_second\":14.5,\"xr_loop_hz\":90}}\n");
                 var live = LiveRates(fpsRoot, 123, 456);
-                if (live == null || Math.Abs(live[0].Value - 37.7) > .01 || live[1] != 120 || LiveRates(fpsRoot, 124, 456) != null) return 44;
+                if (live == null || Math.Abs(live[0].Value - 15) > .01 || live[1] != 14.5 || LiveRates(fpsRoot, 124, 456) != null) return 44;
+                File.WriteAllText(telemetry, "{\"event\":\"sample\",\"source_states\":{\"native\":\"fresh\",\"xr\":\"fresh\"},\"rates\":{\"stereo_pairs_per_second\":90,\"xr_loop_hz\":90}}\n");
+                if (LiveRates(fpsRoot, 123, 456) != null) return 46; // Missing game data must not become90.
                 File.AppendAllText(telemetry, "{\"event\":\"stopped\"}\n");
                 if (LiveRates(fpsRoot, 123, 456) != null) return 45;
             } finally { Directory.Delete(fpsRoot, true); }
@@ -923,7 +926,7 @@ namespace GearsVrUi {
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
         bool starting, stopping, recentering, closingAfterOwner, translating, exportBusy;
-        decimal headsetRenderScale = 1m, simulatorRenderScale = 1m;
+        decimal headsetRenderScale = 1m, simulatorRenderScale = .3m;
         int previousRuntimeMode = Program.DefaultRuntimeMode;
         Python python;
         public Launcher(string repository) {
@@ -972,7 +975,7 @@ namespace GearsVrUi {
             layout.Controls.Add(new Label { Text = Language.T(TextKey.GamePath), AutoSize = true }, 0, 1); game.Dock = DockStyle.Fill; layout.Controls.Add(game, 1, 1);
             browseGame.Text = Language.T(TextKey.Browse); layout.Controls.Add(browseGame, 2, 1);
             layout.Controls.Add(new Label { Text = "OpenXR", AutoSize = true }, 0, 2);
-            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "Quest 3 / Virtual Desktop (VDXR)", Language.T(TextKey.SystemRuntime), Language.T(TextKey.Simulator) }); runtimeMode.SelectedIndex = Program.DefaultRuntimeMode; runtimeMode.Dock = DockStyle.Fill;
+            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "Quest 3 / Virtual Desktop (VDXR)", Language.T(TextKey.SystemRuntime) }); if (File.Exists(Program.DefaultRuntime(root, 2))) runtimeMode.Items.Add(Language.T(TextKey.Simulator)); runtimeMode.SelectedIndex = Program.DefaultRuntimeMode; runtimeMode.Dock = DockStyle.Fill;
             layout.Controls.Add(runtimeMode, 1, 2);
             layout.Controls.Add(new Label { Text = Language.T(TextKey.RuntimeFile), AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
             browseRuntime.Text = Language.T(TextKey.Browse); layout.Controls.Add(browseRuntime, 2, 3);
@@ -1068,6 +1071,10 @@ namespace GearsVrUi {
                 previousRuntimeMode=runtimeMode.SelectedIndex;
                 runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons();
             };
+            // An explicit desktop-editor entry selects the packaged simulator.
+            // The regular launcher still defaults to the system runtime.
+            if(Environment.GetEnvironmentVariable("GEARSVR_DESKTOP_EDITOR")=="1" && runtimeMode.Items.Count>2)
+                runtimeMode.SelectedIndex=2;
             runtime.TextChanged += delegate { renderInfo.Text=""; };
             renderPreview.Click += async delegate {
                 if(starting||owner!=null)return;
@@ -1096,7 +1103,7 @@ namespace GearsVrUi {
                 Language.English = english; TranslateControls(this, english);
                 RefreshFps();
                 translating = true;
-                try { runtimeMode.Items[1] = Language.T(TextKey.SystemRuntime); runtimeMode.Items[2] = Language.T(TextKey.Simulator); }
+                try { runtimeMode.Items[1] = Language.T(TextKey.SystemRuntime); if(runtimeMode.Items.Count>2) runtimeMode.Items[2] = Language.T(TextKey.Simulator); }
                 finally { translating = false; }
             };
             fpsTimer.Tick += delegate { RefreshFps(); };
@@ -1120,8 +1127,7 @@ namespace GearsVrUi {
             double?[] rates = null;
             if (owner != null) try { rates = Program.LiveRates(root, ownerPid, ownerCreation); } catch (Exception) { /* Optional telemetry must never interrupt the launcher. */ }
             if (rates == null) { fpsInfo.Text = Language.T(TextKey.StereoFpsUnavailable); return; }
-            fpsInfo.Text = Language.T(TextKey.StereoFpsPrefix) + rates[0].Value.ToString("F1", CultureInfo.CurrentCulture) + " FPS" +
-                (rates[1].HasValue ? "    |    " + Language.T(TextKey.XrRatePrefix) + rates[1].Value.ToString("F0", CultureInfo.CurrentCulture) + " Hz" : "");
+            fpsInfo.Text = Language.T(TextKey.StereoFpsPrefix) + rates[0].Value.ToString("F1", CultureInfo.CurrentCulture) + " FPS";
         }
         void TranslateControls(Control control, bool english) {
             if (control != output && control != game && control != runtime && control != languageMode && control != runtimeMode)

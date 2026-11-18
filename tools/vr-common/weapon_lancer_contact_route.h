@@ -6,6 +6,17 @@ namespace gears_weapon {
 // arbiter. The lease alone cannot tell a magazine, receiver and starter apart.
 // Only the exact proposal and grant may dispatch the corresponding consumer.
 enum class LancerContact : unsigned {none=0,magazine=1,charging=2,starter=4,conflict=8};
+struct LancerStarterProposal {unsigned candidates{};bool observation_pending{};};
+// Cosmetic selection supplies NO contact or lease. If its current C proposal
+// is unavailable, defer the undispatched press instead of grabbing a nearby
+// magazine. A later frame must independently certify the actual C contact.
+inline LancerStarterProposal resolve_lancer_starter_proposal(unsigned contacts,
+    bool selected,bool available,double magazine_distance,double starter_distance) noexcept {
+    if(!available)return selected?LancerStarterProposal{0,true}:LancerStarterProposal{contacts,false};
+    if(contacts==unsigned(LancerContact::magazine))
+        return {!selected&&magazine_distance<=starter_distance?contacts:unsigned(LancerContact::starter),false};
+    return {contacts|unsigned(LancerContact::starter),false};
+}
 // Report an ALREADY granted part, independently of hover/other-part geometry.
 // The caller still authenticates the weapon identity and current game context;
 // Native remains the sole arbiter. This cannot propose a new acquisition or

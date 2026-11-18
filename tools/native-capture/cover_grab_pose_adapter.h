@@ -53,8 +53,15 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,
     for(unsigned i=0;i<16;++i)w.component.m[i]=frame.component_to_world.values[i];
     if(!similarity(w.component)||std::abs(length(row(w.component,0))-1)>2e-5||
        inout.report.status!=body::Status::solved)return {Status::body};
-    if(body::ik::detail::validate(inout.local.data(),model.parents.data(),body::bones,w.component)!=body::ik::Status::okay)
+    // This adapter only follows a prepared authenticated cover plan. Preserve
+    // the same original rigid auxiliary representation as the cover/free-hand
+    // planner; never relax solved arm rotations or modify passive local atoms.
+    if(gears_cover_passive_atoms::validate(frame.local.data(),model.parents.data(),body::bones,w.component,true)!=body::ik::Status::okay||
+       gears_cover_passive_atoms::validate(inout.local.data(),model.parents.data(),body::bones,w.component,true)!=body::ik::Status::okay)
         return {Status::body};
+    for(unsigned i=0;i<body::bones;++i)
+        if(gears_cover_passive_atoms::auxiliary(i,model.parents[i],frame.local[i])&&
+           std::memcmp(&frame.local[i],&inout.local[i],sizeof(body::Atom)))return {Status::body};
     std::copy(inout.local.begin(),inout.local.end(),w.pose.local);
     if(!rebuild(model,w))return {Status::body};
     std::copy_n(w.pose.world,body::bones,w.original_world.begin());

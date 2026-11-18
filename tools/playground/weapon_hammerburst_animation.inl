@@ -33,18 +33,22 @@ bool selected_node(hand::Frame const& source,hand::ObjectIdentity& out) noexcept
     last_failure=0;return true;
 }
 bool observe_kind(hand::Frame const& source,Observation& out,
-    lancermain_asset::HeldAsset kind) noexcept {
+    lancermain_asset::HeldAsset kind,unsigned* rejection=nullptr) noexcept {
+    if(rejection)*rejection=0;
+    const auto rejected=[&](unsigned line) noexcept {if(rejection)*rejection=line;return false;};
     out={};lancermain_asset::Evidence asset{};
     if((kind!=lancermain_asset::HeldAsset::lancer&&kind!=lancermain_asset::HeldAsset::hammerburst&&
-        kind!=lancermain_asset::HeldAsset::pistol)||!nativeequipment::current(nullptr,source)||
-       lancermain_asset::read(source,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready||
-       !nativeequipment::read_attached_frame(source,asset.component.address))return false;
+        kind!=lancermain_asset::HeldAsset::pistol&&kind!=lancermain_asset::HeldAsset::longshot&&
+        kind!=lancermain_asset::HeldAsset::boomshot))return rejected(__LINE__);
+    if(!nativeequipment::current(nullptr,source))return rejected(__LINE__);
+    if(lancermain_asset::read(source,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready)return rejected(__LINE__);
+    if(!nativeequipment::read_attached_frame(source,asset.component.address))return rejected(__LINE__);
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,source.weapon)||
        lancermain_asset::held_asset_name(r,source.weapon.address,lancermain_asset::AssetScope::basic_hold)!=
-           kind)return false;
+           kind)return rejected(__LINE__);
     Observation candidate{};candidate.weapon=source.weapon;candidate.component=asset.component;candidate.asset=asset.asset;
-    if(!selected_node(source,candidate.node)||!weaponhand::object(r,candidate.node))return false;
+    if(!selected_node(source,candidate.node)||!weaponhand::object(r,candidate.node))return rejected(__LINE__);
     weaponhand::BoolField named{},time{},rate{},playing{},looping{},duration{};
     meta::PointerField sequence{};meta::RawName raw{};
     const auto node=candidate.node.address;
@@ -59,12 +63,13 @@ bool observe_kind(hand::Frame const& source,Observation& out,
        !weaponhand::boolean(r,node,L"bPlaying",playing)||!weaponhand::boolean(r,node,L"bLooping",looping)||
        !weaponhand::field(r,sequence.value,L"SequenceLength",L"FloatProperty",4,duration)||
        !r.at(sequence.value,duration.property.offset,candidate.length)||
-       !lancerreload_state::start_time(source.weapon.address,candidate.reload_start))return false;
+       !lancerreload_state::start_time(source.weapon.address,candidate.reload_start))return rejected(__LINE__);
     meta::NameText text{};
     if(!meta::fresh_name(schema.names,raw.index,text)||
-       !(kind==lancermain_asset::HeldAsset::hammerburst?meta::exact_text(text,L"HB_Reload"):meta::exact_text(text,L"AR_Reload"))||
+       !(kind==lancermain_asset::HeldAsset::longshot?meta::exact_text(text,L"LS_Reload"):
+         kind==lancermain_asset::HeldAsset::hammerburst?meta::exact_text(text,L"HB_Reload"):meta::exact_text(text,L"AR_Reload"))||
        !std::isfinite(candidate.time)||!std::isfinite(candidate.rate)||!std::isfinite(candidate.length)||
-       candidate.length<=0||candidate.length>10||candidate.time<0||candidate.time>candidate.length)return false;
+       candidate.length<=0||candidate.length>10||candidate.time<0||candidate.time>candidate.length)return rejected(__LINE__);
     candidate.sequence_name={raw.index,raw.number};
     candidate.playing=(playing.bits&playing.mask)!=0;candidate.looping=(looping.bits&looping.mask)!=0;
     hand::ObjectIdentity current{};meta::RawName again{};float position{},speed{},length{},started{};
@@ -79,7 +84,7 @@ bool observe_kind(hand::Frame const& source,Observation& out,
        fresh_playing.bits!=playing.bits||fresh_playing.mask!=playing.mask||
        fresh_looping.bits!=looping.bits||fresh_looping.mask!=looping.mask||
        !lancerreload_state::start_time(source.weapon.address,started)||started!=candidate.reload_start||
-       !unified_weapon_fire::retained_metadata(r)||!nativeequipment::current(nullptr,source))return false;
+       !unified_weapon_fire::retained_metadata(r)||!nativeequipment::current(nullptr,source))return rejected(__LINE__);
     out=candidate;return true;
 }
 bool observe(hand::Frame const& source,Observation& out,bool lancer=false) noexcept {
@@ -107,6 +112,7 @@ struct LatchCurve {
 // Read this instance's legacy three-track Float96 stream. No packaged keys,
 // hardcoded key count, offsets or animation duration are substituted. This
 // proves a bounded uniform-layout curve; live bone/time agreement is separate.
+#include "weapon_hammerburst_curve_fields.inl"
 bool read_latch_curve(hand::Frame const& source,LatchCurve& out,Observation const* owned=nullptr) noexcept {
     out={};Observation before{};
     if(owned){
@@ -118,11 +124,10 @@ bool read_latch_curve(hand::Frame const& source,LatchCurve& out,Observation cons
     weaponhand::BoolField frames{},format{},offsets{},stream{},duration{};
     float live_length{};
     std::int32_t count{};unsigned char compression{};meta::Table offset_array{},byte_array{};
-    if(!weaponhand::field(r,before.sequence.address,L"NumFrames",L"IntProperty",4,frames)||
-       !weaponhand::field(r,before.sequence.address,L"RotationCompressionFormat",L"ByteProperty",1,format)||
-       !weaponhand::field(r,before.sequence.address,L"CompressedTrackOffsets",L"ArrayProperty",16,offsets)||
-       !weaponhand::field(r,before.sequence.address,L"CompressedByteStream",L"ArrayProperty",16,stream)||
-       !weaponhand::field(r,before.sequence.address,L"SequenceLength",L"FloatProperty",4,duration)||
+    std::array<weaponhand::BoolField,5> layout{};
+    if(!hb_curve_fields(r,before.sequence.address,layout))return false;
+    frames=layout[0];format=layout[1];offsets=layout[2];stream=layout[3];duration=layout[4];
+    if(
        !r.at(before.sequence.address,duration.property.offset,live_length)||live_length!=before.length||
        !r.at(before.sequence.address,frames.property.offset,count)||count<3||count>256||
        !r.at(before.sequence.address,format.property.offset,compression)||compression!=1||
@@ -226,11 +231,16 @@ bool component_getter(playground::Args const& call,const wchar_t* label) noexcep
 unsigned parts_failure{};
 gears_equipment_names::Lookup part_names({L"b_HB_Root",L"b_HB_MagLatch",L"b_HB_Mag"});
 gears_equipment_names::Lookup lancer_part_names({L"b_AR_Root",L"b_AR_Receiver",L"b_AR_Latch"});
+#include "weapon_longshot_bone_args.inl"
+#include "weapon_hammerburst_part_query.inl"
 bool read_part_group(hand::Frame const& source,Parts& out,lancermain_asset::HeldAsset kind,
     gears_equipment_names::Lookup& lookup,std::array<const wchar_t*,3> const& labels,
-    std::array<int,3> const& bone_indices) noexcept {
+    std::array<int,3> const& bone_indices,unsigned count=3) noexcept {
     parts_failure=1;
     out={};lancermain_asset::Evidence asset{};
+    // Root/bolt-only consumers do not use the scope matrix. Every other
+    // caller retains the complete original three-bone observation.
+    if(count!=3&&(count!=2||kind!=lancermain_asset::HeldAsset::longshot))return false;
     if(!nativeequipment::current(nullptr,source)||
        lancermain_asset::read(source,asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready)return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
@@ -250,9 +260,27 @@ bool read_part_group(hand::Frame const& source,Parts& out,lancermain_asset::Held
             return now>=name_started&&now-name_started<3000000;},
         names,8192)!=gears_equipment_names::State::ready)return false;
     Parts value{};value.component=asset.component;value.asset=asset.asset;value.key=source.key;
-    for(int index=0;index<3;++index){
+    for(int index=0;index<int(count);++index){
         parts_failure=10+unsigned(index)*10;
-        playground::Args name(asset.component.address,L"MatchRefBone"),matrix(asset.component.address,L"GetBoneMatrix");
+        if(count==3&&(kind==lancermain_asset::HeldAsset::hammerburst||kind==lancermain_asset::HeldAsset::boltok)){
+            parts_failure=11+unsigned(index)*10;
+            if(!nativeequipment::current(nullptr,source))return false;
+            const Name named{names[unsigned(index)],0};meta::NameText text{};
+            if(!meta::fresh_name(schema.names,named.index,text))return false;
+            const auto label=labels[unsigned(index)];const auto length=std::wcslen(label);
+            if(text.length!=length||length>=meta::max_name_units||std::wmemcmp(text.units.data(),label,length+1))return false;
+            parts_failure=12+unsigned(index)*10;
+            if(!hb_read_one_part(asset.component.address,named,bone_indices[unsigned(index)],value.world[unsigned(index)]))return false;
+            for(float scalar:value.world[unsigned(index)])if(!std::isfinite(scalar))return false;
+            continue;
+        }
+        playground::Args name,matrix;
+        if(count==2&&kind==lancermain_asset::HeldAsset::longshot){
+            if(!longshot_bone_args(asset.component.address,name,matrix))return false;
+        }else{
+            name=playground::Args(asset.component.address,L"MatchRefBone");
+            matrix=playground::Args(asset.component.address,L"GetBoneMatrix");
+        }
         if(!component_getter(name,L"MatchRefBone")||!component_getter(matrix,L"GetBoneMatrix")||
            !input_field(name,name.prop(L"BoneName"),L"NameProperty",8)||
            !input_field(matrix,matrix.prop(L"BoneIndex"),L"IntProperty",4)||
@@ -292,14 +320,17 @@ bool read_parts(hand::Frame const& source,Parts& out,bool lancer=false) noexcept
 }
 // Preflight only. No StopAnim/SetPosition invocation and no write lease is
 // created here. Native reload/visual ownership must precede future dispatch.
-bool prepare_controls(hand::Frame const& source,Observation const& expected,Controls& out,bool enclosed_observation=false) noexcept {
+#include "weapon_longshot_control_args.inl"
+bool prepare_controls(hand::Frame const& source,Observation const& expected,Controls& out,bool enclosed_observation=false,bool paired_lookup=false) noexcept {
     out={};Observation before=expected;
     if((!enclosed_observation&&!observe_expected(source,before))||!nativeequipment::current(nullptr,source)||
        !hand::same(before.weapon,expected.weapon)||
        !hand::same(before.component,expected.component)||!hand::same(before.asset,expected.asset)||
        !hand::same(before.node,expected.node)||!hand::same(before.sequence,expected.sequence)||
        before.reload_start!=expected.reload_start)return false;
-    playground::Args stop(before.node.address,L"StopAnim"),seek(before.node.address,L"SetPosition");
+    playground::Args stop,seek;
+    if(paired_lookup){if(!longshot_control_args(before.node.address,stop,seek))return false;}
+    else {stop=playground::Args(before.node.address,L"StopAnim");seek=playground::Args(before.node.address,L"SetPosition");}
     Controls candidate{};candidate.node=before.node;
     if(stop.r.size!=0||seek.r.size!=8||!original_node_function(stop,L"StopAnim",candidate.stop)||
        !original_node_function(seek,L"SetPosition",candidate.seek))return false;
@@ -322,14 +353,26 @@ bool prepare_controls(hand::Frame const& source,Observation const& expected,Cont
     // the same input lifetime; native function/argument identity is rechecked.
     out=candidate;return true;
 }
+// Exact post-exit receipt for the same acquired HB UI journal.
+bool native_exit_start(float clip_start,bool ui_owned,float wanted,float before,float& expected) noexcept {
+    if(!std::isfinite(clip_start))return false;
+    if(ui_owned&&(!std::isfinite(wanted)||!std::isfinite(before)||clip_start!=wanted))return false;
+    expected=ui_owned?before:clip_start;return true;
+}
 struct Ownership {
     Observation initial{},last{};Controls controls{};
     LatchCurve latch{};
     lancerreload_inventory::Identity inventory{};
     std::uint64_t serial{};float wanted_time{};
     bool active{},stop_dispatched{},stopped{},seek_pending{},visual_only{};
+    float expected_native_exit_start{};bool native_exit_start_known{};
 };
 Ownership ownership;
+// Original clip ownership is a shared engine service; a foreign weapon's
+// private animation stage is not this caller's admission condition.
+bool engaged_for(hand::Frame const& source) noexcept {
+    return ownership.active&&ownership.inventory==lancerreload_inventory::identity(source);
+}
 // A sampling convention is immutable geometry evidence, not a saved hand or
 // native action grant. Reuse only for identical live sequence bytes in the
 // same actual game/Native lifetime; object and write admission stay fresh.
@@ -380,7 +423,7 @@ enum class Acquire {rejected,acquired,recovery_required};
 Acquire acquire_prepared(hand::Frame const& source,std::uint64_t serial,Observation const& before,
     Controls const& controls,LatchCurve const& latch={}) noexcept {
     if(ownership.active||!lancerreload_state::owns(source,serial)||
-       !lancerreload_state::item_owned(source))return Acquire::rejected;
+       (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_owned(source)))return Acquire::rejected;
     const auto actual=before;Controls checked{};
     // The caller just authenticated its selected node/curve. Do not spend
     // the same input deadline repeating synchronous getters before StopAnim.
@@ -390,7 +433,18 @@ Acquire acquire_prepared(hand::Frame const& source,std::uint64_t serial,Observat
     playground::Args stop(before.node.address,L"StopAnim");hand::ObjectIdentity fn{};
     if(stop.r.size||!original_node_function(stop,L"StopAnim",fn)||!hand::same(fn,controls.stop)||
        !lancerreload_state::owns(source,serial))return Acquire::rejected;
+    // Scope this integration to HB; current Longshot/Boomshot/Lancer paths
+    // retain their existing acquisition and retirement clock comparisons.
+    const bool hb=playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle");
+    float exit_start{};
+    if(hb){
+        const auto& reload=lancerreload_state::lease;
+        if((reload.ui_owned&&(reload.original_start!=actual.reload_start||reload.serial!=serial||
+             !(reload.identity==lancerreload_inventory::identity(source))))||
+           !native_exit_start(actual.reload_start,reload.ui_owned,reload.ui_wanted[5],reload.ui_before[5],exit_start))return Acquire::rejected;
+    }
     ownership={};ownership.initial=actual;ownership.last=actual;ownership.controls=checked;ownership.latch=latch;
+    ownership.expected_native_exit_start=exit_start;ownership.native_exit_start_known=hb;
     ownership.inventory=lancerreload_inventory::identity(source);ownership.serial=serial;
     ownership.active=true;ownership.stop_dispatched=true;
     // Ownership is durable before the call. Failure must be drained, not
@@ -403,7 +457,7 @@ Acquire acquire_prepared(hand::Frame const& source,std::uint64_t serial,Observat
 }
 Acquire acquire(hand::Frame const& source,std::uint64_t serial) noexcept {
     if(ownership.active||!lancerreload_state::owns(source,serial)||
-       !lancerreload_state::item_owned(source))return Acquire::rejected;
+       (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_owned(source)))return Acquire::rejected;
     Observation before{};Controls controls{};LatchCurve latch{};
     if(!observe(source,before)||before.looping||!read_latch_curve(source,latch,&before)||
        !hand::same(latch.sequence,before.sequence)||!prepare_controls(source,before,controls,true)||
@@ -440,18 +494,19 @@ bool reconcile_hammerburst_observation(Observation const& current) noexcept {
     if(!ownership.seek_pending&&current.time!=expected.time)return false;
     ownership.last=current;ownership.seek_pending=false;return true;
 }
-bool seek_impl(hand::Frame const& source,std::uint64_t serial,float time,bool settling) noexcept {
+bool seek_impl(hand::Frame const& source,std::uint64_t serial,float time,bool settling,bool enclosed_observation=false) noexcept {
     if(!ownership.active||serial!=ownership.serial||!(lancerreload_inventory::identity(source)==ownership.inventory)||
        !(ownership.visual_only?nativeequipment::current(nullptr,source):lancerreload_state::owns(source,serial))||
        (settling?(!playground::instance(source.weapon.address,L"Weap_COGPistol")||
-            !source.left_grip_known||source.left_grip_down||time<ownership.last.time):!lancerreload_state::item_owned(source))||
+            !source.left_grip_known||source.left_grip_down||time<ownership.last.time):
+            (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_seek_owned(source,serial,time)))||
        !std::isfinite(time)||time<0||time>ownership.last.length)return false;
     Controls controls{};
     if(playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle")){
         Observation current{};
         if(!observe_expected(source,current)||!reconcile_hammerburst_observation(current)||
            !prepare_controls(source,current,controls,true))return false;
-    }else if(!reconcile_seek()||!prepare_controls(source,ownership.last,controls))return false;
+    }else if(!reconcile_seek()||!prepare_controls(source,ownership.last,controls,enclosed_observation,enclosed_observation))return false;
     if(!hand::same(controls.seek,ownership.controls.seek))return false;
     playground::Args call(ownership.last.node.address,L"SetPosition");hand::ObjectIdentity fn{};
     const auto time_field=call.prop(L"NewTime"),notify_field=call.prop(L"bFireNotifies");
@@ -521,8 +576,13 @@ bool hand_back_after_native_exit() noexcept {
        !lancermain_asset::mesh_pointer(r,e.weapon.address,mesh)||mesh.value!=e.component.address||
        !weaponhand::pointer(r,e.component.address,L"SkeletalMesh",e.asset.address,asset))return false;
     bool reloading{};float started{};
-    if(!lancerreload_state::start_time(e.weapon.address,started)||started!=e.reload_start||
+    const float expected_start=ownership.native_exit_start_known?ownership.expected_native_exit_start:e.reload_start;
+    if(!lancerreload_state::start_time(e.weapon.address,started)||started!=expected_start||
        !lancerreload_state::bool_call(e.weapon.address,L"IsReloading",reloading)||reloading)return false;
+    // The owned native/UI restoration has completed with its exact receipt.
+    // Rebase only the retiring observation before its unchanged-node read;
+    // no active seek can use this after the native reload owner has exited.
+    ownership.last.reload_start=started;
     playground::Args selected(e.weapon.address,L"GetWeaponAnimNodeSeq");
     if(selected.r.size!=8||!vrequip::result_property(selected,L"ObjectProperty",8)||!selected.run())return false;
     hand::ObjectIdentity node{};meta::PointerField sequence{};

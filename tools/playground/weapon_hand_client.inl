@@ -224,19 +224,26 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates,bo
     // The adapter's boolean current() witness consumes actor/ownership/flag
     // liveness, never a support mount or contact candidate. Full observations
     // AND existing R2/source consumers retain their original live mount.
-    if(support_mount&&game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm)
-        nativelancerfollow::fill_support_mount(f,game);
-    if(candidates){
-        // HB has its own latch/magazine observer. A missing Lancer-only C0
-        // pair must not become an unrelated pending-magazine veto for HB.
-        // Restrict this dispatch only after the exact held HB binding exists;
-        // the HB producer below still proves its own current part geometry.
-        const bool held_hammerburst=game.main_hand_held&&
-            derives(r,f.weapon.address,L"Weap_LocustAssaultRifle",L"WarfareGame");
-        if(!held_hammerburst)lancerreload_contact::propose(f,game);
-        hammerburst_runtime::propose(f,game);
-        snub_runtime::propose(f,game);
+    if(support_mount&&game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm){
+        if(derives(r,f.weapon.address,L"Weap_Boomer_base",L"WarfareGame"))boomshot_runtime::fill_support_mount(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_Bow_base",L"WarfareGame"))torquebow_runtime::fill_support_mount(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_LocustPistol",L"WarfareGame"))boltok_runtime::fill_support_mount(f,game);
+        else nativelancerfollow::fill_support_mount(f,game);
     }
+    if(candidates&&game.main_hand_held){
+        // Composition selects one producer. A foreign weapon's pending state
+        // cannot contaminate this source; each selected producer still proves
+        // its own geometry, identity, currentness and action prerequisites.
+        if(derives(r,f.weapon.address,L"Weap_LocustAssaultRifle",L"WarfareGame"))hammerburst_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_SniperRifle",L"WarfareGame"))longshot_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_Bow_base",L"WarfareGame"))torquebow_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_COGPistol",L"WarfareGame"))snub_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_LocustPistol",L"WarfareGame"))boltok_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_Shotgun",L"WarfareGame"))gnasher_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_Boomer_base",L"WarfareGame"))boomshot_runtime::propose(f,game);
+        else if(derives(r,f.weapon.address,L"Weap_AssaultRifle",L"WarfareGame"))lancerreload_contact::propose(f,game);
+    }
+
 #else
     (void)candidates;(void)support_mount;
 #endif
@@ -253,12 +260,27 @@ bool observe_source(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& o
     // R2's before/after comparison still consumes the original support mount.
     return observe_game(f,out,false);
 }
+// Existing logical-hold checks consume no support mount or contact geometry.
+// Keep their full fresh actor/ownership/flag reflection and closing rereads,
+// then expose only these fields so geometry cannot escape into an action or
+// before/after comparison. R2 keeps the complete observe_source API above.
+struct HoldSourceObservation {
+    bool known{},main_hand_held{},busy{},animation_owns_hands{};
+    abi::WeaponKind kind{};
+};
+bool observe_hold_source(void*,abi::Frame const& f,std::int64_t,HoldSourceObservation& out) noexcept {
+    out={};abi::GripGameState game{};
+    if(!observe_game(f,game,false,false))return false;
+    out={game.known!=0,game.main_hand_held!=0,game.busy!=0,game.animation_owns_hands!=0,game.kind};
+    return true;
+}
+#include "weapon_source_validation_scope.inl"
 bool observe_liveness(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
     // HandClient discards this optional adapter's game payload; it is ONLY a
     // source-current boolean witness. Keep all fresh metadata/actor/flag and
     // closing rereads, without geometry or new contact proposals. Explicit
     // observe_source and full Frame/game readers above are unchanged.
-    return observe_game(f,out,false,false);
+    return source_validation::observe(f,out);
 }
 // Only actual successful unholster/equip commits may call this. It never
 // adopts an existing raw-address latch just because a Native frame arrived.
@@ -278,19 +300,35 @@ void equipment_hold_committed(uptr pc,gears_weapon::EquipmentSnapshot const& gam
        !identify(game.current_weapon,frame.weapon)||!read_pointer(r,game.pawn,L"Mesh",mesh,true)||
        !identify(mesh.value,frame.mesh))return;
     abi::GripGameState verified{};
-    if(!observe(nullptr,frame,clock_ns(nullptr),verified)||
+    if(!observe_liveness(nullptr,frame,clock_ns(nullptr),verified)||
        !vrequip::model.held_for(game.world,game.pawn,game.current_weapon)||vrequip::model.hold_generation()!=generation)return;
     held_binding={frame.world,frame.controller,frame.pawn,frame.weapon,generation,true};
 }
 void committed(void*,abi::Frame const& frame,abi::Decision const& decision) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     lancerreload_contact::committed(frame,decision);
+    longshot_runtime::committed(frame,decision);
+    torquebow_runtime::committed(frame,decision);
     snub_runtime::committed(frame,decision);
+    boltok_runtime::committed(frame,decision);
+    gnasher_runtime::committed(frame,decision);
+    boomshot_runtime::committed(frame,decision);
 #else
     (void)frame;(void)decision;
 #endif
 }
-abi::HandClient client({nullptr,observe,current_gt,clock_ns,committed,observe_liveness});
+bool hold_generation_current(void*,abi::Frame const& f,std::uint64_t generation) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    const auto& held=held_binding;
+    return current_gt(nullptr)&&generation&&held.known&&held.generation==generation&&
+        vrequip::model.hold_generation()==generation&&vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)&&
+        abi::same(held.world,f.world)&&abi::same(held.controller,f.controller)&&abi::same(held.pawn,f.pawn)&&abi::same(held.weapon,f.weapon)&&
+        held.native_cookie==f.key.registration_cookie&&held.native_started==f.key.native_started_qpc&&held.world_generation==f.key.world_generation;
+#else
+    (void)f;(void)generation;return false;
+#endif
+}
+abi::HandClient client({nullptr,observe,current_gt,clock_ns,committed,observe_liveness,hold_generation_current});
 HMODULE native_module{};abi::Unregister host_unregister{};bool native_quiescent{};
 bool call_register(abi::Register fn,abi::Registration const* registration,abi::RegistrationResult* result,abi::Reply& reply) noexcept {
     __try{reply=fn(registration,result);return true;}
@@ -360,6 +398,25 @@ abi::Reply start(HMODULE requested) noexcept {
     native_module=held;host_unregister=reinterpret_cast<abi::Unregister>(unregister_address);native_quiescent=false;
     auto registration=client.registration();abi::RegistrationResult result{};abi::Reply reply=abi::Reply::invalid;
     const auto completed=call_register(reinterpret_cast<abi::Register>(register_address),&registration,&result,reply);
+    if(!completed||reply!=abi::Reply::accepted){
+        static unsigned registration_failure_reports{};
+        if(log_file&&registration_failure_reports++<8){
+            fwprintf(log_file,L"weapon_hand_parent_registration_failure completed=%u reply=%u gt=%u caller_thread=%lu requested=%llx held=%llx pg_module=%llx size=%u abi=%u frame_bytes=%u proposal_bytes=%u decision_bytes=%u reserved=%u result_size=%u result_abi=%u result_cookie=%llu result_native_started=%llu\n",
+                unsigned(completed),unsigned(reply),game_thread.load(std::memory_order_acquire),GetCurrentThreadId(),
+                reinterpret_cast<uptr>(requested),reinterpret_cast<uptr>(held),reinterpret_cast<uptr>(module),
+                registration.size,registration.abi_version,registration.frame_bytes,registration.proposal_bytes,
+                registration.decision_bytes,registration.reserved,result.size,result.abi_version,
+                result.cookie,result.native_started_qpc);
+            const uptr parent_callback_addresses[]={reinterpret_cast<uptr>(registration.prepare),reinterpret_cast<uptr>(registration.commit),reinterpret_cast<uptr>(registration.invalidate)};
+            for(unsigned index=0;index<3;++index){MEMORY_BASIC_INFORMATION page{};
+                const auto queried=VirtualQuery(reinterpret_cast<void const*>(parent_callback_addresses[index]),&page,sizeof page);
+                fwprintf(log_file,L"weapon_hand_parent_callback_page index=%u address=%llx query_bytes=%zu allocation=%llx state=%lu protect=%lu type=%lu\n",
+                    index,parent_callback_addresses[index],queried,reinterpret_cast<uptr>(page.AllocationBase),page.State,page.Protect,page.Type);
+            }
+            fflush(log_file);
+        }
+    }
+
     const auto outcome=client.connected(reply,result,completed);
     if(client.phase()==abi::ClientPhase::off){FreeLibrary(native_module);native_module=nullptr;host_unregister=nullptr;}
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)

@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <type_traits>
 
 namespace gears_weapon {
 
@@ -127,16 +128,23 @@ public:
         key_={};original_={};owned_={};pending_=revoked_=0;
         snapshot_=faulted_=false;return true;
     }
-    template<class Backend>
-    bool acquire(Key const& expected_key,Value const& wanted,Backend& backend) {
+    // Generates the desired value only after the lease's fresh first read. The
+    // factory must be a non-throwing, game-read-free function of that value; a
+    // thrown factory is rejected before any write and leaves the lease faulted.
+    template<class Backend,class MakeWanted>
+    bool acquire_from_current(Key const& expected_key,Backend& backend,MakeWanted&& make_wanted) {
+        static_assert(std::is_same_v<std::invoke_result_t<MakeWanted,Value const&>,Value>,
+            "wanted factory must return Value");
         if(busy_){revoke_pending();return false;}
         if(dirty()||faulted_){faulted_=true;return false;}
         Busy busy(busy_);
-        const Value desired=wanted; // Snapshot before clearing getter aliases.
         key_=expected_key;original_={};owned_={};snapshot_=false;
         State first{};
         if(!read(backend,first))return false;
         original_=owned_=first.value;snapshot_=true;
+        Value desired{};
+        try{desired=make_wanted(first.value);}
+        catch(...){faulted_=true;return false;}
         Value expected=original_;
         for(unsigned group=1;group<=rotation_group;group<<=1){
             State before{};
@@ -151,6 +159,10 @@ public:
             if(!called||!known||faulted_||!mesh_component_exact(after.value,expected))return fail(backend);
         }
         return true;
+    }
+    template<class Backend>
+    bool acquire(Key const& expected_key,Value const& wanted,Backend& backend) {
+        return acquire_from_current(expected_key,backend,[desired=wanted](Value const&){return desired;});
     }
     // True means every journaled group has authenticated exact original bytes.
     // It does not clear sticky fault, or certify never-owned foreign fields.

@@ -21,10 +21,15 @@ struct Permission {uptr weapon{};std::uint64_t cookie{},native{};DWORD thread{};
 Permission manual_start;
 Permission starter_start;
 bool requires_permission(hand::Frame const& source) noexcept {
-    // CanReload is currently vetoed only for the exact Lancer adapter.
-    // Shared HB acceptance must not require a nonexistent Lancer binding.
+    // Manual single-round Longshot uses the same authenticated CanReload
+    // boundary as Lancer. Only a physical begin scope may open that boundary.
     return playground::instance(source.weapon.address,L"Weap_AssaultRifle")||
         (hammerburst_runtime::manual_enabled()&&playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle"))||
+        playground::instance(source.weapon.address,L"Weap_Shotgun")||
+        playground::instance(source.weapon.address,L"Weap_Bow_base")||
+        playground::instance(source.weapon.address,L"Weap_Boomer_base")||
+        playground::instance(source.weapon.address,L"Weap_SniperRifle")||
+        (boltok_runtime::manual_enabled()&&playground::instance(source.weapon.address,L"Weap_LocustPistol"))||
         (snub_runtime::manual_enabled()&&playground::instance(source.weapon.address,L"Weap_COGPistol"));
 }
 bool enter(hand::Frame const& source) noexcept {
@@ -136,6 +141,14 @@ void prepare(hand::Frame const& source) noexcept {
     if(retained)*retained=b;
     if(log_file){fwprintf(log_file,L"lancer_manual_auto_reload_bound weapon=%llx hold=%llu mask=%u flags=%llx exec=%llx script_hash=%llx\n",
         b.weapon.address,b.hold,b.mask,get<unsigned long long>(prop+0x78),b.exec,b.script_hash);fflush(log_file);}
+}
+// Admission for a gun that requires the non-action veto before its first shot.
+// This does not open the physical reload permission scope.
+bool bound_for(hand::Frame const& source) noexcept {
+    return binding.valid&&binding.cookie==source.key.registration_cookie&&binding.native==source.key.native_started_qpc&&
+        binding.hold==vrequip::model.hold_generation()&&hand::same(binding.world,source.world)&&
+        hand::same(binding.controller,source.controller)&&hand::same(binding.pawn,source.pawn)&&
+        hand::same(binding.weapon,source.weapon)&&layout(binding)&&nativeequipment::current(nullptr,source);
 }
 bool current(abi::Invocation const& call,Binding const& b) noexcept {
     // No pose/age refresh here. Preventing automatic ammunition is not a hand

@@ -37,7 +37,8 @@ public:
     Rejection last_rejection() const noexcept {return rejection_;}
     double wanted_distance() const noexcept {return wanted_;}
     bool actual_full_pull() const noexcept {return full_;}
-    bool begin(SnubSlideGeometry const& g,HammerburstLatchSample const& s,double actual) noexcept {
+    bool begin(SnubSlideGeometry const& g,HammerburstLatchSample const& s,double actual,
+        bool authored_region_contact=false) noexcept {
         if(phase_!=Phase::idle||!g.current_instance_verified||!valid(s)||
            !gears_vr::finite(g.closed_contact)||!gears_vr::finite(g.axis)||std::abs(length(g.axis)-1)>1e-5||
            !std::isfinite(g.travel)||g.travel<.01||g.travel>.40||
@@ -47,7 +48,8 @@ public:
            !std::isfinite(g.overtravel)||g.overtravel<0||g.overtravel>.35||
            !std::isfinite(g.reverse_tolerance)||g.reverse_tolerance<0||g.reverse_tolerance>.15||
            !std::isfinite(g.endpoint_assistance)||g.endpoint_assistance<0||g.endpoint_assistance>g.travel*.5||
-           !std::isfinite(actual)||std::abs(actual)>.002||length(sub(s.hand,g.closed_contact))>g.contact_radius)return false;
+           !std::isfinite(actual)||std::abs(actual)>.002||
+           (!authored_region_contact&&length(sub(s.hand,g.closed_contact))>g.contact_radius))return false;
         geometry_=g;last_=s;start_=s.hand;wanted_=0;observed_=actual;bone_frame_=0;
         closed_frames_=0;full_=return_can_finish_=false;rejection_=Rejection::none;phase_=Phase::pulling;return true;
     }

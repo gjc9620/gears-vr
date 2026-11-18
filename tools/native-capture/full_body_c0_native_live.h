@@ -50,5 +50,5 @@ bool apply_with_view_marker(gears_continuous_hand_entry::Entry const&,gears_full
 void before_original(gears_continuous_hand_entry::Entry const&) noexcept;
 void after_original(gears_continuous_hand_entry::Entry const&) noexcept;
 void pose_end(gears_continuous_hand_entry::Entry const&,bool,bool) noexcept;
-void request_drain();unsigned pending_count();void summary(FILE*);
+void request_drain();unsigned pending_count();unsigned resource_pending_count();void summary(FILE*);
 }

@@ -10,6 +10,31 @@ struct Workspace {
     weapon_metadata_parse::Workspace parsing{};
 };
 Workspace scratch;
+
+// Only immutable calibration and its identity cohort are retained here.
+struct BoomshotCalibration {
+    hand::EquipmentIdentity actor{};
+    std::uint64_t hold{},binding{},reference_epoch{},session{},space{},input{},profile{};
+    double units{},scale{};
+};
+BoomshotCalibration boomshot_calibration{};
+bool boomshot_model_scale(hand::Frame const& frame,gears_rig_tracking::Frame const& rig,double& scale) noexcept {
+    const auto& c=boomshot_calibration;
+    const auto& key=c.actor.key;
+    if(!c.hold||c.hold!=vrequip::model.hold_generation()||
+       key.game_start!=frame.key.game_start||key.native_started_qpc!=frame.key.native_started_qpc||
+       key.registration_cookie!=frame.key.registration_cookie||key.lifecycle!=frame.key.lifecycle||
+       key.world_generation!=frame.key.world_generation||
+       !hand::same(c.actor.world,frame.world)||!hand::same(c.actor.controller,frame.controller)||
+       !hand::same(c.actor.pawn,frame.pawn)||!hand::same(c.actor.mesh,frame.mesh)||
+       !hand::same(c.actor.weapon,frame.weapon)||!bodymountequipment::held_current(c.actor,c.hold)||
+       c.actor.reference_generation!=rig.reference_generation||c.binding!=rig.binding_generation||
+       c.reference_epoch!=rig.native_reference.epoch||c.session!=rig.stereo.session||
+       c.space!=rig.stereo.space_epoch||c.input!=rig.controllers.input_epoch||
+       c.profile!=rig.controllers.profile_generation||c.units!=rig.units_per_metre)return false;
+    scale=c.scale;
+    return true;
+}
 const wire::Response empty_response{};
 static_assert(std::is_trivially_copyable_v<Workspace>);
 struct Receipt {
@@ -18,10 +43,13 @@ struct Receipt {
     unsigned stage{},status{UINT32_MAX},returned{};
 };
 Receipt active_receipt{};std::array<Receipt,32> receipts{};unsigned receipt_count{};
+// Failure-only Boltok metadata ring; no extra reads, permissions or writes.
+std::array<Receipt,32> boltok_failures{};unsigned boltok_failure_count{},boltok_failure_next{};
 std::uint64_t receipt_attempts{};bool diagnostics_written{};
 void reset_diagnostics_after_drain() noexcept {
     if(!mainmountprovider::diagnostics_drained())return;
     active_receipt={};receipts={};receipt_count=0;receipt_attempts=0;diagnostics_written=false;
+    boltok_failures={};boltok_failure_count=boltok_failure_next=0;
     bodymountequipment::asset_results={};
 }
 void write_diagnostics_after_drain() noexcept {
@@ -29,6 +57,12 @@ void write_diagnostics_after_drain() noexcept {
     diagnostics_written=true;
     for(unsigned i=0;i<receipt_count;++i){const auto& r=receipts[i];
         fwprintf(log_file,L"native_body_mount_query query=%llu cookie=%llu scene=%llu publication=%llu tick=%llu compose=%llu begin_ns=%lld finish_ns=%lld sync_ns=%lld equipment_begin_ns=%lld equipment_end_ns=%lld stage=%u status=%u returned=%u\n",
+            r.query,r.cookie,r.scene,r.publication,r.tick,r.compose,r.begin,r.finish,r.sync,r.equipment_begin,r.equipment_end,r.stage,r.status,r.returned);
+    }
+    for(unsigned i=0;i<boltok_failure_count;++i){
+        const unsigned slot=(boltok_failure_next+unsigned(boltok_failures.size())-boltok_failure_count+i)%unsigned(boltok_failures.size());
+        const auto& r=boltok_failures[slot];
+        fwprintf(log_file,L"native_body_mount_boltok_failure query=%llu cookie=%llu scene=%llu publication=%llu tick=%llu compose=%llu begin_ns=%lld finish_ns=%lld sync_ns=%lld equipment_begin_ns=%lld equipment_end_ns=%lld stage=%u status=%u returned=%u\n",
             r.query,r.cookie,r.scene,r.publication,r.tick,r.compose,r.begin,r.finish,r.sync,r.equipment_begin,r.equipment_end,r.stage,r.status,r.returned);
     }
     fwprintf(log_file,L"native_body_mount_query_summary attempts=%llu retained=%u truncated=%u\n",receipt_attempts,receipt_count,unsigned(receipt_attempts>receipts.size()));
@@ -98,7 +132,17 @@ std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::R
         previous_parse=weapon_metadata_parse::activate(scratch.parsing);parse_installed=true;
         result=prepare_data(request);
         if(wire::mount::status_valid(result)&&result==unsigned(wire::Status::ready)){
-            active_receipt.stage=5;if(!publish(out,scratch.response))result=~0u;
+            active_receipt.stage=5;
+            if(!publish(out,scratch.response))result=~0u;
+            else if(scratch.response.hold_kind==wire::HoldKind::boomshot){
+                const auto& source=scratch.request.source;
+                const auto& tracking=source.tracking;
+                const auto& geometry=source.basis.geometry;
+                boomshot_calibration={scratch.identity,scratch.observation.hold_generation,
+                    geometry.revision,tracking.native_reference.epoch,tracking.stereo.session,
+                    tracking.stereo.space_epoch,tracking.controllers.input_epoch,
+                    tracking.controllers.profile_generation,geometry.units_per_metre,geometry.model_scale};
+            }
         }
         active_receipt.status=result;active_receipt.returned=1;active_receipt.finish=weaponhand::clock_ns(nullptr);
         return result;
@@ -106,6 +150,13 @@ std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::R
         if(claimed){
             if(parse_installed)weapon_metadata_parse::restore(previous_parse);
             if(receipt_count<receipts.size())receipts[receipt_count++]=active_receipt;
+            if(nativelancerfollow::bound_key_known&&nativelancerfollow::bound_is_boltok&&
+               hand::same(scratch.identity.weapon,nativelancerfollow::bound_key.weapon)&&
+               (!active_receipt.returned||active_receipt.status!=unsigned(wire::Status::ready))){
+                boltok_failures[boltok_failure_next]=active_receipt;
+                boltok_failure_next=(boltok_failure_next+1)%unsigned(boltok_failures.size());
+                if(boltok_failure_count<boltok_failures.size())++boltok_failure_count;
+            }
             std::memset(&scratch,0,sizeof(scratch));mainmountprovider::entered.clear(std::memory_order_release);
         }
         callbacks.fetch_sub(1,std::memory_order_release);

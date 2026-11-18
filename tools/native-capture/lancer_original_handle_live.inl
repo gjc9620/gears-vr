@@ -1,4 +1,4 @@
-// Extend the existing Native decoder owner with the original Lancer bone4.
+// Borrow only original Lancer bone4 inside the existing certified Compose owner.
 // No extra hook, input source, shared-asset write or engine dispatch.
 namespace lancer_original_handle_live {
 namespace api=gears_lancer_original_handle;namespace hand=gears_weapon_hand;
@@ -11,9 +11,13 @@ void request_drain() noexcept {drain_requested.store(true,std::memory_order_rele
 struct Bound {
     hand::FrameKey key{};hand::ObjectIdentity world{},pawn{},weapon{},component{},asset{},node{};
     binding::Proof proof{};binding::Property pawn_weapon{},mesh{},instigator{};
-    std::uint64_t handle{};DWORD thread{};api::Lease pose;api::Source initial{};
+    std::uint64_t handle{};DWORD thread{};api::ComposeLease pose;api::Source initial{};unsigned restore_gate{};
 };
 Bound bound;std::atomic<DWORD> owner_thread{};std::uint64_t next_handle{1},retired_cookie{};
+// Preserve the FIRST existing restore cause in the existing receipt, not a new stream.
+void request_restore(unsigned gate) noexcept {
+    if(!bound.restore_gate)bound.restore_gate=gate;bound.pose.request_restore();
+}
 api::Receipt retired{};unsigned last_gate{};
 struct Call {Call(){++calls;}~Call(){--calls;}};
 template<class T>bool read(std::uintptr_t at,T& out) noexcept{return existing::read(at,out);}
@@ -46,39 +50,48 @@ bool properties(Bound& b) {
         binding::source_field(b.proof,structure,inner,0xd0)&&binding::certified(b.proof,structure,matrix)&&
         binding::named(matrix,L"Matrix")&&binding::source_field(b.proof,extent,structure,0x88)&&extent==64;
 }
-bool snapshot_unlocked(Bound const& b,api::Source& out,std::uintptr_t* selected=nullptr,bool restoring=false) {
-    out={};if(GetCurrentThreadId()!=b.thread||!binding::metadata_current()||!binding::current(b.proof))return false;
-    for(auto const& id:{b.world,b.pawn,b.weapon,b.component,b.asset,b.node})if(!existing::object(id))return false;
+bool snapshot_unlocked(Bound const& b,api::Source& out,std::uintptr_t* selected=nullptr,bool restoring=false,
+    unsigned* failure=nullptr) {
+    if(failure)*failure=0;
+    // Same existing reads/predicates/short-circuit order. Only the caller's
+    // existing bind receipt receives the FIRST failed condition; no sampler.
+    const auto bad=[&](unsigned gate,bool failed) noexcept {
+        if(failed&&failure&&!*failure)*failure=gate;return failed;
+    };
+    out={};if(bad(1,GetCurrentThreadId()!=b.thread)||bad(2,!binding::metadata_current())||bad(3,!binding::current(b.proof)))return false;
+    unsigned ordinal{};
+    for(auto const& id:{b.world,b.pawn,b.weapon,b.component,b.asset,b.node})if(bad(100+ordinal++,!existing::object(id)))return false;
     std::uintptr_t linked_mesh{},asset{},node_mesh{},sequence{},table{},method{},pawn{},held{};
     api::Array reference{},desired{},r2{},l2{},c2{},s2{};
-    if((!restoring&&(!read(b.weapon.address+b.mesh.offset,linked_mesh)||linked_mesh!=b.component.address||
-       !read(b.weapon.address+b.instigator.offset,pawn)||pawn!=b.pawn.address||
-       !read(b.pawn.address+b.pawn_weapon.offset,held)||held!=b.weapon.address))||
-       !read(b.node.address+0x60,node_mesh)||node_mesh!=b.component.address||
-       !read(b.node.address+0xfc,sequence)||(!restoring&&!sequence)||
-       !read(b.node.address,table)||!table||!read(table+0x270,method)||method!=base+0xf8af4||
-       !read(b.component.address+0x218,asset)||asset!=b.asset.address||!read(asset+0xa4,reference)||
-       reference.count!=9||reference.capacity<9||reference.capacity>512||!reference.data||
-       reference.data>UINTPTR_MAX-std::size_t(reference.capacity)*68)return false;
+    if((!restoring&&(bad(10,!read(b.weapon.address+b.mesh.offset,linked_mesh)||linked_mesh!=b.component.address)||
+       bad(11,!read(b.weapon.address+b.instigator.offset,pawn)||pawn!=b.pawn.address)||
+       bad(12,!read(b.pawn.address+b.pawn_weapon.offset,held)||held!=b.weapon.address)))||
+       bad(20,!read(b.node.address+0x60,node_mesh)||node_mesh!=b.component.address)||
+       bad(21,!read(b.node.address+0xfc,sequence))||
+       bad(22,!read(b.node.address,table)||!table||!read(table+0x270,method)||method!=base+0xf8af4)||
+       bad(23,!read(b.component.address+0x218,asset)||asset!=b.asset.address||!read(asset+0xa4,reference))||
+       bad(24,reference.count!=9||reference.capacity<9||reference.capacity>512||!reference.data||
+       reference.data>UINTPTR_MAX-std::size_t(reference.capacity)*68))return false;
     const wchar_t* labels[]={L"b_AR_Root",L"b_AR_Chainsaw",L"b_AR_ChainsawEnd",L"b_AR_Chain",L"b_AR_Chainsaw_Handle",L"b_AR_Receiver",L"b_AR_Receiver_Spin",L"b_AR_Latch",L"b_AR_Magazine"};
     constexpr int parents[]={0,0,1,1,0,0,5,0,0};
     for(unsigned i=0;i<9;++i){int parent{};
-        if(!existing::named_bone(reference.data+i*68,labels[i])||!read(reference.data+i*68+0x38,parent)||parent!=parents[i])return false;}
-    if(!read(b.component.address+0x27c,out.local)||!read(b.node.address+0x80,out.cache)||
-       !read(b.component.address+0x26c,out.space)||!read(b.component.address+0x28c,desired)||
-       !read(b.component.address+0x338,out.epoch)||!out.epoch||desired.count<1||desired.count>9||
-       desired.capacity<desired.count||desired.capacity>512||!desired.data||desired.data>UINTPTR_MAX-std::size_t(desired.capacity))return false;
+        if(bad(200+i,!existing::named_bone(reference.data+i*68,labels[i])||!read(reference.data+i*68+0x38,parent)||parent!=parents[i]))return false;}
+    if(bad(30,!read(b.component.address+0x27c,out.local))||bad(31,!read(b.node.address+0x80,out.cache))||
+       bad(32,!read(b.component.address+0x26c,out.space))||bad(33,!read(b.component.address+0x28c,desired))||
+       bad(34,!read(b.component.address+0x338,out.epoch)||!out.epoch)||
+       bad(35,desired.count<1||desired.count>9||desired.capacity<desired.count||desired.capacity>512||
+       !desired.data||desired.data>UINTPTR_MAX-std::size_t(desired.capacity)))return false;
     bool seen[9]{};for(int i=0;i<desired.count;++i){unsigned char bone{};
-        if(!read(desired.data+std::size_t(i),bone)||bone>=9||seen[bone])return false;seen[bone]=true;}
-    if(!seen[4])return false;
+        if(bad(40,!read(desired.data+std::size_t(i),bone)||bone>=9||seen[bone]))return false;seen[bone]=true;}
+    if(bad(44,!seen[4]))return false;
     out.component=b.component.address;out.asset=asset;out.node=b.node.address;out.identity_generation=b.handle;out.verified=true;
-    if(!api::valid(out)||!read(asset+0xa4,r2)||!hand::identity_valid(b.asset)||
-       !gears_weapon_part_visibility::same(reference,r2)||!read(b.component.address+0x27c,l2)||
-       !read(b.node.address+0x80,c2)||!read(b.component.address+0x26c,s2)||
-       !gears_weapon_part_visibility::same(out.local,l2)||!gears_weapon_part_visibility::same(out.cache,c2)||
-       !gears_weapon_part_visibility::same(out.space,s2))return false;
+    if(bad(50,!api::valid(out))||bad(51,!read(asset+0xa4,r2))||bad(52,!hand::identity_valid(b.asset))||
+       bad(53,!gears_weapon_part_visibility::same(reference,r2))||bad(54,!read(b.component.address+0x27c,l2))||
+       bad(55,!read(b.node.address+0x80,c2))||bad(56,!read(b.component.address+0x26c,s2))||
+       bad(57,!gears_weapon_part_visibility::same(out.local,l2))||bad(58,!gears_weapon_part_visibility::same(out.cache,c2))||
+       bad(59,!gears_weapon_part_visibility::same(out.space,s2)))return false;
     if(selected)*selected=sequence;
-    return binding::current(b.proof)&&binding::metadata_current();
+    return !bad(60,!binding::current(b.proof))&&!bad(61,!binding::metadata_current());
 }
 bool snapshot(api::Source& out,std::uintptr_t* seq=nullptr) noexcept {
     try {std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);
@@ -107,42 +120,62 @@ bool destroyed() noexcept {
 void retire(bool is_inactive,bool is_destroyed=false) noexcept {
     retired={};retired.handle=bound.handle;retired.writes=bound.pose.writes();retired.angle=bound.pose.wanted();retired.pull_raw=bound.pose.wanted_pull();
     retired.result=is_inactive?api::Result::inactive_restored:api::Result::restored;
-    retired.cpu_restored=!is_destroyed;retired.original_inactive=is_inactive;retired.original_destroyed=is_destroyed;
+    retired.gate=bound.restore_gate;retired.cpu_restored=!is_destroyed;retired.original_inactive=is_inactive;retired.original_destroyed=is_destroyed;
     retired_cookie=bound.key.registration_cookie;bound={};retained.store(0,std::memory_order_release);
 }
 void drain_on_gt() noexcept {
     if(!retained.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load())return;
-    if(drain_requested.load()||!held_current())bound.pose.request_restore();
+    if(drain_requested.load()||!held_current())request_restore(drain_requested.load()?801u:802u);
     api::Source source{};if(!snapshot(source)){if(destroyed())retire(true,true);return;}
     bound.pose.observe_cache(source,[](auto at,auto& value){return read(at,value);});
     const bool off=inactive();
     if(bound.pose.restoring()&&bound.pose.restore(source,[](auto at,auto& value){return read(at,value);},write,off))retire(off);
 }
-struct DecoderTicket {std::uint64_t handle{};api::Source source{};atom::Arguments arguments{};atom::Cohort cohort{};bool admitted{};};
-void decoder_begin(atom::Arguments const& a,DecoderTicket& ticket) noexcept {
-    ticket={};if(!retained.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load())return;
-    drain_on_gt();if(!retained.load()||bound.pose.restoring()||!held_current()||a.track!=4||a.caller!=base+0xe0a73)return;
-    try {api::Source source{};std::uintptr_t sequence{};
-        if(!existing::code_current()||!snapshot(source,&sequence)||sequence!=a.sequence||
-           !bound.pose.matches(source,a.out,a.track)||!atom::cohort(safe_copy,a,ticket.cohort)||ticket.cohort.offsets.count!=36)return;
-        ticket.handle=bound.handle;ticket.source=source;ticket.arguments=a;ticket.admitted=true;
-    }catch(...){ticket={};}
+// C is exclusively composed here; the old decoder callback no longer writes it.
+struct DecoderTicket {};
+void decoder_begin(atom::Arguments const&,DecoderTicket&) noexcept {}
+void decoder_return(DecoderTicket const&,bool) noexcept {}
+void compose_begin(std::uintptr_t component,std::uintptr_t local,std::uintptr_t required,
+    unsigned kind,std::uintptr_t caller,ComposeTicket& ticket) noexcept {
+    ticket={};if(!retained.load()||GetCurrentThreadId()!=owner_thread.load()||component!=bound.component.address)return;
+    if(kind)return;
+    if(local!=component+0x27c||required!=component+0x28c){last_gate=701;return;}
+    if(caller!=base+gears_cover_pose_phase::compose_caller){
+        last_gate=caller>base&&caller-base<UINT32_MAX?unsigned(caller-base):702;return;
+    }
+    try {
+        if(!cover_pose_phase_live::certified||!cover_pose_phase_live::own_entries()){last_gate=703;return;}
+        if(drain_requested.load()||!held_current())request_restore(drain_requested.load()?801u:802u);
+        api::Source s{};if(!snapshot(s)){last_gate=704;return;}
+        // A nested call cannot borrow a pending journal or create another writer.
+        if(bound.pose.active()){request_restore(803);return;}
+        if(bound.pose.restoring()){ticket.handle=bound.handle;ticket.admitted=true;return;}
+        // As with the prior decoder owner, this is the retained mechanical
+        // target authorized by begin/update, not a new interaction or world
+        // hand pose. Original current held/world/object/topology/header checks
+        // above and the exact certified Compose boundary still apply. A
+        // different publication phase cannot borrow the old request Frame or
+        // manufacture a current one. Every NEW target still passes the exact
+        // current-frame render/socket/part admission in update().
+        ticket.handle=bound.handle;ticket.admitted=true;
+        if(!bound.pose.compose_begin(s,[](auto at,auto& v){return read(at,v);},write))
+            request_restore(804);
+        last_gate=706;
+    }catch(...){request_restore(805);}
 }
-void decoder_return(DecoderTicket const& ticket,bool normal) noexcept {
-    if(!ticket.admitted||!normal||!retained.load()||ticket.handle!=bound.handle||
-       GetCurrentThreadId()!=owner_thread.load()||bound.pose.restoring())return;
-    try {api::Source after{};std::uintptr_t sequence{};atom::Cohort cohort{};
-        if(!held_current()||!existing::code_current()||!snapshot(after,&sequence)||sequence!=ticket.arguments.sequence||
-           !gears_weapon_part_visibility::identity(ticket.source,after)||
-           !gears_weapon_part_visibility::same(ticket.source.local,after.local)||!atom::cohort(safe_copy,ticket.arguments,cohort)||
-           !atom::equal(cohort,ticket.cohort))return;
-        if(!bound.pose.decoder_return(after,ticket.arguments.out,ticket.arguments.track,
-            [](auto at,auto& value){return read(at,value);},write))bound.pose.request_restore();
-    }catch(...){bound.pose.request_restore();}
+void compose_end(ComposeTicket const& ticket,bool normal) noexcept {
+    if(!ticket.admitted||!retained.load()||ticket.handle!=bound.handle||GetCurrentThreadId()!=owner_thread.load())return;
+    try {
+        api::Source s{};if(!snapshot(s)){request_restore(806);return;}
+        if(!bound.pose.compose_end(s,normal,[](auto at,auto& v){return read(at,v);},write))
+            request_restore(807);
+        if(bound.pose.restoring())drain_on_gt();
+        else last_gate=0;
+    }catch(...){request_restore(805);}
 }
 api::Receipt receipt() noexcept {
     if(!retained.load())return retired;
-    api::Receipt r{};r.handle=bound.handle;r.writes=bound.pose.writes();r.angle=bound.pose.wanted();r.pull_raw=bound.pose.wanted_pull();r.gate=last_gate;
+    api::Receipt r{};r.handle=bound.handle;r.writes=bound.pose.writes();r.angle=bound.pose.wanted();r.pull_raw=bound.pose.wanted_pull();r.gate=bound.restore_gate?bound.restore_gate:last_gate;
     r.cpu_restored=bound.pose.cpu_restored();api::Source s{};
     const bool ready=snapshot(s)&&bound.pose.ready(s,[](auto at,auto& value){return read(at,value);});
     r.epoch=s.epoch;r.result=bound.pose.restoring()?api::Result::restoring:(ready?api::Result::ready:api::Result::pending);return r;
@@ -153,7 +186,8 @@ api::Result begin(api::Request const* input,api::Receipt* output) noexcept {
     try {auto* broker=weapon_hand_runtime::current();
         if(!input||!output||!safe_copy(&q,input,sizeof q)||q.size!=sizeof q||q.version!=2||
            !broker||drain_requested.load()||retained.load()||existing::pending()||!next_handle||next_handle==UINT64_MAX||
-           !broker->admit_weapon_render(q.source)||!existing::code_current())return reject();
+           !broker->admit_weapon_render(q.source)||!existing::code_current()||
+           !cover_pose_phase_live::certified||!cover_pose_phase_live::own_entries())return reject();
         Bound b{};b.key=q.source.key;b.world=q.source.world;b.pawn=q.source.pawn;b.weapon=q.source.weapon;
         b.component=q.component;b.asset=q.asset;b.node=q.node;b.thread=GetCurrentThreadId();b.handle=next_handle++;
         api::Source s{};last_gate=2;
@@ -166,17 +200,17 @@ api::Result begin(api::Request const* input,api::Receipt* output) noexcept {
                !existing::derives(b.asset,L"SkeletalMesh",L"Engine")||!existing::derives(b.node,L"AnimNodeSequence",L"Engine")||
                !binding::identity(b.asset.address,asset,true)||!binding::named(asset,L"COGAssaultRifle"))return reject();
             last_gate=4;if(!properties(b))return reject();
-            last_gate=5;if(!snapshot_unlocked(b,s))return reject();
+            last_gate=5;unsigned detail{};if(!snapshot_unlocked(b,s,nullptr,false,&detail)){last_gate=500+detail;return reject();}
             last_gate=6;if(!b.pose.begin(s,[](auto at,auto& value){return read(at,value);}))return reject();
         }
         last_gate=7;if(!broker->admit_weapon_render(q.source))return reject();
-        b.initial=s;bound=b;owner_thread.store(b.thread);retained.store(1,std::memory_order_release);last_gate=0;
-        r=receipt();if(!safe_copy(output,&r,sizeof r)){bound.pose.request_restore();return api::Result::restoring;}return r.result;
+        b.initial=s;bound=b;owner_thread.store(b.thread);retained.store(1,std::memory_order_release);last_gate=700;
+        r=receipt();if(!safe_copy(output,&r,sizeof r)){request_restore(808);return api::Result::restoring;}return r.result;
     }catch(...){
         // Once adopted, return the retained identity even on failure. A zero
         // handle must never make the consumer forget Native's restore debt.
         if(retained.load()){
-            bound.pose.request_restore();r={};r.handle=bound.handle;r.result=api::Result::restoring;r.gate=last_gate;
+            request_restore(809);r={};r.handle=bound.handle;r.result=api::Result::restoring;r.gate=last_gate;
             if(output)safe_copy(output,&r,sizeof r);return api::Result::restoring;
         }
         return reject();
@@ -192,21 +226,25 @@ api::Result update(api::Control const* input,api::Receipt* output,bool restore) 
     if(!restore&&(q.source.key.registration_cookie!=bound.key.registration_cookie||
        q.source.key.lifecycle!=bound.key.lifecycle||q.source.key.game_start!=bound.key.game_start||
        q.source.key.native_started_qpc!=bound.key.native_started_qpc||q.source.key.world_generation!=bound.key.world_generation)){
-        bound.pose.request_restore();drain_on_gt();const auto r=receipt();
+        request_restore(810);drain_on_gt();const auto r=receipt();
         return safe_copy(output,&r,sizeof r)?r.result:api::Result::rejected;
     }
-    if(restore)bound.pose.request_restore();
+    if(restore)request_restore(811);
     else {
         auto* b=weapon_hand_runtime::current();
         if(!b||!hand::same(q.source.weapon,bound.weapon)||!hand::same(q.source.world,bound.world)||
            !hand::same(q.source.pawn,bound.pawn)||
-           !api::update_admitted(q.angle,q.pull_raw,bound.pose.wanted(),bound.pose.wanted_pull(),
-               b->admit_weapon_render(q.source),b->admit_part_visibility(q.source),b->admit_socket_visibility(q.source))||
+           !api::update_admitted_lazy(q.angle,q.pull_raw,bound.pose.wanted(),bound.pose.wanted_pull(),
+               b->admit_weapon_render(q.source),[&]() noexcept {return b->admit_part_visibility(q.source);},
+               [&]() noexcept {return b->admit_socket_visibility(q.source);},
+               q.source.left_tracked&&q.source.left_grip_known)||
            !bound.pose.wanted(q.angle,q.pull_raw))return api::Result::rejected;
     }
     drain_on_gt();const auto r=receipt();return safe_copy(output,&r,sizeof r)?r.result:api::Result::rejected;
 }
 #else
+void compose_begin(std::uintptr_t,std::uintptr_t,std::uintptr_t,unsigned,std::uintptr_t,ComposeTicket&) noexcept {}
+void compose_end(ComposeTicket const&,bool) noexcept {}
 struct DecoderTicket {};
 void decoder_begin(gears_atom_overwrite::Arguments const&,DecoderTicket&) noexcept {}
 void decoder_return(DecoderTicket const&,bool) noexcept {}

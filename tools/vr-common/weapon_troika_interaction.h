@@ -6,6 +6,21 @@
 
 namespace gears_weapon {
 
+// Used by both the unmounted live entry adapter and the mounted interaction
+// contract. Occupancy/firing certificates are deliberately not prerequisites
+// for detecting an empty-hand contact. Only a fresh outside observation arms it.
+class TroikaEntryContact {
+    bool armed_{};
+public:
+    void reset() noexcept {armed_=false;}
+    bool observe(unsigned contact_mask,unsigned empty_mask,bool continuous,bool fresh,bool admissible) noexcept {
+        if(!continuous||!fresh||(contact_mask&~3u)||(empty_mask&~3u)){reset();return false;}
+        const bool edge=armed_&&contact_mask;
+        armed_=contact_mask==0;
+        return edge&&(contact_mask&empty_mask)&&admissible;
+    }
+};
+
 // Static evidence only: analysis/re-kb/scripts/WarfareGame contains
 // Turret_TroikaCabal_base.AttachDriver/ClaimTurret/UnclaimTurret and
 // Weap_Troika_base.InstantFire/WarmingUp.EndFire/Reloading.BeginState.
@@ -155,6 +170,11 @@ struct TroikaPose {
     double yaw_rad{},pitch_rad{};
     bool left_tracked{},right_tracked{},left_grip_down{},right_grip_down{},
         original_pivot_and_constraints_verified{},muzzle_axis_relation_verified{},mount_contact_verified{};
+    // Contact is measured from raw controller/palm geometry, never snapped skin.
+    // Set the matching hand bit only for a real handle surface contact. Empty
+    // includes the public arbiter: no held object, support or mechanism lease.
+    bool left_mount_contact{},right_mount_contact{},left_hand_empty{},right_hand_empty{},
+        mount_contact_continuous{};
 };
 struct TroikaSample {
     TroikaStamp stamp{};
@@ -190,6 +210,10 @@ struct TroikaReceipt {
     TroikaOriginalState original{};
     TroikaResources resources{};
     bool accepted{},original_resource_change_verified{},mechanical_completion_verified{};
+    // Some original vehicle entries complete synchronously. This must prove
+    // possession and restored original input after the actual call; a returned
+    // bool alone is insufficient, and no animation serial may be invented.
+    bool original_transition_completed{};
 };
 struct TroikaAnimationReceipt {
     TroikaStamp stamp{};
@@ -236,6 +260,14 @@ class TroikaInteraction {
     bool bound_{},dispatched_{},owns_fire_{},stop_needed_{},exit_requested_{},terminal_{},
         tracking_good_{},fire_armed_{},interact_armed_{},fire_level_{},interact_level_{},
         fire_edge_level_{},interact_edge_level_{},service_active_{},unresolved_transition_{};
+    TroikaEntryContact mount_contact_;
+    std::array<bool,2> grip_armed_{},grip_acquired_{};
+
+    bool empty_mount_contact() const noexcept {
+        return pose_.mount_contact_verified&&pose_.mount_contact_continuous&&
+            ((pose_.left_mount_contact&&pose_.left_hand_empty&&pose_.left_tracked)||
+             (pose_.right_mount_contact&&pose_.right_hand_empty&&pose_.right_tracked));
+    }
 
     bool accepts(TroikaStamp const& s) const noexcept {
         return bound_&&s.identity==config_.identity&&s.binding==config_.binding&&
@@ -279,11 +311,11 @@ class TroikaInteraction {
         return tracking_good_&&ns>=now_ns_&&pose_valid(pose_,ns);
     }
     bool right_handle() const noexcept {
-        return pose_.right_grip_down&&troika_grip_matches(pose_.turret_world_m,config_.right_handle_local_m,
+        return grip_acquired_[1]&&pose_.right_grip_down&&troika_grip_matches(pose_.turret_world_m,config_.right_handle_local_m,
             pose_.right_hand_world_m,config_.grip_distance_m,config_.grip_angle_rad);
     }
     bool both_handles() const noexcept {
-        return right_handle()&&pose_.left_grip_down&&troika_grip_matches(pose_.turret_world_m,
+        return right_handle()&&grip_acquired_[0]&&pose_.left_grip_down&&troika_grip_matches(pose_.turret_world_m,
             config_.left_handle_local_m,pose_.left_hand_world_m,config_.grip_distance_m,config_.grip_angle_rad);
     }
     bool drive_allowed(std::int64_t ns) const noexcept {
@@ -318,6 +350,8 @@ class TroikaInteraction {
         if(fire_in_flight())stop_needed_=true;
         tracking_good_=false;fire_armed_=interact_armed_=false;hands_=animation_?
             TroikaHands::original_animation:TroikaHands::await_tracking;
+        mount_contact_.reset();
+        grip_armed_={};grip_acquired_={};
         if(pending_.token&&!dispatched_&&pending_.kind!=TroikaAction::stop_original_fire)pending_={};
         if(owns_fire_)stop_needed_=true;
         service_active_=false;
@@ -377,17 +411,44 @@ public:
             s.pose.measured_ns>=pose_.measured_ns&&pose_valid(s.pose,now_ns_);
         if(s.pose.frame_ticket>last_pose_ticket_)last_pose_ticket_=s.pose.frame_ticket;
         pose_=s.pose;adopt_state(s.original);
+        for(unsigned side=0;side<2;++side){
+            const bool down=side?pose_.right_grip_down:pose_.left_grip_down;
+            const bool contact=troika_grip_matches(pose_.turret_world_m,
+                side?config_.right_handle_local_m:config_.left_handle_local_m,
+                side?pose_.right_hand_world_m:pose_.left_hand_world_m,
+                config_.grip_distance_m,config_.grip_angle_rad);
+            const bool eligible=tracking_good_&&!animation_&&original_.input_allowed&&
+                original_.phase==TroikaPhase::mounted&&original_.driver_is_this_pawn;
+            if(!eligible){grip_armed_[side]=grip_acquired_[side]=false;continue;}
+            if(!down){grip_acquired_[side]=false;grip_armed_[side]=true;}
+            else{
+                if(!contact)grip_acquired_[side]=false;
+                if(grip_armed_[side]&&contact)grip_acquired_[side]=true;
+                grip_armed_[side]=false; // a press outside cannot acquire on return
+            }
+        }
         if(!tracking_good_)invalidate_tracking();
         else if(!animation_&&!original_.animation_owns_hands){
-            hands_=TroikaHands::vr;
+            hands_=original_.phase==TroikaPhase::mounted&&original_.driver_is_this_pawn?
+                TroikaHands::vr:TroikaHands::await_tracking;
             if(!fire_level_)fire_armed_=true;
             if(!interact_level_)interact_armed_=true;
         }
         if(fire_in_flight()&&(!fire_allowed(now_ns_)||!fire_level_))stop_needed_=true;
         const auto e=reconcile(s.stamp);
         if(e!=TroikaEvent::observed)return e;
+        // A failed claim, occupied turret, held object or tracking gap consumes
+        // this contact. Only a fresh, continuous observation OUTSIDE both handle
+        // volumes can arm another entry. Grip/interact are not entry inputs.
+        const unsigned contact=(pose_.left_mount_contact?1u:0u)|(pose_.right_mount_contact?2u:0u);
+        const unsigned empty=(pose_.left_hand_empty?1u:0u)|(pose_.right_hand_empty?2u:0u);
+        if(mount_contact_.observe(contact,empty,pose_.mount_contact_continuous,tracking_good_,
+           !terminal_&&!animation_&&!pending_.token&&original_.phase==TroikaPhase::detached&&
+           original_.input_allowed&&original_.can_mount&&config_.original_mount_verified&&empty_mount_contact()))
+            return queue(TroikaAction::mount_original,s.stamp)?TroikaEvent::request_ready:TroikaEvent::rejected;
         return original_.animation_owns_hands?TroikaEvent::animation_handoff:
-            restored&&tracking_good_&&!animation_?TroikaEvent::hands_restored:TroikaEvent::observed;
+            restored&&tracking_good_&&!animation_&&hands_==TroikaHands::vr?
+                TroikaEvent::hands_restored:TroikaEvent::observed;
     }
     TroikaEvent edge(TroikaStamp const& s,TroikaEdge const& e) noexcept {
         if(!accepts(s)||!e.serial||!e.continuous_input||
@@ -413,9 +474,7 @@ public:
             if(pending_.token&&!dispatched_)pending_={};if(owns_fire_)stop_needed_=true;
             return reconcile(s);
         }
-        if(original_.phase!=TroikaPhase::detached||!original_.can_mount||!config_.original_mount_verified||
-           !pose_.mount_contact_verified||pending_.token)return TroikaEvent::rejected;
-        return queue(TroikaAction::mount_original,s)?TroikaEvent::request_ready:TroikaEvent::rejected;
+        return TroikaEvent::rejected; // Interact retains only the original exit action.
     }
     TroikaEvent update_aim(TroikaStamp const& s) noexcept {
         if(!accepts(s)||pending_.token||!drive_allowed(s.monotonic_ns))return TroikaEvent::rejected;
@@ -435,7 +494,7 @@ public:
             if(kind==TroikaAction::press_original_fire)valid=valid&&fire_level_&&fire_allowed(ns)&&!original_.fire_input_down;
             else if(kind==TroikaAction::aim_original)valid=valid&&drive_allowed(ns);
             else if(kind==TroikaAction::mount_original)valid=valid&&original_.phase==TroikaPhase::detached&&
-                original_.can_mount&&original_.input_allowed&&pose_.mount_contact_verified&&config_.original_mount_verified;
+                original_.can_mount&&original_.input_allowed&&empty_mount_contact()&&config_.original_mount_verified;
             else if(kind==TroikaAction::mechanical_original)valid=valid&&service_active_&&right_handle()&&
                 original_.servicing&&original_.service_serial==service_serial_;
         }
@@ -456,10 +515,15 @@ public:
         if(r.accepted){
             if(request.kind==TroikaAction::press_original_fire)valid=valid&&r.original.fire_input_down;
             else if(request.kind==TroikaAction::stop_original_fire)valid=valid&&!r.original.fire_input_down;
-            else if(request.kind==TroikaAction::mount_original||request.kind==TroikaAction::unmount_original)
-                valid=valid&&r.original.animation_owns_hands&&r.original.animation_serial&&
-                    r.original.driver_is_this_pawn&&
-                    r.original.phase==(request.kind==TroikaAction::mount_original?TroikaPhase::entering:TroikaPhase::leaving);
+            else if(request.kind==TroikaAction::mount_original||request.kind==TroikaAction::unmount_original){
+                const bool mounting=request.kind==TroikaAction::mount_original;
+                const bool animated=r.original.animation_owns_hands&&r.original.animation_serial&&
+                    r.original.driver_is_this_pawn&&r.original.phase==(mounting?TroikaPhase::entering:TroikaPhase::leaving);
+                const bool completed=r.original_transition_completed&&!r.original.animation_owns_hands&&
+                    r.original.input_allowed&&r.original.driver_is_this_pawn==mounting&&
+                    r.original.phase==(mounting?TroikaPhase::mounted:TroikaPhase::detached);
+                valid=valid&&(animated||completed);
+            }
             else if(request.kind==TroikaAction::mechanical_original)
                 valid=valid&&(step_+1<config_.step_count?
                     r.original.servicing&&r.original.service_serial==service_serial_:
@@ -471,8 +535,13 @@ public:
         if(r.accepted&&request.kind==TroikaAction::stop_original_fire){owns_fire_=false;stop_needed_=false;}
         if(r.accepted&&(request.kind==TroikaAction::mount_original||request.kind==TroikaAction::unmount_original)){
             unresolved_transition_=false;
-            transition_token_=request.token;transition_target_=request.kind==TroikaAction::mount_original?
-                TroikaPhase::mounted:TroikaPhase::detached;
+            if(r.original_transition_completed&&!r.original.animation_owns_hands){
+                transition_token_=0;transition_target_=TroikaPhase::unavailable;exit_requested_=false;
+                invalidate_tracking();
+            }else{
+                transition_token_=request.token;transition_target_=request.kind==TroikaAction::mount_original?
+                    TroikaPhase::mounted:TroikaPhase::detached;
+            }
         }
         adopt_state(r.original);
         if(r.accepted&&request.kind==TroikaAction::mechanical_original){

@@ -7,7 +7,7 @@
 // owns its LOD bones and supplies the current squeeze; this grants no grip,
 // item lease, tracking, wrist target or skeleton-write permission.
 namespace gears_hand_fingers {
-enum class Shape:unsigned {free,magazine,loading,starter,support,weapon,grenade};
+enum class Shape:unsigned {free,magazine,loading,starter,support,weapon,grenade,authored};
 inline gears_vr::Quaternion product(gears_vr::Quaternion a,gears_vr::Quaternion b) noexcept {
     return {a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
             a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z};
@@ -17,8 +17,9 @@ inline gears_vr::Quaternion turn(unsigned axis,double radians) noexcept {
     const double s=std::sin(radians*.5);if(axis==1)q.y=s;else q.z=s;return q;
 }
 inline bool rotation(unsigned side,unsigned finger_joint,double amount,
-    gears_vr::Quaternion reference,gears_vr::Quaternion& out,Shape shape=Shape::free,double shape_weight=1.,double trigger=0.) noexcept {
-    if(side>1||finger_joint>=15||unsigned(shape)>unsigned(Shape::grenade)||!std::isfinite(amount)||amount<0||amount>1||
+    gears_vr::Quaternion reference,gears_vr::Quaternion& out,Shape shape=Shape::free,double shape_weight=1.,double trigger=0.,
+    gears_vr::Quaternion const* authored=nullptr) noexcept {
+    if(side>1||finger_joint>=15||unsigned(shape)>unsigned(Shape::authored)||!std::isfinite(amount)||amount<0||amount>1||
        !std::isfinite(trigger)||trigger<0||trigger>1||
        !std::isfinite(shape_weight)||shape_weight<0||shape_weight>1||
        !std::isfinite(reference.x)||!std::isfinite(reference.y)||!std::isfinite(reference.z)||!std::isfinite(reference.w))return false;
@@ -65,7 +66,15 @@ inline bool rotation(unsigned side,unsigned finger_joint,double amount,
     constexpr double grenade[4][3]={{72,68,30},{76,72,32},{80,72,32},{84,70,30}};
     const auto& bends=shape==Shape::grenade?grenade:(shape==Shape::weapon?weapon:(shape==Shape::support?support:(shape==Shape::magazine?magazine:(shape==Shape::loading?loading:(shape==Shape::starter?starter:flex)))));
     auto closed=reference;
-    if(finger_joint<12)closed=product(reference,turn(2,-radians*bends[finger_joint/3][finger_joint%3]));
+    if(shape==Shape::authored){
+        // Generic caller-supplied LOCAL skin rotations. Weapon geometry and
+        // presets live in their own modules; this common writer knows none.
+        if(!authored)return false;
+        const auto q=authored[finger_joint];
+        const double authored_norm=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
+        if(!std::isfinite(authored_norm)||std::abs(authored_norm-1.)>.001)return false;
+        closed=gears_vr::normalized(authored[finger_joint]);
+    }else if(finger_joint<12)closed=product(reference,turn(2,-radians*bends[finger_joint/3][finger_joint%3]));
     else if(finger_joint==12){
         // The former deeply flexed thumb went under the curled fingers.
         // Reference-joint authoring keeps its base open and opposes the pad

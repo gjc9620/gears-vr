@@ -2,12 +2,23 @@
 #include "cover_pose_phase.h"
 #include "cover_pose_code_certificate.h"
 #include <bcrypt.h>
+#include "../vr-common/weapon_boltok_original.h"
+namespace boltok_original_live {
+struct Ticket {std::uint64_t handle{};bool admitted{},changed{};};
+void compose_begin(std::uintptr_t,std::uintptr_t,std::uintptr_t,unsigned,std::uintptr_t,Ticket&) noexcept;
+void compose_end(Ticket const&,bool) noexcept;
+}
+namespace lancer_original_handle_live {
+struct ComposeTicket {std::uint64_t handle{};bool admitted{};};
+void compose_begin(std::uintptr_t,std::uintptr_t,std::uintptr_t,unsigned,std::uintptr_t,ComposeTicket&) noexcept;
+void compose_end(ComposeTicket const&,bool) noexcept;
+}
 namespace cover_pose_phase_live {
 namespace pose=gears_cover_pose_phase;namespace certificate=gears_cover_pose_certificate;
 namespace binding=weapon_hand_scene_binding;
 bool enabled{},reserved{},certified{};
-std::array<void*,3> targets{},originals{};
-bool own_entries(); // Root: manifest-ready + read_attested_hook_entry of all 3 prefixes.
+std::array<void*,4> targets{},originals{};
+bool own_entries(); // Root: manifest-ready + read_attested_hook_entry of all 4 prefixes.
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 constexpr unsigned episode_limit=8,row_limit=7;
 enum class Failure:unsigned {missing,okay,owner,stale,caller,arguments,read,duplicate,exception};
@@ -54,18 +65,18 @@ bool prepare(){if(!enabled&&!continuous_hand_owner_live::requested)return true;i
 bool prepare(){if(!enabled)return true;if(certified||reserved)return certified;
 #endif
     for(auto const& c:certificate::chunks)if(!digest(c)||!digest(c)){failed=true;return false;}certified=true;return true;}
-extern "C" void GearsCoverPoseComposeHook();extern "C" void GearsCoverPosePhysicsHook();extern "C" void GearsCoverPoseTickHook();
+extern "C" void GearsCoverPoseComposeHook();extern "C" void GearsCoverPosePhysicsHook();extern "C" void GearsCoverPoseTickHook();extern "C" void GearsStandalonePoseHook();
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
 bool reserve(){if(!enabled&&!continuous_hand_owner_live::requested)return true;if(reserved||!prepare())return false;
 #else
 bool reserve(){if(!enabled)return true;if(reserved||!prepare())return false;
 #endif
-    const std::array<void*,3> detours{{reinterpret_cast<void*>(GearsCoverPoseComposeHook),reinterpret_cast<void*>(GearsCoverPosePhysicsHook),reinterpret_cast<void*>(GearsCoverPoseTickHook)}};
-    for(unsigned i=0;i<3;++i){targets[i]=reinterpret_cast<void*>(base+certificate::hooks[i].rva);std::array<unsigned char,32> before{},after{};
+    const std::array<void*,4> detours{{reinterpret_cast<void*>(GearsCoverPoseComposeHook),reinterpret_cast<void*>(GearsCoverPosePhysicsHook),reinterpret_cast<void*>(GearsCoverPoseTickHook),reinterpret_cast<void*>(GearsStandalonePoseHook)}};
+    for(unsigned i=0;i<targets.size();++i){targets[i]=reinterpret_cast<void*>(base+certificate::hooks[i].rva);std::array<unsigned char,32> before{},after{};
         if(!safe_copy(before.data(),targets[i],32)||before!=certificate::hooks[i].prefix||MH_CreateHook(targets[i],detours[i],&originals[i])!=MH_OK||!safe_copy(after.data(),targets[i],32)||before!=after){failed=true;return false;}}
     reserved=true;return true;
 }
-bool reserved_target(void* target){return reserved&&(target==targets[0]||target==targets[1]||target==targets[2]);}
+bool reserved_target(void* target){return reserved&&(target==targets[0]||target==targets[1]||target==targets[2]||target==targets[3]);}
 bool configure(wchar_t const* ini,FILE* file){const auto value=GetPrivateProfileIntW(L"CoverPosePhaseObserver",L"enabled",0,ini);
     if(value>1||(value&&(!continuous_session||!stereo_xr||!anchor_observer_enabled||enabled)))return false;
     if(value){wchar_t name[128]{};swprintf_s(name,L"Local\\GearsVR.CoverPoseCapture.%lu",GetCurrentProcessId());SetLastError(0);
@@ -135,6 +146,8 @@ void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,Sco
 void finish_guarded(Scope const& scope,bool returned){try{finish(scope,returned);}catch(...){failed=true;stopping=true;}}
 void release_guarded(Scope const& scope){try{release(scope);}catch(...){failed=true;stopping=true;}}
 extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra) noexcept(false){
+    lancer_original_handle_live::ComposeTicket lancer{};
+    boltok_original_live::Ticket boltok{};
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
     Scope scope{};gears_continuous_hand_entry::Entry entry{};bool returned{},body_original_called{};++active;++in_flight;++calls;
 #else
@@ -167,13 +180,17 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
         full_body_c0_native_live::before_original(entry);
         body_original_called=kind<3;
 #endif
+        boltok_original_live::compose_begin(packet->gpr[1],packet->gpr[2],packet->gpr[3],kind,ra,boltok);
+        lancer_original_handle_live::compose_begin(packet->gpr[1],packet->gpr[2],packet->gpr[3],kind,ra,lancer);
         if(kind<3){cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);
 #if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
             full_body_c0_native_live::after_original(entry);
 #endif
         }else failed=true;
         returned=true;
-    }__finally{__try{finish_guarded(scope,returned&&!AbnormalTermination());}__finally{
+    }__finally{__try{lancer_original_handle_live::compose_end(lancer,returned&&!AbnormalTermination());
+        boltok_original_live::compose_end(boltok,returned&&!AbnormalTermination());
+        finish_guarded(scope,returned&&!AbnormalTermination());}__finally{
 #if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
         cover_control_observer_live::compose_end(scope,returned&&!AbnormalTermination());
 #endif
@@ -193,6 +210,29 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
         continuous_hand_owner_live::pose_end(entry,returned&&!AbnormalTermination());
 #endif
         release_guarded(scope);--in_flight;--active;}}
+}
+// Register packet preserves the real parent ABI and return values. Child C0
+// remains the only pose writer; this scope only admits its actual extra root.
+extern "C" __declspec(noinline) void GearsStandalonePoseInvokeProtected(pose::CallPacket* packet,unsigned,uintptr_t ra) noexcept(false){
+    bool returned{};++active;++in_flight;
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    gears_continuous_hand_entry::Entry entry{};
+    entry.kind=3;entry.rcx=packet->gpr[1];entry.rdx=packet->gpr[2];entry.r8=packet->gpr[3];entry.r9=packet->gpr[4];entry.ra=ra;
+#endif
+    __try{
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+        continuous_hand_owner_live::pose_begin(entry);
+#endif
+        cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[3]);
+        returned=true;
+    }__finally{__try{
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+        if(entry.selected)full_body_c0_native_live::pose_end(entry,returned&&!AbnormalTermination(),true);
+#endif
+        continuous_hand_owner_live::pose_end(entry,returned&&!AbnormalTermination());
+#endif
+    }__finally{--in_flight;--active;}}
 }
 void request_drain(){stopping=true;}
 unsigned pending_count(){return in_flight.load()+unsigned(capturing.load()!=0);}

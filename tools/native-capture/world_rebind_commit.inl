@@ -86,6 +86,9 @@ void advance_world_handoff(FILE* status){
     if(fresh==PendingFresh::stale){
         pending_world.reset();world_candidate_generation=0;world_commit_request=0;world_handoff_phase=4;return;
     }
+    // Existing closed world gate and three owned locks serialize publication.
+    // Reject revision exhaustion before any retirement side effects.
+    if(!anchor_config_owner::preflight(pending_world->anchor)){request_session_stop(SessionStop::proof_failure);return;}
     const auto minimum=gears_vr::monotonic_ns();
     const bool committed=stereo_publisher.commit_world_rebind(previous,next,minimum,[&](){
         const auto destroyed=submitted_lifetime.confirm_destroyed(world_quiesce_token);
@@ -102,7 +105,8 @@ void advance_world_handoff(FILE* status){
 #else
         if(!retire_ui_world()){request_session_stop(SessionStop::proof_failure);return false;}
 #endif
-        anchor_config=pending_world->anchor;ui_config=pending_world->ui;
+        if(!anchor_config_owner::publish_config(pending_world->anchor)){request_session_stop(SessionStop::proof_failure);return false;}
+        ui_config=pending_world->ui;
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
         if(crosshair_live::enabled)crosshair_live::publish_recovery(*pending_world->crosshair,next);
 #endif
