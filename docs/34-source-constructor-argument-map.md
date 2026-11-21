@@ -1,3 +1,49 @@
+# Draft parameter map for full source view construction
+
+2026-10-12. Call from the observed player scene 0x15d989 And construction 0x15e428 . This draft has not been used to call the game construction function.
+
+## Windows x 64 Parameter Position
+
+The first four target objects, aggregations, correlation status and one pointer parameter; subsequent parameters by 8 byte slots. Construct clearly to read the sections from these slots 32 Bits or integers, the entire slot cannot be used as a pointer.
+
+| Parameters | Sources or uses of current observations |
+| --- | --- |
+| 1 | Objective 0x430 Bytes Objects |
+| 2 | Gather, write objects +0 |
+| 3 | Association Status, Write +8 |
+| 4—10 | Seven pointer values, write to +0x10 to +0x40 |
+| 11—14 | Four floats, write to +0x48、+0x4C、+0x50、+0x54 |
+| 15 | Point 64 Byte Matrix, copy to +0x70 |
+| 16 | Point to the other group. 64 Byte Matrix, copy to +0xB0 |
+| 17—19 | Three. 16 Byte Input, Copy to +0xF0、+0x100、+0x110 |
+| 20 | associated packagings;participating +0x140 structural reproduction of packagings |
+| 21 | float, write +0x3E0 |
+| 22 | 32 Bit Value, Write +0x3E4 |
+
+0x15f083 Puts the target object in the Rax back. The table here only records binary transmission; most pointer parameters and the formal semantic of the latter two values are still unknown.
+
+## Derivative Count
+
+Construct to read +0x70 and +0xB0 , write with SIMD multiplied by +0x2B0 Starts the matrix block. After that, generate multiple groups of derivative data and move +0x380 Containers and +0x2B0 Give me the matrix. 0x1CD784。
+
+0x1CD784 From regular RCX, RDX, R 8 Parameters start, press 6 Item, each 16 Byte prepare packagings and extract several four-point coefficients from the matrix. This corresponds to the cropping plane generation, which is still a candidate syntax. It cannot be moved only +0x70 , and leave the data with old vision points.
+
+Same Construct pair 0x137A60 Call with XML 0—XMM 3 Enter and return multiple SIMD repositories, setting ECX. It cannot be called by the normal " two matrix fingers " C++ function. Use normal complete construction interface to recalculate or restore its internal ABI accurately, which is more valid than guessing the signature of a function.
+
+## Local interface scaffolding
+
+`native_source_view_args.h` Save 0x430 Byte Input Snapshot and Use 22 Parameter function type. It does not have a game address, distribution, Hook or start logic. The external resource pointer in the snapshot is still a loan value and cannot be held across frames or lines.
+
+`SourceViewArgsTest.exe` Validates the transmission of seven points, four floats, input matrix/block addresses, tail fload/integer and returned values by local function. The entry address is also verified after copying the snapshot and the original input bytes are not changed. Construction and testing have passed.
+
+These tests only validate local compilers using scaffolders, and do not replace semantic authentication of the internal configuration of the game. `build-source-args` No game injected; still running is finished and no sampling `GearsCaptureStateShadow.dll`。
+
+The next round will recreate an unsubmitted view with the original matrix, size and scale, then try to shift extra eye positions against the raw derivative data and clean path. Do not use scaffolding directly for both eyes.
+
+---
+
+## 中文
+
 # 完整源视图构造的参数映射草案
 
 2026-10-12。根据已观察的玩家场景调用 0x15d989 与构造 0x15e428 的参数读取、成员写入整理。尚未用此草案调用游戏构造函数。

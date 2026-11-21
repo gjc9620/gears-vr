@@ -1,3 +1,35 @@
+# V 1 Independent candidate kit actually started the check
+
+2026-10-17。Native 36／Borderless 1. The user is authorized to continue repairing the test while you are away. This time, no game archive or graphic configuration will be changed and no backstage physical handles will be enabled; simulator is available only as an external test for Runtime, which is not included in the candidate package.
+
+## Installation path problems detected and repaired
+
+Starts with a separate package in Python, and the game EXE is on an off-package installation directory. First test PID 7124 Stop on menu:`menu_navigation.navigate`Call`game_io.game_window()`, the latter spell a fixed game path by the repository where the module is located and cannot select the external installation specified by the player.
+
+c 688c 46 Find the packaged window with the PID set aside for this round, and retain the complete process identity of Navigate_core before each dispatch, HWND, cut-off time, menu tree and Stop/F 8 Check. Second test PID 11376 Then it was exposed to the end.`send_confirm`The original fixed path will be called again, and therefore rejected before the first Enter.c 451f 4 c Pass the same bound window selectioner to final distribution door ban; retain the original act if the old independent tool is not imported.19 Entries Navigation and 36 The menu control test is passed, covering custom installation, window change/disappearance, error PID, stop and old access.
+
+Neither failed to activate the original scene Hook, returning access; then normal closing of the game. When the first closing script closes to multiple numeric windows, the second window disappears with the game and produces WinError 1400; the independent confirmation process has since been withdrawn, no killings and no backsliding. Failure records are kept and cannot be repeated as game flashback or double-eyed black screens.
+
+## Actual operation in recovered packages
+
+Candidate Directory`analysis/release-staging/gameplay36-portable3-20261017`Source code up to c 451f 4 c: pre-inspection for isolation 700 Documentation,43408726 bytes. Run commands are used in packages`runtime/python/python.exe -I -B`Start script with package, configure only external games EXE and 100 units/m;using initial player default HUD 65°Close the camera.0 Rice, not the machine's debug configuration.45°／0.3 Rice.
+
+Actual Session`continuous-stereo-4108-20261017-041112-7bf9825f`By Python owner in package 32664 Create, Game PID 4108. The path to DLL, original startup scripts, native build, OpenXR programs is left in the box. Automenu navigation successfully entered the current battle and no new campaign started; release after matching the original paper 714 Double-eye images, Capture attempts 715、busy 1, ticket/rectangle rejects 0. HUD layout application 3859- Back off.0 Keep the camera close.0。
+
+Original 4516.560 ms, first actual program after camera readiness tag 7539.886 ms, still not reached the immediate entry to VR. After normal stoppage, native cleanup, exit recovery and XR exit 0 Passes, then ID check normal closes the game. After running all 700 The list of items is still consistent; the status/log that resulted from the operation is not published as a payload.
+
+Original session and snapshot in packageignored `analysis/runtime`Summary`analysis/runtime/portable36-actual-runtime-audit.json`This round demonstrates that the independent candidate's own package can be activated and entered into both eyes for external installation, and is not equivalent to clean player machines, Quest/VDXR, machine guns or long-term game inspection.
+
+## New evidence from machine gun screening.
+
+PID for Main Menu 7124 Read-only scans confirm that WarPC_Menu.Pawn is empty and cannot be judged to have no machine gun at this level.4108 Turret_TroikaCabal,Health 100, Driver/Controller is empty and a co-player WorldInfo; location is (-)4052.71,-12215.18,-315) and (-638.85,-10770.90,-62 The machine gun is directly Level, unlike WorldInfo/controller's PersistentLevel, suggesting that the current mounted certificate is similar to the Level ' s assumption that a legitimate flow level may be denied.
+
+Evidence`mounted36-gameplay-live-scout.json`This time, only targeted repairs are set: authentication of each Actor’s direct Leve identity and continued requirement for a common WorldInfo, person/machine gun control relationship etc.; no freeing of any random Outer or alleged machine gun has been seized.
+
+---
+
+## 中文
+
 # V1独立候选包实际启动检查
 
 2026-10-17。Native36／Borderless1、自测前移已启用。用户授权离开期间继续修复测试。本次不改游戏存档或图形配置，不启用后台实体手柄；模拟器仅作为外部测试Runtime提供，候选包不包含它。

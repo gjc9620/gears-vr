@@ -1,3 +1,389 @@
+## 2026-11-06 13:39 67624 Group review and game continued: C rules passed, double-check failed
+
+Fixed entrancev 71 No change: hold on to the head and keep running, one turn after first actual release 3 seconds, then pull off. Normal closed-quantity private 125544 The first execution was passed, but the second C grip failed (token)12 Ambiguous. No false timing defects or repair.
+
+Do not restart the game, same 67624 Keep holding on token.13/14 Two different versions of the original enemy execution, restoration of authority shooting and suspension/B return pass. Read-and-read observation has not failed to eliminate it; it does not relax protection from handouts, prescriptions, identity and monographers.19 Double-Stamp Full Page Range and 8 Zhang action view; start engagement 3 The third person in seconds claims exposure, complete alignment/hands/walking/HUD is still incomplete. Game/Native/Input/entry/XR exit normal; two video segments of the code, media retention mission completed. Passive reader failed at last reading on normal unloading (exit).1) Separate records, non-play failures.
+
+The latest three sessions.67624/47468/67428 and 48 Hourly media strategy implemented. All Lancer and entity header acceptances are still incomplete and fixed 11/64 Mature 36.47%，+0.00; no new deliveries were made during this cycle.[solo-lancer-combined-67624-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-combined-67624-20261106.json)。
+
+## 2026-11-06 12:49 47468 Private matching: correcting the loss of master attitude
+
+Fixed candidatev 71 C holding hands/one-time release 3 Keep the second. This round is privately compiled only for C 0 The master hands closed to the real right Grip.0→1→0 The same control position, weapon identity,36 Bones observation and 28 The CPU constant observation was then opened/closed/open after the Queue/Primary upload.44.55/49.48/54.35 The actual mirror of the second also allows for change.3 Double-Stamp and Full Page Range 9 The Zhang phase has been examined.
+
+The final five-part alignment, natural wrists and all angles are still unaccepted; CPU constant is not hardware-by-draw. Next check model/monster mirroring and actual contact geometry, with an open view, without repeating samples for the unchanged transfer chain. Private observation scripts have been changed to default closing off red debug volume in the hand cover, with a visible scope review still available and user debug function retained.
+
+Diagnosis switch successfully re-compiled OFF, regular Native and internal running directory restored 114342,Purposev 71 Document Hash maintains. Game/XR/record/code is properly completed; media only keep the latest three sessions 47468/67428/71560 and not exceeding 48 Hours. Full Lancer/real machine acceptance is still incomplete, maturity 36.47%，+0.00 Evidence:[solo-lancer-main-grip-ab-47468-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-main-grip-ab-47468-20261106.json)。
+
+## 2026-11-06 12:18 Master's Posture: Visible coupling failed, correcting the lost postage assumption
+
+Fixed entrances stillv 71: Push to the front end and hold on to continuous running, once after first release 3 Seconds later, pull off. No new candidate is announced this time.
+
+49384 It's...24 The main player, CPU,71560 It's...19 A CPU/Corporate Monpe observation and 67428 It's...18 The CPU constants after the upload of a CPU/Queue/PRIMARY match the closed-handing posture.67428 Maximum deviation of matrix 1.65344e-5；71560/67428- Yeah, I do.1460/1432♪ I'm gonna pass the old certified ♪0 The video still shows that the master hand does not fit the handle, so it can no longer be used as a reason for “disclosed postures lost in these passages” or to equate the source of CPU constants with hardware buffers or actual drawings at each time.5 Double-Stamp Full Page Range,6 The Zhang action profile was checked; the reloading/reactivation of fire/stopping of return passage and non-adoption of hand positions.
+
+Next check the actual GripPoint, wrist and model reference geometry without adding second boneswriters, not guessing corner or repeating unchanged observations. All games/XR/recording/codes are normal end; old generated media are now following the last three sessions and 48 Hourly strategy clean-up. All Lancer and real machine confirmation is still not fixed.11/64 Growing up.36.47%，+0.00。
+
+Evidence:[solo-lancer-private-main-grip-67428-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-private-main-grip-67428-20261106.json)。
+
+## 2026-11-06 11:02 Internal portfolio review 39172: Move passed, full hand still missing
+
+Fixed start-up entrance still stands **v 71**, retain "C push continues to hold on to running and first actual release and then one after the next"3. No candidate is replaced this time.
+
+Internal freeze 104020 COMPILated: Consumer of original input/publishing person retained by Native for the same Scene, original time stamp and 100 ms limit unchanged; unknown cartridge observation in place 100 The millisecond window allows the previously undelivered pressure to finish the grab when it is deconstructed into a unique log contact.280 And the owner of the Line,25/16 Entry,23 Group Support and 611 The binding check passed.39172 Actual original copy 60 FL R 2 Observation; the line of wood is known to have been physically travelled to the delayed branch of the log and cannot be reproduced as a part of the branch ' s actual running through.
+
+39172 The same game completes the Grip/Finger grab, actual gun turn, each.4 Two-shot, release.4/3 Reactivate single-handed fire; original cartridge index finger and replacement box Grip is fully inserted, the empty warehouse E is real pull/spill/back and resume firing, pause/B back through.9 Double-way timeline and 8 The physical phase of the scenery has been examined;155.02 One second for the VR frame card, and keep it as defective.
+
+**The government has been unable to pass the law by hand:**125.08/205.62 The main hand opens up when the second is changed. E and support stages are in place.36 A primary bone observation matches the gun-shaping posture and is not a substitute for real pixels at the magazine stage; the next step is to check that actual master-care gestures are written into/consumer chains.53016 Action Undo Accurate Source, Old 2572, walk flash/HUD/start third person is still retained. Native/entry/XR/play exit normally; acceptance is not visible for all Lancer and entity heads. **36.47%，+0.00**，11/64 The denominator remains unchanged.
+
+Evidence:[39172 internal portfolio records](J:/gearsVr/analysis/6dof-progress/solo-lancer-private-hand-fit-39172-20261106.json). No more games for unchanged C behaviour, no other guns/conferences/assistants.
+
+## 2026-11-06 v 71: Chainsaw holding and loose-knit
+
+Current Fixed Candidate **6dof-unified-20261106-71**. Push back to the front end and hold on; first real release and then continue again one time 3 seconds; then pull off voluntarily and push again before holding the same hold.
+
+68424 I'm sorry.828 Frame is positioned to specific return: the handle remains valid and held, but the C-C grips are missing from the branch where the cartridge is to be observed. Only the original holding of the handshake has been restored and removed before it is expanded 250 milliseconds of wrong handshake; new contact, actual schedule, completed action 250 msec interface, tracking/identity/release protection maintained.
+
+52548 Same game 11 Division C is cleared:20 Keep the second and turn around, pull it off, shake it up and push it loose.0.43 Seconds still spinning/3.52 The seconds have been stopped, the handle has been seized and actual firing resumed.5 Full page span double-way timeline and 6(a) A physical action view;12 A C-finger observation now matches the exclusive attitude. Compiled, packaged, properly exited, Native/entry/XR restored and configured bytes maintained.
+
+**Not completed:**All five parts fit and natural.69160 The finger's hand entered the exact source of the revocation, old 2572 Accurate source, walk flash, HUD and start third person; no claim that Lancer is completed or physical pass.11/64 Delivery maturity maintained **36.47%（+0.00）**. Next, the current Lancer posture is of high quality and no other guns/conferences/assistants are fired.
+
+Records:`J:\gearsVr\analysis\6dof-progress\solo-lancer-C-incumbent-52548-20261106.json`;starting entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。
+
+## 2026-11-06 v 70: narrow-separated frame of the cartridge, keeping chainsaws holding and loose rules
+
+Fixed access is updatedv 70,Purpose, scale 1 and 4 Second reload configuration maintains original bytes, v 69 Roll back. PG clearly delivers the observation status when current pressure is not ready/ still old; only re-use existing 100 msec is intended to wait. No contact, timeout and identity/tracking/release protection is known.4 And synchronized the production of Native/PG, actual controller GVC 4 No change.
+
+53800 The same game completes the original cartridge index finger and is not unbroken, new clip Grip does not untie, first empty box grabs, actual air silo bolt/disturbing/return; C pushes to hold more than his head 3 Seconds do not stop, then pull off/and shake hard, first release one time 3 Seconds continue/take/reactivate firing.9 Double-Stamp Full Page Range and 12 A fixed action view has been checked, video encoding completed and the Native/entry/XR/play is duly exited. The first script was missing PIL before input, failed and continued in the same game; this round does not re-certify to start the transition completely.
+
+The first silo capture of this run is currently in contact and has not entered the observational branch; it is checked through CPU's old pressure-renewal and negative. Unrecovered cases cannot be considered as proof 2572 The old C hold period is still pending.212.68 The second C finger/surface alignment still needs to be modified; the full attitude of five parts, scintillation by walking, HUD/start third person is retained with waiting cards, physical header receipt and acceptance. Next delivery point: first fix this round 212.68 The actual finger/surface of the sec handle and re-entry of unproven holding period with a first invalid line position is cancelled;2572 The exact source of the missing first airbase frame contact is open. The source code is built into a COHERENTbatch and then centralized, without running C for change.
+
+Growing up.36.47%，+0.00(b) Percentage points;11/64 The denominator and weights remain unchanged, no new count of molecules.`J:/gearsVr/analysis/6dof-progress/solo-lancer-mag-cohort-53800-20261106.json`。
+
+## 2026-11-06 v 69: wood-shaping rotational adjustments, hand-to-hand and saw review
+
+Fixed entrance `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe` Updatedv 69,Purpose/scale 1/4 Second reload configuration bytes, v 68 Returnable. The logs remain the same contact point/hand sign and fixed bone length, with only a fixed wrist around the axis of the gun being turned around.45 Decline to 20 Degrees;real controller tracks, capture range/attribution and firing authority remain unchanged.1016 Adopted.
+
+8368 The Grip/FoP both handheld, moving the gun, each in the actual game 4 The rest of the group will keep their hands open and recover.24 Sub-bone observation against wood preforming, with the average joint most likely to be wrong 0.0000068 degrees; this only proves that the bone shape has actually been accessed, not full-angle surface/comfort acceptance.7 Double-way timeline and 6 The frame view of the log has been checked and the full video coded; the wood is attached to the selected perspective without any previous addition 90 Keep up the wrist axis. C-hold on.20 Second, head move, back pull off/same grab-and-shock push, first one break 3 Seconds continue/take/return to firing, Native/entry/XR/play is duly completed.
+
+Adds a new frozen field to the current stoppage that is not valid for the first service, saves it and then finishes it in its original form, avoiding subsequent uncovering.8368 Record normal renewal period is stop_reasons 256、lifetime_failure 0; last-disarmm may come from earlier events and cannot be considered as the cause of this normal expiry.2572 The continued holding of the early stop and the first airbag box, Neds_release, were not located for repair and the failure to re-establish this round is not a solution.
+
+The next point is to find out why the first airbag box was asked to try again. Source C records leave it for a specific batch; continue Lancer five-point alignment, walk flash, HUD/start short third person and waiting card. No assistant/other gun extension.36.47%current round+0.00(b) Percentage points;11/64 The denominator, weight and weight are unchanged.`J:/gearsVr/analysis/6dof-progress/solo-lancer-foreend20-8368-20261106.json`。
+
+## 2026-11-01 Private candidate resumes startup menu, the official entrance remains v 36
+
+## 2026-11-03 12:48：v 46 Original hint correction delivered
+
+v 46 Development candidate delivered: original Drawaactions & DrawActionInfo suggests using the current object identity context without misrecording the render-only record as an action, Frame;599 Sub-draw/recovery, debt 0。60576(b) Short-checking to retain the gun, cancellation of magazines, opening of fire and suspension;18124 Complete 326.83 Second waist/shoulder,4 The second round of reloading/storage/air storage is passed through the original launch handle.11 Pages Time Axes and 6 Details are available. Hand-type precision, physical cover, start-up hand-to-hand and real machine still not accepted.
+
+Fixed entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。9 V Change files left 45 Back off.751 Distribution document reconciliation, configuration/4 Second reload INI. No new timers, assistants, second-writers or other guns are added.
+
+- 18124: Complete 326.83 Second double-track recording; waist/shoulder firing, turn-gun/turn-over authorization separation, cancellation/insert/stocking/4 The second reward/silo is actually dialed and the original saw is activated.11 Pages 3 Time axis of the second 6 Chang.1280 Px details; not frame-by-frame or real-time.45440 Values/text evidence, the old media has been cut in line with the last three policies.
+- 60576: amended for HUD 99 Short check around seconds, physical position adjustment/restoration 599 Debt liquidation 0; gun pick-up, cartridge cancellation, resumption of fire, pause/B return to hold.4* The full pages of the page are available for consultation.2 Zoom details; text moved above the magazine/crash area, but the gun could overlap when raised and the complete HUD layout was not completed.
+- Could not close temporary folder: %s 24500 Raw locator DrawText Call 0 No image improved; withdrawn.18124 The actual HUDLocators array is empty, while the DrawActions & Drawaction Info does call. New realization only retains a HUD/role/arms/holder status, which Canvas reads when drawing; no longer uses render carrier without action clock as a fresh hand handle sample or synthmic time stamp.
+- HUD original call nesting, partial writing/failure recovery, abnormal exit, external writer protection and existing recall protocols 4 scene and offline 6 The scene is passed. The command error to call the protocol program without parameters for the first time was identified and then used 4 A clear model; failure as a product or evidence.
+- Growing up.36.47%,incident+0.00pp；11 Father/64 Molecular items/192 The operational point remains unchanged. No additional points are obtained from the number of repairs or re-checks.
+- Next: continue with the same Lancer: batch correction of lower neck/forearms shield and scratch point/finger alignment; first retainer 18124/60576 Video, original skin-skin/contact location position specific defects, recoded and compiled for centralized recording review. HUD tips have been moved up but may still overlap with them; no other guns are parallel or re-routing to cover the deficiencies.
+
+Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-60576-review-receipt.json`;complete process:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-18124-review-receipt.json`。
+
+
+This round is a real picture of progress:64112 The original GPU buffer can see Attract page, and then source 1 The handle A and the original service error confirmed entry into the main menu, and the simulator synthesis map also contains menu content. The final synthesis command was received in the original version.0×0 Target size and NN sampling coordinates, input texture actually as 3840×2160; this does not contradict earlier observations that “engine vision/exchange chain itself is not zero”.62760 It's also recorded the same time period.37 The mapping chain before the secondary Present complete excluded errors resulting from mixing earlier intermediate texture with later exchange chain buffers.
+
+Refurbishment is currently only available for private start-up observation branch: re-use the only original quad portal to check 7 A field of primary bytes, input texture, stable to be bound, a description source and the only current display buffer, restores only recorded zero size/NN form without modifying windows or engine objects. Effective image remains as it is. Strict compilation and related limited regression pass;64112 Actual amendments 10056 Number of times, the rejection is recorded 0, normal cancellation of byte, input and readback resource recovery, starterexit 0. The wheel only checks the start-up menu, without a full Native session being activated.
+
+**Not yet delivered, nor can it be called VR menu completed.** Early quad-commitment check-in still pending production integration; earlier 63108/55976 The complete Native clean-up is not counted as approved at the host's original entry pre-check. The entire layer of simulation also has a duplicate/cut presentation, which requires an independent eye and correction of the theatre structure. The already controlled Playground/Giveto step cannot be used as VR handle header navigation or original X pick-up receipt.36144 Repeating entry failed,55976 The failure to repair the unused ones was retained and not used for the points.
+
+Next batch: correct integration of the only drawing entry to be completed, checking of the theatre's eye map and another menu to default first person consistent check; then continue retention of equipment/input/offload/other weapons/dark road map. Lancer maintains original model machine sightings and Snub test reload remains closed.6dof-unified-20261031-36；11 Father/64 Sub-maturity 32.83%This event 0.00 Percentage, entity head not accepted.
+
+Evidence:`analysis/solo-m1-20261028/startup-menu-geometry-receipt.json`,Same Directory`startup-menu-geometry-identity-20261101-003923`Contains matching source code, DLL, cache, original buffer and composite. Private Native SHA 256：`c4faff06be5d0eee779c330c7e40623503f97c3439721e33a7eb8430961bb971`。
+
+## 2026-10-31: Cold Start menu positioning advance, open delivery still v 36
+
+Private read-only observation has been achieved 12560 The actual original version draws evidence: the vtable of the menu specific subcategory differs from the generic UIScene table accepted by the old observer, but is actually called to the same original version of the Render function. Private observation checks the original call point, read-only module table and shares primary access without relaxing the production conditions for UI/geometric/action takeover. Loading, confirmation box and main menu generate CPU mapping data (e.g.,220、136、852 Additional vertex; FCavas transparency and post-return transparency 1, the relevant scenario is Opacity not zero. The actual composite picture is still dark and CPU data cannot be used as GPUs.
+
+The next check point is therefore moved from "Enter menu mapping" to "The original Canadians data is being rendered by which target buffer Execute/Frush writes." The matrix/view/transparency does not raise confirmed zero-value questions and does not repeat such speculation. Larger batches are still marked when outside the existing available bound reader range, without expanding capacity to make pass.
+
+New observation is only visiblely enabled by private sub-process environment, with default closing; early entrances are regularly handed over to full Native sessions, original entrance 32 The byte is included in the recovery list and the Native/entry/controller/weapons are properly closed.36 No black screen repair or head-over of the barrier; history rating 32.83%Keep. Source code, actual Native and return confirmation in`analysis/solo-m1-20261028/startup-ui-draw-receipt.json`Quoted frozen directories.
+
+## 2026-10-31：v 36 Equipment for animation display repair, residual opener and menu black map to be repaired
+
+Unified entrance `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe` Updated to `6dof-unified-20261031-36`。727 The primer,6 items;original configuration and 4 Second reload configuration by bytes, v 35 Replace file is backed up. Only Playground is recompiled and Native/XR/GUI is reused on a rash basis.
+
+- 64324 The original collection is clearly distinguished from the trajectory of the actual components: ground-picking cloning, inventory objects used for supply, and newly created player Lancer. The original temporary collection can be re-posted by animated follow-up equipment after success, not just a successful return assessment.
+- The new code temporarily hides the main component through the original SetHidden interface during the current unhandled general equipment phase; complete identification/stock/component key and original visible value authentication continues with the original equipment status and animation. Restore, external matter cancels, objects are rejected and cleared for use in a log that could otherwise be restored; displays are restored before taking the gun without adding a camera or bonewriter.
+- 60680 Same version of actual observation: HiddenGame, New Lancer 0.54 The seconds were real and then restored, with the original inventory process continuing;38.49 sec/347 The pause/B return in the frame video, shoulder-picking gun, visible rifle rotation/fire and head movement are normal exits from Native/entry/control door limits/weapons pass. Controlled entry does not yet provide for GiveTo inventory preparation as a full VR heading navigation/X pick-up gun.
+- Visual review is still not possible: the complete taking of a gun has been replaced by a residual short-term opener, with a small/low contrasting text and a pistol inserted close to Troika. Keep a full video without loss of defects. The original cold starter menu black map remains unrepaired;64324 Read-only observation indicates that the cache of UI matrix is not limited, native view 3840×2160、LocalPlayer Origin=(0,0)/Size=(1,1) This does not prove that the actual Scene Rinder was drawn.
+- Next, we will continue to locate the original old gun display of the residual transition and the actual charting path for the menu, followed by the original X/Y and the complete established road map; no change checks are repeated, no help is opened. The Snub experiment reload remains closed, and entity head start-up and full functionality remain unaccepted.11 Father/64 The number of children is the same as the denominator.32.83%This event 0.00 Percentage point.
+
+Evidence:`analysis/solo-m1-20261028/equip-visibility-v36-receipt.json`、`pickup-transition-60680-213909/stereo-demo.mp4`、`vr-gameplay-chain-60680-213918/stereo-demo.mp4`Source code frozen in the same directory`equip-visibility-v36-source-20261031-214316`. The version is clearly defined displaying restoration, not a statement that the problem of floating or the whole experience has been completed.
+
+## 2026-10-31：v 35 Menu Switch Key Continuity Fixed, Unfinished
+
+Unified entrance `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe` Updated to `6dof-unified-20261031-35`，727 The data is not available.8 Item Updates, Original Configuration and 4 Second-skept by-the-word file;v 34 File saved next to v 35 Rollback directory. Entity header and full project acceptance is still incomplete.
+
+- Fixing the real source problem: The menu/theater transition showing the hint was used as a tracking border, blocking the pressed ABXY/Menu to release. The number button continuity is maintained, the roller is independent and the focal/expired/equipment or tracking intergenerational changes are isolated from old input, and the trigger/Grip is not duplicated. Additional orientation checks pass through with the original input protection check.
+- 59800 Same actual video 37.47 sec/338 Frame: VR pause/B resume, first person after old transition event maintained, role moved around 2.36 Rice steady, stand alone, left shoulder Lancer to take the gun/stalk/fire,8 centimetre/10 The control scene enters and the Giveto inventory is not prepared to be equal to the full VR heading navigation/X pick-up gun passed.
+- The pacing of the serenade no longer inherits cooling from the last weapon; the original temporary gun collection interface is used when there are strict general equipment, without special action/carrying.0.77–1 The second is still unheld/in-format and cannot be marked as a visual problem.
+- The cold start menu survey has new boundaries:55092/46716 Actual Precent returns normal, unshielded/failed;46716 The original buffer of the read-out game is also completely black before submission, and the diagnostic GPU resources are properly cleaned up.50612 Authentication of engine viewing, client and exchange links for readable 3840×2160; DPI cut or zero size is not a proven cause. Continue looking at upstream menus.
+- The total number of rounds is still confirmed by action, with small text/low contrasts and a forward route close to Troika, with the arm puncture.48920 Failure to recover B for the first time was retained; it was only resumed for B for the second clean-up phase.59800 Adopts the broad conclusion that “all inputs never lose”.
+- The original Lancer model has a rear-end and front-star mirror, without additional sightings as required by the user; no ballistics have been claimed to be zero.
+
+Source code and three-end construction frozen to `analysis/solo-m1-20261028/vr-input-v35-source-20261031-204750`; the return, complete video and visual list of questions is in the same directory.32.83%This event 0.00 Percentage percentage, not multiplied by the number of compiled, disabled or tested. The current session continues to be the only one achieved/constructed/run.
+
+## 2026-10-31：v 34 Default First Person, Original Right Rocker and Restore Restoration
+
+The unified entrance is still. `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`, Current `6dof-unified-20261031-34`。
+The following new findings cover the broad understanding of the old version of "menu adopted".
+
+- The first name is automatically maintained when the unified version enters play. Old E+R, switch events and old save closed preferences cannot close headline; the old independent preview entry remains unchanged. GUI is changed to "Automated after entering the game".
+- The original run-time binding was actually read: X is Game_Pickup, Y is Game_POI, and the right swing pole contains both Game_LookX/Y actions and old Axis items. Fixing only edits old Axis dead areas and preserves original action;2%Setup successfully, exit recovery 3 Local value, no overdue recovery or error.
+- Control door limit restored to Windows 87 Re-execut at most if you are wrong 3 The latest physical exit was successful. Native and the entrance, weapons/sound/archiving were closed as originally protected; no actual injections were claimed 87 In competition, the relevant branch is subject to additional inspection.
+- Current 51260 Recording coverage: the VR menu pauses with B and the first person after the old switch event claims to be 1 and switch times 0 The scene entry and Lancer inventory are prepared by already controlled API/Giveto, not to mean that the VR menu is entered or the original collection is passed.
+
+**It's definitely still on.**：48852/57200 The original WCC chart for launching the main menu is almost black and the reason has not been confirmed before entering the cinema, but the menu is available with small words/low contrasts; there is a short unhand body after the handing of the gun is ready; there is an incubation of the arm/gun when approaching Troika. The whole process cannot be declared to be basically usable at this time, much less as headline adoption.51492 Failed script unopened menu key and 57112 Restoring the gate limit.87 Failure; they are not covered with final success.
+
+4 The Snub experiment manual re-barrel is still open; the complete gun/shelter road map remains. The maturity and denominator of the current wheel are not adjusted.
+
+Scope of inspection:6 The right-hand swing strategy,4 entry startup settings,3 The restoration service check and the GUI self-check pass. The entire old gameplay-controls file also failed to run run_camera_statilization;v 33 The archive source code also does not return with this setup, and the relevant checks cannot be written as complete green or running stability.
+
+## 2026-10-31：v 33 Only operational requirements for current delivery with VR handle
+
+Delivered to `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`Version `6dof-unified-20261031-33`。
+Codes are achieved, compiled and candidate deliveries are completed; entity heads are still awaiting feedback. The project is not complete and the old maturity rating has not increased as a result of this compilation or testing.
+
+- Fixing input protocols/configuration mixes for old deliverables: Native, Playground, Physical XR Sync to GVC 4、continuity 3、Hand/Rig 2、BodyMount 4. Production attitude overlay configuration is consistent with controlled simulation paths; calibration of the reader ' s simultaneous map and cross-repeated version, and acceptance of the left menu key.
+- Access the original XInput before the level is found. VR ' s ABXY, menu, and click buttons are tied to the original game; the trigger and grab hold keep a single VR shot, mechanical interactive owner at all stages of display, which cannot be forwarded to the original action by displaying a hint.32 . Double-stamping poles provide pause backup.
+- Reuse the certified controller focus limit, which is rented only when you have virtual handles to isolate the entity handle. Regular exit restore the threshold before unloading input; abnormally resume obligations keep neutral virtual input and do not expose backstage physical handles. Keyline focus path remains unchanged.
+- Pause/Death/Main menu using a fixed space theater canvas with full windows, zoom in to 6.4 Mi-kwan,2.5 The UNKNOWN exits from the menu only allows a self-recovering hint for a session after the menu, and does not authorize old games or old menu pixels. The full black transition that was recorded earlier has been done to fix it; eventually,160 The frame of the collection did not appear in its entirety, and it was not based on that claim that there was no rendering or head-shattering.
+- Actual 1 Evidence:54748 Title A, Battle menu A/B, Rockboard Options;55584 It's...10 Cm head leveling,10 Rotation and heads down, attitude and eye-to-eye video; ultimately 46244 Playground maps use already controlled access to API, which does not pretend that VR handles have been completed and the entire manual process of entering the map from title.
+- Reservations 4 The second bullet change, the empty silo only needs to be loaded in fact and the two-shoulder/tweet pocket tolerance range. No experiment was opened for Snub to change it manually.
+
+Evidence range: full video critical frame checks, frame-by-frame black scans and actual UI status/input data cross-checking;0.4 The original fonts in the back-office view are still low. Physical display, reading comfort, all original menu pages, specific playbook X/Y, and not all gun and autopsy postures are accepted as such.
+
+Diagnosis correction:`fresh_pose_frames` It is the number of frames that are currently open.0 Does not mean that it has never been updated; the application of a personal ratio to an actual manual motion at the default rate is no substitute for evidence of physical movement. Continues to judge the actual bone/input/image, keeping old failures and not counting completion with cumulative test numbers.
+
+## 2026-10-31：v 32 VR handle as the only game operation
+
+Delivered to `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`Version `6dof-unified-20261031-32`。
+Codes are achieved, compiled and candidate deliveries are completed; entity heads are still awaiting feedback. The project is not complete and the old maturity rating has not increased as a result of this compilation or testing.
+
+- Fixing input protocols/configuration mixes for old deliverables: Native, Playground, Physical XR Sync to GVC 4、continuity 3、Hand/Rig 2、BodyMount 4. Production attitude overlay configuration is consistent with controlled simulation paths; calibration of the reader ' s simultaneous map and cross-repeated version, and acceptance of the left menu key.
+- Access the original XInput before the level is found. VR's ABXY, menu, and roller buttons are tied to the game; menu grab/crush map LB/RB/LT/RT, where the existing single mover, shoot, mechanical interactive owner is maintained to avoid triggers. Double click to provide pause backup.
+- Reuse the certified controller focus limit, which is rented only when you have virtual handles to isolate the entity handle. Regular exit restore the threshold before unloading input; abnormally resume obligations keep neutral virtual input and do not expose backstage physical handles. Keyline focus path remains unchanged.
+- Pause/Death/Main menu using a fixed space theater canvas with full windows, zoom in to 6.4 Mi-kwan,2.5 The UNKNOWN exits from the menu only allows a self-recovering hint for a session after the menu, and does not authorize old games or old menu pixels. The full black transition that was recorded earlier has been done to fix it; eventually,159 The frame of the collection did not appear in its entirety, and it was not based on that claim that there was no rendering or head-shattering.
+- Actual 1 Evidence:54748 Title A, Battle menu A/B, Rockboard Options;55584 It's...10 Cm head leveling,10 Rotation and heads down, attitude and eye-to-eye video; ultimately 45012 Playground maps use already controlled access to API, which does not pretend that VR handles have been completed and the entire manual process of entering the map from title.
+- Reservations 4 The second bullet change, the empty silo only needs to be loaded in fact and the two-shoulder/tweet pocket tolerance range. No experiment was opened for Snub to change it manually.
+
+Evidence range: full video critical frame checks, frame-by-frame black scans and actual UI status/input data cross-checking;0.4 The original fonts in the back-office view are still low. Physical display, reading comfort, all original menu pages, specific playbook X/Y, and not all gun and autopsy postures are accepted as such.
+
+Diagnosis correction:`fresh_pose_frames` It is the number of frames that are currently open.0 Does not mean that it has never been updated; the application of a personal ratio to an actual manual motion at the default rate is no substitute for evidence of physical movement. Continues to judge the actual bone/input/image, keeping old failures and not counting completion with cumulative test numbers.
+
+# GearsVR Road Map: First person calls it "Hold on, Hands Free, Hands On the Back/Pants For Guns."
+
+> **2026-10-31 Current execution coverage:** The P-P is the only one who's ever been in this room.3→P 4→P 5→P 6。v 31（6dof-unified-20261031-31) Fixed entrance updated; upper and lower/back radius to right or left shoulder 24 And the pants.22 Cm, side-by-side.16–22 cm, left-right/up-down partition and new Grip trigger.60360 In the old 16 Right shoulder, left pocket, right side, left shoulder physically held outside the cm range, then retrieved/retrieved/fired,6 Lancer's bonus for excess ammunition/air space and gun UI default 4 seconds, edit root 6 Dof-reload.ini; the empty warehouse still needs to be put by an actual body, normal timeout and untimely failure/crash.49584 Actual empty box exchange/loading/fired with HUD call site 4 Seconds passed, but once retake is entered to slip button and kept as risk without claiming repair.727 Individual loads and isolated import/sound-help check passed, user configuration bytes retained, old v 30 Rollback is still unattended. Snub complete reloading is not working, experiment Native is not in the package; UI small words, bottom geometry, finger alignment, quick reward and head-to-head feeling are still pending.
+
+<!-- p3-source-stage -->
+**2026-10-31 State of the latest code: tolerance for gun range 4/4 Seconds are already in place.31 Delivery, Current PGb 73e 6d 4 b. Native continues to freezev 30 cd 228268... entityXR cb 74d 05 c... unchanged. Full Snub FSM has been accessed with source code, observer/real gun handle conversion and SpaceBases misuse 32 Byte modified; SpaceBases actually 64 Byte Matrix.59952 Already reached actual grab/scrap, but stage 3 The identity border remains broken and normal Native clearance/entry resumed; not full reload/GPU/head pass.0 Hand-hand speed path and identification comparison notes are compiled, and only this change in identity is checked for the next step, followed by a subsequent batching/new box/stock/air space unit/fire; no repetition of adopted v 31 Range/time-check, no assistant or archive session.**
+<!-- /p3-source-stage -->
+
+> Up-to-date direct authorization (D.A.)2026-10-28T 14:35:38+08:00: User is temporarily not available for acceptance and continues with a node M 4: Lancer Base Fires, with the first three joint machine-testing. The current session is conducted separately, with existing codes maintained, and guns determine only a light line, head determines an horizon; only make necessary compilations of packages and a limited Playground Basic check without expanding the reload/dock/other guns. This requires that the old arrangement is covered until this document has been confirmed.
+
+<!-- solo-current-result -->
+**Newest Coverage (2026-10-28T 08:02:09+08:00: Unique branch `codex/6dof-single`Source `9e0ad18`; the ninth package has been updated to the same entry point. The new gun is replaced and restored to the actual GT role code; three slots, free hands/barrel and real Lancer hold side moves are visible, equipment transition stability and physical maturity awaiting feedback.31.02%, this event+0.00;completed by[- The board.](6dof-progress-dashboard.md)Yes.**
+<!-- /solo-current-result -->
+
+**Current execution: this session is implemented, constructed and run independently. The original Body, Weapon and Road Map sessions are archived without tasking or adding additional assistants. `C:/Users/11/.codex/worktrees/6dof-single/gearsVr`Branch `codex/6dof-single`; fixed access to experience remains unchanged.**
+
+## Updated implementation coverage (%)2026-10-28T 02:44:32+08:00）
+
+Users authorize basic self-measurement at Playground based on the current item; the next item continues after it is basically available, and the hand feeling and comfort are fed back by users without waiting for confirmation of reality before starting the next item.1 Now fix the actual XR eyes without output and the menu disappears; the menu is a big theatre screen with fixed space once in the way of entry, without m-wiring.1 Basic self-measurement available 2 Basic self-measurement available 3 Basic self-measurement is available; original functionality and historical evidence are retained, with entity head start being identified separately.
+
+<!-- manual-startup-current -->
+**Newest Coverage (2026-10-28T 15:08:59+08:00): The user has authorized the continuation of one Lancer base firing node with the first three joint machine acceptances.49e 1ce 0 Updated original entrance; actual detonated 420→419→405, return to the same shot point of departure/base direction and normal closing has been reached.2 Limit 60 Total maturity 32.83%current round+1.82; long-stamp, continuous hand, precise hit, original HUD quasi-star and head-to-head stand-by without expanding the reload/shelter/other guns. See general view boards for details.**
+<!-- /manual-startup-current -->
+
+Update:2026-10-28, Asia/Shanghai. Replace the previous "4 Steps Together" with "H" according to direct user requests from this round 1 Current implementation arrangements for feedback and “all simulators are stopped”.
+
+**Only three functions are available in the near future. Each feature is performed separately, compiled and packaged, and a basic simulator check is performed for user realism; this item is revised and the next one is advanced after it is largely self-measured.** Follow-up codes are in place, and the need for shooting, hand-to-man exchange, bunkering and throwing continues to be retained, but removes the development and acceptance of these three milestones. This round is a program change without starting to achieve, build, play or simulate.
+
+## 1...three deliverables that can be experienced in practice
+
+| Phase | Functions obtained by users | Complete sentence | Start Condition |
+| --- | --- | --- | --- |
+| M 1 First | Entering the game is the right first person; turning head, perforating can be observed naturally without a self-hatting/model mask | Basic simulator flow runs; basic self-measurement indicates that actual first person designation, shielding and basic stability are available; a different sense of real hands | Now, you're going to have to take it as a priority. |
+| M 2 Free hands. | Left and right hands move around, right, left, and down. Stand up, turn your wrists, flip your hands. | Two hands follow independently in the real machine, and turn their heads without taking the fixed hand; fixed bones with no visible flip/extension | M 1 After basic self-measurement, |
+| M 3 - Hands behind your back. - Get your gun in your pants. | Right hand to the shoulder or pocket, press Grip, remove/interchange actual stocks of weapons, return to see and hold them in front of you. | The hand behind the shoulder and the crotch pistol actually switched; game equipment, hand models and largely match hands | M 2 After basic self-measurement, |
+
+Delivery cycle:**The current item  ⁇  packs a round of basic simulators check  ⁇  user realism fixes the specific failure of the current item  ⁇  basic self-measurement is available next; continuous feedback from users' sense.** There are cases where the launch failed, no image or core action did not work. This is first repaired and run again without running as it is.
+
+## 2 Common technological base and reuse borders
+
+- Continue with the Unique Development Directory C:/Users/11/.codex/worktrees/6dof-single/gearsVr, branch codex/6 Dof-single. No re-diverse or rewrite completed modules. Old worktree, source history and candidate are maintained.
+- Cameras, right-hand hands and body slots share the same valid body benchmark, same tracking data and ratio conversion. Heading shifts/rotation is combined only once; no superstitions of old third person pre-motion, new eye points and second set of HMD offsets are added.
+- The body slots are used to provide stable body reference; they cannot be directed directly towards the body at each frame. Without a lobe tracker, use existing body references and calibrations to indicate precisely where the real body is.
+- The current integrated session is the only implementer of sharing the Native/Cyber/Skeletal and Equipment Consumers, responsible for Git, compile, pack and run. Old Body/Weapon/Road Map sessions are archived without any more workers or assistants; only existing source codes and evidence are used again.
+- Keep the latest Junker, menu, focus, left eye history and diagnostic repair, maintain process identity, data prescription, monowriter, start/cleanup, archive and audio protection. Header does not change the authoritative orientation of the weapon.
+
+The current source code has achieved first-person, free hands, slot determination and original equipment transfers without starting from scratch; records that “written/compiled” do not equal the three milestones.
+
+## 3. M 1 First person
+
+The goal is to enable people to see the world in a stable and normal way from the eyes of their actors, without using free hands or firing as a precursor to this item.
+
+Implementation order:
+
+1. **Close normal start.** Restart positiond manually 34 Fixes and Capture. first_person_preview repeat keys; confirms that the candidate actually carries the correct generator and is configured only once. The capability switch is not equal to the actual first person's name has been selected, confirming final visual point access.
+2. **• Unify the final eye.** Follow the existing first_person_view, body_gal_view_adapter and C 0 Body benchmark; produces a real eye view with the same role-legal eyes and HMD attitude, and the head is smoothed and rotated once. Removes the additional impact of the video camera's pacing on the point of view, and retains the real head movement and legitimate movement/position changes.
+3. **Deal with the front-end cover.** Priority is given to achieving visible handling of the front/helmets, which affect only the head/helmet of a local first person's view, retaining arms and normal body display; specific visible accesses are confirmed along existing rendering paths and cannot be claimed to have been partially hidden at this time. 120 mm Close cutting can only be used as a complement and must be accompanied by close hand and near-field scenes, and cannot be covered with sustained scaling up or front-lined eye.
+4. **Delivery to independent and acceptable M 1 Bag.** Start, actual first person chart and normal cessation form a basic check; no complete bunkers, gun-shot rays or bone diagnostic matrix are introduced.
+
+Add new requirements to the menu: use a large theatre screen, and locate the player once when opening the menu based on stable LOCAL/Stage space; head-on without updating the screenpose, reopening or visible recenter repositioning. The menu is visible, interactive and game eye restoration is M.1 Basic check.
+
+Simulator does only: enter a common controlled scene  ⁇  one-time turn and small flattened stop. See the actual XR left or right eye and current visual point state, not just desktop windows, but also instead of drawing with switch values.
+
+The user-realization machine has three actions: static observation of the eyes and vision; right, left, and right, head down; short distance movement/prospecting and visible shaking. Feedback focuses on "right to view, whether it is hidden, clearly drifting or uncomfortable."2。
+
+## 4. M 2: Freedom of the right and left hand
+
+The target is three axes of rotation in each hand and three axis, allowing for a real flip; the hand operation does not depend on first-hand weapon fire.
+
+Implementation order:
+
+1. **Re-use the same eyepoint for conversion.** Follow the free_hand_eye_targets.h, convert the whole attitude of Grip with the same frame handle to the world where the actual point of view is located, and apply a fixed Grip to the wrist; the axis direction and length units are converted only once. Here the HMD reverse is used to offset the head moves that are already contained in the eyepoint without tieing hands over the head.
+2. **Separately on the right and left sides.** Each hand retains its position, leans, turns and rolls in a forward direction, not only using handles; when one side loses track, it does not allow the old gesture to continue driving that side or freeze another effective hand.
+3. **With the existing double bone IK driving both arms.** Shoulder points come from the same body reference, fixed upper arm/forearms length and only sought joint postures; restricted to reach within reach when not reached without pulling long bones. Keep the only existing writing point and animation takeover/return logic and avoid normal animation overlaying hand targets repeatedly.
+4. **M cumulative delivery 1+M 2 Bag.** Check the two visible hands and see if the world is stable when “hand not, head not, hand wrist direction and natural degree” are followed.
+
+The simulator is only done: left hand moves/twrecks twrings right hand moves/twirls twwrecks fixed hands position and then stopped normally. Do not expand all angles, weapons and animation combinations.
+
+The user genuine machine has three actions: right and left hand to the nearest and far; flip, turn, turn, turn or explore when hands stop. Feedback focuses on " Whether position is fit, wrist is correct, arm is stretched/turning."3。
+
+## 5. M 3: Touch the back/panty for a gun
+
+The existing interactive agreement is followed by the right hand to take a gun, without simultaneously extending left-handed hands, holding them, taking bullets or throwing them.
+
+| Actions | Objective | Map of existing stocks |
+| --- | --- | --- |
+| Right hand to right shoulder. Press RGrip. | The main rifle. | Original slot 3 Current weapon |
+| Right hand to left shoulder. Press RGrip. | Second rifle. | Original slot 2 Current weapon |
+| Right to left pocket. Press RGrip. | Pistols. | Original slot 0 Current weapon |
+
+Right-pants are left behind in the original grenade slot, but taking/throwing is not counted as part of this “gun exchange” delivery. The Grip triggers it and does not automatically change the gun by crossing the body; after taking the gun, you follow the existing lock hold and do not require to hold Grip. Returning the gun back to the slot and then pressing Grip's existing gun collection.
+
+Implementation order:
+
+1. **The government has been able to provide a stable and sufficient supply of water.** Re-use body_slots.h and existing arm alignment, place the right shoulder behind the back of the pants with a steady torso reference; follow a T attitude process when calibration is required. Head moves alone cannot drag the slot; touch positions are adjusted by feedback from the user ' s own machine.
+2. **Complements the status conversion of actions.** Hands into slot  ⁇  Grip Press new click lock a target slot  ⁇  Request original reloading of actual equipment such as guns  ⁇  Create new hold. Use the lower line to repeat existing waiting status; no false success when animation is busy, empty slots or drop trackers.
+3. **and the original game field.** Re-use WebponEquipmentModel, equipment_switch_mailbox and original equipment. Only real current_weapon is counted when it's the same target and the switch ends; newly picked guns follow their original slot identity without copying or hand-held inventory.
+4. **The visible holding after the replacement gun.** Current body_c 0 This item must cover the base handshake/model displays/handguns used for actual inspection and acceptance; it cannot be reported only by cutting off or receiving Grip. Priority is given to recapturing existing leverage information, replacing the necessary asset mapping, without using a gun-by-gun shooting, bullet exchange, etc.
+5. **M cumulative delivery 1+M 2+M 3 Bag.** Do a long gun in the same ordinary scene, a second long gun, a pistol, a switch from the original long gun, to see actual equipment and hand models; keep only the cause of failure and logbooks required for this round.
+
+The simulator will only be used for the above-mentioned rotational gun, to check actual equipment and visible models and to show that there is no significant damage to first person’s name/hand.
+
+The user genuines three actions: right shoulder to take the gun and get it in front of the body; left shoulder to change the second long-gun; left pants to take the pistol back and cut it back. Feedback focused on “can't feel, can't miss, if getting in front is a target gun and doing it right.” The firing shot and the star were not a condition for this passage.
+
+## 6 Light certification and candidate delivery rules
+
+- After each completion, a basic simulator check is performed covering " enablers, current actions can occur and normal exits. " It is recommended that minutes be used to calculate progress by whether the core action has reached its end and not by running or fixed log numbers.
+- Specific failures were found and only failed sections were recovered; no cycle was repeated 64 Sub-item/192 The results of the operation are repeated.
+- Simulator checks the existing controlled test entry for the same production function as at the current stage. Sixdof_manual_profile.validate currently expressly rejects simulator_oporator: maintain manual access to the source, configure access through existing isolation tests, and do not forge true headlines, undisturbed identity/time limits/cleanup protection, or create a new testing platform. Basic check should cover the configuration generation chain used by this candidate and avoid missing any start-up configuration errors that have occurred.
+- Automatic check by Body using a unique running window, executed behind the user 's existing window, multiple 0.4;maintenance of GEASVR_TEST_WINDOWS_BETHIND=1、GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1、GEARSVR_TEST_MUTE_GAME=1, close the physical handle backstage input. After that, restore your own resources, archive and audio; do not stop or interfere with user-made conversations.
+- User-realization tests are the main acceptances, usually 5–10 Minutes, up to three core actions. Amend and check them only when there are practical problems, without adding a complete test matrix. Comfort, near display, touch range and real tracking mask is based on real machine feedback.
+- The unified entrance continues. J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe. Each delivery indicates the candidate version, source identity, this realization, actual results of the emulator, three real-mobiles and "export logs" positions, leaving the previous package back. User is using without overwhelming the file.
+- Each is recorded separately: Codes have been/is being revised, compiled, Basic Simulator results, candidate delivery, user reality results. The new plan does not generate any “passed” evidence.
+
+## 7 Current starting point, immediate arrangements and history
+
+Current prefix v 5 Game eyes 0 Frames and menus disappear, source code leads are wrongly rejected for valid original projection because they are located in near_clip; this session is narrowly modified and actual results are measured at Playground.2／M 3 There are ready-to-use codes but they wait in the new order for confirmation of the previous machine; they are not required to be deleted.
+
+Unified Source when this round read-only check 09ba 9c 4, replayed Capture key fixes with v 4 Note; candidate-state.json and CANDIDATE.md for fixed entry remain marked 6dof-unified-20261028-3。**Not presumed on the basis of source code or description document v 4 Already published.** First M 1 This round does not replace candidates.
+
+Recent schedule is dependent on delivery, without commitment to unsupported hours: M 1 Realization and Basic Checks  ⁇  User Truth and Required Amendments  ⁇  M 2 Same cycle.3 The first practical action is to check whether the initial restoration is a candidate and end up as a first person's eye/shield.
+
+Old full functionality maturity 30.23% and 11 Node/64 Sub-evidence is retained and the values are not changed as a result of this change; they no longer serve as daily delivery lists for these three functions.
+
+- Current status of implementation:[Three progress tables](6dof-progress-dashboard.md)。
+- The original road map and history:[Adjustment of the pre-road map](history/6dof-three-milestones-20261028/roadmap-before.md)。
+- Original progress and hour log:[Progress Chart Before Adjustment](history/6dof-three-milestones-20261028/dashboard-before.md)。
+- Original 64 Need for and evidence:[Historical breakdown v2](6dof-detailed-workplan-v2-20261027.md)。
+
+This is only an update of the road map, implementation rules and progress calibration; no execution messages, new sessions, time-fixing or modification missions have been sent, and no games, simulators, tests or constructions are being run.
+
+
+**2026-11-04T 13:55:41+08:00 The gestures combined the video results:** 36120 Normal closing, five types of gestures are connected; E-specific folder is actually written 70 Frame (old)36380 Only 3 The hands-on rifle, the switch and C-push start/post pull close also complete the action call.14 Overview of the entire page and E/C Transitional Entrenched Frame; C Start/Relaunch 308.17s、314.87 S has a short retreat, and E-finger contact is also overshadowed by an eye that cannot claim the entire Lancer appearance.53 Unreplaced, maturity unchanged; next step is to narrow down only C transients and clear E-finger.
+
+
+### 2026-11-04T 15:08:32+08:00 Full capture/finger-plugging review for current round
+
+- The five sign entrances to Lancer are now connected to the same bone writer: master handheld, second-hand rifle, cartridge handle, front end E-carp handle, C-saw handle. The current update does not match the old E-Pandinal anchor with two fingers, which is used in between abdomen and allows for natural slight bending of the remaining finger held by small parts. Bones length, physical handle tracks and mechanical input remain unchanged.
+- Private Freezing `equipment-controls-prepared-20261104-145045` compiled;existing C 0 Inspection 7484 Item/0 Failed. Game.57824 Complete the box cancellation/discard/replacement,4 Second prize, actual empty space, still to be loaded after insertion, half-laze hand unlocked, E complete pull/release/return and resumption of firing; actual ammunition matches the gun track.5 Page, empty warehouse E 3 The blog also shows the story of the event:
+- Original failure does not erase: initial shoulder grab to remove leaks; full magazines do not meet the prerequisite for private inspection; fixed 9 The second fire did not reach the empty silo (later replaced by an ongoing pressure-based observation of the actual silo, unmodified ammunition/refilled).55088 The initial start/restart of old source-copy failed but turned around 67.77065 There is still one different unsubmitted gesture in seconds.
+- Current results of code and controlled simulation tests, complete visual/physical not accepted; fixed public starter still v 53. The maturity denominator and fraction remain unchanged, without adding success to the current round of translations or inspections.
+
+
+### 2026-11-04T 15:52:22+08:00 Shoulder input and hand/C joint inspection
+
+- The new code only retains the existing input observation baseline when distribution is missing/expired, suspends movement and cancels launch of the gun; the renewed real-life Frame continues to check player/object/input identity, continuity, original press time and inventory. Hard ID/observation failed to clear the baseline. Actual Input+Runtime check 125 scene/1089 Entries, Runtime already checked 110 scene/1465 All items were adopted.
+- Private 152708 In the game 17224 First time a gun was taken from his shoulder, and the actual hand-held gun was tied.9.2 Detonating single hand/fire; C grab and roll, front push/post pull/and grip re-start/release, and enemy pre-emptive attack/renewal of fire were all passed.8 A visual overview of the actual two-window page has been reviewed; common C slot 295 A sample of the retinue is submitted with both hands.
+- Old 55088 The occasional non-submission of frames at the time of turnover is not repeated, remains unclosed and cannot be made into root cause for repair. Original tracking targets are separated from final deliverables/adhesive targets already observed, new 155019 Only this read-only record has been compiled and is not running;152708 It's...6.0587 cm is the distance from the original target to the displayed position and cannot be used as a final solution for the disability.
+- Fixed public starter stillv 53, the complete Lancer and entity appear to be unaccepted.57824 The result of the magazine/E and menu X/mine locks in after-action, with no change in maturity scores.17224、57824、55088 Three games; old 63352 Media has been cleared as mandated, text/point evidence/source code retained.
+
+
+### 2026-11-04T 16:37:59.483344+08:00 Lancer All Capture/Stack-Access Deliveryv 54
+
+- Master handles Grip, ex-Tolip, cartridge index finger clips, front end E index finger clips, C chainsaw handle Grip, all actually access the only C.0 Hand writing, dealing with the wrist and finger respectively; E is changed to an anchor point for the abdominal inter-punal and a special thumb/finger posture, while the rest of the fingers are naturally slightly bent and attached/release smooth. Fixed bone length, original handle movement, real mechanical process/time limits/goods identity and ammunition account maintained.
+- 22060 Record 83.44 Seconds visible right arm/gun jump.83.30994 Second Body Mount callback inactive: New body data query still relies on old Hand Frame for release. Turn to current registered generation-only metadata query, with a visible withdrawal/reinstatement still rejected and no reactivating old Frane.157 Item, typed callback 325 Item, sender 492 Adopted, Native/Playground compiled and translated.
+- 162549 Freeze in 67968 Targeted review: C holding the natural turn/head, push/pull/take-in/release/renewal of firing;391 A sample of the renderings in this area was submitted with both hands, and eventually the target was reached to the maximum point of the rendering.0.000231 Original game unit. Readed 4 The overview of the entire section of the page is very dense with natural head start, and the two-way mirrors do not repeat similar jumps.57824 Full Box/E with 17224 Hand/hand-on evidence, no repetition of unchanging matrix.
+- Fixed access has been updated to **6dof-unified-20261104-54**；Native 10f9d3d28183602299d0da581e74d086b20d88b912d0dd394ac68d703fde6b5e，Playground 35cf2c73c69690275bbef06c15717ddbced6cccd20c4ff0262114cce71e87a2e. Portable checklist check passed, user startup configuration/4 Second reload configuration as it is, v 53 Back in `J:/gearsVr/candidates/6dof-unified-20261104-54-rollback`. Regular exit/restoration, no active game.
+- The code, compile and specify recorded actions are currently confirmed; part of the abdomen is blocked and all positions and physical comforts are not declared. Next step is to check the stored menu X/thing lock up and fix specific gaps; the only implementer, without an assistant/other gun, is still mature.36.47%, no points due to the number of deliveries/inspections.
+
+
+### 2026-11-04T 17:00:27.906871+08:00 v 54 A supplementary certificate for the menu/scruising of a gun during the grenade selection
+
+- Originalv 51–53 The evidence is only available after the menu has been cut back to Lancer. This round of retraces the actual ground-based Frag ammunition and selects the right-hand key MenuChamp (PS Cross/Preliminary A) when the current grenade is maintained by a right-hand key.
+- Same Authentication Game 70316, stocking Frag actual 1→3, the menu shows and returns, with actual weapons turned from Frag to pick-up Lancer, with a successful shoulder gun;4 The starting point for the actual launch of a device is equal to the corresponding gun and identical in origin.4 Overview of the full text of the page.0 Normal, no-activity game.
+- The first private navigation, when returning to the corridor, has staggered actual small step progress; it has failed and must be kept in mind before no target progress is recorded and continues at the same station or remaining road. It is not a failure-free script that passes, nor is it bypassed by instant move/guns/by-loads/identity.
+- Use of Native/Playground and Public v 54 Exactly the same, no new production code or version number; current fraction 36.47%. The specified controlled route passes without impersonating the full menu/entity header pass.
+- The next one is only real Frag holding/preparation/body release, re-enacting the existing stand-alone Bolo and trajectory modules and certifying the original projection to be submitted with a single inventory; not treating an independent module or capability sign as already accessible, but rather as a parallel Smoke/other gun. Full road map and Lancer real machine feedback is maintained.
+
+
+### 2026-11-04T 17:34:13.010501+08:00 Frag code base batch (not yet game access)
+
+- The J-disk shared research library was reused and checked 9 Original script exports SHA: Consemé Ammo after success of Spawn, Init/Init/Cache/Post-Book Notification and the original automatic refill to desirable status. No script export is considered as a certified call for ABI.
+- The new source code is used to carry the intergenerational holding confirmed by the equipment owner, without re-opening old grabs or trouser grip; still need a real trigger to prepare/release. Default allows light throw and static discharge, remove 4cm／0.5 m/s work to a threshold, tracking/time/jump/sing/single-entry protection. Bolo binds clearly to distinguish between entity and private simulation sources.
+- Frag Resource Identification (FRI) is a separate frag_hold range, checking the original class and the attribution of Frag_Grende/COG_Bolo_Grenade.1292 Items, shared tracks, Smoke shared returns 1713 Item, resource reading 44 The scenes were passed; the PG compiled successfully. These were code/data-holding checks, no game started and not actual throwing/shaping/headprinting.
+- Freezing Source 173234 Private PG c6330a61cfc178b169c4eb4df3a0c589c579302db5349bcb890cbdf15a13d277; Native unchanged and fixed public entrances still v 54. Next step completes the same GT fit, only C 0/Part alignment, original generation/repeated notification/stocking and interruption closes, then the whole batch is recorded; no game is started for each support module, and no other gun scores are held in parallel.36.47%No change.
+
+
+### 2026-11-04 18:00 - Frag Visible Code Connector (no game review)
+
+The special finger bag is in the only C.0 Bones mix path; current Frag type, model, attachment and hold check through independent reading branch.5 Visible transfer visible holding type with old Rig/ Hand/main-mount V 1 Separate; Native and Playground are compiled. Existing only component writer can be used for actual C 0 The handheld moves the original Frag model, using a stand-alone preliminary handshake without rifle openings or firing permission. The original chain animation is maintained; static grip points have yet to check the actual animation with the hand appearance.
+
+The compilation and existing data check were approved: BodyhandsContext 7708/0、BodyMainMountSender 503、BodyMainMountProvider 344、BodyMountMetadata 30、WeaponHandBroker 2338/0、WeaponMeshFollow（3 The objects are scaled/rotated. These are code/CPU evidence, not game throws, visible patches or head-over approvals.
+
+Open entrance remains v 54;no new game started, no new candidates deployed and maturity maintained 36.47%. Freezing source code:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\equipment-controls-prepared-20261104-175945`. Details:`analysis/solo-m1-20261028/frag-visual-hold-integration-20261104.json`. The next delivery point is the continuous sampling of the real controller and preparation/showing/delay call to the original version, which resolves the one-time generation and re-renewal of the animation notification, followed by a full video review.
+
+
+### 2026-11-04 18:28 - Frag original trajectory and actual loose frame (complete run-off connection to be completed)
+
+Re-entry the existing controller loop to keep the original sample time, source and location; no new input publisher or forged Stereo/hand/Rig frame. The grenade model logic calculates the position, speed and deadline by real release frames in the record, excluding subsequent hand movements; no trace/source change, duplicate and lost input, or extra press loop can be released.
+
+Compiled and coded evidence: Native, Playground, Entity XR, Simulation XR all compiled successfully; GlenadeThrow, Real Self-Map Continuity Bridge passed; Bolo 1410;existing Smoke 1713(Sharing logic regression); Current Tracking Reader 273/0. These do not prove that the original version of the game is prepared/generated/capable/filled, dynamically held or head-on experience passes.
+
+Next step is to go directly to normal GT 's real holdings, original calls and ownership restored, and resolve animation notifications to re-resize, and then the whole video. This round does not start the game, the public version is maintained v 54♪ Growing up and still 36.47%. Middle code saves incremental `frag-motion-code-20261104-182741`based on full source code `equipment-controls-prepared-20261104-175945`;records `analysis/solo-m1-20261028/frag-motion-history-integration-20261104.json`。
+
+
+### 2026-11-04 19:27 - Original Frag call and prepare the closing code check point
+
+Original preparation/stopping, release notification, drop point/start speed and completion of access check with actual reflection declared access type; new target and rotation readiness pair release, pre-cut/receiving gun, and normal GT stop cleaning, compiled and approved. Amend the pre-position name bSpinningGrende and original embedded set to return to the door control position for observation. 1410 The entry Bolo core check is passed and neither of them is equal to the game throw pass.
+
+Currently only the interfaces and cleanup are compiled: normal GT grenade movement, actual generated/detonated bomb callback, post-drop access and old animation notifications remain to be completed. Open entrance is maintained v 54- The maturity is maintained. 36.47%, no new game or evidence of head-on;The current FPS/user running window is not operated.Next step: the actual emergency-GT Frag own: current action plus the investigating Raw ring/trigger opserver and co-enter Nativebasis, real original receptors before the auto-equip, and cancellation/switch review. compiled but are not yet called by a live throw dispatcher.
+
+Records:C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\frag-original-preparation-integration-20261104.json;Incremental source and binary:C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\frag-original-preparation-code-20261104-192737。
+
+---
+
+## 中文
+
 ## 2026-11-06 13:39 67624组合复查与同游戏继续：C规则通过，二次抓握失败保留
 
 固定入口v71不变：推到头持续握住持续运行，首次实际松手后单次余转3秒，后拉关闭。普通闭合量的私有125544完成Grip/食指双持、实际转向/双持开火/单手恢复，原弹匣食指与替换弹匣Grip全程保持插入，空仓E实际动作/松手/回位/恢复射击，以及C核心动作。首个原版处决通过，但第二次C抓握启动失败（token12 ambiguous）。未伪称计时缺陷或修复。

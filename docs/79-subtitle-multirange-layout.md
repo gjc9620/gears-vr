@@ -1,3 +1,41 @@
+# Current subtitle display and multiple clip layout
+
+2026-10-17, the first edition of subtitle work. User configuration `Subtitles=True`, no configuration for this round. First search the existing knowledge base and reset the original drawing path; no IDA, full extension back-compilation or old downed output route started.
+
+## Native 37 Actual subtitle image
+
+Session `continuous-stereo-36360-20261017-051856-59a79d11` Use unchanged Native 37／Borderless 1 and the latest Python start-up amendment; HUD angle width 45°Elements 1.2 Centre 0.8 Camera approaching.0.3 Rice. Confirm the death menu once and read the check point normally once after actually entering both eyes; promotion 2 After submission, in limited 2 to 8 The second window requests seven GPU charts, eight of which contain automatic headers.
+
+The original subtitles are a GPU record containing actual index members, corresponding instruments, double-eye replaying and command completion; the count itself varies from visible pixels.0 Read "Dom: Nice!"5 Read "Marcus: Grab hold!"5 Instrument 2146 See the source number and time of storage `analysis/runtime/subtitle40-burst-audit.json`;sizing the original dimensions of the right-and-right eye of the instrument `subtitle40-both-eyes-crop.png` The same subtitles are used.`subtitle40-contact.png` The two columns are for the left eye of both times and may not be mislabelled as a pair of eyes.
+
+This evidence excludes the sample “Subtitles are not painted at all”, but subtitles are clearly small relative to the scene. Source GPU maps do not replace headline readability or full language/overtime subtitling acceptance. The whole round stops with primary clean-up, XR exits normally, game is closed and confirmed as quits, back. `subtitle40-normal-close.json`。
+
+## Layout gap
+
+Subtitles are often called in to create multiple payload ranges, such as background and text.`publish_ui_text_delta` Call-Awards for Single Range only `whole_text_group`，`ui_hud_layout` The following video shows the #HUD-based subtitling of the site, which is used to retrace the HUD plane and the zooming in of elements and centers.`hud_applied=1` Only repeats the plane, not the layout in effect.37 The two rounds of subtitles cover the same number as the layout retreat in support of that direction, but cannot be determined by an equal number alone.
+
+Next step is to save a maximum, non-variable common geometry and matrix proof for full subtitles, which will apply the same simulation transformation to the same group of fragments. Keep full range and actual index verification; the clip does not pretend to be an entire string. All payload matrices must be consistent at production and GPU execution must match the freezer matrix or retreat. There are no replacements with switch replicating routes.
+
+## Caption 38 Realization and actual return
+
+Submit `a500ab4` Achieving the above path: a non-variable object to be saved at maximum 1024 Original XY position and 64 Range, shared across payload; each range still has its own actual index and current toppoint proof, partial `whole_text_group` Still false. The full position is projected by freezing matrix, avoiding misdirecting the original AABB quadrilateral as a true whole range of general vision/cut-off transformations. The matrix uses validated payload+0x 80 Read and reread at the end of production for all ranges, compare with current matrix at the end; no new deviations are introduced.
+
+The static basis for initializing the matrix when constructed is derived from historical snapshots 1 Functions `sub_1401C0E48`,Final Section SHA 256 `e2bcd1a11dd8235aeef5d83c7c32e583130d96bbffef5c57881d447601702469`; the function first reproduces the matrix and then hangs the payload onto the site. Historical evidence does not represent disk/current running code equivalent, and the actual path is still validated by the above-mentioned current reading. Different root/group objects are mixed into the same native subtitle section, matrix/coordinate/range/source mismatch, etc., and standalone validity segments continue.
+
+Five CPU checks were passed, covering the background/text sharing range across payload with projection, word spacing, mismatches, visualization matrix, segment isolation, life cycle, original index and source bytes. `afd364d` And then we'll record the actual subtitle layout replayed, as it is. `hud_applied` A flat-counting distinction.
+
+Full Candidate Freezing on `afd364d`，`tools/native-capture/build-caption38/GearsCaptureCaption38.dll` SHA 256 `a99b869aeadb8c9410125b860e6d5e8993e8441dac7f7ba24e263cc6c19f62cd`Follow the Native.37 Dependence and build switches, without working area sideways. Full construction and 18- Yes, sir. `caption38-source.json`、`caption38-selftests.json`。
+
+Actual emulator session `continuous-stereo-6632-20261017-053301-43e970f7` Keep the same.45°／1.2／0.8／0.3 Rice settings, double-eye and read checkpoint recovery 2。380 Subtitles GPU calling.374 Sub-clear records `layout_applied=1`，6 Keep unapplied layouts, all lined/stamping and command completion markers 1. Not using global HUD to replace subtitle evidence.
+
+GPU index 2 Notes 3016 Both eyes read "Dom: Another Grub Hole!"; original size text and background are not separated or cut, zooming/consumer is available 1.2／0.8 Parameters. Check the chart `subtitle41-frame2-band.png`;see original maps, instruments and sampling times `subtitle41-burst-audit.json`Summary `caption38-subtitle-audit.json`. Different running sampling times and lines are not aligned, which does not allow for accurate pixel-level A/B promotion ratios.
+
+Native cleaning, re-entry, normal exit of XR and normal closure of games are all passed. New headline readability, multiline/long subtitles, all languages, overtime and that have not yet been done.6 Case-by-case check of pixels with abscond; first version is still incomplete. Default candidate selected Caption 38／Borderless 1，Native 37 Retention of list; independent snapshot `analysis/release-staging/caption38-offline-20261017` The pre-instrument of isolation was approved and has not yet been officially published.
+
+---
+
+## 中文
+
 # 当前字幕显示与多片段布局
 
 2026-10-17，第一版字幕工作。用户配置 `Subtitles=True`，未为本轮修改配置。先查询现有知识库并复用原有绘制路径；未启动IDA、扩展全量反编译或启用旧owned输出路线。

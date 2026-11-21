@@ -1,3 +1,61 @@
+# Launcher EXE co-director recognition and start error feedback
+
+## Revert the depressurized package: Download scripts and multi-account settings
+
+User then runs the decompression directly in the project 's original directory 0.0.1 Package, recurrence is not possible. Old log lost PowerShell subprocess error; unsigned rounds first marked with download source were confirmed after visible capture of two-way output `Start-DebugGame.ps1` Intercept, the game has not been created. Run an old layout check alone and confirm that multiple account settings will trigger `Expected exactly one user-settings file`It is a follow-up to the shortcomings of independence and cannot replace the first point of failure.
+
+Fixes to transfer PowerShell subprocesses only to starter `-ExecutionPolicy Bypass`, do not change system/user execution policy and do not remove download marks; scripts and Python output are unified UTF-8. The decryption package is also filled with the validated Steam process environment and current account setting options. The games EXE, the original Steam DL, native/XR and the player start configuration file by document.
+
+Protected backstage authentication in the project 47884 Here we go. `AttractLauncher`, the current player menu is only read in the same sample.35 Frame pre-screening,229 Layer-start menu plane submission; no level entry or active original scene. Downer exits 0, downed-prime entrance restored, game is properly closed, audio recovery and 11 The protected file is returned to pass. XR exit code is the one that you want to cancel before startup 1, and terminates the evidence for orderly stoppage, without structural error, completion of object destruction; does not write the result as complete XR/headpoint acceptance. Original failure and successful confirmation is in `analysis/retail-portable-startup-fix-20261021/`. User requests that the current development be saved first 0.1.0 And then we'll be independent.0.0.2 Branches handle and deliver the repairs.
+
+## Re-emergence and restoration of original version on the same day
+
+2026-10-21 The same thing is repeated when users buy another original Steam. `Target priming failed (1)`. This time there is a side log for Steam: the EXE request in the directly running project `steam://run/2523720`Steam instead created the library `Launch_GOWDE.exe`, preset PID exits. After the sub-process is clearly passed into the correct Steam App ID, this machine is kept in its original path/process and reserved for 13 The entry byte check is passed; the current development start-up layer has been accessed, original Steam DLL and account authorization process maintained. The exact selection of the current Steam account was also repaired when the second set was first run. Users then stopped adding running tests and this round did not declare a positive level double-eye or header pass.[Real migration and complete evidence](retail-steam-compatibility-20261021.md)。
+
+This evidence explains the recurrence of this device and does not directly identify the lack of evidence for the remote player ' s pime state and process exit.0.0.1 The package does not yet contain this start-up environmental restoration; the following original feedback is maintained at the time of evidence.
+
+2026-10-21, Player Notagameadidict Feedback: Mod is placed next to the game EXE and the starter does not automatically fill in the game path. The manually selected file in the screenshot is under the Steam Game Directory `Binaries_x64/GOWDE-Steam.exe`;VDXR returns every eye 2496×2688 The recommended size, then it appears. `Fresh reservation failed; no retry`, start exit code 1。
+
+The user confirmed at the time of the initial feedback that the other party had not sent a detailed log and therefore did not attribute the failure to start on the screen to the path, DLSS, VDXR or game version. Subsequent pre-release logs received have reduced the problem to target ready for call, as shown in the following section; automatic recognition repairs cannot be considered a problem with the player's startup.
+
+## Modify
+
+GUI used to only look for the starter root under `Binaries_x64/GOWDE-Steam.exe`The trigger is in itself. `Binaries_x64` . Keep the saved and remaining paths or find them in the starter directory in turn `GOWDE-Steam.exe`、`Binaries_x64/GOWDE-Steam.exe`, search for the same two positions in parent directory. This also covers depression to one level `GearsVR` Subdirectories. Finds without relying on the current work directory, up to one level; continue with existing EXE, configuration and build Hash authentication when you really start.
+
+When Python starts preset failed, show the original Python anomaly first and avoid end of the subprocess `CalledProcessError` Packing covers root causes; error ends of bounds are shown when there is no abnormal line. The hint contains subprocess exit codes and detailed log paths, the complete output remains locally `.reserve.log`. The most wrong text 1500 character; the existing session state and dissensitization diagnostics export to continue keeping its summary. Subprocess output decode replaces invalid characters, avoiding decoding failure to hide original startup errors. Keeps an existing act of single start-up and process identity cleansing.
+
+## Undetermined startup error
+
+### Retention logs received after the date
+
+The log that the user then provides shows:22 Self-check successful before startup, time 9505.2117 ms;created PID 37432, creation time 134370432031460723 ; and then `launch_reserve.py` Report `Target priming failed (1); do not activate`. This proves that the pre-start DLSS configuration check has passed, and the previously suspected storage settings stopped is not this failure point. Mod DLL loading confirmations, portal reservation, mask reservation and independent access bytes check have also been completed in the order in which the version was called.
+
+`reservation_birth` It's the receipt from when the game was created, so of them... `injection_attempted=false` Not to say no injections after; failed cleanup given `injection_state_unknown_or_attempted` It is also not the second cause of failure to refuse to automatically close the process as “a determination that it has not been injected”.
+
+Check. 0.0.1 Freezing Source `analysis/ads-anchor2-source/native-capture/capture.cpp`, Document SHA 256 Yes `0c1e87f6ece214ed7f10aa14848990659848589e0154e4ece05c2826c27ac670`, same as the release of the source snapshot. Build a reply `analysis/native-build-ads-anchor2/verified-build.json` pointing to the source code; publishing DLL SHA 256 Yes `94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304`. No conclusion is reached with the current DLL development alternative player version.
+
+The version `GearsCaptureTargetPrimeOwned` / `begin_target_prime` No visible return 1 branch of Python `remote_call` Read it. `GetExitCodeThread`So here's the one. 1 It's a remote line exit code, which cannot be explained directly to Win 32 `GetLastError=1` or a failed number for a Hook. The exit of the game process from remote deployment is an explanation of candidates to be checked; there is no log in place for the player's exit status or original preparation, which cannot be considered as a game crash, drive failure or third party Hook conflict.
+
+Next required evidence is player Mod `tools/native-capture/build-ads-anchor2/target-prime-status.txt`, and whether the game after reporting is still running. The preparatory routine will create D 3D 12/DXGI detects objects and prepares, and allows for the graphic entry Hook; status files can further reduce failure positions. This document contains original diagnosis of the machine as a matter of private question-checking material without including public release packages.
+
+### Candidates for the initial cut-off phase (history)
+
+In the screenshot. `Fresh reservation failed` It is a combination of the father processes that cannot be determined whether the failure occurred during self-censorship, pre-start strategy, process creation, dependence on waiting or injection.`Check eye size`/ Runtime dimension query success does not support actual XR sessions or GPU profile passed.
+
+There is another possible reason for checking the source code:`Start-DebugGame.ps1` Implementation of external installation `graphics_policy.py check`; if user saves `DLSS=True`♪ Will be ♪ `Persisted DLSS must be OFF before release startup` Refuses to start. This is a code condition, not a judgement of the player's field. This time you do not change the strategy. Please try again after closing DLSS in the normal game.
+
+If you fail, you need to have the Mod under `analysis/runtime/vr-launcher-session.reserve.log` End 20–30 Line. The original diagnostic package does not guarantee the inclusion of this raw subprocess log; the updated starter will keep the reason for extraction in the interface and export summary.
+
+## Validation and delivery boundary
+
+GUI hides borders where you have self-checked to cover EXE and the root directories, a layer of Mod subdirectories, valid absolute/relative path priorities, invalid path retreats, Chinese and spaces directory, unrelated work catalogues and up to one parent directory. Python returns to cover specific error displays, packaging abnormal stripping, missing output and length limits, full log retention, single call, failed cleanup, and dissensitization when no stereo session has been established.
+
+142 Python check and compile, hide and check through the GUI to overwrite starter, diagnostic export, portable temporary storage and packing four modules. Normal GUI is updated simultaneously, current default native/XR list and user configuration SHA 256 Same as before the change. Not overwrite released 0.0.1 ZIP or online assets. This validation does not start a game, does not add actual games, GPUs or physical header acceptance conclusion. Validation login is saved in ignore directory `analysis/feedback-launcher-20261021/result.json`。
+
+---
+
+## 中文
+
 # 启动器 EXE 同目录识别与启动错误反馈
 
 ## 解压包本机复现：下载脚本与多账号设置

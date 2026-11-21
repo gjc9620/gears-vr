@@ -1,3 +1,42 @@
+# Sniper opener exit VR: material-astrometrical support
+
+2026-10-22. The sniper gun exits VR as soon as it is opened, completes the full screen-to-sky star mass's eye mapping path and joins the normal starter by automatic check. The frame in the entity's headline, magnification and continuity of the switch are still to be validated.
+
+## Evidence of failure and boundary
+
+User live session `continuous-stereo-18812-20261022-030528-8f374063` Load CoverAim 2，native SHA 256 Yes `04ff9ff8c1465c2019c78b8b0309275a18c4e7208117fa65e8e00396041b71e0`. The first UI error is ticket 96429 It's... `material_overlay_plan`（28) Then it came up. `owned_error=24`、`proof_failure`. The drawing ticket is consistent with the resource of the eyes, actually has the same intended goal and uploads the ticket=32、topology=5 There was no world recovery here, unlike the previous machine gun that had returned to its old posture.
+
+The old logs combined image attitude search, material type and projection planning into error 28, there is no material-maintained kind or internal reason for refusal. The site records therefore determine where the materials were not planned and do not provide a separate proof of an internal condition.
+
+Check for information after searching by knowledge base process 2 Two. `WarHUD.DrawWeaponCrosshair` / `DrawWeaponCrosshairGOW3` Save Script SHA 256. Script export indicates that, when sniper guns are in the zoomed state, you draw a full Canvas-wide scipher material within the paranoia of a quasi-Star and then an independent superstar icon. The project labels these ranges as kind 1;old `material_overlay_plan` Yeah, kind of. 1 Unconditional refusal. This is a definite omission of support consistent with symptoms, site failure and offline recurrence. `WarfareGame.u`（SHA 256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`) still contains undesolved token, which cannot be used as this native call track. No new IDA session or full game analysis has been added.
+
+## Achieved
+
+- Add kind in the urban drawing 1 Specialized paths; old strategies for common and HUD materials maintained.
+- Only the entire Canvas quasi-star material that is checked for original upload, command list, resource target, frame number and raw Canvas projection is supported. The new planner requires four different source points; the semi-pixel deviation allowed for the original projection is not used to modify the original vertex or re-centre.
+- From Current `owned_ticket` It's... `image_tickets` Acquire a spectrometry, project the limited target/direction already available using a quasi-star icon. The headline changes the eye matrix without including a game weapon targeting; no new weapons are given real rays or life-string proof of this item.
+- The frame does not use the normal HUD element zoom and center shift. The frame is kept and trim while out of view, and re-entering the vision can be properly mapped; no new head-direction replaces the target.
+- Each eye is used to perform original drawings, restore the viewport, scissor and depth range, and still submit the original completed reply. Types do not match, non-full screen geometry, invalid resource/frame number or bad matrix continue to be rejected.
+- Add mirror drawing/cut count, and first failed material kind, planning phase and geometric rejection category to facilitate subsequent field-based error distinction 28 Internal reasons.
+
+## Authentication and Default Integration
+
+Add `MaterialReticlePlanTest` It's... 54 The group independent projection and eye-backing examples are passed: three source dimensions, semi-pixel deviations, limited target/infinite orientation, left and right turnover and smoothing, centre position of eyes, shared mapping with icons, source vertigation constant, normal and abnormal exital state restoration. The negative examples cover unknown semantics, repeat/deviate angle points, non-zero Z, non-limited arrays, error width ratio, multiple view, missing/micrometry; and verify the recovery of vision after cutting, direction correction and odd output height.
+
+Total 40 The primary and pre-start inspection was passed, including the material planning, UI backfilling, frame geometry storage, first person designation, bunker targeting and recovery.`OwnedGpuShareTest` Actual Off-Screen D 3D 12 Two-eye pixels and three resource states are back through, but this is a shared output regression, not a GPU pixel acceptance game for sniper mirror material.109 Item starter Python check passed, default file Hash validated.
+
+From MountedResume 1 Freezing source-manufacturing candidates are only five different documents: new planners, matching tests, two owned Material connection files and CMake test registers.485 The compilation relies on checking and freezing the source code for Hashi to pass again, with the original renderer switch, old machine gun frame repair, bunker targeting and one-person name retained. The first round of construction wrongly duplicates the working area complete CMake, encountered an independent experimental target where the source does not exist, failed at the generation stage; failed directory and backfilling. Finally, r 2 Use the original freeze CMake to register only new tests and re-create empty build catalogues without using the failed cache.
+
+Default starter now select `tools/native-capture/build-sniper-scope1/GearsCaptureSniperScope1.dll`，SHA 256 `7f8e100e3144750354951e01b46348fe7c682ec080614cc78c1804d90c7ba693`. Only updates `native_build`、`native_dll`、`native_sha256`, and save name candidate `manifest-sniper-scope1.json`XR, Playground and user configuration are unchanged. The initial check of the starter found that the previous default lacked a fully matching name candidate; this time the full name candidate was saved and the relevant check passed without relaxing the assertion.
+
+The new game process will load this version. No games started or operated, archive modified, renderDoc performed or entity header recognition performed; no release tags/package updated. Follow-up can be used by `owned_material_reticle_draws` Confirms the actual access to new routes.
+
+Evidence, original failure, build logs and frozen source stored in signed `analysis/sniper-scope-20261022/`、`analysis/sniper-scope1r2-20261022/`、`analysis/sniper-scope1r2-source/`、`analysis/native-build-sniper-scope1r2/`; proprietary scripts and logs do not enter distribution packages.
+
+---
+
+## 中文
+
 # 狙击枪开镜退出 VR：材质准星绘制支持
 
 2026-10-22。针对用户报告的狙击枪一开镜就退出 VR，补齐全屏准星材质的双眼绘制路径，通过自动检查后合入普通启动器。实体头显中的镜框、放大效果和开关镜连续性仍待实际使用验证。

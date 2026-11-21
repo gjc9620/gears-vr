@@ -1,3 +1,68 @@
+# Time to start certificate preparation
+
+2026-10-17. The goal is to shorten the waiting period for entry into a dual purpose, and to keep the build version of the certificate, object identity, type of reflection, registration form, entry byte and final rereading.
+
+## Practical measures achieved in the original
+
+Regular front-stage startup game PID 13996、creation FILETIME `134366576079169198`, automatically enters an existing single-person check point. The rear handle is closed without loading VR DLL or XR processes.`discovery38-launch-receipt.json` Records are uninjected, not reserved; normal closure after reading is completed`discovery38-normal-close.json` Confirm process exit.
+
+ignored read-only scripts `analysis/runtime/profile-startup-discovery.py` Packaging is currently a Resolver and Certificate Build function, which only counts the original call, does not perform activation, input or memory writing; retains the original retry, deadline and exact process creation identity. The report saves the actual source files Hashi, the module base address, timing and reasons for rejection.
+
+| Time mode | Certificate Acquisition | Internal situation |
+| --- | --- | --- |
+| Number of statistical readings | 16.035 sec | Changes in UI/registration forms resulted in multiple re-takes, which were reported as a whole 6- a Resolver;2952119 It's a bit of reading.4 Short reading |
+| Time only | 5.326 sec | Two complete certificates ready, the first Crossshair Registry Changed, the second successful. |
+
+Two rounds only, UI together.3.129 sec (% of total acquisition)58.8%) Resolver 1.713 Seconds, Anchore.0.195 Seconds, Crossshair.0.213 Seconds. The last round of successful preparation of UIs is about four stages total 62.7%. The last round of statistics done by the UI 357650 Read, read,231002 The sub-identity cache is in high numbers a list of all the object identifications found in the full registration form.
+
+The two measurements are different in time, number of retests and number of objects, and they are not usable.16.035／5.326 As a statistical multiplier, much less as an optimal gain.`analysis/runtime/discovery38-counted.json`、`discovery38-timing.json` The blog is also available.
+
+## Prescribed Optimization Direction
+
+Current measurements support the priority reduction of UI-discovered inter-object access.**Discovery hint**Batch reading of adjacent pages; use a limited temporary cache, which fails to read across pages, or short-read back the original exact reading. Do not change the acceptance of candidates for fresh check, complete routing, duplicate class rejection, required class collection, attribute/link/entry and final verification.
+
+The page snapshot can only serve as a reminder of discovery and cannot be the authority of the certificate. It changes the timing of observation; even if the price is equal to fixed memory, it cannot claim that the rejection was in exactly the same order or obtains a global atomic snapshot.
+
+## Accomplishment against process
+
+Submit `00aee41` Add page readers for discovery only to the existing Resolver module; maximum number of UIs per year maintained 64 One.4096 byte page, discard when you are finished. The object identity alert cache can be used to get the original 96 bytes; all pages over, short read or unread adjacent areas are returned to the original exact reading. Normality calls and all fresh/ attribute/entry/final readings remain on the same path. No running time module, persistent cache or primary DLL changes have been added.104 The relevant test is passed and contains fixed memory equivalents, failure retreat, cache caps, error detection tips that cannot be valid certificates, duplicate class rejections and original path maintenance.
+
+Play the game properly for the second time 7424、creation `134366584356575261`. The script that tried to suspend the comparison was asserted and not entered; the first reading sample was empty because Pawn was empty, and did not include the result. After confirming the death menu and reading a check point on the existing protected target window path, the sequence was run in the old, new and old, with four time reports only prepared for success once, all of the REOLver objects were identified as 242384, the game creates the same identity as all five detected source-coded Hashi. This time, no suspension can be called a pause or atomic snapshot.
+
+| Mean double value | Old Discovery Path | Page Tip Path | margin |
+| --- | --- | --- | --- |
+| UI Build | 1481.55 milliseconds | 1086.30 milliseconds | Reduction 395.25 msec,26.68% |
+| Could not close temporary folder: %s | 2382.85 milliseconds | 2012.82 milliseconds | Reduction 370.02 msec,15.53% |
+
+Report as `analysis/runtime/discovery39-pairLegacy1.json`、`pairLegacy2.json`、`pairPages1.json`、`pairPages2.json`(both with Discovery)39 Prefix. Separate statistics mode `discovery39-pairPagesCounted.json` And one success, Ui.156711 Read it a second time, of which 27716 Page-wide request; reading request bytes increased to 125.28 MB, yes.7 Short reading goes back. It trades more read bytes for fewer systems to call, and it cannot claim that all the costs of reading are reduced.
+
+This result is a stable check point, two time samples for each path, which does not mean that the entire VR cold start or the loading of the shaking will necessarily improve in equal proportion. The actual VR start and clean-up return must be recorded separately. `discovery39-normal-close.json`。
+
+## Full VR cold start and check point return
+
+Source `00aee41` Complement with unchanged Native 37／Borderless 1, the actual simulator session `continuous-stereo-31084-20261017-051056-0d18a74a`. The certificate phase is a UIRegistry Changed post successful: original preparation 6.543 Second, the camera is ready to the first successful double-eye projection.9.548 sec. Actual start time is still visible, not before round 11.175 Seconds and current cycle 6.543 The margin of the second is fully classified as optimized (with different loads and retrying in two rounds).
+
+After reading the checkpoint in the Death menu once, create 2 Submitted 60 Request GPU for the tickets when an epoch frame is in place.615 Source number 604、3840×2160 All the old versions of the fresh and the authentication path with the Hook entrance continue to pass.1658 Sub-sequence, XR projection 3877 I. SIDE REplicaTION 1657(a) The number of times;50.516 The maximum projection interval of seconds contains the death menu waiting, which cannot be considered purely frame-rate or no cardton certificate.
+
+The game is closed and the exit confirmed. `discovery39-vr-runtime-audit.json`、`discovery39-vr-checkpoint-audit.json`、`discovery39-vr-normal-close.json`. No new appearances, machine guns, long tours or all over-takes.
+
+New Independence Snapshot `analysis/release-staging/mounted37-discovery3-20261017` Including two Python-starter amendments, both 700 Documentation,43,419,825 Bytes, pre-separated screening, list SHA 256 `721810195e2a938e2347ee2f06071c5baea84d77bc2d67b0620695cda26b2e11`. Original/XR follows validated documents and does not duplicate or repeat unmodified original self-measurement; this snapshot is not available informally.
+
+
+## Distinction between additional and change of identity in Crossshair registration form
+
+2026-10-17, the Python builder only completes two exact addresses for objects/names 16 The byte table accepts single-tune increases requiring that each observation be valid and data address and capacity remain unchanged; the selection of objects is still subject to the first count limit. Each time compared with the previous observation, the increase is rejected. The relocation, volume changes and effective reduction of the retention of Crossshair Registry Change package retakes, short read/invalid head and other identity, attributes, links, scripts, original entrance changes are still hard to reject; ultimately, non-head error priority is retained. Format and independent fresh validation at the birth start have not been changed, and no lasting certificate cache has been saved.50 The test was passed.
+
+Read only PID 39616、creation FILETIME 134366607485966944 The initial preparation was not rejected by the watchman, but selected.4 Byte fields change when they are assembled, correctly and hardly. Samples observe a name sheet 57892→57928 Address 0x 7330000 and capacity 100000 No change, but occurred during the UI phase without a reproducing additional rejection from the Crossshair stage. The subsequent three rounds of stabilization preparations were successful and no increase in watchtops was observed, so it is not possible to quantify the benefits of the current round changes. Original head observation and source code Hash were kept at Discovery 42-header-baseline.json、discovery 42-header-second.json; no injection, ending normal closure.
+
+Actual full VR return sessioncontinuous-stereo-3932-20261017-054756-ab 408251，Caption 38/Borderless 1 Could not close temporary folder: %s 2.430 Seconds, originals.3.988 Seconds, cameras ready for first double-eye submission 6.956 seconds;no certificate retrying is available for this round. New 3840×2160 Images are not black, primary cleanup check and normal closed game pass. Reply analysis/runtime/discovery43-vr-audit.json. This is a start-up return, not compared to the causality of the old version and does not cover the current inspection point, machine gun, long or header acceptance.
+
+Proves boundary: the consistency check is a limited sample, not an atomic snapshot or generic ABA protection. The uniqueness of the field chain remains evidence at the time of discovery and has not been extended to final whole-chain rereading; nor does it mean that all scripts were redispersed in bulk. There is no claim on this basis that the black screen roots are completely resolved.
+
+---
+
+## 中文
+
 # 启动证书准备耗时
 
 2026-10-17。目标是缩短进入双目的等待，保留证书的构建版本、对象身份、反射类型、注册表、入口字节及最后重读检查。没有把启动延迟解释为GPU／VD网络问题。

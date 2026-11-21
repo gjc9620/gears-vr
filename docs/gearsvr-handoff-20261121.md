@@ -1,3 +1,38 @@
+# GearsVR, take over the notes. 2026-11-21
+
+## Where do we start?
+
+- Current IntegrationWorktree `J:/codexWorktree/gearsVr`. The branch is `codex/gearsvr-handoff-20261121`# The baseline is `codex/6dof-single` It's... `d17a3a0b`. This branch is developing a snapshot, containing code and testing after the baseline.
+- PC, the real candidate is... `J:/codexWorktree/gearsVr/candidates/6dof-unified-20261118-r8`This is the entrance to this machine. `GearsVR Launcher - Render Cap.exe`. If you are taking over from another machine, install paths in your own game. Candidate directories, games installation, running logs and daily generation files remain on the machine.
+- r 8 The following are some of the most important examples of the current situation: 12 A limited range simulator is validated. Detailed evidence is available on this machine `J:/gearsVr/analysis/unified-smoke-20261118` It's... `final-build-receipt-r8.json`、`owner-verification-queue.json` and `final-portable-preflight-r8.json`. The results are viewed separately from the feedback on the bottom of the real process, which remains to be addressed.
+- Launcher, after that, has added the resolution ceiling with the largest eye-to-eye row. 8192 × 8192 One eye, max. 4096 × 8192. Preview and start the commons range. On Pimax 1× and 2× All pre-screens are single eyes. 4096 × 3290. The patch has been compiled, the process is pre-checked with the self-check and real machine OpenXR, and the actual game after the patch is still awaiting validation.
+- Quest workstation is a stand-alone product line. Current log is 0.4.0/code 13 Installed and AAK readback agreed, this update is headnominating for acceptance. Support 12 The original weapon posture, Volume and Snap editors, Lancer, has a special exercise process. [Weapons desk records](quest-workbench-weapons-20261112.md) and [Lancer, switch desk.](lancer-workbench-handoff-20261112.md). Four real left positions recorded are on the machine `J:/gearsVr/analysis/quest-workbench-20261112/owner-v020-captures`The historical collection of the remaining weapons should be followed by a check of the records and parts.
+- See you at the code entrance. `tools/vr-launcher`(GUI, STARTING, PACKLING)`tools/native-capture`(playside)`tools/openxr-probe`（XR）、`tools/playground`(Scene and weapons integration)`tools/vr-common`(Sharing rules),`tools/quest-workbench`(workstation). Launcher GUI Build access to `tools/vr-launcher/ui/build.ps1`, the portable package entry to the same starter directory. `stage_portable.py`、`package_portable.py`、`portable_preflight.py`See the weapons profile. [Weapons card](weapon-specs-20261028/weapon-cards.md)。
+
+## Real feedback and acceptance.
+
+| Scope | That's a real feedback. | Expectations and pending reconciliations |
+| --- | --- | --- |
+| 6 D.F., move, shoulder. | You can still see the right swing. Sometimes you can move and turn, but... 6 The DDF loses hands, signs and reloads, showing the same pattern as a flat-form Xbox handle. Reactivate the game and re-enter VR. The left shoulder does not get guns or ammunition, and grenade launchers are affected. Users feel that shoulder and reloading is too small to be visible. | Revert multiple-wheel shoulder access by checking the entry route, tracking status, virtual hand release, shoulder and weapon exchange and moving speeds in a sequenced manner with an existing log. Restore stable movement, virtual hands and interaction, check first person's name of body hide and shoulder Volume/Snap. |
+| Orc rifles Hammerburst | The arms are on the same side. 80°); shot and whole gun up and down when fired; no handle, too small yellow grab zone, unopened. | The reloading is only maintained for direct extraction and plugs. The lifting of the bolts and other active components interact, expand the holding area of the valid magazines, accept the body, stabilize the shooting and change the rounds continuously. |
+| Hammer of Dawn | The gun is about to be stung. 60°。 | The same Pimax postures are compared to the hanger, partial forward axis and aim at different weapons. Users refer to a normal reference for angles, in the words “Launcher”, which is subject to verification. There is no evidence of pimax generic problems. |
+| Grenade launcher Boomshot | The left shoulder is not available, the cartridge/fill cannot be caught and the switch process is in question. | Review shoulder supplies, loads and continuous re-loading of rounds, hand-held dual-held weapons and adjustments to both positions. |
+| Standard pistol Snub | The gun looks like a horizontal weapon, with the bullet going up. Double-scratching, the box grabs too small, can't hold and is difficult to fire; approximately twice after loading, it cannot fire. | Remove the double position, correct the actual trajectory and align it to visible shot. Expand the magazine Volume, check ads and loads, and still fire after receiving multiple rounds. Refer to the location of the collected GrabPose and the weapons in the workstation relative to the cartridge, grab a grip. |
+| Revolving Boltok | No fire. Gunshots are rounded up. 10°; the nest cannot be opened/take out, but the reloading is incomplete. | The contents of the rounds are to be verified separately, as well as for the door control of the firing points and for the tectonic and reloading of the rounds, partial fillings and empty silos. |
+| Frag / Smoke | The drop point is about two or three metres, regardless of the speed at which the fragmentation grenade was dropped or thrown up; it's taken out the time handle above, the bullet body below, and it's down. The rest of the pieces are interactive. The direction and effect of the smoke grenade after its removal is correct. | Checks the speed of release, direction and parabolic lines inside the game; tests the differences between light throw, fast drop and up. Fix Frag to take out the direction and review Smoke's original performance. |
+| Shelter | Left edge cuts to left hand; entering with a gun may disappear or return to stock. Low bunkers fail to scratch their scouts empty-handed, fire but have low frame rates and move in the bunkers. High bunker physical right-and-right probes are available but there is a Cardon. | Only remotely adsorb to bunkers, move quickly between shelters, and move inside. The probe relies on physical movement. Delete the top-to-peer and original edge change logic that is triggered by empty hand grips. Keep weapons in hand, right hand open fire, and move and detect flow. |
+| Launcher, stop. | The exit process after pressing "stop" is slow. | Time is used to find out whether the play exit, Native/XR cleanup or starter state is updated, and keep normal clean-up, reducing the time taken to stop. |
+
+It's recommended that we seize all gestures to fail at the same time. 6 DoF state switching and shoulder extraction, re-diverse modules to handle attitude, filling and bunkers. Simulator is used to recreate status and verify return, Pimax authentication angle, hand-to-hand, reach range and flow. Each record corresponds to construction, first failure, actual action result and normal exit.
+
+## Range of the handover
+
+This branch saves the current Worldtree integration source code, test, document and tracked changes. Two temporary VS/CMake directories of video games, ignored in-house candidates and collected data remain on the existing disk. `J:/gearsVr` Source-code Worktree is a different branch, and this saves the current integration of Worktree.
+
+---
+
+## 中文
+
 # GearsVR 接手说明 · 2026-11-21
 
 ## 从哪里开始

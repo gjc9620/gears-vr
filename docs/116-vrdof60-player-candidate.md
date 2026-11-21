@@ -1,3 +1,29 @@
+# VRDof 60 Local candidate for recovery of death eye
+
+2026-10-17. Local Default Cuts `VRDof60 / Borderless1`, Named List `manifest-vrdof60-borderless-vd.json`Old `manifest-reticle47-borderless-vd.json` ZIP is not retraceable. User configuration is not overwritten; the handles of the back-office entity are by default closed, game resolution continues to take effect and the DLSS/DLAA lock remains in place.
+
+Source Freeze `4fd6884a4d1b2d3812ce2696943177bf4effaafd`，DLL SHA 256 `599dd838f08b832b2fbd4265bf4251ed90f17535f0af43f97edd8d17a0bfdc66`;XR still Borderless 1，SHA 256 `2c27d29ca68a1629cb987addeedbc49ea59f2f7355408802a4b84ca7d96fe5eb`. Continue Reticle 47 Add a certified view of unoccupied death and a picture of the same depth; leave this path to be blurred, avoiding the re-emerged right eye. Not copying left eye for right eye. Detailed field, eye-to-eye certificate, death/checkpoint/film return and border.[Compatibility Validation](115-vr-dof-compatibility-regression.md)。
+
+## Independent Package
+
+Local ZIP `analysis/release-zips/GearsVR-V1-development-Vrdof60-20261017.zip`，SHA 256 `032f4d6d065cd7dbe0b041facbf2ed0e627ff849913d5126df10caa3146cc1be`，13,631,352 bytes,701(a) Members;700 A Payload file 43,453,835 Bytes, interntory SHA 256 `18a4085d50f92a0426bf4a561bdefb2d0771d21ea6e155116c2f7f1c914a8b45`. The package does not contain games, simulators, reverse databases or pseudocodes.
+
+Newly depressed directory to package Python `-I -B`Quit precheck and actually start the extra-packet game. Portable 104 Session `continuous-stereo-34716-20261017-135841-9e69a18d`Two.3840×2160 The full courtyard is available around the GPU. After stopping, the session is passed, the original independent recovery, the ordinary game is closed and the four files are restored; after running, the entire courtyard is returned to the court.700 A list file Hash has not changed. The system OpenXR registration form was not modified when running using a sub-process visible emulator; actualQuest 3/VDXR was not accepted during this round.
+
+ignored evidence:`analysis/runtime/vrdof60-zip-proof.json`、`portable104-preflight.json`、`portable104-audit.json`、`portable104-normal-close.json`、`portable104-save-restored.json`、`portable104-payload-recheck.json`. The package defaults that players choose the game path, and VDXR defaults for GUI; this develops a candidate for this machine.`release_ready=false`No public release.
+
+## It's still to be done.
+
+- The new candidate's real headline integration, HUD/subtitles, machine guns/carrying and long tours.
+- The start-up and check point are still waiting in seconds; the first primary snapshot is turned over to a black one, followed by recovery, which cannot be described as unblack.
+- Actively playing frame rhythm/Carton and clean player machine deployment.
+
+The automatic evidence available supports the above-mentioned path repair and the recovery process that has been tested, not all black screen root causes are resolved or “first editions can be released”.
+
+---
+
+## 中文
+
 # VRDof60：死亡双眼恢复的本地候选
 
 2026-10-17。本地默认切为 `VRDof60 / Borderless1`，命名清单 `manifest-vrdof60-borderless-vd.json`。旧 `manifest-reticle47-borderless-vd.json` 及不可变ZIP保留回退。用户配置未覆盖；后台实体手柄默认关闭，游戏分辨率继续生效，DLSS／DLAA锁仍保留。

@@ -1,3 +1,65 @@
+# No delay in the up and down machine gun: continued development and validation
+
+The target for this round is to produce a continuous picture of the machine gun up and down without any additional recovery waiting. The successful preparation of CPU time falls still short of proving that goal, which is currently unmarked.
+
+## Further changes achieved
+
+- Menu Watch is changed to a single line backstage workspace. Restore the co-ordinater does not wait for the menu RPM; original sampling time stamp, status classification and release validation reservations, first receiving current readings when off, then publishing the final UNKNOWN and closing reader. Failure returns homeer, no reader is sent.
+- The existing entry authentication requires only checking the main program with Mod's two sealed module base addresses. Each authentication boundary is still re-opening all module bases but searching for only the file names of both modules; full DLL digests, process identification, module path and pre- and post-checking of all storage jumps continue.
+- Reset configuration using static certificate mode to save unwritten INI position/rotation diagnostic samples. Keep full identity, relationships, attributes, compile boundaries and short-term stamp verifications. This pattern must be supported by a live entry attachment; still retain the diagnostic sample for normal first start. native receives, submits and frames-by-point confirmations are done as they were achieved. `pose_sampled=false`、`sample=null`, does not mark uncollected gestures as successful.
+- The hint is to use a complete collection for real purposes; the hint is to perform full periodic observations, including changes in identity at the same address, if false or reading fails. This prevents an additional complete observation from being made “just as regular detection expires”.
+
+Normal, mounted RAM tests demonstrate that static mode configuration and INI content are consistent with diagnostic models; checking internal time stamp changes, role/link changes still reject certificates. Backstage observation tests cover block reading, abnormal return, individual work in transit and closure order. Module testing covers current member relationships, missing/defeating, path query failure and closing. Coordinater test over one-time capture and failure alert retreats.
+
+## First round of actual evidence and its limitations
+
+`mounted-latency5-async-actual-20261021` Use the current default `ca66cdeac91915be17d30a5b1ff5008ae575acb6f7e60d82ff4ffb6f5f8a18c0`, Keeps CopyAllAllreadsPrefix, ADS and existing repairs. 395 Item and resolver 22 Check passed, all 417 item.
+
+This round completes checkpoint XR recovery and independence submission. Restores the diagnostic model, watch 220.0281 Ms. Ready? 874.6083 ms, total 1094.6364 ms，`single_acquisition=false`Prepare to committee 208.8488 ms. Maximum time-consuming startup of the backstage menu 3578 I'm not sure this evidence proves that the backstageization has been eliminated. 200 The handshake of ms waits, and cannot be claimed to improve on that.
+
+The complete candidate contest that was then explicitly rejected before the four releases were implemented in the same process, with all INI summaries being configured identical and no change:
+
+| Order | Mode | Ms | Re-extracted | Include total time taken to retake ms |
+| --- | --- | ---: | ---: | ---: |
+| 1 | Diagnostic attitude sampling | 657.3193 | 14 | 12181.5618 |
+| 2 | Static Certificate | 509.7778 | 0 | 511.9347 |
+| 3 | Static Certificate | 516.9040 | 0 | 519.1517 |
+| 4 | Diagnostic attitude sampling | 628.1004 | 5 | 4846.5600 |
+
+Medium number of successful preparation is 642.70985 ms with 513.3409 - I'm sorry. 129.36895 ms. Re-mining takes time to keep; this is not a black screen time, nor does it create a stable distribution of the total waiting period.
+
+Downer exit 0 Backstage reader off, native cleanup, independent 79 The entry points were closed, normal closures and five protection documents were returned. `run_stereo_continuous.py`、`start_capture.py` The disk bytes change during this operation, and the automatic source consistency door makes the whole wheel **`passed=false`**. The original failure report is not recorded as approved. This evidence is used only to determine the next check, and cannot be accepted as a complete new default path.
+
+## Ongoing fixed copy check
+
+To avoid the attribution of shared source changes, recheck to generate a private, complete Python/Native directory using existing offline status tools to record source lists and SHA 256. Tests keep the latest default native/XR, without using a certified back window to start and emulator, without enabling the background physical handle input, and then reverting to the original settings. Wait until all other FPS/autoplay workers and games are finished before producing final copies, running checks and tests; no messages are sent to other chats.
+
+Fixed copy runs the new path and the diagnostic/synchronous menu control group, respectively; private launcher only records the actual sample mode of the candidate and INI summary, which controls the group's graphic mark. The new path also supplements read-only alternate preparation measurements. The default list is refused to continue with older copies if it has been upgraded.
+
+The source code must be fixed before return, and the actual candidate is indeed generated by a new model, complete native verification of success maps, exits and returns. The full target also requires evidence of continuous results on/off-the-horizon of actual machine guns; this acceptance is still lacking.
+
+Original evidence, source copy and private test entry stored in signed `analysis/`, do not enter the distribution package.
+
+## Fixed copy of third round result
+
+`mounted-latency6r3-frozen-fast-actual-20261021` . The frozen directory is `analysis/m6qa3`, save the current default first person preview for current status 256 `045ca20af3ec7a97b40320219dbcf9ae99d880008ee3ed53e15c4191a8b49b9d`The & MountedLatency 1 XR。399 Entry native-capture Python check passed (3 ) and other 22 The item searcher passes.
+
+The actual release of a clear record of the independent return of candidates `pose_sampled=false`, and complete anarch/UI/Crosshair INI summary. Source code fixes, checkpoint restores the new world, independent XR out, menu work schedule closed, native cleanup,79 The entrance is restored, normal closing and five protection documents are returned. 807.0193 ms;Prepare to committee still 201.1124 ms. This is checkpoint resume measurement, not writing the actual machine gun blackscreen time.
+
+Read only the median of successful preparation for alternate candidates with process to diagnose attitude patterns 718.8685 ms, Static Certificate Mode 602.10905 ms; four complete INIs have the same content. Re-execution and total time are kept in the original report, without a successful attempt being used as end to end distribution.
+
+The old path control group of the same fixed copy did not complete the start: diagnostic attitude sampling continued to cross frame and eventually reached pre-activation readiness date, native has not yet been activated. `passed=false`, it cannot be compared to the successful checkpoint of the new path. Keep a record of failure and limit subsequent comparison to the same process started, the same static certificate mode, and change the repetition reading policy for single-stage assemblies only.
+
+The second round of fixed copies also revealed the problem of real co-ordinated demarking: after the previous job failed, the next cheap tip incorrectly follows the delabelled mark and cannot be retrieved in its new complete form. The live check that is read separately from the delicacy token that works on the way has been cancelled; the new job still needs to wait until the old job has finished. Two retried and older jobs that have returned to the failed cover cannot be re-opened; the third round resumes with this amendment.
+
+## Repeated identity reading for single assembly
+
+Keep on optimizing. [Identity assembly optimization record](mounted-transition-latency6-20261021.md). The current original cosmogeneity directly toggle the prototype only in signored `analysis/`, when not connected to run. No actual machine gun switching evidence without additional waiting has been established.
+
+---
+
+## 中文
+
 # 无延迟上下机枪：继续开发与验证
 
 本轮目标是上下机枪时持续出图，没有额外恢复等待。成功准备的 CPU 时间下降仍不足以证明这个目标，目前不标记目标完成。

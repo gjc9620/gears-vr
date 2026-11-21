@@ -1,3 +1,109 @@
+# First person, Mod: shake, recoil and action lens.
+
+2026-10-12. Continue to read-only check installed First Person based on user feedback 1.0 The current round does not repackage, inject or initiate firing tests and VR development targets are still suspended.
+
+## Conclusion and strength of evidence
+
+Not to be referred to in general terms as "dismissed gun-stave" / no recoil." The data on the package confirm that: weapons and Marcus body grids are added `bIgnoreControllers=1`, and the shooting lens vibrating, hand and spinal recoil parameters, four gun recoil camera animations and related script functions were not modified.
+
+**The most valid inference.**: Neglecting bone control through grid layers may inhibit the procedural recoil performance of guns and arms. It is a broader control layer change that could affect other bones controls. There is no proof at this time that this setting is being executed in all actions, nor does it confirm whether it is covered by games running, so extrapolation is not written as a run validation result.
+
+UE of Epic 3 Document describes the arm / bone of a gun used to drive a fire, followed by IK. This explains why model reflexes and observation lens vibrations can be separated:[Using Skeletal Controllers — Recoil](https://docs.unrealengine.com/udk/Three/UsingSkeletalControllers.html#Recoil). The local inverted version of the game is confirmed `WarSkelCtrl_Recoil extends GameSkelCtrl_Recoil`。`bIgnoreControllers` The specific skip branch is not yet located in the current game original code, and field meanings and the effect of this setting still need to be run.
+
+| Effects seen by users | This round of judgment |
+| --- | --- |
+| Guns and arms are not wobbled. | Directly related grid control settings exist; most likely affected by them, but no switch cross-checking |
+| The whole picture vibrates when you shoot. | Arguments, lens animations, related changers and scripts are kept; cancellation cannot be declared |
+| The back-sitting effect is on the star or direction of the aim. | recoil parameters and settings retained, no recoilless rewriting observed |
+| The bullet is off the star. | Aim for error parameters and functions, keep. No scattered zeros observed |
+| Gunfire / Flash | WarWeapon Add bDynamicMuzzleFlashes=true, not to be interpreted as turning off the gun fire |
+| Run / Scrambling Scrambling and Additional Offset | Multigroup offset zero, significant increase in the speed of plug-in; relevant changes are made |
+
+## Retained shooting parameters
+
+`WarfareGame.Default__WarWeapon` The following full attribute values are identical:
+
+- `FireCameraShake`_Other Organiser 1 seconds;rotation ranges `[100,100,200]`, frequency `[10,10,25]`;position ranges `[0,3,5]`;FOV range 2. This is the base class parameter and cannot replace the final entry-in parameters or game settings for each weapon.
+- `Recoil_Hand`: Continuation 0.33 seconds;rotation ranges `[1500,200,0]`, range `[-4,0,1]`。
+- `Recoil_Spine`: Continuation 0.67 seconds;rotation ranges `[750,100,0]`。
+- `PRM_Recoil`、`PRM_MinAimError`、`PRM_MaxAimError` ; Undecoded arrays are not considered to be actual final values.
+- `MeleeImpactCamShake` and `bDoMeleeDamageShakes` Same thing.
+
+`WarWeapon` Default object actually only adds `bDynamicMuzzleFlashes=true` and `bOnlyOwnerSee=false`. This round is filtered 20 Among the weapons default objects, and 19 The byte is consistent and includes specific weapons such as rifles, COG pistols, shotguns, sniper guns, etc.
+
+Scrutinised by Recoil / FireViewShake / AimError / Spread / ScreenShake 21 The full byte alignment of the functions includes GetWeaponRecoil, SetWeaponRecoil, GetWeaponAimErrorRange, GetPlayerAimError, GetAimError, GetFireViewShake, WarInventoryManager.SetWeaponRecoil, and the addition, updating, application function of the camera vibrator. The filter range is the corresponding name in the package and does not represent the interpretation of each original function.
+
+Two camera modifyrs default objects are also bytes consistent with three WarSkelCtrl_Recoil objects.
+
+## Bones Control Settings
+
+Add the following two objects in a visible form:
+
+```text
+WarfareGame.Default__Pawn_COGMarcus.WarPawnMesh
+WarfareGame.Default__WarWeapon.WeaponMesh
+
+bIgnoreControllers = 1                  // 序列化为 IntProperty，不是 bool 标签
+bIgnoreControllersWhenNotRendered = true
+```
+
+The second relates only to control handling when it is not rendered, and cannot explain the shaking of visible guns on the screen alone. The first is this important clue. The object does not have two new fields for visual serialization, which directly equates " no label " with a proven running time zero.
+
+The normal bone animation, bone control, observation lens, and game direction are different layers. Ignore bone control does not mean that all animations will cease or that the weapon's trajectory will be altered. The observed visual stability may also be affected by high FOV and motion-changed camera at the same time.
+
+## What exactly did the camera do?
+
+Read All within AnimSet_CameraMovation 30 A sequence of SequenceName,13 I'm not sure.17 is exactly the same. Only full bytes/Hashi comparison of the original tail is made, without assuming a compressed curve format.
+
+**Four recoil-based animations are identical:**
+
+`Camera_Recoil_AssaultRifle`、`Camera_Recoil_Pistol`、`Camera_Recoil_Shotgun`、`Camera_Recoil_Sniper`。
+
+`Camera_Standing_Idle`、`Camera_Walk`、`Camera_Run_Fwd`、`Camera_RoadieRun`、`Camera_Cov_Walk`、`Camera_Cov_Run`、`Camera_Cover` It's also completely consistent. So it is not possible to say that walking, sprinting, standing-by animations are uniformly deleted.
+
+**The modified animation is map by actual name:**
+
+| Sequence | Change of evidence |
+| --- | --- |
+| Camera_Melee_Saw_A/B/C/D/Low, both 5 Item | Mod original animation tail is identical to unmodified Camera_RoadieRun; frames 101→44 length 3.367→7 ♪ The second that the baby is gone ♪2 |
+| Camera_CurbStomp_A/B/C/D/E, all 5 Item | The original animation tail is identical to the unmodified Camera_Door_Kick; frames 66→43、RateScale=0.75 |
+| Camera_Pickup_A/B, both 2 Item | The original animation ends with Camera_Door_Kick; NumFrames=25,Show length 1 Seconds, so frame numbers do not equal the number of frame numbers in the tail source sequence. |
+| Camera_Mantle | The original animation tail is identical to the original version of Camera_Pickup_B;40→30 Frame, length approximately 1.333→1.34 Zero, RateScale 0.66 |
+
+Besides, Marcus body animations `AR_Melee_Saw_B` Add LateScale =2.5, cannot be considered as an anti-impressive shooting.
+
+The same byte proves the data to be reused, and does not prove specific playtimes, actual calls, final mixing of weights or motion curves. Mod also modified the list of selected actions for lens references; it cannot guess image effects only by animated name.
+
+## Other factual explanations for users
+
+### The mask lens rises when you lift the mouse
+
+The user has observed this phenomenon. No mouse-lifting nodes are added to the package, all class and function numeric node codes are the same as the baseline; default parameters for a bunker lens have changed significantly. For example, the basis PawnRelayive Offset is added `[80,0,50]`, the position shift is changed to `[30,0,20]`, the middle height attitude deviation should read `[50,0,-30]`; ejection, probe, targeting patterns and other deviations.
+
+These changes are consistent with the way that the original game bunker/topdown logic is achieved. But there is no record of how the same bunker has been down and changed in position, nor does it have a formula for positioning the final primary height, which cannot be claimed to be the only reason that a field is "throwing up or down the mouse." It is not an independent virtual station crouching interface that is clearly flattened or what we ultimately call for.
+
+### FOV Bigger
+
+Parameter confirmed: WarCameraMode.FOVAngel is 80→105;WarPlayerCamera. DefaultFOV is 70→120, add 120、LockedFOV=120 and enable the logo. Different lens mode and game settings may be overwritten, and eventually FOV cannot be determined by default only.
+
+The same angle swings usually occupy less screen distance under larger FOV, so "looking low" does not in itself prove that the source of vibration was cancelled.
+
+### Flip point horizontally
+
+User has observed the image not flipping with your body. Normal mode EvadePawnRelativeofset `[0,0,-28]` For `[100,0,-20]`; lens offsets and plug-in values are also changed. The script bytes of the relevant Evade class, back, back, back, and bunker exit actions remain consistent.
+
+This is evidence of “retain rolling motion and change the way it is seen”, which cannot be described as having changed a person's movement to fly-up, nor does it indicate that collision, shooting state or slow motion has been achieved.
+
+## Next round if you need to be accurately verified
+
+Compare the original version / Mod: The lens rotates, position, weapon bone or gun-point relative motion, actual distribution in a shot, with identical guns, same FOV and game vibration settings. If you also want to prove bIgnoreControllers' causality, then you should reposition it for skipping branches or doing a clear variable run experiment. The current conclusion is to stop by packaging evidence and user reality and not proactively modify the author’s package.
+
+Audit tools:`tools/package-inspector/analyze_first_person_motion.py`;complete in-house evidence `analysis/first-person/motion-recoil-audit.json`, parsing error 0. The report and script enter Git, the game resources and back-compilation output do not enter Git.
+
+---
+
+## 中文
+
 # 第一人称 Mod：晃动、后坐力与动作镜头细查
 
 2026-10-12。按用户实测反馈，继续只读检查已安装 First Person 1.0 的下载包，与安装前原版包分析副本对比。本轮没有改包、注入或启动射击测试，VR 开发目标仍暂停。

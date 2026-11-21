@@ -1,3 +1,50 @@
+# First person called Mod Local Installation and Restoration
+
+2026-10-12, user requires to experience downloaded Firsterson 1.0. VR development targets continue to be suspended. This round is installed with the first person-pack of third party plane, without opening a header Hook or VR display program.
+
+Source directory:`J:/gearsVr/First Person-21-1-0-1764109229`Two. `.xxx` Unreal package by `Engine.u`、`WarfareGame.u` Name replacement game `WarGame/CookedPC` . The original download is the same.
+
+Install the first two original game files to be fully backed up:
+
+`J:/gearsVr/analysis/backups/first-person-1.0`
+
+of which `manifest.json` Recording objectives and SHA 256. Original file SHA 256：
+
+- Engine.u：`8d6ad508162609482656fd892cdadc30e0438c8ce2c44fc87163a99c0601666a`
+- WarfareGame.u：`cd6d9a98c809d5520783a732f955916111e20bb6bf3155fb8b15dea86d7d0538`
+
+The installation and restoration require the game to exit. Scripts verify both targets and backups, then prepare a temporary copy of the directory, check, replace atoms; refuse to overwrite unknown Hashi. Backup does not cover, delete, or enter Git.
+
+This round has actually implemented the installation, restoration and reconciliation of two original Hashes, re-installed and verified two Mod Hashs. The installation experience is installed in Mods. Starting the game still uses the already skipped header and `-NoPauseUnfocus` Debug starter.
+
+2026-10-12 Follow-up main line survey: User requests to reset the original version and has implemented recovery in game exit status, Engineering.u and WarfareGame.u 256 Checks are checked. The current two packages are original, the Mod download and the original file backup. New game PID 46420 For the original comparison; this recovery only concerns these two packages and the diagnostic startup configuration is still in place.`analysis/runtime/original-packages-46420.json`。
+
+Next game PID 44992 Normal access to the level.00:43:49 It's... 640 × 360 The game window is taken at the point of view of one person, without the original shoulder-backed character. Only the loading and current viewing points are confirmed at this time, without testing bunkers, sightings and special animation; the transect is kept on this machine `analysis/game-io/frames/20261012-004348-8bd50c11.jpg`。
+
+## Restore original
+
+Exit the game first, execute in PowerShell:
+
+```powershell
+& 'J:\gearsVr\tools\debug-launch\Restore-FirstPerson.ps1'
+```
+
+Or let the assistant perform recovery. It only restores these two packages, without restoring or changing the fast start configuration, archive, image setting.
+
+Install again:
+
+```powershell
+& 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'J:\gearsVr\tools\debug-launch\first_person_mod.py' install
+```
+
+The last one. `install` For `status` Can not open message
+
+The author labels this version Beta, which may be the result of lens misplaced and short internal model displays when animated or bunkered.[Author Page](https://www.nexusmods.com/gearsofwarreloaded/mods/21?tab=description). The effects of this machine are recorded separately and the file Hashi is validated by not equal to all the games.
+
+---
+
+## 中文
+
 # 第一人称 Mod 本地安装与恢复
 
 2026-10-12，用户要求体验已下载的 First Person 1.0。VR 开发目标继续暂停。本轮安装的是第三方平面第一人称包，没有开启头动 Hook 或 VR 显示程序。

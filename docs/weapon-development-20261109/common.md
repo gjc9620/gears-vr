@@ -1,3 +1,92 @@
+# Six weapons development: public interaction and engineering contracts
+
+Date:2026-11-09. The user has confirmed and authorized development; shared with the gun-by-gun file. The latest direct command covers the old original perfect window, Troika entry and Smoke quality rules.
+
+## 1 Evidence and rule of law priorities
+
+User ' s latest direct command > Update on weapon > v 2 The old code field name and the current prototype are not the basis for changing playbook. The established rule is “must”; recommendations are clearly listed with items that do not have original evidence.
+
+## 2 Inputs and hand-held intent
+
+- Ordinary hand-held: right hand to right shoulder to collect weapon 1 Left shoulder, weapon.2; point to RGrip. The original slot is pressed again, and other valid slots are cut; the air is pressed wrongly.
+- Left to left shoulder, hold LGrip. Take the current gun for ammunition; and take weapons with the right left shoulder.2 Distinction.
+- The left hand holds only one object/organ/support point at the same time. Release first, then use the new Grip to capture the next target; no body can be cleaned and change bullets.
+- Passive ads do not give control, dismantling, inventory or mechanical propulsion.
+- The deputy supports the existing public arbitration; the master continues to control the gun after exiting. Troika has a different dual-handing qualification than the regular one, by way of an exclusive file.
+- The headline is responsible for observation; the weapon/gun position is responsible for basic direction. LT retains the existing syllables, does not pull guns to the centre of the eye; no proxies can follow.
+- No request, R.3 Starts the physical switch. Optional helper shares a transaction with physical action, without restarting the time; twisting bow in Quest R 3 Just cancel.
+- Smoke continued to throw RGrip and unscathed; the regular gun point was kept constant, and could not be used in combination.
+
+## 3 Stock and filling interface
+
+Based on original instance C, loaded L, and standby S; old document values are only static references. New bullets are reserved for insertion before confirmation is submitted; no release of the reservation is shown without a loose hand. The reserve is not reduced. The plugged in is recorded only to the actual quantity, and repeated contact/notification/recall cannot be repeated as detachments, patches or rewards.
+
+Insertion requires the right object, entry, direction, continuous journey and current effective grip. Available guidance and appropriate adsorption help is targeted, not directly completed by approaching, waiting on time or touching the entrance empty-handed. The insertion must be successful with clear return of widget display/control, and Grip cannot take another one or a sub-lease at the same time as it takes place.
+
+The spare left hand is empty-handed and a valid bullet recovery request is sent to “No ammo”.
+
+## 4 Mechanical and perfect reloading
+
+The original body is in place/closed and the game ammunition is submitted for confirmation; a bullet is not locked/cycled or is still off-limits. The original automatic re-exchange and post-jector cannot skip physical action; the timeout does not automatically fill up or add new cardboard penalties.
+
+User 's current round is clear: Gnasher/Boomshot/Bow complete reloading in this batch **4 sec**. The original accepts the first valid current round load action to start in the original game time; in 4 The last necessary mechanical action is completed by the end of the second or before the end and the target for filling in this round is reached.4 The seconds are still normal and do not automatically refill or card casings. Loading is done once with the original reward, instead of using the original perfect window or ReloadDuration 4 Seconds. Suspend the game time, miss and recaptulate the clock. The Dawn Hammer, Troika and Smoke do not have a regular switch, so no four-second process is added.
+
+Gnasher closes early and does not meet the current round's target, but is only normally completed; the goal is not to create perfection by reducing it earlier. Pure post-fire leverage, full-gun inspection and no new rounds are not repeated in exchange for a bullet replacement incentive.
+
+The size, angle, exposure range, handle and itinerary of the institution are considered, marked and validated by each weapon development session on its own basis based on actual model/animation/operational feedback. No user-by-user queries are required.2 kg, real speed does not scale by mass.
+
+## 5 Feedback, models and hand-held formats
+
+Users add clear additional requirements: Pay attention to user adsorbing experience, each interactive component must have a matching grip position; see more for details[Sorbing and parts-by-part capture contract](grasp-and-snap.md)This item is for product demand and image acceptance, not to be replaced by a grab-and-take or universal fistshake.6 Dof-single unified workspace, with attention to modular decomposition.
+
+- Yellow hints show only current operational areas; direction/location/replacement feedback can be distinguished. Sound/shock once, without frame-by-frame repetition.
+- Unbunked, unconnected, recycled, illegal targets should be understood to avoid only developing wrong codes.
+- Prefer the original resource/generic bone; original live ammunition needs to be proportionally, material, scene depth, life cycle. Checking with GLB is not already connected to the game.
+- The hand-hand contact, thumb-pane, index finger and finger closings require physical image checks; both the master and deputy are covered.
+- The target is not shown as a real result, and the mathematical match is not a skin matching certificate. The validation plan uses production geometry, which results in checking actual components/bones/replacement and inventory.
+
+## 6 Interruption
+
+| Events | Must act |
+| --- | --- |
+| Active release widgets | Stop this drive; maintain a real middle status or return to the agency ' s rules; do not jump through unfinished processes without letting go |
+| Lost/expired/neutral/space-replacement | Cancel movement pending implementation and edge; inventory has been submitted for retention, old input is not renewed; new hold once restored |
+| Cutting/receiving of guns | The original example of the quantity loaded and the remaining mechanical status retained; no transfer of old lease to new guns, no automatic continuation of fire |
+| Death/Standing/Travel | Re-coup with new examples; old objects, tokens, timing and pending requests cannot work on new objects |
+| Call result unknown/partially written | Read back and retain re-responsibility; do not directly re-create, de-bunk or award |
+| Grenade generated/arrow fired | Hand over to the original bomb; cannot be cancelled, refunded or re-fused |
+
+## 7 Module boundaries
+
+Current source:C:/Users/11/.codex/worktrees/6dof-single/gearsVr, branch codex/6 Dof-single; check the actual branch with current changes before implementation and keep other session jobs.
+
+The public sector is responsible for input/tracking, hand-held arbitration, posturing/assets, stockkeeping and normal movement; the gun-by-gun module is responsible for its own geometry, mechanical state, original adaptation and display. Only specific weapons are assigned to the current person; the former belongs to it independently, without any unconditional blocking of the present weapon or restoration of the new person's resources.
+
+Shares the Native/Bones/Input/Call subscription. The current symbol is called Positioning Thread, and does not cover the existing shared access as a whole. Consultation requires sharing interfaces, adding generic capabilities to avoid relying on a gun; the product does not depend on testing drivers. It is not unconnected re-engineering because of the script.
+
+The application of the special beam/fixed gun position is clearly checked and does not change the balance.
+
+## 8 Validation and operation
+
+Use the original production path and real controller input, verify it by project direct control/simulator interface/script, recording games and simulators; prohibiting Computer Use. Current user specifies the game directory as J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x 64 The simulator is in J:/gearsVr ; checking the actual document identity on a step-by-step basis without prejudging the entry. The path does not provide a positive startup recovery certificate.
+
+Follow the currently approved backstage, observe-only, test silent, physical input isolation, identity/freshness/archiving/cleanup protection; no restoration of a fixed multiple rate for old documents. Share game windows only once and run/record/coding/restore/retain the only handover after cleaning is completed; normal queue continues to wait. Keep this session log directly connected with necessary if you do not report voluntarily to an integrated reporting system.
+
+The changes are compiled and the first visible results are obtained with a short, clearly actionable validation; specific failures are used to repair and target review. The initial failure does not repeat the whole set of checks. Values, actual games, video-tapes, headline acceptance of separate records.
+
+## 9 Original information
+
+- [Gun-by-gun card W03/W07–W10/W12](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/weapon-cards.md)
+- [Interactive review v2](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/interaction-review-v2.md)
+- [Original access and boundary](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/original-entry-map.md)
+- [Original implementation of handover orders (location only, current source code alignment)](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/implementation-handoff.md)
+- [Common contract for weapons and bunkers](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/offline-tech-prep-20261028/shared-contracts.md)
+- [All Weapons Interactive Program](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/all-weapons-interaction-plan-20261028.md)
+
+---
+
+## 中文
+
 # 六种武器开发：公共交互与工程合同
 
 日期：2026-11-09。用户已确认并授权开发；与逐枪文档共同使用。最新直接指令覆盖旧原版完美窗口、Troika进入和Smoke质量规则。
@@ -82,5 +171,3 @@ Gnasher 提前关闭、未达到本轮目标只普通完成；目标不因提前
 - [原实施交接单（仅作定位，需对齐当前源码）](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/implementation-handoff.md)
 - [武器与掩体共同合同](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/offline-tech-prep-20261028/shared-contracts.md)
 - [全武器交互方案](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/all-weapons-interaction-plan-20261028.md)
-
-

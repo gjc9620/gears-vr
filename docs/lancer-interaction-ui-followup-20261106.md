@@ -1,3 +1,169 @@
+## 2026-11-08 There is still overlap between general tips/assemblies panels behind carrying guns
+
+21716 Zero bomb box check game 05389/05415/05442 The view shows that the original version of LANCER is able to pick up text and the ammunition panel to cover the lifting body.This time only is recovered through inventory/timer/incentive/reaction and visible box, without closing down normal HUD visual problems.The existing webon_lancer_hud_layout.inl surrounds Drawactions only DrawActionInfo and temporarily adjusts SafeZoneFriendlyCenterX/SafeZoneBottom;It does not adjust the DrawWeaponInfo parameters.Retain the original DrawWeaponInfo with its own DrawX/DrawY/Scale call, and cannot refer to the modified removability of the old reloadtick as a repair of the general ammunition panel layout or determine by means of an amplogram which calls each pixel is made.The next step would be to confirm the actual drawing of attribution/dividem from the already retained call record, followed by a necessary change;No new collectors, no recapturing, no rerun of the reload/C/E.
+
+## The latest original re-cannon.50024 Quick Pass (2026-11-08）
+
+- This round/upcycle shall be equally progress; hand positions shall remain as required by the user and shall not be restored to a ready, unassisted or other gun.71、scale 0.3、11/64 and 36.47%No change, FALSE is the head of all Lancer/Entity.
+- 144648 PG 0ff 573 ed Actual 59292/creation 134385949450891454 First authoritative shooting through X-gathering/shoulder taking/first authoritative shooting (stored)5 Physical trace, current source/gun match) and pause/B returns, normal Native/entry/pad/XR/game closes, private original byte recovery. Not correct.59128/16608/30808 or 55412 The cause and effect of the explanation.30808 Minimum number of days.298MB/physical 745 MB is the background of old resources, with a minimum value not aligned to the time of shoulder acquisition and memory cannot be considered as the cause of the rejection; the balance of the current operating resources varies.
+- Same 144648 Actual 42148/creation 134385952860001478 First touch unclosed normal UI:56/360→60/356 Zero perfect reward, then actual shooting.57/356；4 The second is normal, and then it's cleared.183 Subscope/restore is equal. Four pages of full save span and key facts are visible, but white tick is mixed in bright white perfect area and visual readability is not accepted. Numerical passed cannot cover this issue.
+- Keeps the original DrawActionReloadBar script display: the article/area multiplied by Scale*ResScaleSmall, tick only used ResScaleSmall.153242 PG 80490d 47（Nativec 98568f 0/XR 16840b 27 No change) Only temporary HUD RescaleSmall in the same drawing call 2→4 Local Scale is inversely halved, local BarHeight is compensated accordingly and remains the same 768×54 The article/position/area/UV/timetimer/reward remains unchanged. Independent float identity/ attribute check journal, originally called end/abnormal return value; embedded inheritance is no longer multiplied and does not change Canvas scale/color or game/eye resolution. There are current targets for HudActionLayoutTest and LancerReloadDisplaytest that have been adopted with single value parts/failed writing, external writers and reverters, layout/timescaled; PG compiled.
+- Actual 50024/creation 134385968513422707 Finish the same unwieldy UI clip:55/360→60/355 general physics 2/ No reward, real shot after.5 Ha ha!55/355;situation 1/2/3/3.8 The second actually saves the video tick that can be distinguished, moved along the line and then the next time you get a picture, you can see it in your face.4 The normal area after seconds is complete and no residue remains.197 Submarker domain/restate to 197 Subshow field/restore strict equivalent, marker_resolution 4、Scale 0.783673、BarLength 192、bodyHeight 13.5 The final clause is still 768×54. Three pages of a two-window overview and 10 Partially magnified time frame has been seen in person, end covered; only source 1 Save view/square segment narrow, not perspicuous frame, headlight, full UI/full Lancer. Cancel/take guns/perfect results/airlock E/C/face without running over and with old evidence in the same range.
+- 50024 Native/entry/pad/XR/game/encode normal end, original bytes recovery/settings/head accurate and inactive. Existing deletion 1889 Documentation/303239512 Bytes/errors 0,Reserve 50024/42148/59292 and 48h；30808 Media Actual 0, text numerical source is retained. Evidence muzzle-getter-59292-first-fire-review.json、reload-ui-42148-readability-review.json、reload-ui-readable-marker-build-check.json、reload-ui-50024-marker-review.json。
+- Next Minimum Point: Existing 70068 Zero-bomb inspection unreached, preparation phase over.3 Subcycle,18/235♪ I'm asking for the first 129 Send and Export Only 128 The text is identical and stopped without the proven shooting failure. First, only the error of relying on the upper limit for the output of the text from the preparatory process is repaired, proof of preparation is provided using a given value back to the log ceiling/new collector, no evidence of actual target action is weakened; confirmation can be made that it will be ready to fire until zero. No rerun may be repeated after UI/start/shoot/C completes, restoration of hand positions or replacement of other guns.
+
+## 2026-11-07T 07:15:50.232311+08:00 Private break-up and reloading of guns/relays
+
+This round has been repaired and validated: guns can be collected, recovered, ammunition can be recovered when the cartridge is removed 56/360 Maintain; the cartridges on the gun remain unearthed and the bullet strips disappear after collection.1 Retake new magazines, keep gripping and insert.56/360→60/356, normal results 2, the perfect window remains the same 4000 ms. Incentives 0; actual fire of three rounds 57/356, pause/B returns through. Four complete two-way overviews and four actual key frames have been checked, not frame by frame or full holding/head-over acceptance.
+
+Can not open message 43536 Standard cartridge phase 66008 The bullet cartridge was recovered when the gun passed but it was recovered.065255 The only way to restore the existing restored order and new armed borders is to repair the existing ones.62352 and 68136 Checks to pull out/ plug back correctly. Final product Native c 9514484 / Playground 2b 2a 5 dea; driving freeze 070525。Public v 71 Binary not replaced,0.3 Three of the latest cold-started first shooting passes, but this does not mean that the causes of the old break failure have been repaired.
+
+Next step: Continue to fix five patches with the reserved scene and original hand/gun surface; retain walk-scratching, start third person, complete UI readability and existing precision failures. Repeat this break/UI exit evidence without reruning unchanged chainsaws/timescales/time/look/set processes.11 Father/64 Sub-area scope and 36.47%No change; this time it's already there.60 The repairs were made within the phase and the complete Lancer/entity was not accepted.
+
+Evidence:`analysis/solo-m1-20261028/lancer-stow-resume-68136-review.json`. The game/Native/entry/Virtual handle/XR, code is normal and the original bytes of private configuration/sets and previously non-existent header command status has been restored. Existing media cleanup actually deletes 6668 Documentation/1142373601 Bytes, Error 0;reserve 68136/62352/66008 and 48 Hour limit, text and numerical evidence retained.
+
+# Lancer: The latest adsorbing rule and perfect reload UI to be repaired
+
+This record completes the UI issues that users have again pointed out and keeps up-to-date interactive definitions and actual review results.**Perfectly swapped UI still open**; partial time/continuing display of repair compiled and operated in private candidates, complete visual restoration not yet delivered. `6dof-unified-20261106-71`;prepared for old interactive definition v 72 Suspension of publication.
+
+## UI: Accessed time to show problem not repaired confirmed
+
+| Item | Current Proven Status | Limit/Next Action |
+| --- | --- | --- |
+| Configure Timer | Tactical/Airware is all 4 seconds; saving configuration at start of transaction | Do not restart the time or repeat the reward in progress |
+| Timed access to original reload | `weapon_lancer_reload_state.inl` Sets the time for the service,`weapon_lancer_reload_ui.inl` Revert to the original `DrawActionReloadBar` The four local values actually taken are replaced by this transaction time; private game 10784 I've read both of them before the deadline.0/0/4/0 After the deadline 0/0/0/4 | Prove current drawing path to use 4 Second window, time-tanger normal area; not proving the whole UI visual correct |
+| The original article of the physical remodeler that hasn't finished yet. | Add `weapon_lancer_reload_display.h`, only maintain the call on this original reloading drawing and resume the drawing time/telescope after the end | CPU Return and Private Operation Pass;game 10784 Two separate services.45 Sub-draw Fields and 45 Recovered. Actual reward clocks, air silo firing thresholds were not met |
+| Point Position | Existing `DrawActionInfo` Layout Adjustments | It's not... `DrawActionReloadBar` Complete repair of general ammunition HUD and perfect re-barrel tracking |
+| Perfect reloading of user feedback shows problems | **Unrecovered, unclosed, not delivered** | game 10784 Full time horizon 9 A two-way overview has been reviewed; original HUD/offload display is still small and layout and readability are not passed. The remaining traces after completion/cancellation/toggle/receiving of the gun must also be checked |
+
+This item is closed:
+
+1. Change the bullet strip and reward the time allocated for using the same service; readable layout, progress and results are consistent with actual actions.
+2. The time spent on the incentive has been converted into a normal bullet swap without the original failure/crash punishment.
+3. Even when the air silo is full, it must not be shown to have opened fire; actual emboldens, releases and agency returns must still be completed.
+4. Old progress/outcomes after completion, cancellation, switching and receipt of guns are correctly withdrawn or restored as they were; no remaining weapon in readiness is replaced with a yellow box.
+5. The actual video game was reviewed in this interactive revision; the code, compilation, video and real-time sense were recorded separately.
+
+## The latest three interactive definitions
+
+| Widgets | Neighborhood ads/prost | When pressing Grip | Untie Grip Time/Fixback |
+| --- | --- | --- | --- |
+| C. Chainsaw slide handles | Automatically attached to the adjacent volume, with a special Grab Pose | Only if you allow the front and back of the axis. | The handle is stopped at the current process location. The power is processed independently over time and will be kept single times after actual release 3 Turn the second. |
+| Second hold of the pyramid. | Automatically attached to the area, using the wood Grab Pose | The second is in both control and stabilization. | Stop the second-man drive to gun posture. |
+| The magazine well. | Handheld magazines entering range, hand-to-crash slot positions | No new key action requested | The lock is in place, the switch is done and there's no need to let go of the whole trip; the actual bolting requirement for the empty space remains |
+
+The grab box continues to allow Grip or the finger trigger. Autosorption is a attachment and attitude act, which does not forge control tracks, physical mechanical itinerary, inventory or firing permission.0 Skeletalist.
+
+## Current fixes Order
+
+The latest private review has reached Game.63508／freeze 221712 Open still V 71. The following results are added.58076 It was the last round of records.
+
+1. The width of the bar is maintained and the strips are kept high.22 Raised to 54 Canvas pixels; only recasting the drawing function in this call`BarHeight`The original regional and cruise centre follows this altitude.69680、63508 The actual picture is thickened and the original cartridge is pressed back to the plug.
+2. 69680 About 57 In seconds, a bad picture of the "gun/hand back to original posture and cartridges remain in their previous position" is captured. De-recording shows candidate cartridge markings and waiting for mark changes (difference)18) First, fix the candidate tags for already held items and then CPU is passed by failure but 15472 The same withdrawal still existed for the first takeover; it was not recorded as settled.
+3. Finally, the frame of first takeover is amended: after actual capture has been submitted, the geometry within this frame that changes due to the appearance of its mobile cartridges does not recreate another grab proposal; the next frame still looks at the real state. The initial authorization, identity of the object, true key-buttoning, exclusive possession and time-barred protection reservation are added.39 Consistency check/deny inspection and 32 The candidate status check is passed.
+4. 63508 The same type of disference 18 No more; hold back, no repetition of extraction and restoration of authoritative shooting. Full time horizon is seen 3 Double-Study and View-As-Est from Plugin-Packet 45 Frame, no corresponding original attitude/floating cartridge instantaneous state. One more time 102.52 ms refuse overtime, and protection is not relaxed; rejection of this value does not amount to a proven image failure. The whole project walker and all attitude stability remain closed.
+
+Current evidence:`analysis/solo-m1-20261028/lancer-magazine-handoff-63508-review.json`. Next steps continue to complete the progress/reward result/cancellation, cut off the gun, take out the gun and put five components together. The original cartridge is plugged back in here and not a new box for perfect reloading; this will not be used to close the reward feedback item.
+
+As of private 58076, first handle the readable layout of the perfect switch to UI, feedback on results and exit after cancellation/toggle/receiving of guns, then handle five parts with a face-to-hand position. Fixed candidate remains v 71, no new version is published.
+
+- **C operation has received the currently defined private endorsement:**game 3288／freeze 195355 Expand through neutral adsorption without start, partially push-stuff hand locks, retrace the same place and keep the end point with 3 Cmaxis go over, de facto release once.3 Seconds tail and end-stroke does not automatically start, real back/up reboot, back/back to stop and resume firing. Previous failure to keep the old 17984 Failed to continue as current card; no repetition of unmodified C time.
+- **UI has been given two specific issues on this rotation:**The original transparency fades out of the smaller values of the scintillation coefficient, which was only considered for the duration of the fading to be reduced to half-transparent after the time elapsed; both are now taken into account and are given a single display clock, with an incentive/mechanical clock. The bullet bar is in the middle of the actual Canvas. CPU returns and Playground compiles.
+- **Actual Output 58076：**Three things are real.`SetPos`Read all after returning`CurX1536/CurY432/Clip3840×2160/Alpha255`,draw/restore separate 53/53、154/154、525/525;the physical process is the longest 46 The second still shows the call. Old "4 The extrapolation that stops calling in seconds has been made 67912 Actual call negative.
+- **The results are still limited:**Align the two-way images with real start times, about +2 sec and+4.3 The second has a white strip, about +5.8 The article disappears after the second is inserted. It is still fine under current capture size, complete progress/reward grade/drive readability and all interruption branches are not passed.**Do not close UI defect**Common ammunition HUD is still being tracked separately.
+- **The appearance of the cartridge is reviewed again:**58076 The same original cartridge actually used.120 Top Point/156 Triangle, four groups of UV and current weapon mass; exit/plug-back texture. Original cartridge index finger maintenance, replacement box grip retention insertion, empty warehouse E pull/release/return, restoration of authority shooting 11 The item action is passed. The appearance does not mean that the finger pasting has passed.
+- Viewed full time span of current cycle 7 Two-window overview and key original maps, completed 200 Seconds combine video encoding. Native, entrance, virtual handle and XR normal recovery. Simulator/play mirror is not a physical head start; short third person's name to start, walk-off etc. are still open.
+
+Current evidence:`analysis/solo-m1-20261028/lancer-reload-ui-58076-review.json`. The process of exclusion below which is reserved cannot replace the state of the latest mentioned above.
+
+## Checking the early failure of reservations against the reasons
+
+game 10784 The neutral ranger has been equipped with a non-depulsive gun, the Grip double hold and restoration of single hand, the cartridge is inserted at all times, and the actual airlock E pull/release/return has received a physical action checkback; these do not represent all grab or all Lancer.
+
+game 10784 & Follow-up game 12780 Both failed at the C-neutral automatic adsorption spread. The Native handle update threshold was subsequently amended: neutral proximity can be performed with a purely visual movement, but any movement in any direction of the slide track still requires real parts authorization; and the option of keeping the C area of wood adjacent to adsorbing is also modified. Offline check passed, game.17984 The same run actually completed the C-run without Grip, without electric power (the current startup is now complete).1.570796rad）。
+
+**17984 The failure:**Then, when you press Grip and pull it in part, the handle is on the angle.0, the schedule is 0 The project is designed to provide a more effective way of getting the data from the site, and then get into the actual cartridges.3288 Obtains a reply from the above listed operation; retention failed at that time without any false input or loose action protection solution.
+
+**UI Still Not Done:**Adds a new bar-relaying layout based on actual Canvas.63512 In practice `SetPos` Parameters in call read x 460.8、y 432、scale 1.56735、BarLength 384、fade 1、flash 1、Alpha 255；17984 Read-only checks confirm the non-empty use of the original article `WarfareHUD_main` The map and the range of UVs. However, the expected large strips are still not found in the corresponding video footage and the actual grid/VR output path must be checked.51964 New magazines failed,17984 The failure to resume the shooting in the first paragraph was also retained as it stood and did not replace it with a pass.
+
+The user's newly identified “different texture on the gun/hand-held cartridge” has been independently checked because of the difference between two original models and UV. It has now been changed to the same original magazine geometry/UV and current weapon material; game 29064 The repairs have not been incorporated into the public domain.71 Nor does it mean that hand positions, C take over or a perfect switch-off of UI are done. `docs/lancer-magazine-appearance-20261106.md`。
+
+Corresponding machine records:`analysis/solo-m1-20261028/ui-socket-10784-review.json`、`ui-socket-12780-review.json`、`ui-socket-51964-review.json`、`ui-socket-63512-review.json` and `ui-C-material-17984-review.json`. The games are stopped and the Native, the entrance is restored and XR exit confirmed;17984 The two combinations are coded and the complete time span overview is reviewed. The whole set of amendments is reviewed centrally, and then the same candidate is delivered. No small changes will be allowed to restart the game without expanding other weapons.
+
+
+## 2026-11-07 Actual 4 The second reward is passed, and the result of the drawing entrance is still blocked.
+
+Private 1060（freeze 005054，PG 2c 608891) complete the default by clearly grasping, pulling out real, unhanding new magazines and holding on to insert processes 4 Second perfect reload. Actual ammunition.56→60 Back up.360→356, reward count 0→4 then the authoritative fire and suspension/B resumes passage.5.194 The second consists of the reward before the start of the time;4 The sec window has not been modified.
+
+The original HUD confirmed the results.2, but no DrawActionReload Bar and its getter call was made throughout the end of the result life. The retention source shows that DrawWeapon Info is controlled by IsReloading/bDrawAR conditions and cannot be used as a fixer for extending the results metadata life. The inactive HUD results are written in bytes and removed; the results remain unworkable. Next modified version of HUD's specific call-in portal is left out, and the real switchout is maintained.0 Return and fire immediately, without maintaining a false weapon readiness for display of UI.
+
+Current Source 3c 1917 3 complete catch-crossing overview and actual completion 0.371 The sec chart has been checked. All running and code is properly terminated, public version maintainedv 71 The complete UI boundary, five gestures, walk-in flashing, third person activation and physical appearance are still incomplete.analysis/solo-m1-20261028/lancer-result-1060-review.json。
+
+
+## 2026-11-07: original HUD parent entry correction compiled, first fixed for real-time handing over of guns
+
+New private PG `09ccdb83`(Native still)`c9514484`, Freeze`020151`) Only confirmed the original award 2, which is the original version of the display.`WarHUD.DrawWeaponInfo`First`IsReloading`The return value of the query. Checks the actual Weap/bDrawAR type, object identity, same call frame, full repositioned condition bytes and original DrawAcquest Reloadbar parameters; the second ammunition icon sorting query does not match other play queries. There is no change in the real weapon changing status, ammunition or firing permit.24 The parent call position is reversed and the original clock/restoration check passed, and the source code was compiled successfully; no validation bar has yet been run.`lancer-hud-parent-callsite-offline.json`。
+
+This round has failed before the target is retained:33624 First round of off-the-script action switches, followed by failure to take the first shoulder gun with game moves and actual recording of a break between input sources;64896 The correct automatic start and the recovery of the gun after the release had stabilized was successful, but subsequent authoritative firing failed.64896 I'm sorry.518 The frame is already on the ground,519 Frame attitude endpoint matches but does not match trapping_fresh_now(age)41.8144 I'm sorry, I'm sorry.520 The frame model still holds =1 The current mounted/fire release is not available. Slot cannot be used 4 The output misreads that the model has been emptied of its gun, and does not directly identify input breaks as all root causes. Neither new experiment is on HUD target, claiming neither that UI was fixed nor that HUD changes caused these pre-start problems.
+
+33624 One.64896 The overview of both complete captured time axes has been manually viewed and coded;64896 Video covers start-up and action failure, without covering the following empty hours. Both of these are normal stoppages of their own games/native/input/XR/video;64896 The packaging was restored to the private setting after a delay in the cleanup time and was recovered upon identification of free time.71 Unchanged, private scale 0.3 Retain, all Lancer/Entity Headcount and Five Component Adhesion still incomplete, maturity 36.47 No change.
+
+Do not restart the full reload after two successive failures before UI. The next check point is narrow: clarify current fresh postures/mount release interface, actually take a gun and maintain current legal possession of the weapon and complete one real R 2 Fire, restore the result strips to visible/defunct/interrupted/gun collection/ general inspection completed.40/50/100 The evidence is:`lancer-parent-33624-setup-failure.json`、`lancer-parent-64896-setup-failure.json`、`lancer-parent-64896-restoration.json`。
+
+
+## 2026-11-07 R 2 Read time and startup
+
+Publicly still V 71 Private Multiplier 0.3。16784 The narrow range is real.4 Pass, but 72200、67120 The initials failed, and the results were not accepted.4 A matching check of original queries, with the operation still being used as original rights;2 After skipping the non-left hand count, read from the measured status 14–22 ms down 0.904–1.061 ms. This does not prove that the frame of fire was improved or stabilized.67120 Two pages of complete catch overview are viewed and normal exit/coding is over; source file, numerical record maintained.
+
+031123/PGc 04455 ed has added a limited read-only final launch licence to refuse a copy, compiled successfully and the next step is only for help-fire narrow verification.100/40/50 msprotected and protected 20 The balance of ms remains unchanged. The original HUD-based call correction has not yet been effectively covered; complete UI, five components are naturally attached, walk flash/start third person's name and full Lancer/entity header recognition is still incomplete.36.47%No change.
+
+
+## 2026-11-07 03:38 Actual fixes of private result entry
+
+Public v 71 With private 0.3 Keep the multipliers.72656 Actual incentive/return fire passed but the result strip was not drawn: Father adapter is not prepared. Original offline parameter declared as Parm|OutParm|ReturnParm(0x580) Old check error requirement 0x 480; this time, in preparation and current nature check, is precisely amended to not relax input/time-out/identity or modify incentives.8 A parameter layout check and existing 24 The call position/fadeout/return check passed,032852/PGc 225a 8e 8 Compiled.
+
+72572 Actual 4 Second prize, ammunition constant, return to fire and stop pass; original result 11 Sub-draw,11 Shows the secondary state back and normal expiry.3 Full Page paired Summary with 5 The frame of actual completion is now visible, +0.45 Second light bars visible, +0.8/+1.6 The spectrometer frame has disappeared, and the yellow guide has disappeared. This is evidence of the result entry/drawing/expiring, full readability, interruption, receipt of guns, normal reload exit and natural fit for five components.72200/67120 The initial launch failed and the subsequent narrow passage cannot be said to have been explained.36.47%No change.
+
+Normal end game/Native/entry/Input/XR/code. Media keep up-to-date 72572/72656/72028 and 48 hours;actually deleted at the end of the cycle 1607 An old media file 273801568 Bytes, Error 0 text/value/source code/construction/assets retained. Evidence:analysis/solo-m1-20261028/lancer-parent-result-72572-review.json. Next check point: remaining UI readability and exit, five additional patches; no rerun unchanged saw/look/result entrance.
+
+
+## 2026-11-07T 04:30:15.862118+08:00 Private UI exits and continues 15324
+
+Nativec 9514484/PGc 225a 8e 8 unchanged;publicv 71/ Private 0.3 Keep. This round only adds successive UI exit checks and prefixes full of magazines, without making failure of inspection steps a product problem.15324 Launched and finally 20 ms excess rejected, entered already 84.6553 ms, stereo 84.6859 ms; frame/holding/registration/epoch is valid. Protection remains unchanged, but only explains the current refusal and does not replace the old 72200/67120 Conclusions.
+
+Same game continues, the original magazines are cancelled:58/360 No change, no reward,13/13 Show clocks returned; normal time-out swap passes:56->60/360->356 No reward/failure,119/119 Revert; twice returned to crossfire.8 Pages with Summary and 5 Key frame checks: one before cancellation/normal completion, no residue strips and yellow guide after completion.
+
+Exit of the gun undetected: 3rd real capture first 0->1->0. The input sync interval is already available 155.6275 ms, binding temporary lapse/restoration and cleanup 799 Record that the exact action lease is still open; restoration model holding cannot be considered as preserving the old Native lease. Next, this failed and only unapproved guns are checked; no more repetitions have been made through cancellation/ordinary/perfect entrance/saw/face. Five natural patches, walk-in flashing/start of third person UI/full all Lancer/ entity headline are not yet complete.36.47%No change.
+
+Normal game/Native/entry/input/XR and three video segments code end; private SHA and head position byte restoration, configuration semantic restoration. Evidence:analysis/solo-m1-20261028/lancer-UI-exits-15324-review.json。
+
+
+15324 End of post-entry note: Media clean-up completed, most recent identity 15324/72572/72656, top 48 hours;actual deletions 1865 An old media file 301638109 Bytes, Error 0 text/value/source code/construction/assets retained.72028 The old paired video has been physically deleted and its availability updated. No task residue for running/recording/coding/construction/cleanup of this item is available.155.6275 These are only synchronized time differences in the consumption records of adjacent equipment, do not prove that bottom input release ends were discontinued and do not act as a reason for disabling the root cause.
+
+
+## 2026-11-07 The first private fire hinders and reads optimization (see below).5160）
+
+Open version maintainedv 71 Private Zoom 0.3。28664、9672、12076、5160 None of the weapons were collected in the reloads that went into this target before the initial original authorities opened fire; these operations were not counted as passing. The complete video timeline overview was taken together.8 As the page appears, compilation/simulator/clean-up does not represent real machine acceptance.
+
+12076 and 5160 The final fire inspection was still valid for the frame, current, gun-held, registered and epoch but entered at approximately age 81–87 I can't get it in the original.100 Reservations in ms 20 Ms. The time spent preparing the gun is still around.13–17 ms, including preparation for attached and original key-click parameters; this does not yet prove which of the substeps takes full time. Two coponent_names domain tests have been withdrawn. Fixed time limits, real keys and only writer protection are withdrawn.
+
+Current 053746/PGfc 2c 3391 Compiled, not loaded in public or game validation. The name is changed to a small block that does not cross the page and failed immediately to refuse and the protected page is abnormally untrying; existing metadata returns 9008 Adopted,95 Start Character 96 Down to 12 It's been read for a while.1 This value is only the number of times read, not the FPS. The existing body diagnosis is also repeated to the first actual read-only output of the restart operation, and recovery and each pre-writing check are still in progress, with the adjustment being compiled.
+
+The next point of delivery is to verify the actual impact of current different source codes on initial fire, and then complete the unpassed re-loading of guns UI; previous perfect results/cancellation/ordinary completion, and passage evidence for saws and texture. Five parts are naturally attached, walk flash, start third person's name, UI integrity clarity and header recognition remain open.36.47%Hold on.
+
+Evidence:`analysis/solo-m1-20261028/lancer-cold-name-5160-review.json`、`analysis/solo-m1-20261028/lancer-cold-name-reader-build-check.json`. Run and code is finished properly, eventually the media cleanup is done to`media-retention-latest.json`The actual results are to be determined.
+
+End: Current open fixed access configuration is completed 0.3(old)1.0 Backup word for word only; code stillv 71. Final media cleanup actually deleted 7696 Documentation/1327209169 bytes, retain 5160/12076/9672 and 48 Hours, Urors 0, unprojected game/XR/recording/coding/ compile/cleaning tasks legacy.053746 It is still only compiled/CPU qualified and cannot be counted as the first fire or Lancer passing.
+
+
+## 2026-11-12 Quest Workstation Feedback and Follow-up Game Access
+
+The player accepts the workstation as a whole to enter/leave Area C and request that the slides back and close after operation.0.3.1 The game side has been repaired and installed, with no modifications; the core portable rules are identical but not all of the feedback from the access layer and original engine is equivalent to almost identical. [Workstations are on the line.](lancer-workbench-handoff-20261112.md), check existing C recovery pathways and configure consumers; maintain that there is strict protection and history failure and no game acceptance.
+
+---
+
+## 中文
+
 ## 2026-11-08 抬枪后的普通提示/弹药面板仍有重叠
 
 21716零备弹原匣检查的game05389/05415/05442近景显示原版LANCER拾取文字及弹药面板可覆盖抬高的枪体。本次仅通过库存/计时/奖励/回射和可见原匣取回，不关闭普通HUD视觉问题。现有weapon_lancer_hud_layout.inl只包围DrawActions→DrawActionInfo并临时调整SafeZoneFriendlyCenterX/SafeZoneBottom；它不调整DrawWeaponInfo参数。保留原版DrawWeaponInfo另有自己的DrawX/DrawY/Scale及子调用，不能把已过的换弹tick可读性修正说成普通弹药面板布局修复，也不能仅凭截图断定每个像素属于哪一次调用。下一步先从已保留调用记录确认实际绘制归属/布局，再做一个必要修改；不新建采集器、不恢复握姿拟合、不重跑整套换弹/C/E。

@@ -1,3 +1,53 @@
+# First person and free hands: hand-to-hand candidate 6dof-manual-20261027-1
+
+Candidate by User 2026-10-27 Latest request for delivery. Status is**Source code achieved, Native/XR compiled and linked, packaged pending physical feedback from user**. The current round does not run games, XRs, simulators, self-measurers, test examples, playbacks or offline acceptances. The results of the early prototype are not part of the list of candidates for approval.
+
+## Start and Operations
+
+Candidates for this session:`J:/gearsVr/candidates/6dof-manual-20261027-1`. Opens the directory `GearsVR Launcher.exe`, using a physical header system OpenXR or VDXR. A path to the purchase of the game is configured; default render rate **0.4**# Close the camera **0**, the first person says that the check has been ticked. Do not stack up cameras before moving. When you enter a common control scene, you will be able to directly access the first person and do not need to send the test event first. The candidate does not include simulators or self-measures EXE.
+
+Just check three things:
+
+1. See if the view is clear in a common station, then turn small, move head and right/right up/down; see if rotation and true homing are normal.
+2. Separately, the right hand is moved and rotated, especially to see whether the wrist flips, elbow bends and the left hand can move independently.
+3. Click the starter " Stop VRs" to wait until you have stopped and then quit the game. Feedback vision, hands and actual performance at the time of cessation is sufficient.
+
+Use the Export Log of the same starter to select ZIP saving position when log is required. Original session log in candidate directory `analysis/runtime/`, interface log in `analysis/vr-launcher-ui/`It's not a run-off diagnosis or test.
+
+Back: stop the candidacy and quit the game, then use `J:/gearsVr/GearsVR Launcher.exe`. The main directory is not replaced by this candidate, by default, release package, game file and archive.
+
+## Source Behaviour
+
+- First person: Add a visible initial request and actually select the first person on the candidate start. Body mode removes old preview fixed front 0.35 m/ Lift 0.10 m; common old entry points retain their existing behaviour. E+R/original switch path is still reversible; body perspective and writing are also withdrawn.
+- Common baseline: certified from Ref before initial writing 115 Capture eye, root, Pelvis, and keep the initial physical foot contact. Then you move only with an actual change of course, without updating your benchmark by holding an animation head/basin posture. Real HMD shifts and rotates each group once.
+- Close-range blocking: first candidate for use 0.12 m Close-cut, keep the original direction of cutting and depths, without moving eyes or hiding the entire role. It cuts all geometry in the near-cut, including hand or scene objects with face; it is not a proven “hidden head grid only.” The exact geometric origin of the previously hidden source has not been confirmed by the current candidate.
+- Hands: Pure transformation module to access weapon session `free_hand_eye_targets.h`, same time `prepared.desired_eye` . Key Associated Process, World, Bones, tick/compoce, Sessions, Space, Reference Revision and Hand handle sequences, maintain existing identity and fresh protection.
+- Arms: Maintaining the original fixed bone length and existing double bones for resolution, with the current elbows as a reference for bending. The real handle goes beyond the arm of the role to project the wrist target to reach range, to keep the wrist rotated, not pulling long bones or moving bodies. Left-hand hands record each solved mask; no animated control is achieved on the side where the track is lost, and the original takeover still has a single written and restored path.
+- XR: In the latest Focus 1 Merge existing RunteTrackedcontreller/continence programr on source code and explicitly open by normal manual access `--controller-input`. Keep focus diagnostics, menu fixes, original colour policies. No simulator candidate or simulation input overwhelms.
+- Delivery portal: visible only `sixdof_manual` The candidate omits automatic self-measurement, regular process identity, target byte check, early reservation, life cycle, audio recovery and discontinuation of protection. No autoplay script.
+
+## Marking and compilation
+
+| Component | SHA 256 |
+| --- | --- |
+| Native `GearsCapture6DofManual1.dll` | `322d8733291660a26445d8646d18a39d1aa32dc4f499d8d66f8b624fdd3f209b` |
+| XR `OpenXRPoseProbe.exe` | `9356fff38724d42141723285cf3c90445163aedfe2a6c51fd058b504ad3666cf` |
+| Keep Junker Playground as it is | `75e54302ad97e5e39e4dc9e77e74d89a90278bdbc9b8c07e38d2f6f2aaf61581` |
+
+Native with latest Junker/Support 3 Freezing source code to bottom, merge with existing body prototypes and maintain an independent left eye history. A compile and link first 0, pick up B; eventually Native exit 0 XR in the same menu-modal 1 Parent with Focus 1 Triangulation, physics producer byte for existing BQ source, Replease x 64 Compile and Linkexit 0. Only the GearsCapture/OpenXRPoseProbe targets are constructed, and they or any test objectives are not run.
+
+Local build log in working tree `analysis/body-manual-candidate1/`：`integration.json`、`build-defines.json`、`build-a2/build-a-corrected.log`、`build-a2/build-b1.log`、`build-a2/build-final1.log`、`xr-build1/corrected-0.log` and `corrected-1.log`. Keeps a record of the initial configuration/compilation failure.`final-source/` Keep the actual candidate source, in package `inventory.json` Lists all delivery documents.
+
+## To be fed and covered
+
+The actual start-up, clear eyes, sustained hands performance, physical appearance or normal cessation of the candidate has not yet been confirmed; the successful compilation does not represent these passages. Follow-on shooting, reloading, LGrip bunker drag and full running stability check remain to be performed. The original complete interactive demand is not cancelled.
+
+This candidate is suspended from functional advancement after delivery, pending feedback on user-realization.
+
+---
+
+## 中文
+
 # 第一人称与自由双手：手动候选 6dof-manual-20261027-1
 
 本候选按用户 2026-10-27 最新要求交付。状态为**源码已实现、Native／XR 已编译和链接、已打包，等待用户物理头显反馈**。本轮没有运行游戏、XR、模拟器、自测程序、测试用例、回放或离线验收。早期原型的运行结果不算本候选通过证据。

@@ -1,3 +1,46 @@
+# Original authentication without submitting copy of source view
+
+2026-10-12,Pid 17824 Single-person level,20 sisecond sampling. No screenshot, no head moves enabled, no second view added or original collection modified.
+
+## Result
+
+& Inline for regular Draw 0x3a148c Call Point 0x2c8909 , the game thread is executed only once:
+
+1. 0x1c03c8 Allocation 0x430 Bytes, Alignment 8。
+2. 0x194454 Constructs a separate copy from the current source view.
+3. Checks whether the matrix, the associated pointer, the four known arrays and the original view and assembly remain unchanged.
+4. 0x15ca7c Photo by Analyze.0x53ea50 Release its storage.
+
+Original result is `attempted=2 stage=6 checks=255 nonempty_arrays=2`: eight checks were all passed. Two non-empty arrays have the same content and different storage addresses; matrix by bytes, associated pointer maintained, original view all 0x430 Byte and original assembly header, first view pointer, remains unchanged. Copies are not entered into the rendering pool.
+
+This confirms the feasibility of copying and pairing a source view at the current level. It cannot be claimed that any level, all container branches, abnormally spread paths or long-term resource stability have been verified.
+
+## Sample and Recovery
+
+Records 89,808 Lines, drop the queue. 47 The strip. Present 6,910 Second, both successful. Renderer construction 6,907 Consumption, second 6,906 Sub-sync 6,907 Number of times;association 6,897 The whole life cycle. Check through. Preparation phase. 6,910 Number of times, change is still limited to matrix 24、matrix 25。
+
+Stop result `disable_status=0 active=0`Read-only check all of them independently 10 The game process is still responding. The lack of focus during the sampling period is a static baseline, without user rotation or current round experience conclusion. DLL and springboard remain in the process until normal exit.
+
+Local evidence:`analysis/runtime/source-shadow-17824.*`. Original log does not enter Git.
+
+## Protection and self-measurement
+
+New mode must be visible `--shadow-view`, the starter and DLL check the running of the game version and four additional entrances on both sides. Tests only work with observed main Draw call points, single view collections and perform once in the game line.
+
+Non-empty +0x140 Chain packagings temporarily rejected; known array +0x380、+0x390 Every element 16 bytes,+0x3EC、+0x400 Every element 8 bytes. Single array limit 256 entry. If a copy is found to be accidentally shared with its own storage, the normal clean-up is stopped and this allocation is maintained so as not to misdetermine the original view resource; the result is judged unsuccessful until the process exits without retrying. This round does not enter the branch.
+
+`SourceViewShadowTest.exe` The existing foundations, collections, rendering copies, replicators, life cycle and preparation stages are also six self-measured. These local simulation tests do not replace real engine validation.
+
+## Next
+
+Copy Save Source View +8 . The question of whether each eye can share it, and cover one another's historical matrix is still unresolved. It also requires confirmation of multiple view paths for creating/release, visualizing and output targets in an independent state to submit additional eyesights.
+
+Code:`tools/native-capture/source_view_shadow.h`、`source_shadow_test.cpp`、`analyze_shadow_view.py`. This machine diagnoses DLL:`tools/native-capture/build-source-copy/GearsCaptureSourceCopy.dll`It's still not a fully deployable VR Mod.
+
+---
+
+## 中文
+
 # 未提交源视图副本的原生验证
 
 2026-10-12，原版游戏 PID 17824，单人关卡，20 秒采样。没有截图、没有启用头动，没有追加第二视图或修改原集合。

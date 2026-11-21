@@ -1,3 +1,29 @@
+# A Mobile Turret flowlevel certificate
+
+2026-10-17. Modify only source code and synthesis tests; no game, simulator, input, focus or IDA, not replacing freeze 36。
+
+Practically read-only evidence `analysis/runtime/mounted36-gameplay-live-scout.json` Center, two registered non-Default Turret_TroikaCabal with local WarPC_1 Common Reflective Actor. WorldInfo, but the direct Leve of Turret is different from the Leve of WorldInfo/PC. Both Driver/Controller are empty and the local PC.Pawn is empty; this only indicates that the old version is too restrictive to be counted as a real machine gun or camera/GPU/head view. The fluid relationship of Leve remains extrapolated without reading the unknown Leve structure.
+
+schema 3 Keeps the original field and INI format: rol_level remains a direct Level for controlled Turret.Certificates save and repeatedly verify direct Level identities of Turret, Driver, Controller, Camera, WorldInfo;Each of these must be a registered non-Defaault object with the Level type certified by Class and Super Chain, which is the same as the actual class controlled for Level.The different Lev can coexist, but the Controller, Turret, Driver, Camera still has to point to the same WorldInfo through Actor.WorldInfo, certified by attribute identity, class and layout.No speculations about Level.WorldInfo or other deviations.
+
+The original Turret/Vehicle type, the WarPawn type of Driver, the Driver/DrivenVehicle, Controller/Pahn mutual counter-relationship, the emptying of River.Controller, the owner of the backpack, the camera target is still valid as controlled Turret, POV and time tag brackets. Each Level enters the current identity list, original Parser refuses to lack the Lev ID or error Lev type mounted configuration, and guard rereads all identities and registration slots when running.3 Allows only the same certified WorldInfo to have a different level when superimposeing a linematic; normal scheme 1/2 Behavior remains unchanged.
+
+Automatically re-couping snapshots now contain five separate Level identities, so the Actor pointer remains unchanged and the Level address is unchanged but the change in Level identity will also require a re-prepared/submitted certificate. UI continues to read the backpack from Human Driver; quasi-star queries pause/release agreement remains unchanged.
+
+Authentication:116 The Python test is passed, covering the Mounted/cinematic/archor/UI, re-coup preparation and monitoring. Independent CPU construction is in signed `analysis/tests/mounted-stream-levels/build`；MountedObserverTest 170 Check in, Angel Config LoaderTest 124 Check passed, AngelObserverTest, UiobserverTest, WorldRebind Metadatatest. Cross Python ⁇ INI original memory synthesis fixture is also covered by single Lev, five different Lev, cinematic combinations and normal downtime; the exception includes error WorldInfo, error/default/miss/ unregistered Level, each Lev identity change and reading changes. This does not create a valid game receipt.
+
+## Complete Native 37 Candidates and Normal Level Return
+
+Source Code Freezed on 3e 90e 55：`analysis/native-source-mounted37`, continued the recorded MinHook dependency and did not contain unsubmitted side-curve modifications to the work area.`tools/native-capture/build-mounted37/GearsCaptureMounted37.dll` SHA 256 `66a5bba9c1de4dab5bc66c17adb6dd267b1552619255bfbc3c64fbbd40c280f0`complete construction and 17 The original check passed, the original reply was sent.`analysis/runtime/mounted37-selftests.json`. Continue to use Borderless 1 XR and current round pre-detection process.
+
+The actual session of the simulator`continuous-stereo-12756-20261017-041949-e303879b`Completed 4 K Normal Level and Read with Process Checkpoint, world establishment 1→2 Restore. Original release 4711、capture attempts 4714、busy 1, ticket/rectangle refuses 0;HUD applications 11275 Sequence error 0；0.3 MiGm close to the app.4739- No, no.0. Prepare for birth 4261.692 ms, first program after camera is marked 7238.477 ms. Initial script waiting 15 The Second Death menu is unhit and no input was sent; only the DeltaGameover/btnCheckpoint is confirmed to stabilize and send Enter and get a new world actually submitted. Keep first observation time out, not restarting as a game.
+
+Normal stop, native cleanup, exit restored, XR out.0 Validation, then normal closing of the game. Status and original logs reserved analysis/runtime；`mounted37-checkpoint-audit.json`and`mounted37-normal-close.json`Record recovery and clean-up. The current round of verifications does not return, does not have real possession of the machine gun, and cannot claim that it has been repaired or its entire vehicle.`manifest-mounted37-borderless-vd.json`；Native 36／35／32 Keeps a name list back.
+
+---
+
+## 中文
+
 # Mounted Turret 的流式 Level 证书
 
 2026-10-17。只修改源码和合成测试；未操作游戏、模拟器、输入、焦点或 IDA，未替换冻结 Native36。

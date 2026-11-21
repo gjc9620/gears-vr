@@ -1,3 +1,50 @@
+# XR output colour policy compared to sRGB
+
+All XR output was previously converted to sRGB and integrated as requested by user `build-srgb-output1` For comparison, then return to the original source format priority policy by color, and use `tools/openxr-probe/build-runtime-colors1`. The user 's latest correction is "As if it all flashes, not a color problem": both the original colour and the sRGB path seem to be blinking, and the colour retreat does not eliminate it. Current settings are maintained, with the following remaining record of previous comparisons and realizations.
+
+## Current default: restore original colour (2026-10-23）
+
+Game image pre-empts the running-time supported primary format, which supports direct copying of source UNORM; use the original RGBA sRGB when the source format is not available 29、BGRA sRGB 91、RGBA UNORM 28、BGRA UNORM 87 Select the conversion target in order. The menu/video plane and the transition card resume BGRA UNORM 87、RGBA UNORM 28、BGRA sRGB 91、RGBA sRGB 29 . The diagnostic pattern also restores the original UNORM priority rule. `xr_color_policy` Log, dynamic log of actual selection `unorm` or `srgb`。
+
+Check automatically confirmation for the list of actual running time formats saved: VDXR game image restore UNORM 28,menu restore UNORM 87; SteamVR does not provide these formats, the game still selects sRGB 29, menu still selects sRGB 91. This is the rule that was used to allow consultation, not in run-time name guess format, and does not change the OpenXR selection.
+
+Based on the frozen source code that was built by default SRGB, only colour selection, related tips/logs and regression examples are changed; other consolidated changes are retained.25 XR/GPU check passed, containing restored UNORM eye copy, SRGB conversion, menu typed/typeles upload; after access default 78 Item Launcher and 21 The entry is passed with a temporary check, the actual configuration and start-up document Hashi precheck. New XR SHA 256 Yes `58ef6c397af8facc5ae50c8adba659005a13efd603e7bcfee73ba890d1e2539a`, Named List `manifest-runtime-colors1.json` It's completely consistent with the default.
+
+The user 's feedback "No original colour blinking" is kept as it is, has been replaced by later observation "As if all flashing" and cannot be accepted as a non-screen color. This colour retreat does not continue to be checked for root causes or new games or physical header tests, and does not mark newly constructed white questions as repaired. Source/validation/integration attachment is ignoring directories `analysis/xr-original-colors-20261023/`, last corrected list is saved `flicker-feedback-correction.json`. Original native, loader, GUI, user configuration and old candidate reservation.
+
+## User Retest Feedback (Presentation)2026-10-23）
+
+User confirms: "It is a problem of colour that srgb is much clearer." Recording is confirmation of the clarity view after actual comparison of the machine's head. The user then chooses to restore the original color to use a path where its feedback does not blink; and saves this sRGB comparison without increasing its equal rendering resolution or actual details, nor expanding it to complete compatibility acceptance at the time of running.
+
+The user reports that the left eye is still blinking, “just as if there was a white frame”, and explicitly requests “to keep it fixed and to record it.” This item is listed as known problem; it is suspended for repair; it was previously described as the edge of the left eye or local whiteness, with new feedback complementing its temporal senses similar to the white frame, without capturing proof that the whole left eye is all white. [Left eye flash record](steamvr-left-eye-flicker-20261023.md)。
+
+Subsequent corrections: “It seems that all flashes are not a problem of colour.” This is how the scintillation and color perception are recorded separately: SRGB is kept in clearer feedback; colour selection is no longer used as a known reason for blinking, nor is the original colour marked as non-scattered. The decision to suspend repair is maintained because it is unknown; only correction is registered in this round.
+
+## Previous changes to the unified sRGB (retain history)
+
+- Game GPU Image Unanimously Select `R8G8B8A8_UNORM_SRGB`（DXGI 29) Only not 29 Select when `B8G8R8A8_UNORM_SRGB`（91 Runs without using the original UNORM to submit it in a copy.
+- The menu/film captured on the desktop is selected in a uniform way with the transition card BGRA sRGB 91, Missing 91 Select RGBA sRGB 29。
+- The same sRGB strategy is used for independent diagnostic drawings. No two types of strategies are available. 8-bit sRGB format is run with clear error reporting and retreats silently to UNORM.
+- Add `xr_color_policy` Log, Distinguishing `gpu_game`、`window_game`、`transition_card` and `test_pattern`, records the actual format selected; the game GUI path also records the source format and whether or not to convert.
+
+Both active logs are available, SteamVR and VDXR are listed. 29 and 91. The new rules, both game images are selected 29, menu and transition card selection 91. The actual next round will continue to be based on the new log and will not treat the old entries as a new version of the operating acceptance/reception.
+
+Share game source images to preserve original format and pixels; existing `GpuBlit` The CPU menus are uploaded to maintain the original code bytes. No changes have been made to game resources format, per eye resolution, rendering ratio, first person name, aim or other primary rendering behaviour. User has confirmed that the clarity perception after colour path adjustment is improved and no new performance comparison conclusions have been added.
+
+## Validation and integration of previous sRGB build (retain history)
+
+Freezing source as default XR `analysis/steamvr-menu-srgb-c-source` Based on the above options and log changes only, and add this test; no other native/XR changes are being developed from the workspace.
+
+A completely new build with actual MSVC dependent on tracking through.24 XR/GPU check passed, including recorded SteamVR/VDXR format list, rejection of UNORM return, typed/typeles menu upload, layout/menu restoration, and continuous two-eye SRGB image rotation on WARP and inn NVIDIA graphic cards. After access to default,78 Item starter and 21 entry; the actual current configuration and validation of the game/native/XR/Playground file is not started.
+
+New XR SHA 256 Yes `6f00c956889e89f472a4470ae592c8129f55d328d079505536fbdc1a34e50953`. The default list changes only `xr_build` and `xr_sha256`and saves the exact same `manifest-srgb-output1.json`Original DLL `7571fee6…bab9`, OpenXR loader, GUI and user configurations are maintained; old build and release packages are kept.
+
+Freezing source code, build/test results, original default list and integration confirmation in ignore directory `analysis/xr-srgb-output-20261023/`. Integration validation did not start a new game or physical XR session, subsequent user clarity confirmed to be saved `user-feedback.json`, the original integration confirmation is maintained. The left eye flashes remain known, the restoration is suspended at user's request and this change is not claimed to have been repaired. This feedback register only updates the records.
+
+---
+
+## 中文
+
 # XR 输出颜色策略与 sRGB 对比
 
 此前按用户要求将所有 XR 输出改为 sRGB，并集成 `build-srgb-output1` 供比较，随后按其颜色回退请求恢复原来的源格式优先策略，使用 `tools/openxr-probe/build-runtime-colors1`。用户最新更正为“好像都会闪，不是颜色的问题”：原颜色与 sRGB 路径似乎都可能闪烁，颜色回退没有消除它。当前设置保持，下面保留此前对比与实现记录。

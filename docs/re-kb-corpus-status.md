@@ -1,3 +1,50 @@
+# Invert Database Status
+
+2026-10-15. The database is located in `analysis/re-kb/knowledge.sqlite`, all game derivative files are kept in Git that are ignored `analysis/` Inside. Tools and instructions for use are available in [re-kb README](../tools/re-kb/README.md). This report records the mechanical overlays that have been completed, which is not equal to all functions that are understood by AI or validated by actual games.
+
+## Original running time code
+
+Yes, PID.16812 History Section SHA 256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`, a separate copy of the original IDA library is used to process the batch. New discovery in back-compilation 2,404 function, after filling and again numbering to **116,328 One.**. No entries to process are missing; all functions known for chunks are checked by the source bytes, and no differences in border checks of the final function.
+
+- 115,976 A copy of the false code, all independent caches and full text index, with a rate of success of approximately 99.70%。
+- Initial 382 All failed to keep a backup file with an address/byte. 52,222 IDA funcing item. After loading the same snapshot section, only try this again. 382 One, come back. 30 One, the rest. 352 ; no copying successfully recorded cache.
+- 342,844 Article calls the record directly,1,527,426 bar by function. The reference may repeat it by the function to which it belongs; no single edge or complete indirect call is claimed.
+- Six snapshots, and then it's produced. 359,642 bar string candidates, keep coded, address, section and authentic Hash. Candidates are not equal to certified string objects.
+
+Six history snapshots are independent. `data-recovery/snapshot.i64` , the function count and boundary remain stable. 151,092 Data Reference Relation and 48,073 The precise initial address string candidate association binds the same manifest and synch. Type, dynamic call, internal pointer of the string is still limited to the snapshot external code. Disc EXE and running snapshot identity are different and no address evidence can be exchanged. Snippet captures are not a complete process of atomization and do not contain all DLL, stack or subsequent dynamic codes; this does not claim that the whole game was fully restored when it was run.
+
+## Scripts and Packages
+
+Take stock of all the local CookedPCs **22 One. `.u` Package**, Object Index **203,764 Article**- No. - No. `.u` The asset pack, maps, models and textures are not compiled in the back of this script.
+
+- 15,764 An entry for the Fund, of which 5,659 Mark as native declaration; no 5,659 A locationd native is achieved.
+- 777 ScriptScruct,479 Enum,4,175 Const; above and Function 21,195 - The strip, all of it.
+- 2,446 All Class entries have class text. 75 One failed recovery by pre-reverse sequence constants and enumeration; of which 1,106 There is no difference between direct sub-contains and independently exported text cross-checking.
+- Total 23,641 The selected script objects are all file-based, document-by-file Hash checks and a full script index is created. 2,709 A UI file is used directly.
+
+Active manifest by import order `scripts/manifest.json`、`other-packages-v2/manifest.json`、`classes-v2/manifest.json`、`class-recovery/manifest.json`Last Overwrite 75 The failed record of each category. Early export due to temporary filename `decompressed.u` Resulting in a logbox root name error, the old result is preserved and re-exported to v under original package name 2;current SQLite object index not available `decompressed.*` Name. Do not put old `other-packages/`、`classes/` As the current authority, export.
+
+Class text contains UElib 's potential for not desolating token and type positions, without ensuring that source code is restored; class name, attribute statement does not support current runtime deviation. Sources, missing and error is observed `script-audit.json` And packaged. `errors.txt`。
+
+## Retrieving and continuation
+
+```powershell
+py -3 tools/re-kb/kb.py --db analysis/re-kb/knowledge.sqlite search WarPlayerCamera --limit 5
+py -3 tools/re-kb/kb.py --db analysis/re-kb/knowledge.sqlite refs 0x140110878 --artifact-id 1 --limit 10
+py -3 tools/re-kb/pseudocode_search.py --db analysis/re-kb/knowledge.sqlite search sub_140110878 --limit 5
+py -3 tools/re-kb/pseudocode_search.py --db analysis/re-kb/knowledge.sqlite search-scripts WarPlayerCamera --limit 5
+```
+
+`full-native/audit.json` (b) For the most recent comprehensiveness, external keys, caches and compilation of Hashi checks;`full-native/fulltext-build.json` (a) Record incremental index results;`script-audit.json` Checks for script files.9 The tools test is passed. All these checks only prove consistency of information, and do not replace semantic reading, RenderDoc or actual game acceptance.
+
+Autoexport and limited recovery for this input is completed, with original to be processed 0- What's left? 352 A default requires a specific type, call an agreement or switch evidence and cannot be restored by infinity retry. New snapshots, new versions or specific problems under development are extended with incremental increments; no full back-up cache is re-enacted and not submitted to AI on a function basis.
+
+The lowest cost policy has been written into the project AGENTS.md: Mechanical tasks default not to enable subAgent; if there is a demand, use a light limit of one range, which increases intensity only at specified points, up to three times the current level. 17 The bar has saved semantic conclusions from records already in place, and automatically exported quantities are not counted as AI in-depth understandings.`token-usage.json` Keeps the actual cumulative host count, which does not allow for extrapolation of single function costs; this coordination is a high cumulative consumption and does not claim to have achieved theoretical minimum consumption.
+
+---
+
+## 中文
+
 # 反编译资料库状态
 
 2026-10-15。资料库位于 `analysis/re-kb/knowledge.sqlite`，所有游戏衍生文件保留在被 Git 忽略的 `analysis/` 内。工具与使用说明见 [re-kb README](../tools/re-kb/README.md)。本报告记录已完成的机械覆盖，不等同于所有函数已被 AI 理解或实际游戏验证。

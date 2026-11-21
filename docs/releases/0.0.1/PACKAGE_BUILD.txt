@@ -1,3 +1,91 @@
+GearsVR 0.0.1 - Local packing records.
+2026-10-21
+
+Delivery
+releases/0.0.1/GearsVR-0.0.1.zip
+Compression size:14,347,250 Bytes (approximately) 13.69 MiB）
+Number of members:718, with file-by-file SHA 256 List inventory.json.
+SHA256：d9586c3f04f37b513b0281b51b054de23f2afb3405c56f5e5cbcf95e226259af
+Install README.txt, release file RELEASE_NOTES.txt in ZIP and each one next to ZIP.
+SHA 256 SUMS.txt is next to ZIP. Unavailable; downloading address and Discord link is added when the author publishes them.
+
+Freezing baseline
+Current default source SHA 256：173ec758169200153250099d17cc4abcb3d92803354fca06f7a71ecc3a865624
+Native：tools/native-capture/build-ads-anchor2/GearsCaptureAdsAnchor2.dll
+SHA256：94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304
+XR：tools/openxr-probe/build-mounted-latency1/OpenXRPoseProbe.exe
+SHA256：0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c
+Supported game file version:1.0.381.6947, actually EXE SHA 256 Match is the rule.
+Supported Game SHA 256：bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4
+
+In the package GUI uses GearsVR 0.0.1 title; Autoplay path version synchronized to the repository root directory starter.
+This round does not recompile native/XR and does not bring the original construction of the DLSS experiment.
+The game path in the package is empty, and the CPython is built on 3.12 With the possibility of issuing a dependency/licence.
+Default list and local user configuration maintained; root directory starter has been updated simultaneously, with old version backup revising the receipt directory.
+Adds new entry_policy.py to the white list of running modules; currently inactive TwoViewRendererShadowTest.exe is no longer required.
+
+Authentication
+- 139 Entries: test_sage_portable, test_package_portable, test_diagnostics_bundle, test_launcher all pass.
+- The GUI compiles and hides the self-checking pass.
+- The Python-I-B in the interim package is used to scrutinize project modules, PE dependence, inventory Hashi, inventory and source.
+- From the final ZIP decompression path to a Chinese-containing space, repeat quarantine check passes.
+- Finally depressurized package 23 The primary start-up check is passed; test status files are produced only in QA copies.
+- The final depressure package GUI hides the self-checking pass to confirm Python in the selected depressurization directory.
+- The final depressure package generates effective diagnostic ZIPs through launcher.py export-logs; empty history missing tips match the unstarted game state.
+- ZIP-file size, SHA 256 and the list of members verify; there is no anallysis, game file, archive, PDF, screenshot, historical log or reverse database.
+- Formal ZIP is from a clean temporary directory of unrun games; QA run files do not re-inscribe to ZIP.
+
+Verify Border
+Act I, KRVR+AVP, VD+Q 3 The site is also used to provide a visual update of the satellite's image.
+No separate games/head-of-the-art sessions are held and no new full process or clean Windows machine acceptances are available.
+Releasing_ready=false in the offline pre-screen report indicates only that the tool itself does not issue a play/release;
+Release of package metadata to record the user's field of view separately, without offline checking for a fake header validation.
+Keep the machine gun to switch.2 Second delay, subsequent chapter not fully measured with DLSS disabled limit.
+Full machine read reply:analysis/release-0.0.1/final-package-audit.json。
+The default list of freezing:analysis/release-0.0.1/frozen/manifest.json。
+
+Rebuild mode (PowerShell, work catalogue is the repository root directory; target directory must not exist)
+
+$buildPython = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/vr-launcher/ui/build.ps1 -OutputDirectory analysis/release-rebuild/gui -NoInstall
+& $buildPython -B tools/vr-launcher/stage_portable.py --python-root (Split-Path $buildPython) --destination analysis/release-staging/GearsVR-0.0.1-rebuild --manifest analysis/release-0.0.1/frozen/manifest.json --launcher analysis/release-rebuild/gui/GearsVrLauncher.exe --release-version 0.0.1 --preflight-output analysis/release-rebuild/preflight.json
+& $buildPython -B tools/vr-launcher/package_portable.py --stage analysis/release-staging/GearsVR-0.0.1-rebuild --output analysis/release-rebuild/GearsVR-0.0.1.zip
+
+The above orders are executed using scripts that may differ from dependencies and ZIP time stampes, so no byte re-enactment is promised.
+The pre-separation and depressure checks should be re-executed, new stocks retained with SHA 256;do not overwrite frozen 0.0.1 The finished product.
+
+README Language Revision: Change to a first name for players in Chinese English, where the name of player is given by Gears; and remove the wrong author ' s name from the publication case.
+Only README.txt, RELEASE_NOTES.txt and inventory.json are modified by the same bytes; repackaging and eventual depressurization pre-screening is done.
+Revision reply:J:\gearsVr\analysis\release-0.0.1\readme-tone-5pqk5d50
+
+Priority revision in English: README and release notes before English, after Chinese, delete the description of restoration of a quasi-star in the public text case.
+Only two statements and inventories were changed; the same procedural documents were issued, and pre-checks for repackaging and depressure isolation were passed.
+Revision reply:J:\gearsVr\analysis\release-0.0.1\english-first-g99j0mzi
+
+Autoplay path revision: preserves a valid path, otherwise the Binaries_x next to the read-starter 64/GOWDE-Steam.exe。
+Update GUI, README and inventory; original/XR unchanged. Hide the GUI self-inspection and temporary storage/pressure pre-screening, default GUI simultaneous update.
+HUD size still maintains the current settings until the user has made a definite change.J:\gearsVr\analysis\release-0.0.1\gamepath-8lyno_gw
+
+Icon/default Runtme Revision: Original user map embedded in EXE icons and window icons, bottom right corner 32 px-grey dilution pattern.
+Use the system OpenXR by default, without a system registration form; VDXR is still manually selected. Updates GUI, runtime description, README and package metadata.
+35 Reconstructing of packages, GUI hidden self-checks, normal/minimum window offscreen layout and greyscale small map checks, final ZIP depressure pre-test passed;7 Win.32 icon.
+Native/XR remains unchanged, local configuration is kept in sync with default manifest, root directory GUI.J:\gearsVr\analysis\release-0.0.1\artwork-system-xr-6hjfr8vj
+
+Release review: Remove the local distribution package directory name from the script, and only keep the audio assistant receipt to verify the required field and source Hashi, remove the body's building command and tool chain path. Pre-check, depressur check, and GUI self-check pass.
+
+Launch of GitHub completed: submission by Main 4b 621fc 430fa 5f 96eba 3bf 70399810d 3fd 51e 202 Open source 726 Documentation, Labelv 0.0.1。
+Release：https://github.com/gjc9620/gears-vr/releases/tag/v0.0.1
+Compressor packs and SHA 256 SUMS.txt has been uploaded and GitHub asset summaries and publicly downloaded are recalculated to reflect the local Hashi.
+The open warehouse uses a first-end, reviewed source snapshot without extrapolating the original development history; the original workspace is retained.
+Full issue reply:analysis/github-publish-0.0.1/publication-receipt.json。
+
+Install file streamlining: pre-installation window/no border, no limit frame rate, DLSS/DLAA closed and applied and exited; package decompression to game root directory, starter and Binaris_x 64 Parallel. Only two TXTs and inventory are changed, the procedure is completely unchanged; pre-screening and depressurization check passed.
+
+The installation description is synchronized with the GitHub front page, Release body and README in the package. Document submitted 075e 8961ba 6642d 9cb 4a 12a 936420d 7aac 82c 965; two new download assets SHA 256 Consistent with local practice, the original programme document remains bytes unchanged.
+
+--------------------
+中文
+
 GearsVR 0.0.1 — 本地打包记录
 2026-10-21
 

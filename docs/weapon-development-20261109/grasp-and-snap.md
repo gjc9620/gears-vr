@@ -1,3 +1,52 @@
+# Sorbence experience and parts-by-part positions: mandatory product contract
+
+Date:2026-11-09. User clearly adds: "Beware of sorbenting user experience, grab positions, each component must have a position corresponding to the grip." Together with comon.md and gun-by-gun requirements.
+
+## 1 Coverage
+
+"Each component" means a part that the player actually has access to, captures or operates. Each is defined independently and in a position; the incoherent sub-component can be a physical grab point but must be clearly grouped and cannot be covered by an undefined full gun.
+
+| Weapons | At least include the gun grab/position list |
+| --- | --- |
+| Gnasher | The right master holds the hand/tip, left front support, single-shot live ammunition, bullet position when loaded, leverage under and back. |
+| Boomshot | Right master handle, left side hand hold, loading body open/closing grab point, original filling component, seating stage holding position |
+| Torque Bow | Right-hand hand/cracker, left support, original arrow grab point, arrow position along the slot; no additional meaningless scratches with the former bow arm |
+| Hammer of Dawn | Main handheld/tip pointer, actual deputy contact area; filling not empty |
+| Troika | Left and right machine gun handles defined separately, position exposure when the handle enters, double-control control and right trigger finger |
+| Smoke | Actual primary owner/chain Ray holding, crotching, preparation and hand-outs; defined when the original sticker is interactive, not the entire chain can be independently captured |
+
+Actual interactive items such as master-held, side-handing, cartridges/real bullets, drums/taggers have been included along the same lines in Lancer, HB, Snub, Boltok, Longshot and Frag; the grab edge of the bunker also needs a matching position.
+
+## 2...sorture experience
+
+Helps to find the real surface and the right direction, without creating ultra vires controls or institutional movements. Distinguishing passive adsorbing, authentic Grip authorization, retention and separation, providing appropriate access/maintenance delays, avoiding border shaking, instant hand-to-hands, round-and-take parts or long-range hand-to-hand stretches.
+
+The current cartridge/blast is not taken away from the next-hand wood. Holding old Grip back outside the area cannot be forged.
+
+Sorbing only supports reasonable small deviations, without complete insertion of process, locking, loop, inventory or original access. Troika can request entry with empty hands but cannot bind hands without confirmation of original occupation. Distance/angle/scope is marked by the conversation itself based on the original model and actual feedback, which prohibits the covering of geometric errors by an extended radius.
+
+## 3 Each of the GrabPose definitions
+
+The list at least records: the component identity/catch point, position and direction, hand contact, thumb grasp, four fingers closed, index finger/crusher duties, wrist direction, belonging hands, adsorbing/stabilizing/exiting positions and transition.
+
+It is prohibited to use guns in the form of visible suspension, wear-up, hand-held fingers but actually caught, wrong-handedly held and wide-aread cuffs. Maintaining a fixed bone length instead of stretching your arm/bones patches.
+
+## 4 Modularization
+
+Public level reverts to the same hand arbitration, Snap/Grab state, generic pose and only C 0 The additional generic capability cannot rely on specific weapons, can be added to each gun with a second bonewriter/Hook or may encroach upon the private status of other weapons.
+
+The product does not depend on a test script.
+
+## 5...must verify
+
+Each interactive component is recorded separately: close to sorption, not in excess of the Grip, true grip, moving around with the gun/part, stable in mechanical action, release from hand and retake, out of range, lost pursuit/cutting/suspension. No non-existent functions are added according to this practical rule.
+
+Check the actual master, deputy and each component by direct control and double-track video of the game/simulator. Scrutinise palm, thumb, root, finger, wrist and sleeve from the right side of the exposure and the necessary tilt. Keep unaccepted when you are blind; target matrix, CPU array, successful Grant or count cannot be used as pixels to match evidence. Head comfort is shown separately and not replaced with an emulator.
+
+---
+
+## 中文
+
 # 吸附体验与逐部件抓握姿势：强制产品合同
 
 日期：2026-11-09。用户明确追加：“注意实现吸附用户体验、抓握姿势，每个部件都要有对应抓握姿势”。与common.md及逐枪需求共同执行。

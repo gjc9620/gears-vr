@@ -1,3 +1,109 @@
+# End of machine gun VR mode: restoration of old border posture
+
+2026-10-22 The current round uses the live log, code and offscreen check according to user arrangements. The game is not started for machine guns, but does not operate a user-playing game.
+
+## Site and cause
+
+The live session is: `continuous-stereo-47932-20261022-030325-dc928d43`,native is the latest default for CoverAim 2，SHA 256 `04ff9ff8c1465c2019c78b8b0309275a18c4e7208117fa65e8e00396041b71e0`. Prepare, Commit has succeeded in restoring the world and has reached the establishment 2, it happens afterwards `owned_error=19`, Session by `proof_failure` End.
+
+Failed first new resource frame ticket 3284 Left-eye mapping, submission and scene resource certification have been completed, but GPU comes back to `ticket_invalid`. It carries a head-and-head attitude reception before returning to record 2.551 ms, the frame is selected later than the record is restored 5.970 ms. New resource profiles and frame numbers are in the range of restored; original protection codes combine " legal new frames carry attitude before submission" with "invalid/retired frame number" as the same reasons for refusal. The caller makes such denials uniformly up to wrong 19, leads to normal restoration of the boundary time series triggers the entire VR session exit.
+
+The time difference is relative to the completion of the log; it is not written as a headscreen long or a separate world cut-off measure.
+
+## Rehabilitation
+
+- The original attitude cut-off was relatively unchanged and the old frame still did not submit GPU copy or XR drawings.
+- Separately record "a check of metadata, binding, image geometry, frame numbers and input sources but with a posture earlier than or equal to the current recovery deadline" as `world_sample_stale`。
+- GPU caller allows to discard the frame and complete the certificate of normal retirement, and continues receiving subsequent new postage frames. It does not trigger errors anymore 19 and do not mark old frames or change them for new postures.
+- Share the GPU package, version and XR binary.
+
+## Automatically check and integrate
+
+`OwnedGpuShareTest` Use the actual offscreen D 3D 12 Resources, queues, shared copying and receiving ACK covering the three states of COMMON, RENDER_TARGET, PIXEL_SHADER_RESOURCE. Tests are injected before and just after world transition into a state that requires sharing sequence and frame metadata while frames are thrown to remain active; then all eyes are successfully released with new gestures and read back. Also validates the negative image area with retirement numbers and old postures.3D 12 Debug player, does not contain game scenes or physical header acceptances.
+
+33 Pre-commencement inspection and pre-starter inspection 105 Item starter Python returns pass; additional graphic menu lock check passes.484 Actual compilation of entries relies on a check to build the frozen source SHA 256 Renuction. Original first round of construction stopped before the target name was duly compiled; failed directory maintained; end with new r 2 Build directory, no Cache to reuse failed build.
+
+Can not open message 2 Freezing copy of source code, only three different files:`vr-common/gpu_share.h`、`native-capture/owned_scene_gpu.inl` and the corresponding GPU share test. Keep bunkers with guns, first person names, Playground output and previous render switches.
+
+Default starter changed `tools/native-capture/build-mounted-resume1/GearsCaptureMountedResume1.dll`，SHA 256 `de25adb9d43b4886ff2e70cd37495a244f2031b97145d13294105b5ba61b90c2`. The list is only updated `native_build`、`native_dll`、`native_sha256`; other currently on the list fields, XR, Playground and user configurations remain unchanged. The build needs to be loaded in a new game process; old sessions that are still running have no hot replacements.
+
+Evidence, copy of source code, failed build and regression list in signed `analysis/mounted-resume1r2-20261022/`、`analysis/mounted-resume1r2-source/`、`analysis/native-build-mounted-resume1r2/` . No new games or header running acceptances, no declared delay target completed, and no labels or version packages published.
+
+## Recovery process continues to strengthen: MountedReume 2
+
+Users continue to demand enhanced recovery logic. This round only changes codes, performs offline checks, and does not start games, search machine guns or operate user games.
+
+- & Hand over the same attitude cut-off to the original to be formally submitted `StereoGate`. The attitude is earlier than or equal to the deadline, skips before creating a new world renderer and does not consume the positive for execution; the first valid new posture is responsible for the correctness. The original session, source, re-play, track and geometrically checked reservation, GPU at the end of the chart `world_sample_stale` Protection is also retained.
+- When native is clearly in `world_handoff_phase=4`, the old world is suspended and candidates are rejected, allowing for continued re-sampling and rigorous verification of the same object to avoid a permanent setback after exceeding the normal trial ceiling. The ordinary attempt to detect/structure errors is maintained; retest intervals are increased and capped, defaulted on 2、4、6 Seconds, hold after failure. 6 sec, prevent retries from becoming slow or non-spacing. This retreat is used only for failure and does not increase the fixed waiting for successful switching.
+- `OpenEvent` Not available for the time being or `SetEvent` If you fail, keep the same non-removable recovery package and continue to send the same notification with a maximum retreat. Prepare/Commit, which has been successfully sent, continues to accept late confirmations of strict matching even if it does not recur. Process identity, stop state, other requests conflicts are still blocked. New recovery tasks also remove the time tag from the previous task and restore existing ones 10 ms Activity Services Rotation.
+
+45 Passed by primary/pre-starter, of which `StereoFrameTest` Continuous execution 64 The world border is changed again, covering old postures, just the cut-off time, first valid new posture, only once back, replay rejection and session/geometric error are not hidden.3D 12 Resource check continues to cover old frame skipping, shared slots unchanged and subsequent binary pixel reading; not enabled D 3D 12 debug layer。485 The actual compilation of the items relies on a check to freeze the source code construction before and after Hashi.
+
+248 Item Python returns by:143 Recovery/continuing session/start of self-test and 105 Item starter test. Add an example to overwrite continuity 7 Resumes after rejection of a candidate, resumes after successive failure of the same identity sample, Prepare/Commit notifications recover after successive failures exceed the original ceiling, return not to repeat notifications late, process and request conflict does not exceed authority, external local-player status continues to be rejected. Updates another prestart self-checking folder to stop explicitly before the synthesis DLL PE is analyzed, with an assertion that no game start function will be called; the production startup logic has not changed as a result.
+
+Default native detected before construction started advancing to SniperScope 1• The security of the old baseline pre-screening stopped and no preparation of the old baseline was initiated. `analysis/sniper-scope1r2-source/` Freezing of source production, only changing the three original files submitted by the world, the attitude door ban and its testing, keeping up-to-date sniper mirrors, bunker targeting, first person name, Playground and renderer repair.
+
+Normal starter is now in use `tools/native-capture/build-mounted-resume2/GearsCaptureMountedResume2.dll`，SHA 256 `e89ff571364c6afde938d558ab2860405b6bb13ad813c95e91546abed7c774fe`. Integration only updates the default list of three native fields,82 The files required for the starter packs exist; XR, Playground and user configuration Hash are maintained. Python recovery is read with normal starter. Effective after restarting a new game session from the starter, there is no hot replacement of the current session.
+
+Current round build, check, Python source snapshot, integration and return signored `analysis/mounted-resume2-20261022/`, the source and construction of the original freeze is located `analysis/mounted-resume2-source/`、`analysis/native-build-mounted-resume2/`These offline checks are not equivalent to real machine guns or head-on experience acceptances, and the actual recovery time is still subject to real feedback after user; no zero delay or release is claimed.
+
+## Continue to reduce the return of certificate reading
+
+The target continues to be “no delay in the launching of machine guns”. Historical evidence indicates that complete certification is still about to be prepared. 0.5–0.7 The second cost, with UI and targeting certificates being relatively high; the time comes from a historical session and cannot be used as a new measure for the current construction.
+
+For UI Name Index and Text read 2 Full Fresh Stakes Compared with the Previous Index and UTF 16 Text, ignore the variable fill between them. The four UObject identity fields that aim at certificates are combined into two consecutive readings of the selected field, comparing each field and keeping the original field range in the final review table; names are read together with the same. No cross-sampling duplicates the certified values, and pre-completion identities, slots, names, links, scripts, codes and awards are checked for retention. Unknown name layout continues to use the original separate reading path.
+
+The source code saved before loading changes independently, compared with the current default path in the same synthetic memory, obtained:
+
+| Certificate | Number of times read before changing | Number of times read after modification | Reduced number of readings |
+| --- | ---: | ---: | ---: |
+| Personal | 1171 | 1061 | 9.39% |
+| Machine gun UI | 1215 | 1095 | 9.88% |
+| Targeted. Gun-shot. | 1534 | 1182 | 22.95% |
+
+The three full configuration semantics and INI bytes are identical; the aim configuration comparison excludes only two of its pick-up times. The above ratio is the number of read calls in the package, not the measured time, black screen reduction rate or frame rate gain.
+
+231 Python Check and 105 All access checks are cleared, all units. 336 entry. Add a new check to cover each group of identity fields that change between snapshots, name index/text changes, non-filling changes without error rejection, short reading refusal, unknown name layout retreat and command format consistency; the original final identity/show/name change, controlled link changes, unchangeable errors not temporarily masked, and antestation checks continue.
+
+The starter returns to find that the top rotation integration lacks a naming candidate for the current rule, and is completed `tools/vr-launcher/manifest-mounted-resume2.json`, the content is fully consistent with the current default list and the original test rules are maintained. The document is used for retroactive construction and users continue to use normal starters.82 Document check required for packing passes.
+
+Two Python builder default enabled files optimized to be read in new sessions with normal starter; original is still MountedRememe 2 DLL, XR, Playground, default list and user configuration unchanged. Modifying presource code, independent control, current Python snapshot and integration back confirmations are stored in signed `analysis/mounted-coalesce-20261022/`. No game started, no current machine gun scene or headlight time-consuming acceptance; complete target is in progress.
+
+## Shorten the waiting after a definitive refusal and skip the double-search
+
+The “no delay-on-machine gun” continues to be advanced. Two additional sources of expenditure have been addressed in the current complete recovery path:
+
+- Original Strict Review of Cases Unrestricted Rejection, Cleared Candidates and Case in an Old World with Suspended 4 , the first three times of the application are allowed only if the request number is fully matched by a negative count and session identity 0.1／0.2／0.3 sec scheduled retry interval; previous corresponding 2／4／6 sec. Restore avoidance after exceeding this short retry and the default continues to fail at a maximum interval 6 Seconds. New requests for new paths and complete new certificates; successful transactions that have not received a reply are not reissued. Normal errors, error requests, rejection of counting conflicts and other stages do not enter short-duration trials. owner sleeps until the short-duration test expires, avoiding normal 250 ms Round of Enquiry 100 ms schedule interval; old time tag cleared after the transaction has clearly failed.
+- Only retain from certified startup certificates, successful current observations or new certificates `CameraActor` Class search addresses. Call the original in each new Liver `identity()` Reread the position, fill in the reader's own discovery cache and then be fully certified as a cinematic certificate of re-checking class/metatype identity, registration slot, name, inheritance, attribute, code and world link. Old identities or certificates are not considered current. Return to search when a thread fails; clearly discovered changes in the registry form continue to spread and are not swallowed up as normal reading failure.
+
+Unmounted pre-modified source code, in 256 Same synthesizing form of registration for a non-observed object, read with the person certificate 1834→1560 Machine gun certificate read 4002→3728;IDs identified during preparation call 280→6、355→81 The viewing path of the person and machine gun is reduced. 274 Read sub-read. Four results are identical, certificates are consistent bytes. The cost model for determining search also validates non-scan depletion 200 msguard budget is still complete with thread path; the model is not a real game time.
+
+332 Relevant inspections and 105 All access checks are cleared, all units. 437 Item. Covers damage/non-readable thread retreat, re-sampling of each new reader, initialization of structural reservation position, slot/name/metatype/ attribute/code change to continue refusal, short and maximum number of retries after explicit rejection, normal withdrawal at wrong request/rejection count/worst phase, movement beyond time and existing non-duplicate notification restraints.
+
+The latest default at close has been advanced `build-sniper-first-person1/GearsCaptureSniperFirstPerson1.dll`，SHA 256 `9a43860f0adaa047314f4b676683c15ada1ef5027662a75f241361c37bbdde75`. Checking its source of freezing as MountedRemme 2 As a parent baseline and confirming that the World Prepare/Commit, StereoGate and GPU shared protocol files are kept by Hashi; this round only integrates Python restoration logic, following the latest default list and its naming list without replacing native, XR, Playground, default list or user configuration.82 The existence of the packaged files and the required white list of Python files are checked.
+
+Evidence, pre-modification source code, current Python snapshot, independent comparison, latest default source check and integration confirmation in signed `analysis/mounted-class-hint-20261022/`. The new logic is effective with the normal starter in a new game session. This round does not start; neither the scheduled number of waiting or composite readings is physical black screen time, and complete undelayed target has yet been accepted.
+
+## Rapid re-sampling after a failure of camera time stamping frame
+
+Review of the saved 2026-10-22 Session log, still visible `AnchorSamplingRejected`、`Cross-frame camera timestamp during identity checks`This is a time-stamp failure that has not yet been published. 2 Seconds of retreat; when complete observation is available and preparation for the same identity fails three times in a row, it may also exhaust ordinary attempts to continue skipping preparations once the camera stabilizes.
+
+Add `timestamp_guard_retryable()` Only the actual `AnchorSamplingRejected` The last failure of type and integrity must be unaccepted,1–5 An attempt must be clearly and explicitly failed and marked as retryable, the abnormal type/cause must cross the known time frame, and the outer layer and eventually the root cause of the guard must match. Successes, but not time out, hard-cut failure, only identical messages, a retryable diagnostic summary, error type/structure, or registration list subcategory, cannot trigger this strategy.
+
+Runtime produces internal re-samp marks only on the read-only or unpublished candidate configuration call. Failed to close this reader or access lease and owner discards all parts of the data; the next is still a new reader and complete certificate. The release function is not in the mark range, and the reply, Prepare/Commit and late confirmation agreement remains unchanged.
+
+The first three failed projects that are strictly matched await 50／100／150 ms, then back to normal retreat; it does not consume the number of hard failures of the same identity. A complete successful observation or preparation for resetting the short-test budget, with code/identity/unknown error remaining limited in original numbers. The homeer wakes up at the remainder of the period and uses quick rotation during this runoff.200 ms cap and all identity, links, codes, attitude certificates maintained and failed sampling not accepted.
+
+The old combator source code that independently loads, compares the same composite input: the plan after a pure time stamp fails is waiting to be old 2 Seconds, new 50 ms;three later old paths 2／4／6 Seconds and exhausting attempts, unprepared after conditions have stabilized. 50／100／150 ms, complete preparation is successful when conditions are stable. This result is a status machine scheduling verification and not a game or head count of time.
+
+490 Item Python check through:348 The entry-related check enabled the current actual CassDiscovery 1 DLL, no skipping of native use;142 The new check covers errors generated by the real sampler, rejection of mixed/mixed/unformed/late success evidence, read-and-publishing borders, lease closure, recovery after five consecutive stylistic failures, common retreat, successful reset, diagnostic summaries cannot authorize short retry and owner changes. New tests use a plugin to avoid double counting when importing TeestCase aliases.
+
+This round only changes the Python logic of the default recovery path, following the ClassDiscovery 1（df 7a 5873…9849(d) Maintaining the active/XR/Playground/Default List and user configuration;83 Check of package file passed. Modifying pre-source code, old new schedule contrast, current Python snapshot and integration confirmation is in signed `analysis/mounted-timestamp-retry-20261022/`. No game started or new header measurements added, complete without delay targets continue.
+
+---
+
+## 中文
+
 # 上机枪结束 VR 模式：恢复边界旧姿态帧修复
 
 2026-10-22 用户在正版游戏真机测试中报告，上机枪直接结束 VR 模式。本轮按用户安排使用现场日志、代码和离屏检查，不启动游戏寻找机枪，不操作仍在运行的用户游戏。

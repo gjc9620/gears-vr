@@ -1,3 +1,46 @@
+# VR not activated, exit after short appearance after loading level
+
+2026-10-20. Default native updated to build-startup-output 5/GearsCaptureStartupOutput 5.dll，SHA 256 `28884fa68c55a1536430b3e0e9c7a596a65f7ef32a5e7adadd6103aa34707536`. Retain MountedRecovery 6 Two-step output and front frame restoration protection, SeatedReticle 1 Parasol repair and MenuSmooth 1 XR. The game can be loaded if you restart the game with a root directory starter.
+
+## Fault and final modification
+
+Initial Session Continious-stereo-38116-20261020-154557-e 75db 760 The verification contains dynamic Pawn/Weapon/Instigator links, which cannot be identified as damage to the script layout by a total error code only. Before activation, re-obtain existing certificates of re-linking with the Pawn weapon and wait for the pre-read preparation phase at most 1 sec; always recheck from original certificate, keep execlet entry, object identity and layout check.37044 Recorded =1、weapon_rebound=1 Old 38116 The log is not sufficient to demonstrate which link changes are specific.
+
+Following that, native activated but in the ticket 2 . The HUD Drawer Post 258、pair 0, then proof_failure stops. At this time HUD FOV/ size calculation is not executed and cannot be attributed to the user-set FOV 51。
+
+Normal Outlook d when dynamic blur opens 83 cbf Draws can be placed in the middle resource before passing 2b 11a 0 Copy to current owned target. Only first call to identify a world eye record that cannot be created on the target: PID 19892 The diagnosis proves that both geometry, video/scissor and drawing commands are valid but the actual objective is different from the available resources.6 Complete second-step copy identification, code specific identity, actual call and double level return to view[Restore Record](mounted-transition-recovery-20261020.md). The final version follows this and does not need to close dynamic blurs or lower the quality of the painting permanently.
+
+Two steps of identification must satisfy the current urbanrender, freeze world/ticket, complete code summary, left-and-right half original pixel rectangle and UV, limited and sufficiently large source size. Target resource identity, command list, actual draw, eye count, queue execution, GPU release and HUD completion certificate continue. The middle target is not randomly called on a white list, nor does the drawing directly consider the output as owned. The full code range is amended to read the buffer zone as an "owned" output.0x 1000, still check the length cap and full summary.
+
+High-quality startup of another actual command list tracking to 512 item, first failed subtype 6、after_active 512、overflow 1. Eventually, the fixed capacity shared by the frame association with RS/OM is increased to 1024 Startupoutput 5 Relatively 6 The only new production difference to freeze the source code is this volume value, which is not commingled into other DLSS experimental codes in the work directory.
+
+## Final Practical Game Validation
+
+Reply analysis/runtime/fps-resolution-720p-startup-output5-full1-20261020.json, Session Continous-stereo-14812-20261020-173548-d 44e 2302：
+
+- Actual configuration before startup MotionBrur=True, QualityBloom=True, AADefaultQualityMode=4, DLSS=False; user:render_scale=1、HUD FOV 51、camera_closer=0.4 Keeps the original value.
+- Authentic emulator matching VDXR recommended size, actual GPU source 6144×3264 Two XR eyes chained.3072×3264, the pixels are cut undefined.1280×720, separates the record from VR size.
+- 12 A valid telemetry sample, continuous stereo projection 13.8567525 sec;791 For the new image,1656 The next successful projection is submitted.96.4445 ms, cannot claim physical display to be 120FPS。
+- First UI value is none, owned_error 0、pipeline_failed 0;inherited through,79 The bytes of the separate entrance are fully matched, XR/owner is normally closed, games are properly closed and set to resume byte.
+- Actual GPU Readback 552、serial 551，6144×3264 PPM SHA 256 `fcd5dafbe844258f986ae9d42537ed2c13c66e93807e5db39bb96b1726972bd0`... that the right or left eye is not black pixels 99.9867%/99.9839%Two eyes are different pixels 99.9448%; both eyes have full level, role and subtitles. This is the GPU image evidence, which does not replace all effects or physical head-over acceptance.
+- Final DLL 39 Primary check passed, including 22 Builds a manual that relies on the analysis and freezing of source code.
+
+The previous contrast success map of the closing dynamic blur; changing the seration quality or closing the unit without a solution. Temporary settings have been restored and final acceptances are using the original settings with dynamic blur openings.2/3/4 Not final acceptance version;output 3 The assumption that only intermediate output is identified has been modified by the actual target diagnostic.
+
+This round confirms PID after user authorized completion of another retention test and recovery on site 12448 The backstage test uses a certified rear window to build, read-output observation, temporary silent sound and disable input from the physical handle backstage without switching to the front desk or adjusting the user window. The original recovery dialogue box that was last successfully started by the game is selected " No Recovering Default Settings " only in the backstage after the exact testing process, title/text matching button identity.
+
+Physical header is not re-detected in this round. The release package is not generated. Final list/buildback is analysis/runtime/startup-output5-stage.json、startup-output 5-build-tests.json, old default list saved in startup-output 5-previous-manifest.json。
+
+## Proof identity
+
+Follow-up user feedback: "I just started the real machine test, it seems okay." Checking recent manual VDXR sessions 38848-20261020-184757-c 3832 acd, actual load of Startupoutput 5 Same, native SHA 256, Cumulative 33475 For receiving images,99190 Subsimplied. This is user feedback on this basic availability, not all DLSS switches, drawings, cross-world or frame acceptance; performance candidate NgxManual 3 Not enabled. Original feedback and session identity saved analysis/runtime/startup-output5-user-headset-feedback.json。
+
+This round first. tools/re-kb/kb.py and analysis/re-kb/knowledge.sqlite, read the evidence that is already directed to docs/58-reverse-engineering-knowledge-base.md, no IDA database opened or full game cache extended. History runtime code blib SHA 256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`, module base 0x 140000000, with disk EXE SHA 256 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4` Separated; the actual operation must still be byte matched, with the same RVA not representing the same version. Scraps, derivative codes, SQLite, private construction and images are left in signed analsis/.
+
+---
+
+## 中文
+
 # 载入关卡后 VR 不激活、短暂出现后退出
 
 2026-10-20。默认 native 已更新为 build-startup-output5/GearsCaptureStartupOutput5.dll，SHA256 `28884fa68c55a1536430b3e0e9c7a596a65f7ef32a5e7adadd6103aa34707536`。保留 MountedRecovery6 两步输出和首帧恢复保护、SeatedReticle1 准星修复及 MenuSmooth1 XR。正常通过根目录启动器重启游戏即可加载。

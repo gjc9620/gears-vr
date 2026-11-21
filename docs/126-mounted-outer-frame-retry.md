@@ -1,3 +1,25 @@
+# Mounted outer camera cross-frame refused to classify
+
+2026-10-17 Continue offline checking of the discovery, configuration and primary takeover chain after the machine gun has been mounted; no game or real appearance has yet been performed and the actual black screen root cause of the machine gun has not been identified.
+
+`LiveRegistryAnchorSampler._strict_guard` Full mounted command has been obtained before and after normal Guards. Always throw ordinary when the full dictionary was not equal `AnchorRejected`: Even if two Captures are identical in real time, and the camera time stamp is normally entered into the next frame, the existing temporary re-sampling budget cannot be used. This is a different layer than the single Mounted Capture internal time stamp classification that was previously amended.
+
+Now. `_check_mounted_bracket` Still require full equivalence to accept. If not, this failure will be marked only if the complete set is consistent, all non-camera fields are consistent and the time stamp is indeed different `MountedTimestampChanged`; this result is discarded and read again after. The POV is still hard-rejected at the same time, regardless of identity/role/paternity/reflective field/link/Level/mark or keyset changes. No increase or extension of the original five times/200 ms cap, no old success certificate for cache.
+
+Coordinates use the same series in the package Python 3.12 Implementation:
+
+```text
+python -m unittest test_mounted_context test_anchor_config test_cinematic_anchor test_world_rebind test_world_rebind_monitor test_world_rebind_runtime
+```
+
+116 The item is passed. New real fixture uses the example of a camera frame between complete outer layers: one push must be dropped at first result, and the second stabilization result will pass; each advance reaches the original test limit; the POV change with the same time stamp and static changes accompanying the frame cannot be converted to a temporary retest. The verification range is a synthetic memory and controller test, not an actual cannon camera or GPU/head recognition.
+
+Local Python source will use this change next time start; freeze Native 60／61 DLL is not replaced. `GearsVR-V1-development-Vrdof61-MountedPrep-English-20261017.zip` Keep the photo.**Do not include this outer category change**, do not treat the result of the package as receipt and inspection for this submission.
+
+---
+
+## 中文
+
 # Mounted 外层相机跨帧拒绝分类
 
 2026-10-17。继续离线核对上机枪后的发现、配置生成和原生接管链；尚未运行游戏或真头显，也未确认实际机枪黑屏根因。

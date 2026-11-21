@@ -1,3 +1,60 @@
+# The feasibility of targeting the first person.
+
+2026-10-21 User asks: If the current capability is sufficient after a common weapon is opened, except for sniper mirrors. This round has completed evidence studies; it has not been achieved, games are started, games are repackaged, default construction is modified or IDA is opened.**Existing cameras and binoculars are sufficient to support the restricted prototype; complete available experience also requires first person anchor, model visibility and shooting/shield verification.**
+
+## The current default build must be separated from the workspace
+
+Default list for study 1，DLL SHA 256 `befe08352b5847c5854f0d370611227eb0f8322300ae52e1e8f9c9bb50f8e77a`;in this round check actual DLL, selected source code and its HUS list.
+
+| Capacity | There's evidence. | Meaning of this function |
+| --- | --- | --- |
+| The same replayed candidate eye points, HMD and left-eye matrix | Default freezing of anchovid / stereo links and historical emulator evidence | Re-enactable eye, head and rendering call associations without re-establishing VR output |
+| Modify Render Point Origin | Default Freezing Source Contains `origin_trial.h`、`view_origin.h`, access before eye-to-eye matrix generation | Specific access points; old A 1/B/A 2 Diagnosis is not a product function to be switched by the point-of-fire state. |
+| Read with Normal Aim Status | Current Workspace `crosshair_assignment_config.py` Parsing `bIsTargeting`，`crosshair_assignment.h` Read and carry state | Reusable to achieve direction; default frozen version at the time of study not available |
+| Move camera forward | `camera_closer.h` and documents 74 Historical running evidence | Move forward only to the original camera, maximum 0.5 Rice, and keep the person in front of it.0.4 distance;not equal to first person |
+| First person called Visual Reference | Document 12、18、19;old plane Mod once entered the level to get first person view | Proves that the game can obtain this view through camera/resource processing; does not prove that the current original model and VR combination are already working |
+
+Move field local camera front-to-side configuration to 0.40 Rice. The first person calls for an independent vision-point strategy; simply raising this parameter cannot remove the shoulder deviation, or create eye spots or solution models.
+
+## The first person in the original version called it a branch and sniper exception.
+
+Check eight selected scripts export and index after the knowledge base has been retrieved; source is artifact 2 The depressure. `WarfareGame.u`，SHA 256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`. This is the package source, separated from disk EXE and historical run-time code snapshots. The script still contains undeconstructed native token, type and incomplete signature; the following is an exported code relationship, not a trajectory for this rotation.
+
+- Foundation `WarWeapon.UseFirstPersonCamera` Return false, sniper cover back to yourself `bZoomed`。
+- Normal aim and bunker. `HijackCamera` Each branch uses this return value to obtain the starting point of the weapon and the eye direction of the person.
+- `WarPawn.GetWeaponStartTraceLocation` The same person is also consumed in the judgement that the branch involves calibration of targeting and a retrenchment of the gun. Thus, changing the return value of an ordinary weapon to a single rue would affect both the firing starting point selection.
+- Sniper. `SetZoomed` Weapons are also being used to conceal disposal; sniper mirror paths cannot directly prove the existence of a usable first-person model for carrying guns.
+- There's a pistol. `bZoomed`. The sniper exception must be combined with weapon type and status identification, not all zoomeds should be used as sniper mirrors or only the FOV threshold.
+
+The restricted prototype gives priority to switching the original location where the existing rendering view is constructed, preserving the original weapon logic; sniper mirror exits this strategy and continues with the process. This is a project choice and does not mean that the current VR of the sniper mirror shows accepted.
+
+## Actual work not available
+
+1. **(c) A stable and appropriate anchor.** Old prototype. `Pawn.Location + EyeHeight` It's a candidate point. `GetPawnViewLocation` The export of a crotch, pelvis or parent path in different states cannot be described as the real eyebone at fixed heights, let alone directly bind all skull animations to create a point of view vibrating.
+2. **Independent authentication of targeting status.** Current reader takes the status of HUD query; product switching cannot rely on a limited HUD hit point that is just as available. The certified controller/weapon/content should be associated with the rendering instrument and clearly invalidated, re-guns and uncut keys. Aim ahead to replace normal camera croser, avoiding double folding.
+3. **Body, gun model and close drawing.** When the camera is near the person, it needs to physically examine head/shoulder lines, rear-cut marks, cut short and remove from the original third person; selective concealment or bone/weapons attitude adjustment may be required. There are no fully validated first person arm/machine-sight matching programs in the current tool chain.
+4. **The shooting was consistent with the sight.** The use of weapons-authority sights and their sceneal intersections continues; the headline changes only observation and projection, so that the world can not be shot up. HUD query points, animation gunpoints, image centres and actual firing rays are checked separately; mobile visual points do not automatically confirm door-to-door/astrostar/blast alignment. See document. `weapon-aim-hit-chain.md` and `reticle-camera-freshness-20261020.md`。
+5. **Shelters and transition.** Common/shelter targeting is different, with differences in detection, crouching, left-and-right mirror and collision. Near wall/low bunker/shore edge needs to be verified; death, drama, machine gun, menu and world switch should exit the strategy. Switching times and transitions also require physical image and head comfort verification, which cannot be directly applied to flat-screen animation.
+
+## Prototype and authentication order
+
+First GPU images must confirm that the same frozen anchor is used, the person is not shielded and the same world target is projected to be in the direction of the point of view. The laser/dispersion/killing connection and close wall testing is then completed.
+
+Backstage operations are still subject to the tested behind-windows test for construction/runtime and set up the user-requested observe-only, behind and testing silent environments; do not modify or seize other game sessions. The CPU, actual games/GPU, RenderDoc, real header recognition is recorded separately. This round does not run these acceptances.
+
+This is why it can continue to be a prototype in this direction; it cannot be used as a function of the current starter, nor can it promise full mechanical targeting by changing only one camera distance. After completing the necessary validation, preserve integrated restorations according to user preferences for the latest default version.
+
+## Reuse of evidence
+
+- Current round of open-ended audits: signed `analysis/ads-first-person-20261021/audit.py`、`evidence.json`, which contains a distinction between knowledge base search, eight scripts, Hash, package identity, default DLL and six frozen source files, and default/workspace capabilities.
+- Default source:`analysis/integrated-fixes1-source/` and `integrated-fixes1-source-sha256.json`。
+- The old eye point diagnosis. CPU results:`analysis/runtime/fp-origin1-native-ready.json`;relevant running boundaries are found in documents 56. The old CPU validates by not replacing this function with a real game.
+- Camera reference and model limitations: documents 12、18、19、74; original package, script and model derivatives continue to be left in signed `analysis/`, do not enter the distribution package.
+
+---
+
+## 中文
+
 # 普通瞄准切第一人称的可行性
 
 2026-10-21。用户询问：普通武器开镜后进入第一人称，狙击镜除外，现有能力是否足够。本轮完成有界证据研究；没有实现此功能、启动游戏、改包、修改默认构建或打开 IDA。结论是：**现有相机与双目能力足以支持受限原型；完整可用体验还需要第一人称锚点、模型可见性及射击/遮挡验证。**

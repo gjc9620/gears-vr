@@ -1,3 +1,115 @@
+# Native camera survey:2026-10-11
+
+This page records the previous phase of the survey-only and mobile-link experiment. A temporary Hook collection has since been completed, dynamically calling evidence, withdrawing patches and current progress is shown [Native Call Validation](04-native-capture-validation.md). The description below, such as “calls not yet collected”, is in the state of investigation at that time.
+
+## Purpose and current conclusions
+
+We need to find the view portal that the game really uses for drawing images. We can understand the script camera as a front-end business state, and the rendering view as data used in actual mapping of the browser frame. The change of business status does not necessarily change data already sent to the renderer in time, so ultimately we need to track the transmission between the status and the drawing.
+
+I've found it. `PlayerUpdateCameraNative` The corresponding primary calculation function and confirm that the output structure field matches the reflect information on running. This is evidence of original code, but still the calculation phase of a script VM-calling camera, where the final rendering view entry has not been found.
+
+## Version and positioning
+
+Target EXE SHA 256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`. All the following code locations are RVAs of relative module base addresses and cannot be directly used as addresses for other versions.
+
+Finds with reflection fields of the current camera type `PlayerUpdateCameraNative` UFunction, read it again `+0x114` Execute the pointer. This deviation is from this version of the survey, not the generic UE offset. The packaging function RVA is `0x3b3af4`, the direct caller of the original subject RVA is `0x110878`。
+
+Packaging Functions Read `FFrame.Code +0x28` bytes parameters, then RCX, RDX, XMM 2、R 9 And call the subject. The assumptions based on the countercompilation and script statements are camera objects, Pawn, Delta Time, output ViewTarget; ABI has not yet been verified through dynamic breakpoints.
+
+## Output Structure Evidence
+
+The TViewTarget layout given by the current refraction on running:
+
+| Fields | Offset relative to TViewTarget |
+| --- | --- |
+| Target | 0x00 |
+| Controller | 0x08 |
+| POV | 0x10 |
+| AspectRatio | 0x2c |
+| PRI | 0x30 |
+
+Verifyed in TPOV 0 Rotation is here. 12 FOV is here. 24. So, relative to ViewTarget, the location is `+0x10`♪ The rotation is `+0x1c`- FOV. - Yes. `+0x28`。
+
+Original subject begins reading `[r9+0x28]`. The operation of storing output structures rotated and FOV fields in commands, as well as passing location field addresses to other functions, corresponds to the above structure layout. The following is still required to check the register ' s aliases and branch meanings, and cannot be identified by a numerical deviation of vouchers for all data flows.
+
+## Tools and replicability
+
+`tools/package-inspector/analyze_native_camera.py` Opens the process with query and read permission only, first re-defining the current camera, then reverses the compilation of the packaging function and its direct caller. It does not write memory, does not inject DLL, does not set breakpoints.
+
+Usage mode (PID should be replaced by the current process):
+
+```powershell
+& 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' 'J:\gearsVr\tools\package-inspector\analyze_native_camera.py' --pid 32532 --output 'J:\gearsVr\analysis\native\camera-graph.json'
+```
+
+This time you get the packaging function 75 A code of accessible instructions, subject 895 bar, none of the command ceilings set. Tools follow the direct jump in the normal enforceable area and do not follow the call function; this is not a full function boundary restoration, and indirect jump may cause omissions.`.themida` and `.boot` The sections are excluded from the scope of the history.
+
+Detailed JSON and compilations saved locally `analysis/native/`Git only saves our tools and text conclusions.
+
+## Next steps and acceptance conditions
+
+Tracks the original viewer / PlayerController reading and the path to position, rotation, projector parameters into rendering view structures. Candidate positions must first prove that the current player view is read, then verify the call frequency's relationship with actual render frames. The loss of focus will automatically suspend the game, so it cannot be stopped as a separate script VM Cardon evidence.
+
+Only read the evidence to do a small reversible modification test; success criteria are that the image changes as expected, while role control, targeting and HUD are not abnormal. 6 DoF has not yet entered the validation.
+
+## Follow-up read-only survey: candidate for original view construction
+
+This round follows the player viewer event to a lower primary path. The following function name is derived from data stream use and is not the name recovered from the official symbol.
+
+| Location (RVA) | Static evidence | Current judgement |
+| --- | --- | --- |
+| 0x1c37018 | FName read by the current process is indexed 7384、Number 0;names are resolved as GetPlayerViewPoint | The name variable in the module of a player 's point-of-view event |
+| 0x15c968 | Read the above name, query function, then call the non-existent object table +0x1e8; copying two after returning 12 Byte Output | GetPlayerViewPoint Primary Event Packing Function |
+| 0x15cf08 | From this+0x68 Take player controllers and call the above-mentioned packaging functions; read FOV; calculate view mouths using Origin/Size; generate two 4×4 Matrix and Construct View Objects | Strong candidate: LocalPlayer scene view build function |
+| 0x15dd7c | Accept FOV derivatives and magnanimous relationships, build 64 Byte Matrix | Projectile Build Candidate |
+| 0x15e428 | Copy Matrix to New Object +0x70 and +0xb0, then calculate more derivative data | View Object Constructive Function Candidate |
+| 0x2c78f4 | Run Players Through, Call 0x15cf08, copy the location to LocalPlayer. LastViewLocation; then send the same view together to 0x26858c Equal Functions | Draw path candidate, the overall control stream is not fully analysed |
+
+Respond validation on running: Current WarLocalPlayer `Actor` Offset is `0x68`The pointer is exactly the PlayerController found by the locator;`Origin` Yes. `0x98`，`Size` Yes. `0xa0`，`LastViewLocation` Yes. `0xe4`. These layouts are consistent with original commands. Read LastViewLocation `(113.31996, 720.62537, 283.45770)`, which corresponds to the current CameraCache position. This static sample only confirms that the current data match and does not support dynamic updating frequency.
+
+0x15cf08 The parameter stream display RCX saves as LocalPlayer, R 8 Save as Location Output Address, R 9 Saves as a rotating output address. `0x15d0c5` The next command after the player viewer event is `0x15d0ca`; then read and rotate, calculate the view matrix and projection array, and then `0x15d989` Call the construction function. This " event return, before matrix calculation" position is worth further validation: if head-over positions are applied here, subsequent matrices can be generated by the game itself in a consistent manner.
+
+This is still not a valid HOOK: no threads, call times or correspondence with Present have been collected and there is no proof that the path continues when script cameras stop. There are also branches in code using global point of view data; no dynamic confirmation of which branch is currently used. To be reliable, there is no movement to confirm which branch is currently used. 6 DoF, which must cover the actual path and process the life cycle of the view object, cannot modify only one cache or single matrix.
+
+## Current round of tools and result boundary
+
+- `scan_native_views.py` Scan boundary windows near the false object list, track direct branches of the normal code and screen for relevant deviations; support `--entry-rva` Checks the selected entry further. The window may cross the adjacent false list and the offset may belong to another structure, so the initial sift does not prove a functional identity.
+- `trace_view_events.py` Searches for running-time name variables, text and RIP relative LEA/MOV references. The player view point reference is confirmed by FName values and the data stream of the packaging function.
+- `find_native_callers.py` Search for direct CalL/JMP with a nearby command that points to the specified RVA inside the normal code.3 Fills provide only candidate boundaries and do not guarantee the starting point of a true function; they cannot independently prove that they are data from the start of the call instruction itself.
+- `native-view-candidates.json` Saves the RVA candidate and limitations for this version for subsequent investigations; does not participate in autowriting or patches.
+
+In the branch analysis: Event packaging function subject can be viewed directly; scene view candidate 547 A rule to reach command, a view construction candidate 633 Box, projection candidate 33 bar, none of which touches the upper limit. Draws a path candidate to reach 1600 The cap must be treated as an incomplete result.
+
+Next dynamic validation starts with the call of a candidate function, the LocalPlayer identity, input output point view, matrix and thread to confirm it in relation to actual rendering frame; no change is made at the collection stage. After validation, changes are added to the small angle before taking OpenXR position and left-eye projection. Current work uses process querying and reading privileges, and the game and original package are not modified.
+
+## The Mobile Link Experiment.
+
+2026-10-11，PID 32532. New tools `sample_resolved_camera.py` Automatically wait for the front-stage focus and CameronCache time to advance, then make an appointment 50 Hz Read On-Access 35 seconds; always using query, read permissions.
+
+Got it. 1718 A sample of all the games recorded as having front-stage focus. CameraCache Time from 66.67715 Increase to 101.66108 sec, maximum time increment observed in adjacent samples 0.04975 seconds; this is not a rendering frame count or used to prove the call frequency of the original candidate.
+
+| Indicators | Observation |
+| --- | --- |
+| Different positions | 1667 One. |
+| Different rotation | 1097 One. |
+| X Scope | -251.70 Present. 278.76 |
+| Y Scope | 720.53 Present. 1220.37 |
+| Z Scope | 270.65 Present. 296.49 |
+| FOV | Always. 80 |
+| CameraCache and LastViewLocation | 0.14441 Game coordinates |
+| Two places are different than that. 1 Units | 1715 / 1718- Yeah, I'm sure. 99.83% |
+| Maximum location difference | 3.77636 Units |
+
+Conclusion: When people move and rotate, the location and rotation of the auto locator is actually changed; LocalPlayer. LastViewLocation corresponds to the height of the CameraCache position. The two addresses are not atom-synchronized reading and may be a different frame, and individual differences cannot be directly miscalculated.
+
+This supports the connection between current player camera positioning and raw view candidates. No candidate function is set to hook, so no proof of threads, actions per frame call, script stop-up or modified images are available. The person is controlled by the player; tools do not control the person or apply VR position.
+
+Original CSV and Abstract JSON stay locally `analysis/runtime/camera-movement-validation.*`, Git saves the sampling tool and this section's conclusions.
+
+---
+
+## 中文
+
 # 原生摄像机调查：2026-10-11
 
 本页记录前期只读调查与移动关联实验。其后已完成一次临时 Hook 采集，动态调用证据、撤销补丁核验和当前进展见 [原生调用验证](04-native-capture-validation.md)。下文“尚未采集调用”等描述属于当时的调查状态。

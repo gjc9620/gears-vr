@@ -1,3 +1,52 @@
+# Machine gun camera cross frame and re-locking restored
+
+2026-10-19 The actual machine gun and head-notch results of the restored version must still be independently confirmed.
+
+## This is evidence from the scene.
+
+Session `continuous-stereo-32008-20261019-192729-467e21a7` Use VDXR, Native SteeoExit 4，DLL SHA 256 `c6e09dceee83e6f7c650f91bc9a70544b30414b0ffe0da4e483ea905d3194313`. Game Disk EXE SHA 256 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`, module base `0x140000000`. The disk identity does not equal the memory code snapshot identity.
+
+User confirmed to be on machine guns. Four independent read-only collections obtained mobile iron schema 3;and four times thereafter get anchord schema 3 With UI schema 2, the readable is verified using the actual loaded DLL entry. The separate external RPM primary authentication is also used by then-moded Links, stict Guard, UI Validate and regular guards. They are data checks at this time and cannot trace failure points when originals are submitted for execution.
+
+Two logs for the same session `commit_rejected_or_request_race`,native accepts submission twice 3→4 , then keep the power 3、handoff phase 4,quiescing, release count stopped. Python appears at the same time `Mounted POV changed inside camera bracket`, there are changes in registration forms, more than 200 The original version does not contain a specific phase of rejection, and cannot claim that all this refusal has been accurately attributed.
+
+Original field, role/cam data, status and source Hashi reserved in signed `analysis/runtime/mounted-black-report-20261019/`、`mounted-black-live-20261019{,-ui}.json`、`mounted-black-live-{capture,session}-status.txt`. External certifiers and tools are left in the same directory 's ignored subdirectory. This time, no IDA is open, no running DLL is being replaced, no input is sent to user games.
+
+## Rehabilitation
+
+- Python collected no longer ends immediately when reading the second POV. First, independent identity, reverse possession relationship, attributes, registration form and optional cross-field target review is completed, then a time stamp is separated from camera. The POV and timetamp break is dropped while this collection is crossed and the current one is available 5 Minor/200 Re-executed in ms budget; time stamped without change but not consistent with POV still rejected.
+- Original mail also completes the second POV identity and relationship review before cross-scopeing the camera; add end time stamp to cover the check after the second POV. Failed to release an angel. Unoccupied camera route maintains the original POV rejection rule.
+- The machine gun is on the star-stopper certificate. `mounted_recovery_guard.h` Reservations `GuardDiagnostic`,world handoff waits for the next check when you receive a pure time stamp change to avoid treating this temporary failure as an expired certificate and discarding the switch request. Identity, links, UI, code entry and reading fail are still not retrying against camera frames.
+- Real native fess refuses to stay in the Capture log now. `anchor_before`、`ui`、`crosshair_missing`、`crosshair`、`hook_entry` or `anchor_after` Stage, to be validated by the next actual machine gun. The RAD object of the log was created before the world gate/lock, wrote a file after they were released and kept closed without IO in the world gate.
+
+## Authentication and Build
+
+152 Item Python Test Passed: MountedContext 41、mounted integration 8、anchor 32、cinematic 16、world rebind 55. The new test simulates the POV/time stamp simultaneously with a real synthetic memory reading path, confirming that the next collection will use the frame; the existing identity/possession/ attribute/read changes refuse to pass.
+
+The same original returns to the old world. `HEAD` failed on the achor header; restored version passed 195 AnarchObserver, D-D 3D 12 ABI, WorldRebindMetadata, WorldEpochGate, OwnedScenePipeline, GraphicsMenuLock and 22 Self-check is then initiated consecutively. The CPU test does not prove actual or prominent GPU.
+
+Final fixation of the frozen source code:`analysis/mounted-black4-source/source-sha256.json`. New MSVC/ Ninja Build:`analysis/native-build-mounted-black4/verified-build.json`;validation forms contain actual compiled anchovies, Mounted access, Crossshair and world group files. Candidate DLL `tools/native-capture/build-mounted-black2/GearsCaptureMountedBlack1.dll`，SHA 256 `30bb2d31c31ea4b5d193cd55e847bf7e704235824205a0d686d594861a423e7f`List `tools/vr-launcher/manifest-mounted-black2.json`. The previous candidate is built-mounted-black 1 / SHA 256 `2c06be531c57378efc85942cc761d927921de39e786ea8f2684f410724c5b091`; final version only moves the rejection log to the gate after it is reopened.
+
+Test Details `analysis/runtime/mounted-black{1,2}-tests.json`、`mounted-black1-legacy-regression/run.log`、`analysis/tests/mounted-black1/`. The final version repeats the same as the original component above.22 The first backstage is reset and checked with the component because the candidate directory has been omitted before creating the game; this game setup and four files have been restored, and it was not recorded as a game or machine gun. The subsequent actual game return results are added.
+
+`headset_verified=false`. No RinderDoc authentication; no ZIP generation or update; private site, memory derivative and construction evidence left in signored `analysis/`。
+
+## Actual game return and local enable
+
+The first successful candidate has been successful.180 Second-sec is normally held, release continuous propulsion without triggering stoppage/UI failure; then the short DOWN key of the check point script does not change focus, the script is closed and no reloading has been confirmed. Normal exit and five protected files are back through; this cannot be the whole `passed=false` Note that the checkpoint returned successfully.
+
+And eventually, SHA...256 `30bb2d31…a423e7f` Actual game+supend emulator session `continuous-stereo-31316-20261019-195633-510b07a9` Finish two reloads of check points certified by the current menu status. Each mover, native handoff committee, resumes original binary release with XR return program and retrieves current GPU image confirmation against expected size 896×980/Eye. Only report by reply/size, not equivalent to machine gun images or head-over acceptance.
+
+Two save images for each other 8 The fixed grid of pixels siphons the right and left eye, and then it's light.8/255 Samples in percentages 92.65%/93.90%、92.56%/94.27%This proves that neither document is a black map.`analysis/runtime/mounted-black2-eye-stats.json` Retain methods and results; the statistics do not prove that each pixel is correct, that it is linked to a precise pict, that it is actually machine gun or that it is visible.
+
+`analysis/runtime/mounted-black2-actual-20261019.json` It's... `passed=true`、`two_reloads_verified=true`、`owner_exit_code=0`、`normal_close=true`、`settings_and_profiles_restored=true`，`error` and `cleanup_error` All empty. Tests using verified front, moving or adjusting user windows using validated desktop-windows game/simulator, observe-only tiny-output handle, silent and disabled physical backstage handle policies.
+
+Update Local Only After Adoption `tools/vr-launcher/manifest.json` The natal build/DLL/SHA 256 Three, pointing to built-mounted-black 2. Original list is backed up as signed `analysis/runtime/mounted-black2-previous-manifest.json`The user's personal resolution, lens distance, HUD and audio setup were not changed by this operation. Next manual start-up is required to use the restoration version; it will also be necessary to repeat the visible proof of the top/down machine gun header of the same machine gun, which remains unmarked.
+
+---
+
+## 中文
+
 # 机枪相机跨帧与重绑定恢复
 
 2026-10-19。针对用户报告的“上机枪后头显黑屏”，保存了仍在机枪上的实际会话现场，并修正相机跨帧被当成绑定失效的两处处理。修复版的实际机枪与头显结果仍须单独确认。

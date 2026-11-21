@@ -1,3 +1,34 @@
+# Validation of combinations of independent state and complete source view configuration
+
+2026-10-12 Original single-person level, PID 47956. This round is static, unintercepted and temporary view does not engage in rendering.
+
+## Process
+
+Creates a single independent state of the game before the main player pool is submitted, checking its false list and address different from the original. The full source view construct functions receive the original matrix, size, collectivity, but the third parameter changes to that independent state.
+
+The authentication tool accepts the new state pointer in a visible way, still checking the original assembly, main matrix, four arrays of content and independent storage, as well as all fast-line bytes of the original view. It then analyzes and releases the temporary view before processing it through the general release interface of the status. If an unsafe ownership problem arises with the temporary view, the state is kept with the view to the process exit, and cannot be released earlier.
+
+## Result
+
+- Source View `attempted=2 stage=6 checks=255`, two non-empty arrays cross.
+- Seven derivative arrays are limited, maximum difference. **0**. The new status does not affect the results of the inspected matrix that has not been submitted in this round.
+- Independence status `created=1 release_returned=1 destroyed=1 original_preserved=1`, remove the sign as 1。
+- Delete the line that occurred in this round of group submission 48816;Precent threads are 38236. The status cannot be said to always be deleted by the rendering thread.
+- 20 Seconds 79,732 - The strip. Drop it. 36 Article;6,133 The first record failed.
+- Structure, consumption/destruction, preparation stage analysis passed; when discontinued `active=0`，11 Checking back at one entrance.
+
+Local evidence:`analysis/runtime/constructor-state-47956.*`. Combine analysis tools:`tools/native-capture/analyze_constructor_state.py`Local resource tests add the "clearly expected new state acceptable, undefined replacements should fail" test and original hooks and state life cycle self-measures are passed.
+
+## Borders and Next Steps
+
+This creates the unsubmitted experimental capability of "Independent status + Full view + Correct release sequence" on the current path. The view is not given to the renderinger, and therefore has not been shown as having a normal use for GPU replicating, no second eye image or long-term stability.
+
+Next check three structures 16 Byte position-related input is associated with view matrix, and is then subject to eye deviation. The formal stereo requires a left-and-right eye projection, retrofitting target, visual, historical state and submission route together.
+
+---
+
+## 中文
+
 # 独立状态与完整源视图构造的组合验证
 
 2026-10-12，原版单人关卡，PID 47956。本轮静止、不截图，临时视图不参与渲染。

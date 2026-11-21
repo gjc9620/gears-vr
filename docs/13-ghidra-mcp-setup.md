@@ -1,3 +1,75 @@
+# GhidraMCP Connection Preparation
+
+## Current status: Runtime program is open and can be analysed
+
+2026-10-13 23:44 Update: User opened `render-16812.gpr` Medium `section_1000.bin`, and complete autoanalysis. MCP program list confirms that the original EXE is open at the same time as running time; visible use `--program section_1000.bin` Successfully compiled `1401665dc`、`1401b4ca0`Two places. 64 Bytes are consistent with the run-time snapshots that have been validated. The previously target content mismatch has been resolved and no full program analysis needs to be imported or repeated again.
+
+This round further analyses the colour target creation, copying/delysis, resource status and first view width branch by reading only MCP. The tool catalogue still does not reveal the original Ghidra method and continues to use the existing protocol probe.`--start-line` The blogger says:`--search-text` Returns up to ten text matches and contexts, avoiding the recurrence of exporting a large function. Original EXE items are not overwritten and functions are not renamed.
+
+Evidence:`analysis/first-person/ghidra-followup-discovery.json`、`ghidra-runtime-binding-check.json`and `ghidra-runtime-*.json`. The retrofit findings are compared to the dynamics [Documents 56](56-final-input-binding-and-observed-draw-path.md)。
+
+## Previous connection log
+
+2026-10-13 20:23 Review: Loopback MCP initialize,tools/list Program List Read Successfully, Return 14 A tool. The current round of the raw tool catalogues is still not exposed to the Ghidra method, so it is called through the existing read-only protocol probe; do not mix the protocol with the current session original tool.
+
+Current GUI Open `gears:/GOWDE-Steam.exe`。`1401665dc`、`1401b4ca0` Two binding functions can still not be compiled and read 64 Bytes differ from the validated run-time snapshot. Connections do not match the elimination of program content. Next step is to open in Gile  ⁇ Open Project `J:\gearsVr\analysis\ghidra\runtime-project\render-16812.gpr`Double click. `section_1000.bin`;do not overwrite running time bytes to original EXE items. The program list is available when the new target is confirmed `--program section_1000.bin --inspect-address 1401665dc` Target check. There are headless exports available to continue without waiting for GUI switch.
+
+Probe Support `--program`, read both if the translation is successful or unsuccessful 64 Bytes verify the target. Record:`analysis/first-person/ghidra-mcp-connected-binding-check-20261013.json` and `ghidra-mcp-connected-byte-comparison.json`. A GidraGo attempt did not open the snapshot to the existing CodeBrowser; examples of empty projects it started and of waiters are closed, original user cases are kept.
+
+2026-10-13 Update: This session has been exposed and successfully called on the original Ghidra MCP tool. The direct back-compilation of disk bytes in the original project is still not working, unlike running time code; independent running snapshot items have been created, directed back-compilation 80 functions 79 Success. Specific limitations, call chains and recurrences [Diagnostic reports](53-render-diagnosis-and-runtime-ghidra.md). The following is the early configuration record.
+
+This is an extension of theirixednuts' GhidraMCP. 0.8.0,extension.properties target version 12.1；
+Runs the Gidra 12.1.4. The extension is installed in the user AppData/Roaming/ghidra.
+The current session did not expose the original Ghidra MCP tool to the assistant, so a separate read-only protocol discovery script was prepared.
+Default for Initial Check 8080 Port is not yet listening; the connection was successfully made after the user has completed its configuration.
+
+The user screenshot contains a blank entry. Importing the item Ctrl+I is required:
+
+`J:\gearsVr\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\Gears of War Reloaded\Binaries_x64\GOWDE-Steam.exe`
+
+Import and double-click EXE in the item open CodeBrowser. First autoanalysis is available first. No, no, no, no.
+Analyses the known lens entrance after you connect, without first analysing all games.
+
+Restart Ghidra after installation/ enable extension. If the plugin is not enabled, at CodeBrowser
+GhidraMCP is enabled in File  ⁇ Configure.
+The official location of the site is Edit  ⁇ Tool Options  ⁇  Miscellaneous  ⁇  GhidraMCP HTTP Server, a local blogger who has been working with the government for over three years.
+Port Default 8080, enable Auto-start Server.
+[Corresponding version of the official note](https://github.com/themixednuts/GhidraMCP/blob/v0.8.0/README.md)。
+
+Connection check:
+
+```powershell
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $py J:\gearsVr\tools\package-inspector\ghidra_mcp_probe.py --output J:\gearsVr\analysis\first-person\ghidra-mcp-discovery.json
+```
+
+Script access only loopback, request detected 5 Timeout of seconds and limit response size, reading service information, tool definition and
+List of project applications. Optional --incapt-advice (up to four virtual hexadecimal addresses)
+back-up;back-up time 25 Second, HTTP timeout 35 Seconds, maximum return 200 All right.
+Read address before the back-editing failed 64 Bytes to assist in diagnosis.
+Do not call the program change tool, do not change games, rename symbols or modify the Codex global configuration.
+The correct game and address base should be identified in follow-up, followed by only reverse translation/search of the known original lens entrance.
+The two xx files of the current first person named Mod are UE 3 The package, which was studied with a package resolution tool,
+No need to treat the whole package as x 64 EXE Imports Ghidra.
+
+## Checked after connected
+
+2026-10-11 User enabled service, initialize,tools/list and ghidr a://programs All successful.
+/GOWDE-Steam.exe in the gears project is opened, memory of the Headers starts with 0x140000000。
+Found 14 A tool; only inspect.decompile, memoory.list_blocks and memory.read are called.
+
+Two known original entrances, RVA. 0x15cf08 and 0x15c968 _Other Organiser
+"Function or incorporation not found, but static 64 bytes can be read.
+This cannot be the reason for claiming that the camera code has been back-compiled, nor can it be directly inferred that only automatic analysis is lacking.
+Memory blocks exist.themida and .boot; static bytes should be checked first with the existing running time commands,
+Determines the appropriate code study path. This round does not start an analysis, change program or operate game.
+
+Full connection and check log:analysis/first-person/ghidra-camera-inspection.json(Git ignores).
+
+---
+
+## 中文
+
 # GhidraMCP 连接准备
 
 ## 当前状态：运行时程序已打开并可分析

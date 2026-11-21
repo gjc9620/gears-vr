@@ -1,3 +1,23 @@
+# First quadrilateral propulsive type of evidence in the outer circle.
+
+2026-10-17. Submit 593c 0 bd Add monitors to Tile for the original flagof path maintained.44 Freezing source code and complete construction record analysis/runtime/calltrace44-build-proof.json；DLL SHA 256 `b28336cb37119b64c054ce0e4abab517b97f6ef0857cb5601a4e754d5f5d1199`。6 The focus self-measurement of the items is adopted, including two consistent chain readings, scope limitations, non-reading payload from external vtable and change rejection tests.
+
+Session 22748-20261017-084919-8209cb 2 c; full identity creation and actual simulator non-neutral attitude confirmation at pose 73 Playtime check, LT opener, RT=0; saving 5 GPU image, normal posturing and exit.
+
+Reservations 20 Failed business matches all: sample_ok=1、snapshot_attempted=1、before_ok=0、current_ok=1、tail_ok=1 Vtable, both.`0x14136c5f0`Not equal to a certified simpl-element type`base+0x133cc98`. All the failed read-only strict snapshots were successful and new simple payload and vertex_count=4. The snapshots after failure were not published.
+
+Like root.1633:sort_key selected before calling 0, the end item is 0x 16746b 3ba 0、vtable 0x 14136c 5f 0;after calling simple payload as 0x 17c 8a 6c 0, four dots, but no receipts are issued. This proves that the old pre-call snapshot rejection path will miss out on this created batch instead of Canvas parameters or the call to attribute verification failed. The specific semantics remain unknown and the vtable is not named as material or text by force.
+
+Successful record fixed 32 Article, pre-suppressed by the above-mentioned failure, cannot claim that the last three successful matters of the same root were retained.72 And the same ticket's outside.3/4 The complete source of the additional icon is known to be matched, and both support the need to repair the new batch front-track processing without proving that all weapons problems or all historical black screens have arisen as a result.
+
+Fixing request: Keeps strict simple snapshot and unknown index rejection rules. Saves the limited old pointer value and chain with an independent, visible pre-call status; calls must be complete, with a different simple item added at four vertes and then copy new spaces. Any type change, prefix change, aliases, additional or readout failure is rejected. External payload cannot be read or re-depreciated as empty batches.
+
+Actual original matter saved in signed analysis/runtime/pose73-transactions.json. The session is raw clean-up, independent exit recovery after stop, XR exit and game normal closure pass. The player default version and the ZIP are not changed.
+
+---
+
+## 中文
+
 # 外圈首个四边形的前驱类型证据
 
 2026-10-17。提交593c0bd增加观察器专用逐Tile事务，原始flagOFF路径保持。CallTrace44冻结源码和完整构建记录见analysis/runtime/calltrace44-build-proof.json；DLL SHA256 `b28336cb37119b64c054ce0e4abab517b97f6ef0857cb5601a4e754d5f5d1199`。6项聚焦自测通过，包括两次一致链读取、范围限制、外来vtable不读payload、变化拒绝测试。

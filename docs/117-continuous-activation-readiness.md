@@ -1,3 +1,56 @@
+# Double-eye sequence: replace the three seconds fixed with a pre-positioned barrier
+
+2026-10-17 Candidatures.61 Source `88cfae66d0f16fd0aea90283470c9cdf4fcfdc20`，DLL SHA 256 `d7f41e7248b8ac957545c0bddde1eb857bfa9a65220f6dc4e09e0685ceb873e5`. Still default VRDof 60，61 The two trips were not promoted directly.
+
+## Changes
+
+Submission of old and ongoing diagnosis 75149 b has a candidate for the initialization of three seconds.60 Three new start-up states, one each.229／267／231 The door refused and confirmed that the original ranning was to the first projection average.2.98–2.99 sec.
+
+The continuum model is changed to the individual atom status of Initializing/Ready/Closed. Worker can only be CAS Internalising Ready, and all requests for suspension and lock-out are closed. Closed cannot be reopened. Only when the original Hook application has been successfully implemented, Seal has ceased event creation and first state channel is available will Reddy be released; submit access acquire check, retain the original authentication and stop barrier of owner, camera/bytes, anchor and Livetime. Failure is not allowed to be submitted in the past.
+
+No occasional opening/writing failed to add the running status file as an immediate termination of the entire VR session; initial writing failure is still rejected by the original workingr condition. A limited Ready QPC tag has been added, and no GPU command or scene Hook has been added.
+
+14 Freezing of CPU/SDK inspections,22 The complete start-up check is passed. ContinuousCheck actually covers the initialization/repeated release/final closure of private doors,32 The next publicist competes with the close and cannot be republished after production has ceased; the full startup game is not started.
+
+## Two actual new start
+
+| Session | Camera Ready First Actual | Running Watch First Practical | Ready's first project |
+| --- | --- | --- | --- |
+| Candidates 60，101 | 6098.714ms | 2981.428ms | No tag |
+| Candidates 60，102 | 6128.781ms | 2990.087ms | No tag |
+| Candidates 61，105 | 6117.196ms | 129.168ms | 230.388ms |
+| Candidates 61，106 | 2947.415ms | 86.409ms | 170.069ms |
+
+105 Re-raised due to UI certificate reading changes, original readiness 5985.277 ms, offset the total gain from de-fixed waiting; no sample was hidden.106 It's not worth it. Get ready.2857.661 ms. None of the tables contains a menu/loading time before the camera is ready, nor does it contain a headline delay or network delay. First description uses XR actual xrEndFrame successful tag; log reading observation may be late 3 seconds, separate and not mixed with the actual submission time.
+
+105／106 All death-eyed and one time,1→2 Inspection site restored (design to observation)7488.115／7484.838 ms, with loading. Two eyes are modified in depth.557／3034 Once, release the rejections 0 Coordinate the line to review two rounds of evidence. `analysis/runtime/vrdof61-startup-comparison.json`、`vrdof61-two-starts-regression.json` and corresponding session status/image Hash; original startup session is 35244-20261017-141725-fd 564c 08、10772-20261017-141934-67093e 31。
+
+## 107 Film repeater: failed, open-ended
+
+Session `continuous-stereo-32580-20261017-142217-7e3ae609` The exception for authentication before original activation is UI authorized late delay before action. First, cross-scope cameras are denied; without complete phasing time, UI construction cannot be considered a time factor, let alone to fail to return to the unenabled barrier.
+
+The wheel is active_stard=false, and the consecutive session cleanup failed to return without gimmicking it. The starter then independently cancels downed pime and confirms that the entrance is restored, normal closed games, XR exits and four files are returned; correspondingly`prison107-normal-close.json`and`prison107-save-restored.json`Keeps this distinction. No certificate is bypassed or the original is blindly restarted.
+
+Next steps will require a time-consuming phase in the time-based positioning certification, rechecking the film and handbags.61 ZIP is offline but not actually running, and the default is still validated 60 The two success stories of the new door cannot replace all CG, machine guns, long-term or real head count acceptances.
+
+
+## 109 Stage time: Not UI build jammed
+
+Start_capture actual subprocess of independent private copy only original acquire/resolve/archor/UI/crossshair call, original parameter,55 The second duration and retry strategy remain unchanged, with no additional requirements.278 Limited event record:46 All success of the Resolver.resolve, all.28.387 sec;46 The second time that the build_anchor_config was refused because of a time stamp on a trans-frame camera,4.329 sec; UI and Crossshair calls 0 The rest is mainly the original round.0.5 sec. The UI Acquisition timeout case of this round is therefore a generic cut-off check and cannot be used as evidence that UI is building slowly.
+
+Original Trace is inignored `analysis/release-staging/vrdof61-profile109-20261017/analysis/runtime/startup-profile-32692-28471d83ba354e5795a050fb36f87cb3.jsonl`Source code and identity/Hashi, phase summary `analysis/runtime/profile109-stage-summary.json`. First test monitor error reading old repository session index, evidence retained as attempt 1; continuing with the same game, with a reminder of the recertification section after correction of the private index. The check is not restarted or bypassed.700 The document is accepted and accepted with the consent of the user.
+
+The new original logic has still not been activated, the independent plume cancellation/entry recovery, normal closure and four files are back online; no natural_cleanup_verified=false is changed to trues. Further check found that two simultaneous cases time-stamped borders were not differentiated by the total length of time they were currently being built. The next round will be reserved for full reading and comparison at the time of the boundary and phase only in private guard, before optimizing it; no additional period or reuse of old authentication.
+
+
+110 Private breakdown of diagnosis was subsequently successful:5 All the guards accepted, first full window 33.824 ms (mainly first target construction), later approximately 1.13–1.27 ms; all original/end-of-time stampes are kept the same 0.483276 Value. The round returned the two eyes to a successful one, with normal stoppage, independent clean-up, regular shut-down and four files back through; automatic testing stopped when the user returns. The clockback is only buffered and the whole acquire ends, avoiding adding I/O documents between two sample guards.
+
+It's not repeated this time.109 It's...46 The wheel failed, so the root cannot be considered to be repaired; the same time stamp suggests that this longer window is at the camera timed off. `analysis/runtime/profile110-stage-summary.json`, you need to continue distinguishing the failed boundary from active time stamp. Default still VRDof 60 New candidate 61 No promotion. All private diagnostic changes are not made to players ZIP or tracked.
+
+---
+
+## 中文
+
 # 连续双目启动：用就绪屏障替代固定三秒
 
 2026-10-17。候选61，源码 `88cfae66d0f16fd0aea90283470c9cdf4fcfdc20`，DLL SHA256 `d7f41e7248b8ac957545c0bddde1eb857bfa9a65220f6dc4e09e0685ceb873e5`。仍默认VRDof60，61没有因两次游玩成功就直接提升。

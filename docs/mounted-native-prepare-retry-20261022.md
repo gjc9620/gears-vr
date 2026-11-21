@@ -1,3 +1,57 @@
+# Machine gun recovery: time stamped in original preparation phase refused to reply
+
+The recovery logic of the upper/down machine gun continues to be strengthened during this round. Fixing a standing condition that can be repeated in a code: Python-only sampling has distinguished between purely temporal and temporary failure, but similar failures at the original preparation stage have accumulated ordinary failure times. After three consecutive rejections of the same identity, even if the camera time stamp subsequently stabilizes, an individual may stop generating new candidates for that status.
+
+This gap is confirmed by source code and offline playback, which does not allow for the assertion that it was the whole reason for a physical machine gun to exit/blackscreen in one event.
+
+## Conduct and boundaries
+
+Native `bounded_guard` 5/200 ms limits maintenance. The new classification only accepts a complete diagnosis of the failure of the bracket because it is clearly failed and for reasons of strict/final time stamp changes, and the outer layer must be an attempt to exhaust or budget expires. None of these are included in the list of unsuccessful attempts, structures or readings that actually succeeded before the expiry of time; failure output cannot be published.
+
+Every Prepare received in the original was cleared. `world_prepare_timestamp_request`. Only when the request is denied for reasons of pure time stamp, the exact number of the request is recorded in the state. Accepted, otherwise unsuccessful and early refusal to maintain zero values, with the original request/denial count continuing to be updated. These counts are immediately published by the existing status change mechanism.
+
+The owner only checks the pass of the original full session/owner/process creation time, provides no change, sends no requests candidate, requests are just as current requests, rejections are increased once, and punctual confirmations are equal to new categories when requested. Missing fields follow old behaviour and start a re-test without logged text, failure summary or broad abnormal type.
+
+This reply only withdraws the number of ordinary failures that have failed this time stamp, and keeps an earlier hard error count. 50／100／150 ms arrange for new full-read-only samples to continue as usual in the original domain, so that the same identity is not permanently depleted. Each time an independent request and a non-changeable candidate are regenerated, they must still be verified through all identification, registration forms, codes, cameras, UI and crosshair; no accepted Prepare/Committ or old sampling results have been reissued. The short trial count is cleared by the originals after their genuine acceptance of the candidates and submitted for final submission with the complete clearance/GPU/world gate prohibition certificate.
+
+The other preparatory stages failed to continue using the original frequency limit.
+
+## Time-consuming records
+
+Original `worker_timing` Adds the owner of the same Windows QPC single-telephone clock to the three nanosecond boundary. Prepare events and temporary postage failure keep these values, both logs still record when an individual observes Prepare/Committee/committee. This allows line queues to be distinguished, certificate jobs to be passed on to his own.
+
+These fields describe the time of the software observation, and do not include the player 's actual keytime, GPU completion or head-over confirmation.50／100／150 ms is the planned retry interval, which cannot be concluded as a black screen for long periods or without delay.
+
+## Validation and Integration
+
+40 The real memory folder creates a change in the duration of the time stamp at an accurate reading location, changes in identity during the waiting period, failure to read and delay, checking that new categories and failed output remain unchanged. Retention event waits, frame chains, world door barriers, first person name, aim, UI, life cycle and offline D 3D 12 component check; these are not actual games or head-of-the-job tests.
+
+495 Item Python check through:353 The entry check uses the actual new DLL,142 A new example covers the six consecutive original time stamp rejections, complete preparation and submission, common withdrawal after short retrace, requests/rejection/backcheck mismatches, missing fields of old protocols, process reuse, error session, retention of existing hard error budgets and QPC borders. Independent load of older owner source code is put back on the same offline: three times after the old version has stopped preparation, new versions are submitted after stable conditions; raw state is provided by a folder in the A/B release.
+
+From the latest WorldWake 2 Freezing Source New 1 Freezing source and build directory, with only four original files changed:`anchor_observer.h`, its tests,`world_rebind_prepare.inl` and `capture.cpp` . The reply status field.489 The actual compilations relied on checking, the freezing of source construction was consistent with Hashi and retention incidents were awakened, class discovery, machine guns resumed, targeting, first person name, renderer etc. have been repaired.
+
+Normal starter is now in use `tools/native-capture/build-world-prepare1/GearsCaptureWorldPrepare1.dll`，SHA 256 `7eb03a5b87e96ca39a482a599d56e840e62c0c99af36fc0cd3c472a654bf2906`. Only three native fields of the list are updated and the same content is saved `manifest-world-prepare1.json`；83 The package file exists, XR, Playground and user configuration are maintained. Next time the new game process loads this DLL.
+
+Build, Source Hash, Native Check, Old/New owner Playback and Integrated Evidence in Signored `analysis/world-prepare1-20261022/`, freeze source and construct as `analysis/world-prepare1-source/` and `analysis/native-build-world-prepare1/`It's... 0.1.0 Development repairs do not constitute release; the “no delay machine gun” still lacks actual machine guns/head-to-head exchange acceptances in its current version.
+
+## Follow-up reinforcement: machine gun on a star ready for diagnostic transmission (in United States dollars)2026-10-22）
+
+Users clearly request continuous repair, and the real-time effects are subject to their own uniform acceptance.
+
+In WorldPrepare 1 A specific omission was subsequently confirmed: `mounted_recovery_fresh` Using a full camera guard, you can recognize pure time stamp frames; however `crosshair_live::prepare_recovery` Without that diagnosis, the world is prepared to treat it as an ordinary failure and may still exhaust the normal number of times in the same identity.
+
+The diagnosis is now transmitted from the parastar to the world and is then sent back through a specific request for approval.200 msguard shares a strict time stamp classification; identity, connection or error of reading cannot be classified as such. The pre-emption diagnosis is analysed, the rule that the candidate will not be given value until successful candidates are retained, and all other UI/crossshair vacating/GPU/world door inspections after refusal and submission continue. No change in weapon targeting or quasi-star projection.
+
+41 Passed by original/pre-starter, of which independent `MountedObserverTest` Read real INI from the synthetic reflection memory of Python, execute 209 Adds a negative example to cover POV that changes at the same time as the time stamp but fails with identity connection damage, causes of forgery failure, clearance after an old diagnosis has been successful/role mismatched/readout. Current level, Owner, common role restoration and other primary component checks are maintained.495 Item Python Check Passes (353 The entry is relevant to enable the actual new DLL,142 Division starters/package checks. These are automated component checks, and no game or simulator is started in this round.
+
+From the latest WorldPrepare 1 Freezing Source Build 2, just `anchor_observer.h`、`crosshair_assignment_live.inl`、`world_rebind_prepare.inl` (b) Testing of four source changes with machine gun components;489 The actual compiler of the entry relies on the blocked source Hash check. The default starter is now `build-world-prepare2/GearsCaptureWorldPrepare2.dll`，SHA 256 `76018f7c3760f5da2cf8ee44490ef7742927a1037780c98788bcbeb9513b4321`. Replace only three native fields,83 The package file exists, with XR/Playground maintained, user configuration and all existing fixes. The new game process loads the version, which is arranged by the user.
+
+Evidence retained in signed `analysis/world-prepare2-20261022/`, freeze source and construct as `analysis/world-prepare2-source/` and `analysis/native-build-world-prepare2/`。
+
+---
+
+## 中文
+
 # 机枪恢复：原生准备阶段的时间戳拒绝回执
 
 本轮继续加强上／下机枪的恢复逻辑。修复一个代码中可复现的停滞条件：Python 只读采样已经区分纯时间戳暂态失败，但原生准备阶段的同类失败仍累计普通失败次数。同一身份连续三次被拒绝后，即使相机时间戳随后稳定，owner 也可能停止为该身份生成新候选。

@@ -1,3 +1,25 @@
+# MountedPrep Engineering Development Test Package
+
+2026-10-17. This roulette directory starter is replaced and no process has been closed. New EXE with previously compiled/hidden self-detected files SHA 256 Both. `35bde70d109aa12a2c7ec388144fc35890ac57a6966ce562ad669338398b7c97`. It contains the default for the first time that English and visible Chinese preferences are retained; it is no longer a status that was left pending replacement because of the document ' s occupation.
+
+Independent development package:`analysis/release-zips/GearsVR-V1-development-Vrdof61-MountedPrep-English-20261017.zip`。
+
+- ZIP SHA256：`06457aa02529c7538eb4e4781416948cdfa73e57728e663c1f15d86c57af33a9`。
+- 13,647,569 bytes,701 (a) Members;700 Total of Payload files 43,460,645 bytes.
+- inventory SHA256：`8b4ac165ffff61bfdfc1e865ff30b207609641a4a48c796998232a508643a0af`。
+- Native as Freezing VRDof 61 Source `88cfae6`，DLL SHA 256 `d7f41e7248b8ac957545c0bddde1eb857bfa9a65220f6dc4e09e0685ceb873e5`;XR as existing Borderless 1。
+- Python/packaging source code based on `24f9dd1`, which contains the camera reading window optimization, mounted capture of local reuse and temporary classification, re-locking internal rejection details, and default disabled UI layout acquisition options.
+
+The new directory stage is passed with the Python isolation pre-check in a ZIP fully depressed package, all payload, original/XR and above-mentioned change source files. The default English, game path is empty, selects the supported game EXEE; VDXR route does not change the system Runtime registration form. The camera distance and HUD default does not import the machine user settings. By game resolution, DLSS/DRAA lockdown is closed,6 DoF fulfils the reservation.
+
+Full reply in signed `analysis/runtime/vrdof61-mountedprep-english-package-receipt.json`. Old VRDof 60 Hash review with AnchorPrep ZIP remains unchanged, local default 60 List and user configuration are not replaced. The new package does not have games, simulators, databases, snapshots or pseudocodes.
+
+This group `runtime_verified=false`、`headset_verified=false`、`release_ready=false`The black screen of the machine gun has not actually returned, the turnoff UI has yet to be activated and long tours with headline Cardon remain open. This pack is intended to preserve a rollable, independently tested development portfolio, rather than being officially released by Discord.
+
+---
+
+## 中文
+
 # MountedPrep English 开发测试包
 
 2026-10-17。本轮根目录启动器已可替换，未关闭任何进程。新 EXE 与此前编译／隐藏自测通过的文件 SHA256 均为 `35bde70d109aa12a2c7ec388144fc35890ac57a6966ce562ad669338398b7c97`。它包含首次默认英文及显式中文偏好保留；不再是此前因文件占用而暂存待替换的状态。

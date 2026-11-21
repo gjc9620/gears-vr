@@ -1,3 +1,70 @@
+# Six Axe Head Track: Simulator to Real scene image
+
+2026-10-16，Native 23 / XR 11 Private candidate, no raise of the default player list.
+
+## Modification of the evidence boundary
+
+No changes to native camera math or Hook were made during this cycle. `stereo_matrices` Applys the same position and rotation to the original view of the left or right eye relative to the fixed heading reference, default 100 Game units/m. An optional image-ticket diagnosis with an associated HMD position/quaternion document for the actual image generation instead of the latest runtime poste when the screenshot is saved. Summary scheme is raised to 2 and with a syntax; selection rules,4096 Line caps and image submissions remain the same. The log is not added when the diagnosis is defaulted on.
+
+Freeze construction:
+
+- Native23 DLL SHA256：`bf71e3ae9a7df228d12d8e4665f9bb6a178e4d3a9aa599e43b1923298ce90c21`。
+- XR11 EXE SHA256：`99dc740901faa0b3c9a4909e226de78678c2533b3475aef475d1182fbe25fea2`。
+- Visible use `analysis/runtime/simulator-quiet2/openxr_simulator.json`;PSAPPI check target XR process actually loads the same directory DLL, which is not supported by a system default runtime registration form.
+
+## Actual
+
+Session `continuous-stereo-36652-20261016-112128-68493f7b`: Automatically enters the level, without focus, without handle input.1920×1080 I'm gonna be right and right.960×1080, set by game resolution. At least wait after each turn-over 2 seconds, request the GPU source image again.
+
+| Phase | Relative Initial Posture | Imageticket |
+| --- | --- | --- |
+| baseline | Location (%1)0,1.7,0) No rotation | 286 |
+| x | x Increase 0.15 Rice | 1042 |
+| y | y-Add 0.15 Rice | 1653 |
+| z | Reduction of z 0.15 Rice | 1855 |
+| yaw | 8 degrees | 2056 |
+| pitch | 8 degrees | 2661 |
+| roll | 8 degrees | 2869 |
+| return | Back to baseline. | 3093 |
+
+8 A snapshot is linked to the same ticket that was successfully submitted, freezing position and request with a maximum error of less than 5e-8 Mi, four-digit error less than 3e-8. Diagnosis retention 3099 Okay, drop it.0 Line; this is the complete retention of the selected image instrument, not all pixels for display frames.
+
+Native buelt, consume_before, preparate_before, prepare_after 3127 View, Average `mismatch=0 / view_error_max=0`It proves that the matrix of actual engine stages is consistent with freeze expectations; it cannot be shown separately that GPU was ultimately visualized correctly.
+
+8 Zhang GPU source SBS has both eyes.24 Pixels, y-diverse vertically approximately+12/+21 pixels, yaw-like+66/+63 Pixels, pitch vertically equals about +69 Pixels; roll images are visible tilted. The flow field of z-pasts is space-diffed and cannot be moved by single-digit medians representing the camera before and after.3,0) pixels; the scene animation and light are still different, not pixel-by-pixel. Matching is only supported by image motion and is not used for precise scale or camera marking.
+
+## Validation and cleanup
+
+- 12 The XR CPU test was passed, including image instrument field ownership, precision, schema, spill and return to the old synthetic rule.
+- Native `StereoFrameTest` Passed, including independent quatorion point conversion oracle, six axes, heating, Gate, matrix, Bridge.
+- Normal stoppage, clean-up of primary and resource,43 The entrance is restored and the XR object is destroyed; then the game identity check sends WM_CLOSE and exits. No strong, no active windows; the simulator attitude has been restored to its initial value.
+
+Original PPM, freeze of birth state, document authentication, identity and image analysis left in signored `analysis/runtime/six-axis-*`, do not enter the release package.
+
+## Not proven
+
+This round supports the current rendering path with a six-axis response, which cannot be declared completed for real appearance 6 DoF accepts. Physical migration scales, re-exhausture, tracking loss recovery, border comforts, different headline and normal playtime movements are still to be verified; no CG, all UI or long-term black frames are covered. Default player version is not up yet, V 1 The publication targets remain open.
+
+## Non-zero position and attitude next in progress (XR)12）
+
+Follow-up session `continuous-stereo-41892-20261016-113223-9298c461` Actual Location (Present)0.2,1.8,-0.1# I'm a man, I'm a man 20°/pitch 10°/roll 8°Save the ticket first 1190, call the official `launcher.py recenter`. original 1→2@ticket 1293 Submit, reference position and request error less than 1e-6 Mi, reference quartonion only 20°Horizontally. Back to center and quickticket 1522 still holding full HMD rotation; independent calculations with reference reverse rotation, residue and pitch 10°×roll 8°Consistent (with less than a mass error)1e-6) does not separate the head and side.
+
+Then the next relative new baseline continues x-diversion 0.15 Me, Ticket.1735 Two-eye image changes;go back (0,1.7,0)/ Zero is officially returning, generation 2→3@ticket 2198 Submit, ticket 2398 The two-eye scenario recovers the level of the baseline, midway back and forth, continues to move evenly, returns to the Chinese Communist Party for the second time 5 The GPU source map is linked to the correct attitude note.2431 Check matrix without bias; normal stop,43 The entrance is restored, XR destroyed and WM_CLOSE exited. `recenter-events.json`、`recenter-requests.jsonl`、`recenter-native-status.txt`、`recenter-verification.json`And GPU images.
+
+The new GUI's "Faceback" command path has been constructed/self-checked; this time it actually implements the formal backend command that it shares, without automatically clicking on the GUI. Physical experience is still subject to user verification and does not close the whole item 6 DoF's acceptance.
+
+## Quest 3 / Virgin Desktop Truth Starter Repair 17）
+
+2026-10-16 User requests real experience, stop previous visible simulator sessions and specify the genre-runtime --Virtual Desktop Streeter/OpenXR/virtualdesktop-openxr.json; no change to global runtime. First Native 23/XR 16 Session 37616 The Virtual DesktopXR session was successfully created, but the game was normally closed after the XR object had been destroyed after waiting for a card construction report, Invalid transfer-card upload footprint.
+
+XR 17 Only fixture card: Accepts the selected RGBA/BGRA UNORM resource and its own typepeles, still strictly validates size, aray/mip/sample, alignment and copying borders; uploads the footprint using the selected typed UNORM to verify again when obtaining the image. TranstionCardLayoutTest/TransionCardPixelstest passes. New builder 17-vd，SHA 256 6efd90db1b380d0956259631c42d785f928e48d165fb2953fe96442dfaa14aa5, use an independent temporary freeze without replacing the default freeze version.
+
+Actual 23616/XR 35784 Session 2aa 35bb 9 Confirm that the runtime_name is = Virgin DesktopXR, simulator_oporator=0;diagnosis 87/resource 90 B.8G 8R 8A 8_UNORM and corresponding Typeles, dimensions 768×256，typed footprint 87/pitch 3072/bytes 786432. Session into state 5, the WCC starts successfully and the frame continues to increase until entry level is reached without setting an automatic stop. This results in a genuine machine start-up compatibility fix, which does not replace the user 's actual menu/bieye/6 DoF visual acceptance. Original evidence is continuous-stereo-23616-20261016-174554-2aa 35bb 9 And human-qest 3-vd 17.json, save in signored analysis/runtime。
+
+---
+
+## 中文
+
 # 六轴头部追踪：模拟器到实际场景图像
 
 2026-10-16，Native23 / XR11 私有候选，未提升玩家默认清单。

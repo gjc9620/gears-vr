@@ -1,3 +1,56 @@
+# VR Deep Match Candidate: Start and Actual Return Record
+
+2026-10-17 Candidatures.60 In practice 101 The eye image of the death scene is restored and a checkpoint is restored. Default player candidate for current round is still retial 47; local upgrades after return[VRDof60 candidate](116-vrdof60-player-candidate.md). No real head-notification has been performed and no black screens have been declared resolved.
+
+## Candidates and start-up check
+
+Freezing Source Code is `4fd6884a4d1b2d3812ce2696943177bf4effaafd`，`GearsCaptureVrdof60.dll` SHA 256 Yes `599dd838f08b832b2fbd4265bf4251ed90f17535f0af43f97edd8d17a0bfdc66`。14 Block CPU/SDK check,22 The full startup suit is passed; the startup feature does not start the game. See[Build Record](../analysis/runtime/hdrpixels60-build-proof.json)and[Full start check.](../analysis/runtime/vrdof60-full-startup-suite.json)。
+
+Independent Default Closed `GEARS_VR_DOF_COMPAT` Use the same authentication setter for both types of owned VR view, with limited boolean parameters X=1 , and then the local copy should read 0, keep YZW, call parameters, return values and caller memory. Normal 2D drawings are not in the field. The first edition compatible temporarily discards this road view ' s deep blur; no bottom-mix layout has been repaired.
+
+128 Stored instruments by freezing `(world,id)` Record value proof. Completed and undeadsite instruments can be published along the same path; instruments participating in the site must have zero certificates after two eyes matter and before quad. Missing, incomplete, duplicated, read failure and volume overspent are denied. The judgement is made after the true correlation results of the Present; no rewritten association result or additional GPU commands are added.
+
+Candidates 59. The number of tests 100 Before the game started, because the Legacy GPU self-checking folder did not register a numbered NoSite bill 179 Quit.`4fd6884` It's just the same thing as that. `self_testing` Limited completion records and keep missing/incomplete refused; true project date does not add unconditional bypass.60 Then we'll have a full check, candidate.59 Freezing of property.
+
+## Actual 101
+
+Session is `continuous-stereo-8636-20261017-133838-24955675`, Game PID 8636 Finally.[Native Status](../analysis/runtime/continuous-stereo-8636-20261017-133838-24955675.native-status.txt)Records:
+
+| Item | Result |
+| --- | --- |
+| begun／completed | 1609／1609 |
+| Two eyes, Modified | Each 266 |
+| Two-eye setter/prequad attestation | Each 266／266 |
+| NoSite/zero certificate of release | 1339／265 |
+| Release Refuse, OverFlow, Late | Average 0 |
+
+Proofs that the number of calls from the distribution door is not a GPU frame and cannot be directly equated.
+
+Finally, GPU. `.gpu.ppm.2.ppm` As a document 500、3840×2160，SHA 256 `b3314264f2f9c75c507fc7fb722bb3499ad4253574e44b9d8c9f951e862b6b59`Both eyes can see the role of death, the ground and surroundings; all the RGB corridors are in place.8 The pixels are left-handed.0.0146%Right eye.3.4140%This is the one that never shows the original almost-all black eye. The original picture and previews are left in signed `analysis/runtime/`, do not enter the release package.[Operational audit](../analysis/runtime/vrdof101-audit.json)Four full Hash, eye equals nearly black.[Joint summary](../analysis/runtime/vrdof101-summary.json)。
+
+Restore once from checkpoint task 1 Enter task 2, input sends to observed restored to 7507.1635 ms, which contains load time and cannot be used as pure rendering recovery time.[Normal closure record](../analysis/runtime/vrdof101-normal-close.json)Confirm passage, primary clean-up and regular game closure;[Archive Restore Record](../analysis/runtime/vrdof101-save-restored.json)The four archived documents were restored after the exit of all relevant processes.
+
+## Borders and follow-up replenishment
+
+This is the one-eye compatibility and a recovery of the test point supporting this path to death; it does not constitute acceptance of real head comfort, long-term stability, full CG/weapons/set or all black screen scenes. The loss of these eyes is currently compatible with the bottom T.4／T 5 Atlas problems are still incomplete.
+
+Actual 102 Three consecutive checkpoint recovery, world 1→2→3→4 Send it to the observation.6275.7747、4757.2937、7936.8749 ms (including loading).4584 All consumption is complete, both eyes.724 Minor modifications and certification of matter/prequad;noSite/zero-value gate release 3857／724 Denied, overflow, late all 0。7 Grandpa.3840×2160 In the GPU, all three death maps are kept in motion and the right eye is close to black.4.4580%、3.1182%、4.2842%, no longer recreate the original baseline 97.5%Near right. Restore the map without black eyes.
+
+Session is `continuous-stereo-1732-20261017-135105-c8031a4e`See signed-up for Tuhashi, near black ratio and recovery. `analysis/runtime/vrdof102-summary.json`; the audit, normal closure and four file recovery returns are identical directories`vrdof102-audit.json`、`vrdof102-normal-close.json`、`vrdof102-save-restored.json`. Coordinate a review of three death maps; this round supports the compatibility of the path that has been restored over multiple times, and cannot be extended to any chapter or long zero screen guarantee.
+
+
+## Actual 103: Return the opening movie
+
+Same candidate.60, Session `continuous-stereo-33728-20261017-135417-d372a22c`. Select the Prison header with a certified menu status, and the movie progress actually comes from frame 60 Keep moving (total)1674 frame, then inactive. The movie path ends with submitted=4645, xrEndFrame failed 0；5 The secondary rendering rejections are Capture_not_fresh, and these calls have not been recorded as successful. The pre-referral films here remain two-dimensional content shared by both eyes, without the claim of geometric stereos.
+
+After the movie, the new original binoculars were successfully submitted. Follow-up 3840×2160 The GPS snapshots have a Prison corridor and role.447 Consumption complete. NoSite Gate clear.445,Dejection/overflow/late 0 This path does not trigger the deep view, and therefore is a return to film, which cannot replace the aforementioned death branch certificate.
+
+The first original automatic snapshot was black and the follow-up request was restored; this gap could not be retained by a final successful reference to being unblack.`prison103-audit.json`、`prison103-normal-close.json`、`prison103-save-restored.json`Keeps the film, image Hash, clean-up and four archive restoration evidence in ignored `analysis/runtime/`No real head-to-face observation.
+
+---
+
+## 中文
+
 # VR 景深兼容候选：启动与实际回归记录
 
 2026-10-17。候选60在实际101中恢复了死亡场景的双眼画面，并完成一次检查点恢复。本轮执行时默认玩家候选仍为 Reticle47；完成回归后的本地提升见[VRDof60候选](116-vrdof60-player-candidate.md)。尚未进行真头显验收，也未宣称解决全部黑屏。

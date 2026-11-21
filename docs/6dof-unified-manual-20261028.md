@@ -1,3 +1,52 @@
+# Unified manual candidate:6dof-unified-20261028-1
+
+The only development directory is `C:/Users/11/.codex/worktrees/6dof-cover/gearsVr`Branch `codex/6dof-unified`. The body branch has been actually merged `37de6ef` Branches with weapons `f397f9b`,Submittal `9a41f92`- Keep the history of both sides. `6dof-cover`、`codex/weapon-6dof`, the old manual package and the unsubmitted task for J home directory are maintained.
+
+Fixed entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`. Default multiplier for this version **0.4**# Close the camera **0**. The first person will tick and use the system of purchasing copies of games and physical appearances, OpenXR/VDXR. The same entry is updated and a complete return package is kept.
+
+## Current delivery status
+
+| Order | Actual source connection for this version | Status of this version |
+| --- | --- | --- |
+| First | Visible start selection, same eye/body baseline, static Ref 115 Neutrality,0.12 m Close Crop | Compile/packaged, ready for real |
+| Free hands. | Full position versus four-digit, fixed bone length, side by side tracking/image takeover | Compile/packaged, ready for real |
+| Shoulder/pants rounding guns | Real RGrip bordering the existing slots by switching equipment/string to confirm the same father's gun position | Normal manual access is in, compiled/packaged and ready for real |
+| Fire at gunpoint. | Original R 2 Consumers merged; return layers from actual guns to authoritative targeting are still in contact | **This version is closed, VR firing is active. It's not done yet.** |
+
+This edition `unified_fire_ready=false`The normal entrance won't be called. `PlaygroundVrFireEnable`♪ Don't put the old ♪ `original_aim_only` Shoot as a pistol. Continue to complete the Lancer firing chain at the same branch/entry without waiting for version H 1 Feedback continues to be coded and does not expand new reloading/sheltering/other weapons functions.
+
+No games, XRs, simulators, test programs, self-measurement, playback or acceptance prechecks are running. Compiled successfully, source wires, actual play performance and real machine acceptance records are available separately; this table cannot be considered as a game method.
+
+## Player Operations
+
+Connect physical headlights, open the fixed entrance, keep first person's name on and start VR. Enter a common controlled scene.
+
+1. Look at the vision and hands, do real head-triping, turn, move and rotate. Close cutting cuts cut very cheeky hands or objects; covering up improvements and natural arm levels still need to be observed.
+2. When a valid personal measurement is not available for the first time, the arms level is carried out on both sides of the arm and Grip holds it for at least two seconds, using real tracking record arm displays. The first person claims that free hands will not start an additional check-in door for this purpose. The equipment module will be connected after the survey has been completed; there are valid records which can be used directly. Then you press RGrip to get the gun with your right hand near the shoulder or pocket; only the weapons in the actual inventory are taken. 2 The right shoulder is a weapon. 1 The left pocket of the current slot is a pistol and right pocket is a grenade; empty slots retain their original failure.
+3. Use Stop VR to wait until finish and exit the game. Log uses the same starter 'Export Log'. Current session status includes `unified_weapons`, normal stop firing, release hand connections and then move forward Native/XR clean-up.
+
+This time, only the first person was to be observed, hand and gun; VR fire was not activated and could not be used in the same direction as the old shot.
+
+## Integration and build
+
+- Unity Native is the only camera/skeletal writer; PG only returns existing equipment, original call and read-only gun witness. Old hand stread, end position over and body mesh-follow writer is not enabled.
+- Same number `prepared.desired_eye` Continue to convert hands; the right hand selects a given handmount after genuine confirmation of possession of the gun, leaving free-hand track when no one holds or does not confirm it. HMD is directed towards authority that does not replace firearms.
+- Real arm re-enactment of the original physics T-pose observer. If INI is activated, a fixed module can read the true measurement from the bound Native data query; already existing fields are not validly rejected and no false defaults are provided. This data does not grant tracking, identity or writing permission.
+- The latest Junker PG source code is triangulated with the weapons chain, retaining map preparation/vehicle cleaning and both parties' decommissioning processes; the Native Junker, Independent Left Eye History, Menu, Focus, Diagnosis and Original Identity/Refresh/Customing/Audience Protection Reserve.
+- Only compile and link `GearsCapture`、`OpenXRPoseProbe`、`GearsPlayground`. Build records and first-package source snapshots to ignore directories `analysis/6dof-unified-20261028/`, keep the configuration/compilation log and fixes. No test or entry for build script clips is running.
+
+| Component | SHA 256 |
+| --- | --- |
+| Native | `458cdf929da1df7d6263c75f2adcac042cd7f4dbce077eb347b668e8322ba36b` |
+| XR | `6db1b9bc72a42c4ef5a2b3d0fe99858c794e16f7206620ec4e25fe35ca53d727` |
+| PG | `4eea5ddf42acfadc86d6ce0416f90d2760bbcc330d6cd52a9de04d134ef84981` |
+
+Stop and quit the current game when you return, then open the old game `J:/gearsVr/candidates/6dof-manual-20261027-1/GearsVR Launcher.exe` or J Home Directory Normal Starter. Do not start multiple games at the same time. Candidates do not replace games, archive or home directory default manager.
+
+---
+
+## 中文
+
 # 统一手动候选：6dof-unified-20261028-1
 
 唯一开发目录是 `C:/Users/11/.codex/worktrees/6dof-cover/gearsVr`，分支 `codex/6dof-unified`。已实际合并身体分支 `37de6ef` 与武器分支 `f397f9b`，合并提交 `9a41f92`，保留双方历史。原 `6dof-cover`、`codex/weapon-6dof`、旧手动包及 J 主目录的未提交支持工作均保留。

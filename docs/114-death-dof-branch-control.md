@@ -1,3 +1,41 @@
+# Right-eye recovery: single variable comparison of the deep branch of the landscape
+
+2026-10-17. Experimental source 92d 180a，Hdrpixels 58 DLL SHA 2564ac 1ced 09b 579068300283f 749fdefaf 64e 8667ac 97da 641ad 86655007eec 9d 4 complete construction and 18 The block CPU/SDK check is passed. Default player candidate is still reticle 47, the experiment has not been upgraded to first edition.
+
+## From actual Shader to a certifiable parameter
+
+Document 113 Actual VS restored UV, PS in cb 0 Organisation 12 X is the right time to enter the deep branch of the scenery, possibly with T.4／T 5 Fuzzy input to replace all original HDR contributions. In the previous cross-testing resource record, a vague intermediate target had only left half of both eyes, suggesting that the full UV did not match the local middle map; no right half pixels directly read those two mid-maps could be described as complete internal mechanisms having been proven.
+
+Authenticate PS matter in independent IDA copy after KB search 1c 4b 90 Complete 200 Byte SHA 25610b 2617802b 5648fea 992132f 8b 9e 20d 68d 58940de 7e 7779f 34298b 8be 240cb 0 and d 80360 Rise 96 Byte Call Range SHA 256bbdd 0a 157bda 57262b 76ad 682af 9363b 24c 23e 225d 41859857a 0e 8ab 7c 98c 85 b Return RVA d 803 bf Use RDX descriptors, R 8 float 4、R 9=0;PS TLS constant is context+0x13BC. This is a different path from the VS matter and parameters that were previously invalid. The Source Library maintains, owned case closed.
+
+Independent default closure of GEAS_DEATH_DOF_CONTROL only for right eyes, frozen instruments/world, same owner, precise description {)0,192,16♪ The X-rays ♪1, to be called in local 16 Byte Copy Convert X to 0, the other weights remain unchanged from the original memory and are called just once. Limit to first world 256 Different instrument, repeat reject and mark ambiguity.49 Existing instrumentsd 80a 7 b Entry review of actual CPU storage, original R 8 Can not reread folder: %s: No such folder
+
+## Actual 99: The same instrument observed the right eye scene recovers
+
+Session 10944-20261017-131043-ce 2c 5709- The bill.832/world 1/copy_seq 148, HDR source pairs with the final GPU map.
+
+| Item | Left eye. | Right eye. |
+| --- | --- | --- |
+| Raw view depth parameter X | 1 | 1 |
+| Actual parameter X before drawing | 1 | 0 |
+| Pre-paint/view/descript review | Pass. | Pass. |
+| UV Range | Original left half | Original right half, not left |
+| Final Image | The old blurry scene of death. | Clear and complete perspective on death. |
+
+Right-Eight final RGB average 63.338/10.745/9.265 RGB Channels 8 Pixels in percentage 3.5848%;the same path was initially based on two baselines 97.5%. The invisible character, ground and environment have been restored; the left eye is still vague and corresponds to a control design that changes only the right-eye depth switch, not the repair of the same eye.
+
+256 Every change is proven before and after. Repeat.0. The modification will be discontinued after reaching a fixed capacity and will be clearly reported 7 The subcapacity is denied; the change does not continue.1 Right eye still works.1920 Starts with the UV and original target rectangle. Full joint audit is signed analysis/runtime/deathdof99-control-verification.json, which includes the original HDR, the final Tuhashi, actual parameters and correspondence of the instrument.
+
+One check point 1→2 Reactivate observation 6121 ms (including loading), stop normal,44 The entrance is independently restored, raw and XR clean-up, ordinary games are closed and four files are returned to the check.
+
+**Supported conclusion: Under the current stereo path, this activated deep section led to the black screen of the right eye for death and bypassing it restores the right eye scene.** This does not yet amount to an internal process of proving the failure of all the blurry middle maps, let alone resolving machine guns, all CGs and any black screens set up at will with long periods of time.
+
+The next step is to be a two-eyed VR view that is fully compatible and verify the document's identical treatment before it is finally released.256 The upper limit of the instrument, HDR reading and diagnostic cache cannot be directly achieved as a publication. The first version clearly does not retain this road map ' s dark blurry effect, while ordinary non-downed 2D mapping is unaffected; both eye candidates are still subject to death, automatic return from checkpoints and regular playtime, and follow-up real-life observations.
+
+---
+
+## 中文
+
 # 死亡右眼恢复：景深分支的单变量对照
 
 2026-10-17。实验源92d180a，Hdrpixels58 DLL SHA2564ac1ced09b579068300283f749fdefaf64e8667ac97da641ad86655007eec9d4，完整构建及18项冻结CPU／SDK检查通过。默认玩家候选仍Reticle47，实验尚未提升为首版实现。

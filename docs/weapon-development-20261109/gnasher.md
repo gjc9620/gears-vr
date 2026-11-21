@@ -1,3 +1,65 @@
+# Gnasher shotgun: interactive demand and development acceptance
+
+Date:2026-11-09. Status: User confirmed, authorized to develop. Perfect reloading unified 4 sec; the size, angle and exposure range is marked by this gun session.[Public contracts](common.md)。
+
+## 1 Operational objectives and established rules
+
+Holds the master hand handle, supports the front of the gun with the left hand, takes the bullet and load; the shooting is triggered by the right trigger. It uses the trigger.**Leverage down/back**, not the front wood line pump. Weap_Shotgun maintains dispersion, multiple shotballs, speed of firing and path to injury.
+
+## 2 Player Operating Steps
+
+| Phase | Player Actions | It has to be done. |
+| --- | --- | --- |
+| Get the gun. | Press RGrip at the corresponding sub-point | Original stock of guns bound to current hands; initial loaded guns can be fired normally without forcing the empty to leverage |
+| Shoot him. | Press R when mechanically ready 2 | Confirming one real shot into the cycle; multiple bulletballs cannot count as multiple cycles |
+| Post-shoot cycle | Left hand hold LGrip for the front end; right hand holds still a handle, back to locking position, and back on the side. | original lever follows; two end points and return are actually completed before the next round is restored |
+| First round. | Unhand your left hand when you're short of bullets, move to the left shoulder and press LGrip. | One full shotgun set aside; original version starts with the time when this round is filled, instead of pressing R 3 |
+| Insert one round | Continuous LGrip, straight-through from the physical entrance. | Inventory recognition only increased 1- Back up and down.1;exposure only incomplete |
+| Keep loading | Plugged in, loose, Grip, and grab the next one on your left shoulder. | Maximum q =min (in current round)3 C-L, S), target is set at the beginning |
+| End Loading | Empty left hand and rearend; right hand finish the lower/back | Load 1／2 Releases can also be terminated early, and are loaded; targets not met are only normally completed |
+| Fire back. | Finally return to position and obtain confirmation of physical locking. | No additional requirement for the same leverage; only later can you fire |
+
+## 3 Quantity and special circumstances
+
+- Static data capacity 8 Reserve ceiling 31 For reference only, the operation is based on the original example.
+- L=2、S=10 Current Round Target 3 I can only fit it.5;not automatically filled in 8。
+- Same only 1 Release and lock early. L=3、S=9, normally completed; cannot change the target to 1 Liar to perfect.
+- If only 1-Foo, the target is...1, the normal completeness can be determined by a credible deadline.
+- The original discharge was to be followed by a cycle before loading, and the final lever locks were combined into one and no repetition.
+- No backup can be used to complete the existing post-launch cycle; no new rounds do not trigger a switch.
+- Exit without a bullet, no refill, no drop and no award.
+- The original ammunition is retained and returned unattended; the quantity inserted after failure to trace cannot be lost or added.
+
+## 4. Hand, agency and feedback
+
+The actual scratch point, feeder and complete process must be marked.32.43°It is an institutional information, not a direct handle angle threshold. Unsupported left hand, shivering gun, swirling wrist, pumped wood cannot be used as a legitimate lever loop.
+
+The current steps point to the left shoulder, filling entry or leverage area; a full/zero backup is available for feedback. The original lever is actually in place before the completed response.
+
+Do not push leverage when the chase/disturb support is missed; restore new grips and reconnect with the current body, without automatically jumping to a return position. The original ShotgunClocking timer ends first and cannot replace manual loops.
+
+## 5 Specific scenes that must be accepted
+
+1. There was an initial bullet-picker, a poaching shot, a direct puller was blocked, a real downfall, a re-shoot.
+2. The next part is either not in the end or not back, left hand is not supported and pump action cannot unlock the next one.
+3. L 2/S 10 Three to L.5/S 7;less 1／2 Locked off, correct quantity and normally completed.
+4. Only missing 1／2 I'm not ready.3、S 0= Totals are treated as actual shortfalls.
+5. The second round was submitted and the gun was lost/receipt, and the quantity of the loaded ammunition was restored without automatic filling or re-depositation.
+6. The cycle and filling are to be accompanied by a single final lever; the actual shot after normal completion and the physical multiple-ball chain check.
+7. Eyes are available to see the master, support hands, hold a bullet, go in, leverage and return; correct count cannot be a substitute for natural alignment.
+
+## 6 Implementation of entry and reconciliation items
+
+Re-use weapon_gnasher_mechanics.h, b_Shotgun_Lever, ShotgunCocking and FinishedCokingShotgun; align current stock services/original backends without restoring old test entry.
+
+This gun session checks and marks the real support point, right handshake relative rotational engagement, filling port, ammunition ratio, exposure range and original timer take over/lock. Perfect deadline set.4 Seconds, time from the original acceptance under a public contract; locking down of uncompleted targets is still only common and does not wait for the original perfect window.
+
+Source:[W03](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/weapon-cards.md#w03)、[V2 Partial filling review](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/interaction-review-v2.md)、[Original detailed design](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)。
+
+---
+
+## 中文
+
 # Gnasher 霰弹枪：交互需求与开发验收
 
 日期：2026-11-09。状态：用户已确认，授权开发。完美换弹统一4秒；机构尺寸、角度与接触范围由本枪会话自行标定。配套[公共合同](common.md)。
@@ -55,4 +117,3 @@
 本枪会话自行核对并标定真实支撑点、右握把相对旋转约定、装填口、弹药比例、接触范围和原计时器接管／一次闭锁。完美期限已定4秒，按公共合同从原接受计时；提前闭锁未满目标仍只普通完成，不等待原完美窗口。
 
 来源：[W03](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/weapon-cards.md#w03)、[v2部分装填复核](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/interaction-review-v2.md)、[原详细设计](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)。
-

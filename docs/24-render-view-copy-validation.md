@@ -1,3 +1,60 @@
+# Dynamic validation of rendering view copy
+
+2026-10-12 Game version SHA 256 Same as existing profile. First person maintains the Mod installation, minimum setup/ 1080 p, single person level. This round is only for viewing, no second eye, and no change in the status of a person.
+
+## Rationale and scope
+
+Previous round of confirmations for original submission 0x3a148c Receives player SceneView. Runtime command extrapolates: collect access 0x116250 Render object construction, repeat 0x193d50 Creates each rendering view. This time add two parameters to the latter entry, return the pointer's Hook, and verify the actual input output of this step.
+
+The assembly Hook identifies the current submission range with a linear local variable, and copys Hook only to record calls within that range. The original function is always executed as it is. Read source view before copying +0x70 It's... 128 byte matrix regions;repeated and read the same area after returning and +0 . Read-only is not equal to zero cost, and the diagnostic records still have operating costs.
+
+No new Hook is used for head-starting or stereo rewrite. It only observes the time of structural return; the subsequent group rewriting, rendering thread consumption and destruction are not verified dynamically.
+
+## Tools and Independent Validation
+
+- `family-diagnostics` Add Kind=8 Render View Copy Record, CSV Add lines_source, line_owner and 32 A number of source matrices.
+- valid 128= A collection of arrays that read successfully.256=The source matrix was read successfully.512= Target matrix reading succeeded.1024= The target is the subject of a successful group reading; these definitions apply only to duplicate records.
+- New entry version signature, start early springboard preset, pre-injection and DLL internal verification extend to 0x193d50. New build must use a new game process, which cannot replace the already existing DLL.
+- `CaptureSelfTest.exe <DLL> --clone` The normal camera and assembly ABI self-measures are also passed.
+- `analyze_clone.py` Check source view from current collections, target using independent storage, return values equal to targets, matrix values consistent and limited, initial builder owner, caller, ignore point rewrite, Precent return value and access restoration.
+
+Build As `tools/native-capture/build-clone/GearsCaptureClone.dll`, only diagnostic products, not VR Mod deployable.
+
+## Actual Game Results
+
+PID 32968 Autostart and enter level, sample 20 sec:
+
+| Item | Result |
+| --- | --- |
+| Render View Copy Record | 5,297 |
+| Caller | All 0x116444 |
+| Copy Threads | All 34392,Systems with surrender |
+| Different source/ target address | 231 / 165 |
+| Different Matrix Groups | 545 |
+| Source, target matrix region match | All records |
+| Source belongs to the submitting array, with different addresses | All records |
+| Return value equals target address | All records |
+| Construct the initial owner equals entering a collective address | All records |
+| scene view / group submission / Present | 5,298 / 5,297 / 5,296 |
+| Failed to discard record / Present | 11 / 0 |
+| Activate / Six Entry Check After Stop | 0 / Restor All |
+
+The number of addresses indicates a change in the reuse and distribution during observation, which does not mean that there are objects who survive at the same time. 128 bytes, does not represent that the entire object can be directly memcpy or confirm the coordinates of the matrix.
+
+Local original evidence:`analysis/runtime/reserve-32968.json`、`clone-32968.{csv,json,status.txt}`、`clone-32968-restored.json`、`clone-32968-correlation.json`. The original evidence is left on J disk, ignored by warehouse rules; source code and this report are submitted to Git.
+
+## Follow-up access location
+
+The dynamic evidence now supports the path of " Player SceneView Quest Pool to submit a copy of the  ⁇  Render View". A copy is still pointed at the input pool after it has been constructed; the running time command shows 0x116455 Then re-direct the rendering to its own collection. Next, look at the whole thing. 0x116250 The assembly, view array and homeer at the end of the construction check actual consumption and destruction.
+
+The eye requires each other’s point of view, asymmetric projection and corresponding state. It cannot be achieved by pressing two identical points into a collection as stereo. This wheel has not produced eyes or integrated the GPU display and head-motion prototype.
+
+We've also encountered short-lived non-combustion. 1080 p window size; menu tool does not send any input when it does not match resolution, waiting to return to the verified dimensions and menu images, still subject to total time limits. The current game's five-step navigation is actually passed; no matching resolution waits for branches to be covered separately through second start.
+
+---
+
+## 中文
+
 # 渲染视图副本的动态验证
 
 2026-10-12，游戏版本 SHA256 与既有 profile 一致。第一人称 Mod 保持安装，最低设置 / 1080p，单人关卡。此轮只观察，不改视图、不新增第二只眼、不改变人物状态。

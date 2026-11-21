@@ -1,3 +1,47 @@
+# Perfectly re-load and start the transition back.
+
+2026-10-17，Native 37 / Borderless 1. The simulator test continues during the user ' s departure, and the back-office physical handle response remains closed. No new round of headover acceptances are performed.
+
+## Independent packing and inspection
+
+`analysis/release-staging/mounted37-offline-20261017` Total 700- A document,43,416,766 bytes; independent Python's isolated import, list of documents and dependent check pass.22 The project is self-measured.9 The document is self-surveyed and agreed upon.256 Yes `66a5bba9c1de4dab5bc66c17adb6dd267b1552619255bfbc3c64fbbd40c280f0`. Reply:`analysis/runtime/mounted37-packed-preflight.json`、`mounted37-packed-selftests.json`. This is not a release of completed or clean computer installation acceptance; this snapshot predates the start-up transitional amendment described below.
+
+## Launch failed for current round capture
+
+Session `continuous-stereo-18152-20261017-043824-862c8b97` Once you have entered the existing checkpoint automatically, the certificate is ready to be re-acquired by a growth in the registration form and then the player dies. `Controller.Pawn` Turns empty.`UIConfigRejected: UI reference mismatch: controller_pawn` Considered a permanent error, non-activated and did not produce dual sighting submissions.
+
+This is direct evidence of the failure of this round, and does not prove that all previously inaccessible VRs or black screens were triggered. `active-reload37-failed-start-close.json`。
+
+Amendment submission `87c771d`: Only when the registered controller and its reflect Pawn properties are identical, the type check is reversed and read twice to empty Pawn, the special transition anomaly is dropped and the entire certificate is discarded, entering the three existing partial retrieving and sharing deadlines. The blank Pawn certificate will not be accepted; other roles are empty and fields/identity/codes are not matched directly.81 The relevant Python test was passed, which included the preparation of a four-round death, restoration of the fifth round of checkpoints, timeout for continuing deaths, cancellation and error identification/relate/entry denial. No recompilation of original DLL is required; actual return is recorded separately.
+
+## The basis for the perfect change of bullets.
+
+Use the existing knowledge base to retrieve it and check off-line WarfareGame script caches. `EActiveReloadResultType` Yes, None 0、Success=1、SuperSuccess=2、Failed=3；`ActiveReloadSuccess` For the perfect result.2，`DrawActionReloadBar` Yes.2 Draws from Time `PerfectGrade`. Pawn's same name count values are different and cannot be used in combination. Source package SHA 256 Yes `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`。
+
+Read-only scripts `analysis/runtime/watch-active-reload37.py` Positioning through current reflect properties `Controller.myHUD -> WarHUD.ARBarData -> ActionReloadBarData.ARResult`, the retention process creates identity, registration form, object/ attribute/type, brackets and double-reading; does not call game original functions, does not write memory, does not guess Bool bits. Reads also the whole number of existing munitions and available swap-time floating field.
+
+First actual read-only sample obtained 158 A valid sample, and HUD results always 0♪ ReloadStarttime always ♪0 See. `active-reload37-baseline-watch.json`; only the read chain is proven to be available, and not the change of bullets. New cycles/replacements and actual results need to be observed 2, and link to a valid dual-eye output to record the test of this trigger point.50 msec is the sampling target and does not guarantee coverage of each frame; field names and time values do not automatically prove second key pressed times.
+
+## The actual double-eye and perfect reload sample.
+
+Amended Simulator Session `continuous-stereo-8328-20261017-044533-c26a66cb` Activate the original and submit it to both.11.175 Seconds, cameras are ready for the first successful projection.14.220 The round does not repeat the empty Pawn branch and cannot claim to have actually validated its restoration.
+
+The first R/R attempt to refuse a second entry due to changes in the overall UI fingerprint, after which normal re-loading is completed and the player dies; it is not counted as perfect. The test assistant then changes to complete consistency with each of the two latest menus entered, and maintains the initial top level UI identity for all processes, front desk, reflect status protection, allowing non-stop-activated Toast changes.
+
+After reading the second checkpoint, sample in short time 160/160 Valid, no error:`ReloadStartTime` From 0 Raise to 28.473846, HUD results from 0 And become 2 Then the ammunition came from Used =4／Spare=600 And become 0／596. Two Rs, actual interval 719.6004 msec. Results 2 Save GPU instruments after 369 Source number 364、3840×2160 Both eyes are set; previews `active-reload37-perfect-preview.png`. There is no directly identifiable PerfectGrade text in the chart, and the change of level is not shown as a separate image; the rating is determined from the reflection results of the new cycle mentioned above and the Cache Script syntax.
+
+Thereafter 0.46 The second there was a re-coup of the world. `source_reconfiguration` Transition card, approximately 0.456 The image is returned after the second; the log is clearly marked as world handoff, and not just because of a perfect change of bullets in time. Neither the single GPU chart nor the sample CSV precludes short black frames, and the perfect black screen cannot be marked for full repair.
+
+Checked item by item `image_ticket_row`: First R to Outcome 2 Between.36 Next scene, maximum interval 33.6069 milliseconds;results 2 In the next two seconds.71 Number of times, maximum interval 466.9989 milliseconds, just across the world.`.world.jsonl` Prepare/committee request and generation 2 Record completed and a handoff in birth; resolution reze call and track 0. So this interval is a world-wide transfer of evidence that does not record resolution reconstruction. The local outage line of the event does not cover this window, and cannot be equated with pixel-by-pixel or headline continuity check.
+
+All round.2126 It's a second-born publication.4843 Second XR projection,2124 Subsequence copy, world creation=2. Maximum projection interval 79.064 The seconds include the death menu waiting, which cannot be used as a frame rate. After stopping, primary cleanup, exit recovery, XR exits normally, and the game is closed only normally and confirmed to exit. `active-reload37-runtime-audit.json`、`active-reload37-normal-close.json`。
+
+New independent snapshot with Python Startup Amendment `analysis/release-staging/mounted37-startup2-20261017` Yes 700 Documentation,43,418,174 Bytes, quarantine pre-check passed; original/XR files follow previously tested Hashi. No identical raw self-measures are repeated and this offline snapshot is not referred to as a published version.
+
+---
+
+## 中文
+
 # 完美换弹与启动过渡回归
 
 2026-10-17，Native37 / Borderless1。用户离开期间继续模拟器测试，后台实体手柄响应保持关闭。未进行新一轮头显验收。

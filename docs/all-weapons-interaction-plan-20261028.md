@@ -1,3 +1,230 @@
+# Full weapon interaction and hand-throwing design
+
+See current delivery [12 weapons offline specification v2](weapon-specs-20261028/README.md)and[Interactive review](weapon-specs-20261028/interaction-review-v2.md): Ununified R 3 Forward, clear Boltok staft/blast relationship, wrestle bow uncommendation, different trigger paths for Frag/Smoke and actual delivery[5 offline GLBs](../assets/weapon-6dof/offline-v2/README.md). This document keeps the initial structure background, action and asset status as v 2 The original animation, native ABI, example size and machine performance are still shown separately.
+
+2026-10-28. Design delivery for subsequent implementation, covering those identified in existing specifications 12 Weapons and objects, bearing.[Weapons interactive specifications](weapon-6dof-interaction-design-20261022.md), repeat the gun-by-gun module in the unified source code. The current proposal is to determine how a gun-by-gun action, the original state and model components correspond, then to play the game thread; the original model will be used as a priority for parts that move independently, with missing complete ammunition being created separately; and the grenade will be determined by real hand movements at the location and initial speed of the hand.
+
+Only new design documents, v 2 Increase in stand-alone offline assets and production tools. `C:/Users/11/.codex/worktrees/6dof-single/gearsVr` It's... `codex/6dof-single`;HEAD at first edition check `bd9e1f0`, another main line is not submitted. This round does not modify the running code or candidate package and does not occupy the build/play window; integration, construction and game operation remain the sole responsibility of the existing implementer.
+
+## Operating rules
+
+- Right hand holds the main weapon, left hand supports, collects bullets and operative parts; right Grip presses the gun at the body slot, left Grip presses the item. Use the left shoulder to retrieve the weapon. 2 Right shoulder to take weapons. 1 The left pants round the pistol, the right pants round the hand grenade; the left shoulder to the left hand to take the current weapon corresponding to ammunition.
+- First clear physical move of this gun starts changing, R.3 Only the optional aids are retained. Only the actual parts of the current step are shown yellow and feedback is given once; direction, continuous process and return are determined. Airlock, half-port and post-launch cycle are configured separately.
+- The cartridge is not to be abandoned; uninjected handheld ammunition is released and the remaining quantity is returned; inserted ammunition remains after cutting or interruption.
+- Following the established perfect switch-off rule: When the final necessary action is completed, starting with the original acceptance of the current round's valid physical change request, it will be perfect and effective not later than the end of the original perfect window in the example. Timeout can still be done normally without extra cardboard or automatic filling. Gnasher/Boltok allows for less lock-down, but only normal completion of the plan.
+- No “box” re-alignment is used for each weapon. The final action depends on the actual structure of the gun; no weapons that are routinely re-loaded are covered by their own use process.
+- The direction of the aim is determined by the current gun-share posture and the axis of the gun; headline changes only. The original speed, dispersion, projection, recoil and special effects are attached to the original weapon chain; the established one-hand injury strategy is retained independently and not modified in this design.
+- The takeover must also be able to resume with the cutting of a gun, death, stubble, failure to pursue and withdrawal.
+- **2026-11-08 User overwrite:** The fragmentation grenade continues to be pulled out and held by right Grip, loose, Grip is thrown by real hand movement and no triggers are prepared; Frag virtual weight is 2 kg. The gun points are held constant and the original preview line is removed.[Current grenade rules and authentication status](frag-grip-release-20261108.md)。
+
+## Gun-by-gun action and modeling
+
+The "recommended action" is the interactive design to be achieved in this period. The "original version" distinguishes between saved scripts, models, animations and historical running reports, not considering institutions that have not yet been certified as already available. 12 All items are retained as separate delivery items and do not pass by Lancer on behalf of other weapons.
+
+| Weapons | Suggested difference between action and shooting | Modeling | Original version based on key points to be checked |
+| --- | --- | --- | --- |
+| Lancer chainsaw rifle | Left hand grabs and pulls out, implicitly releasing locks; then the box is locked in a set of push-in/cover moves, not separately from the sync. The old box can be cancelled. The saw starts independent processing. | Reuse `MagazineMesh` and the bullet-bone; the button/box primary bone drive. Original starter checked and copied to offline delivery. | History card deduction 114.5°The package. 28.5°Proves the existence of a primary movement, not as a player handle threshold; actual capture/closing endpoint still needs to be marked. |
+| Hammerburst. | Opens the lock on the cartridge, removes/replaces this gunbox and closes it. Separately sets the handle and inserts an axis; maintains the original firing rhythm. | Reuse separate cartridges and `b_HB_MagLatch`, preserve the original skin and material. | `HB_Reload` The locks have a motion track; the constant orbit of the cartridge relative to its patrilineal bone does not mean that the gun space is still intact. The opening angle, hand-held box interface and point of arrival are still to be marked. |
+| Gnasher shotgun. | Left-hand rounded; maximum per round `min(3, 容量缺额, 可用备用)` The next round is allowed after each shot, with a left hand holding the front end, and a right hand hand hand-shape down and back. | Direct Driver `b_Shotgun_Lever`; complete sealed shotguns reproduce and calibrate the existing original GLB prototype. | The original lever has a static and historical run matrix that is about to be used in the first place. 32.43° It is the original animation range, not the handle threshold that is directly used. It cannot be pre-gamber pumped; the whole munition prototype has not yet entered the game. |
+| Longshot sniper gun | It is recommended that the opening, shelling, left shoulder take a full round of ammunition, insert and lock. The scope maintains an independent optical mission and the axis determines the line of launch. | The bolts are in the air. `b_LS_Bolt`; New ammunition is created when complete ammunition has been identified. | The original bolt has an animation track, but the opening order, the point of contact with the hand and the number of single rounds are required to be certified. `bullet_spent_single` It is empty and cannot be used as a live bullet; the whole screen cannot be magnified as a scope. |
+| Snub pistol | The grab box is implicitly released and the left handbox is changed; this project is designed to be a silo-slipper, half-silo free. The flank is moved without individual scratches. | Former Magazine 314 The triangle has been privately removed and UV/mode/material attributions retained; slider and side wing protobose driver. | Two sets of plans are VR designs; the original action cannot prove independent chamber +1 No increase in this amount is included under this item. |
+| Boltok revolver | Object 03 Wallband 02/08 Open, combine to retrace empty shells, fill up and close partially; no independent retort action. | Original Gun, Legs and Object 01 Fixed rear disk; full live ammunition and hexa-hole nests produced to replace closed object 02。 | The original layer/position has been checked;21 AnimSet did not find a match track,80° is the offline design value. The capacity has been verified. 6 The original animation is still not certified. |
+| Boomshot grenade launcher | The first shooting tube filling unit starts with the insertion of an original filling component at a time and locks off. | It's confirmed that Magazine Mesh 0 References `Locust_Boomshot.Mesh.Locust_Boomshot_Magazine`; direct reuse; barrel primary bone driven. | The original barrel is flat, complete composite trajectory/physical insertion to be specified; retain the incentive properties of ProjectFire. |
+| Torque Bow sprained bow | When you lack an arrow, the left shoulder takes the arrow and locks it in the sink; the trigger is strong, the key is loose. Canceling the separate pending and charge and leaving Charles normally. | MagazineMesh 0 The reference to the original arm bearing arrows has been confirmed; bow arms retain bones/monstered without supplementing traditional strings. | The static cancellation combination is clear, the actual ABI has not been bound; ChargeEnded is not enough alone and EndFire/StopFire may be launched. |
+| Hammer of Dawn | The weapon points to the target, locks, preheats and exposures according to the original conditions, and breaks/cuts the verified stop path. | Reuse original fuselage and Trigger; target markings and beam reuse effects, no new magazines. | Existing `IsAValidHODTarget`、`BeginBeamWarmup` . The condition of use must be covered and the whole item cannot be jumped with "no magazines". |
+| Troika fixed machine gun | When entering the gun position, grab a double-share handle and rotate around the fixed axis; fire, preheat/cool and exit to original state. No shoulder slots will be loaded. | Reused turret, handshakes, rotorized pieces and double-gun skull; no shoulder cartridges. | Saved `CanReload` Returns false, with automatic reloading, so that the manual switch box cannot be launched by status. The actual launch rules and resource/heat control of a double-gun point must also be confirmed. |
+| Bolo, the fragmentation grenade. | Right-pants are removed, prepared and waved; the method of each throw is determined by hand motion; no new cookies are added to the table and independent. | Original hand grenades, verse chains, cartridges and physical retention. | Original StopBounce Normal Default.1+1 s, Base was Pawn 1.5+1 s, adhesion 2.5 s;special HitWall has a branch. Static is positioned and the start speed/time of the trigger sequence remains to be certified. |
+| Smoke Smoke grenade | The same gestures are used to release, but smoke is used in their own stocks, cartridges, fuses and effects without fragmentation injuries. | Reuse original smoke grenades, chains and `Emit_SmokeGrenade` Launcher. | Special prototype distinguished `Weap_SmokeGrenade`、`Proj_SmokeGrenade` With smoke munitions; fragmentation cannot be considered complete. |
+
+The coverage also includes a “class and variant table”: which configuration is to be used for each player's specific subcategory, skin/grid replacement label; unknown class behaviour remains on the list of items to be covered. Junker positions, other load/spectrum-specific weapons are supplemented by additional inventories to confirm whether the player can operate and then incorporate the corresponding fixed weapon branch. 12 The item is an identified interactive list and does not amount to the exhaustive list of all weapons in the package.
+
+## Which models need to be dismantled and added
+
+The order of processing is:**Existing independent components,  ⁇  original bone movement,  ⁇  locally verifiable individual pieces,  ⁇  new original model**. The bone-skinned grid appears to be connected and does not mean that it cannot be moved alone; nor can the grey molds produced for viewing represent the original resource structure.
+
+| Resource work | Existing Foundation | This stage of delivery |
+| --- | --- | --- |
+| Lancer/ Hammerburst cartridge | Original stand-alone component, bullet cartridge bone, static extraction tool; Lancer has historical components reported to hands | Originals are hidden, handheld, fixed fillings, insertion direction and material list; no more high-level details until the nearest quality is insufficient |
+| Gnasher leverage, Longshot bolt, Snub slider, etc. | The original bone is now on record with the rigid parts. | Axes, pivotals, closed/open postures, touch areas, main deputy relationships; no OBJ to replace whole guns |
+| Gnasher, full shotgun. | v 2 The whole geometry has been produced.960／320 Triangular, UV/material/reference node | The ratio to actual hand position is then marked, running unloaded |
+| Boltok/Longshot full ammunition and Boltok hexagon | 3 produced double LOD with material/reference nodes; original shell used only as reference scale | Six-hole replacement of the original closed bomb nest; running display/original connection after wireing |
+| Boomshot Fill, Torque Bow Arrow | Specific category MagazineMesh 0 Self-proved use of resources | Directly reuse originals, calibration of instances after scratching point/insert axis |
+| Lancer saw starter | Three Nodes 704 The triangulation of the actual product has been verified | Copying offline directories only, without covering the main line original; game not loaded |
+| Yellow Step Tip | Pure logic already gives the current widget | Follow the original area mask or contours, visible eyes and overshadowed by scenes; only light the steps and do not dye the whole gun in yellow |
+| Bolo/Smoke Chain | Original Animation and Physical Resources | Holds visual, physico-sharp relationships when released; maintains chain movement |
+
+Each active asset must have units, main local coordinates, axis, axis, exposure range, material slots, LOD, source and Hash.
+
+**The new model enters the game as a stand-alone project.** The current direct source search does not find that the GLB is running while loading a connection; it cannot be described as generating a GLB as having supported a new model. Priority is given to re-using original components of the game. The first load sample of the new munition is based on the existing Gnasher prototype: verify engine component creation, resource loading, GC and destruction paths, then fix an additional package of tube lines. If you must go through Native self-drawing, you should also enter the actual two-eye view and address the depth mask, material and life cycle, and not use a hand-moving Quad pose as a 3D component. This option starts with technical verification, without exploring how each model will be reloaded.
+
+Original package extraction geometry, stickers and reverse derivatives retained in negligence `analysis/`; the distribution section uses originals from original game resources quoted and distributed. The current view does not enter the release package directly in the original.
+
+## Original process and specific access position
+
+### Change of bomb status and inventory
+
+Saved script displays public path as:
+
+```text
+ForceReload / 原版状态入口
+  -> Reloading.BeginState：记录 ReloadStartTime、清除旧主动奖励
+  -> PlayWeaponReloading：人物和枪动画、声音、EndOfReloadTimer
+  -> Reloading.EndOfReloadTimer
+  -> PerformReload：枪内与备用弹药转移
+  -> Active
+```
+
+`Notify_AmmoGrab/Release/Reload` In several subcategories, the manual components are attached and the gun is hidden; the base category partial notifications are empty. Visible “Backloads inserted” and “King stock increased” are two routes that need to be coordinated.
+
+Existing [Lancer Keep Test](../tools/playground/vr_lancer_reload_hold.inl) The original switch, the transfer of the end timer and the call to the original completion gate are activated but have eight seconds to automatically complete the lid and test the switch. Formally achieved by using a physical gesture, so this test can be used as an entry basis and cannot be online.
+
+The proposed access is advanced in the following order:
+
+1. Game thread accepts the first explicit physical change request of this gun and creates a business; option R 3 Enter the same request. Take over the automatic completion of the example and notification of conflict, and then accept it before a perfect deadline begins; no ownership is acquired without showing the physical changes that have already taken place.
+2. Only real and usable inventories are retained from the left shoulder, generating handhelds with unique identity; insertion determination must verify both the type, direction, entry proximity and continuity of the item.
+3. Use original capacity, and use the original size.`AmmoUsedCount`、`SpareAmmoCount` For example, current case data; pure model count cannot be used as a direct inventory.
+4. When the final mechanical action is completed, the test of perfection/normality based on this original Getter output is submitted with the corresponding incentive and state exit, and the inventory and shooting readiness are read again.
+5. The cut-off gun keeps the quantity loaded and unclosed institutions, releasing unused amounts.
+
+**Here's a real connection problem:** Once the original amount has been issued/qualified and then called without conditions `EndOfReloadTimer → PerformReload`, the remaining shortfall may be filled automatically. Therefore, the end of the original fit must distinguish between “this service is not accounted for” and “a denominated account”, verify the entry point from which the service can be withdrawn individually or suppress a second round only in this instance, when the service has been originally called after it has been completed. `PerformReload`, and do not overwrite undefended parameters. The incentive function can reschedule the end timer.`AbortWeaponReload` It is also possible to keep a bookkeeping account, which must be included in the same business.
+
+Perfect period to read `GetActiveReloadValues` The perfect right-hand boundary of the zone, not using normal `ReloadDuration` or value is `-1` . History Lancer 0.8 Seconds represent only this instance; the rest of the guns and difficulty cannot be applied. The original version is short, and whether a full VR action is comfortable with head-to-head feedback; default retention of confirmed rules allows for easy aids as a separate option and cannot be changed quietly.
+
+### Special weapons
+
+- Torque Bow：`Charge.EndFire → CheckFireShot → Fire`, fatigue counts to the upper limit. The cancellation combination has been positioned as clean-up PendingFire/bPendingEndFire, ChargeEnded, leaving Chad and triggering Endstate; parameters/real state still need to be bound to read back instead of EndFire being cancelled.
+- Boomshot: Continue using original `ProjectileFire` The close-range gun mouth shield, launch location and inventory are verified separately.
+- Hammer of Dawn: Access from the original BeamManager target legitimacy, operational status, preheat and exposure path, resource billing cannot be simplified to a normal cartridge count.
+- Troika: Collect/release from the original gun position, fix the axis, fire and automatic state recovery access; double-gunhead, preheat and heat dispersion cannot be inferred by bone name.
+
+## Code Organization
+
+The current pure logic of gun-by-gun is based on the following: `tools/vr-common/`This time in `tools/` The C++ source reference check shows that the following table is mainly referenced in each test and cannot be used to claim that it has been used for the production game cycle. Keep them, add thin game adaptors and do not create a separate body or weapon execution platform.
+
+| Functions | Existing documents to be reused |
+| --- | --- |
+| Base stock and geometry of insertion | `weapon_reload_model.h`、`weapon_reload_geometry.h`、`weapon_mechanism_geometry.h` |
+| Lancer | `weapon_lancer_feed_anchor.h`、`weapon_lancer_insertion.h`、`weapon_lancer_magazine_pose.h`;Playground `vr_lancer_magazine_follow.inl`、`vr_lancer_reload_hold.inl` |
+| Hammerburst／Gnasher | `weapon_hammerburst_reload.h`、`weapon_gnasher_mechanics.h` |
+| Longshot／Snub／Boltok | `weapon_longshot_reload.h`、`weapon_snub_reload.h`、`weapon_boltok_reload.h` |
+| Boomshot／Torque Bow | `weapon_boomshot_interaction.h`、`weapon_torque_bow_interaction.h` |
+| Dawn Hammer/Troika | `weapon_hammer_of_dawn_interaction.h`、`weapon_troika_interaction.h` |
+| Two grenades. | `grenade_throw.h`、`weapon_bolo_grenade_interaction.h`、`weapon_smoke_grenade_interaction.h` |
+| Shared input and original action boundary | `weapon_hand_client.h`、`weapon_action_boundary.h`; continuing to call the entrance using the current only active and existing game threads of Native |
+
+Proposed increase `tools/playground/weapon_reload_adapter.inl` and `weapon_throw_adapter.inl`The first is to link the current example, inventory, original animation and gun-by-gun machine; the latter is to be responsible for throwing services and initial conditions of the atomic bomb. The gun-by-gun configuration uses the existing dedicated Config/Plan, with the public part sharing only the appropriate mix of identity, geometry, stocking and backfill, without forcing all guns into the same alternation machine.
+
+Each configuration includes at least: specific categories and parent, original package/grid/animation identity, main side handle point, gun mouth, liveware and patriline, fillings and entry axes, empty/silo/post-fire steps, capacity and single transfer volumes, original time and audio access, interruption processing, and source and authentication level. Unknown steps remain unconfigured without zero-value disguise confirmed.
+
+```mermaid
+flowchart LR
+    A[同次有效手部输入与身体基准] --> B[逐枪握持和动作识别]
+    C[当前原武器 库存和动画状态] --> B
+    B --> D[一次动作请求与事务身份]
+    D --> E[现有游戏线程唯一执行端]
+    E --> F[原库存 原奖励 原弹体或机构]
+    F --> G[实际结果读回]
+    G --> B
+    B --> H[部件姿态 黄色提示 音效与震动]
+```
+
+Here's the sign of a suitable layer contract, not an already available callable game API:
+
+```cpp
+// Proposed contract; keep existing per-weapon state machines.
+auto snapshot = read_current_weapon_and_inventory();
+auto action = interaction.advance(same_ticket_hands, snapshot);
+if (action.ready && identity_and_owner_still_match(action)) {
+    auto receipt = execute_original_action_once(action);
+    // Receipt comes from observed game state, never from an assumed success.
+    interaction.acknowledge(receipt);
+}
+```
+
+The widget attitude is prioritized to the existing only bone/component written at the border. Lancer adds a button controller with animated index cache, case object creation, GC and destruction problems; not just going to `SkelControlListHead` Put a pointer on it. The fixed load should be attached to the frame reference system, and cannot follow the moving original cartridge socket, otherwise the player will always follow the entrance loaded.
+
+## How can a grenade really fly on a hand gesture?
+
+Save the original process in the script as `Weap_Grenade.ThrowGrenade` Getting the original launch point, generating the original bomb, successfully pulling one and calling. `Init(SimulationDir)`Again. `GetGrenadeTossVelocity` Writes the initial speed; the latter calculates the speed based on a peri- and velocity range, possibly with reference system speed. Some network paths are then saved. `InitialVX/VY/VZ`. This explains why simply modifying the line of sight or hiding previews does not change actual throwing.
+
+The target process is:
+
+1. Release reference points and directions for hand grenades in the hands of a sample at the time of possession, using valid simultaneous conversations and reference space history.
+2. The short window before release estimates speed, and then the common body benchmark at release is used to convert it to the game world. Turning back doesn't change the direction of the throwing; turning back, snap turns, falls back and skips time to clear up the history of unconnected movements.
+3. In the same original creation, you can first use a safe hand point for the actual Spawn; no transient impact or backsliding at an old camera/role location can be created before it is moved so that the generation period is not in the wrong position. The initial speed must cover the original camera dropout and enter the original bomb and the necessary initialization/replicate cache before the first physical step.
+4. The same reading of the identity, location, speed and exactly one charge; subsequent movement is only by original flight, collision, rebound, fuse and smoke/explosion logic.
+
+- I'm gonna give you a specific priority. `GetPhysicalFireStartLoc` and `GetGrenadeTossVelocity` Safe return value access: the former provides a point of entry, while the latter provides an initial speed at which the base speed has been synthesized and allows the original version to be then naturally set `Velocity` and `InitialVX/VY/VZ`。`Init` The initial direction required is also checked against the same release plan. It affects only current local players, current grenades and this release event, avoiding changes in AI or other projectors; if the existing call borders do not securely cover returns, then minimize reverses around these two entry points rather than creating a separate grenade system.
+
+The baseline is:
+
+```text
+p_hand_item(t) = p_grip(t) + R_grip(t) × r_item
+v_hand_item    = 对有效短窗口中的 p_hand_item 拟合
+p0_world      = 同一冻结身体基准变换(p_hand_item_at_release)
+v0_world      = 轴向与单位转换(v_hand_item) + 一次角色/载具基底平移速度
+p(t)          = p0_world + v0_world*t + 0.5*g_world*t²   （首次碰撞前）
+```
+
+`r_item` It is a sort of hand grenade-marked shift in the grip; the speed associated with the rotation of the hand grenade by position of the point of reference already included in the wrist cannot be repeated. `v_grip + ω × r` and check their respective active position. OpenXR line speed is the relative size of baseSpace, angular velocity is a radians/sec, and cannot be used to mix data directly between different reference systems or unmarked data.[Khronos XrSpaceVelability Code](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSpaceVelocity.html)
+
+Prototype [grenade_throw.h](../tools/vr-common/grenade_throw.h) Most of them. 140 The focus of follow-up is on the actual connection and handing:
+
+- 140 ms The average window-wide can reduce the end speed of a quick shaker. Keep the existing estimate as a baseline and then compare the end weighted or effective equipment speed without any prior scaling up at an arbitrary rate.
+- Alignment does not allow the next frame to be used as an accurate release moment or to mix the absolute values of XrTime and QPC.
+- Current prototype reject speed below 0.5 m/s, insufficient migration 4 cm samples. A separate column of "effective low-speed light throw" and "ineffective tracking" is required to avoid light drops; whether or not to allow the in situ release as a pending operation, or not, will never be used as an active release.
+- Original `bAddBaseVelocity/InitialFrameOfRefVelocity` The role speed of the VR side can only be synthesized once. When the body benchmark is already in swing, it no longer moves from world history differentials to speed; the vehicle horizontally is also integrated into a clear base source.
+- The impact point cannot be pushed across the wall when blocked by a wall; the starting point of the collision must be treated in a manner consistent with the initial position of the original bomb.
+- Prototype. 9.81 m/s2 is the mathematical default. The checked atomic bomb/world effective gravity is preferred to be used when running, and not just by a calculator but by another set of gravity for an actual shell.
+- Keep user-specific 3 kg virtual weight target; speed is not divided by simple speed at the same speed 3. If the bottom needs a charge, first confirm the true mass and physical pattern, not both writing speed and repeated imposition of equal pressure.
+- The dynamic deviation of the Bolo chain is treated separately from the transect. First, it allows for a visual continuum between the direction of release, speed and original chain, before deciding whether more precise physical motion needs to be read at the end of the actual chain.
+- Once the fuse is activated, the breakup cannot be refreshed. The checked preparation function does not activate explosion timer; the normal stop delay of Frag, the direct trigger of Smoke's special service StopBounce, and the two types of attachment and special Hitwall are different, as detailed in v.2 Table. Actual operations are still certified separately.
+
+Unplug original preview should only be used for the VR drop display of this local player.`SimulationDir` It is also consumed by the original generation chain, which does not remove the entire simulation process and leaves uninitialized values; it depends on it first, then partially replaces actual launch conditions. The first version targets local authorities’ Playground/Kateline connection, with online server authority and replication being separately validated and cannot be inferred from local re-speed as well.
+
+## Parallel preparation and sequencing of implementation
+
+| Workpack | Now ready for design. | Next concrete results |
+| --- | --- | --- |
+| Gun-by-gun specifications | Yes 12 Complete empty/semi-silo/post-fired steps for item marking of known and pending nuclear agencies | 12 A weapon card with a specific class/variate belonging, which is directly mapable for the existing Config/Plan |
+| Original Process | Check inventory, timers, notifications, rewards and interruptions by location entry; minimize reversals due to gaps | Call charts, parameters sources and recovery methods for each entry point to the result; avoid leaving only a native declaration |
+| Models and Coordinates | Reuse existing extraction/bones/animation tools to determine which are originals and which are added | List of activity items, grabs/axis/route, complete ammunition to be supplemented and unified loading programme |
+| Gears. | Refine the impact of hand-out events, velocity estimates, base speed and fuse contracts | Bolo/Smoke 2 independent access cards, shared motor algorithms, binding the original bomb and effects, respectively |
+
+These are not based on current headline feedback, nor do they require multiple games or additional writers to be launched at the same time.
+
+1. **Lancer Full sense change.**: primary cartridges, fixed entrances, physical structures, quota stocks, perfect/ordinary results and interruptions; first, the general-purpose clock and animation.
+2. **Hammerburst and Snub**: Verify that the shared matching supports different magazines and mechanical programs. The Lancer coordinates cannot be used only by changing the name of the gun.
+3. **Gnasher and Longshot**: Resolve the book-to-book, complete ammunition loads, post-launch cycle and cutable partial filling.
+4. **Boltok and Boomshot**: complete the most unclear institutional mapping before reloading plans; model studies can be done earlier, not until the first three batches are completed.
+5. **Torque Bow, Hammer of Dawn and Troika**: each has its own active release/termination, target exposure and fixed gun position control.
+6. **Bolo, pick up Smoke.**: Re-launching with the same gesture to independently verify fuses, buttons and effects; its static research and speed estimation design can be prepared in parallel from the first.
+
+Compile/package each batch and perform a short Playground basic check using the already controlled path; specific failure to direct re-repair/review. 0.4 Detailed hand feelings, capture distance, and close-looking model quality are adjusted by headline feedback instead of using historical test numbers as a new threshold.
+
+## How do we confirm that every one of them is complete?
+
+Each gun records “design determination, code connection, compile packages, basic game check, head-over feedback”. The completion criteria fall on the player's actual actions: it can be held and targeted normally; it can be supplemented by the correct number at this point in the weapon; empty/half-barrel/under-assembly ammunition is handled correctly; no copy or swallowing is interrupted; after taking over the original animation, it can recover; current steps are visible and the firing door controls are consistent.
+
+The grenade focuses on whether the same hand-shot action is still motion-driven when it turns only, whether the upper/down/light throw responds to different initial speeds, whether the wall side is generated from a legitimate hand position, whether the number is reduced by one and whether the original fuse and effect are retained. It cannot be replaced with a track preview, mathematical unit testing or successful exit.
+
+Projects that lack the application of a switch-off are closed with "not applicable + matching action verified" such as the target exposure of the Dawn Hammer, the gun position operation for Troika; they cannot be plugged in or directly over-covered.
+
+## Evidence and review portal
+
+- [There are complete interactive specifications.](weapon-6dof-interaction-design-20261022.md)：12 This program does not re-run these experiments by using the run reports.
+- [Survey of ammunition resources and reloading](ammo-and-physical-reload-20261021.md): original cartridges, complete ammunition gaps, notify and account keeping. 17 List of items `J:/gearsVr/analysis/ammo-reload-20261021/export-manifest.json`。
+- [Knowledge base description](58-reverse-engineering-knowledge-base.md)and `J:/gearsVr/analysis/re-kb/knowledge.sqlite`: This time used `tools/re-kb/kb.py` Read the save scripts after searching for Reloading, PerformReload, Weap_Grende, ActiveReloadSeccess etc.
+- Save script for this direct reading is located in `J:/gearsVr/analysis/re-kb/scripts/WarfareGame/`：`WarWeapon.Reloading.BeginState`、`PlayWeaponReloading`、`PerformReload`、`Reloading.EndOfReloadTimer`，`Weap_Grenade.ThrowGrenade/GetGrenadeTossVelocity/GetPhysicalFireStartLoc`，`Proj_Grenade.Init/PostBeginPlay`，`Proj_FragGrenade.EnableGrenadePhysics`，`Weap_Bow_base.Charge.EndFire/Tick`，`Weap_Boomer_base.ProjectileFire`，`Weap_Troika_base.CanReload/Reloading.BeginState`. They still contain undefended native token or parameter types and cannot be sold directly as retail ABI.
+- [Add Model Description](../assets/weapon-6dof/README.md)、[Gnasher prototype](../assets/weapon-6dof/gnasher-round.glb)、`tools/weapon-models/` Script for bone/strengthen extraction/image audit: Asset creation and coordinates review portal.
+- The source Hash and unknown items are currently recorded in the special header files. `WarfareGame.u` SHA 256 Yes `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`Map source `MP_WarMachine.war` Yes `55f40ca44051413fe6db19816f97b09849c5e104319d93e9d5d159cbe6fb2840`; this is the resource identity corresponding to historical evidence and cannot replace the bytes check for the current EXE/Run-time function.
+
+v 2 The post-review specifications, static surveys and offline model deliveries were completed; model imports, complete physical alternations and atomic bomb handwiring remained open to the main line for access, but were not recorded as completed games.
+
+---
+
+## 中文
+
 # 全武器交互与手势投掷设计方案
 
 当前交付见 [12 种武器离线规格 v2](weapon-specs-20261028/README.md)及[交互复核](weapon-specs-20261028/interaction-review-v2.md)：已取消统一 R3 前置，明确 Boltok 支架／弹巢关系、扭力弓取消组合、Frag/Smoke 不同触发路径，并实际交付[5 个离线 GLB](../assets/weapon-6dof/offline-v2/README.md)。本文保留初版架构背景，动作与资产状态以 v2 规格为准。原动画、native ABI、实例尺寸及实机表现的未认证项仍单列。

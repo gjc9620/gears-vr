@@ -1,3 +1,58 @@
+# The target locks were repaired when the bunker was holding a gun.
+
+2026-10-22, integrated into 0.1.0 Develops a normal starter. This time the bunker is being repaired with a live/relevant HUD returned to its head location missing, which does not constitute a new release or head-over acceptance.
+
+## Reasons and changes
+
+Original from `UpdateHUDActions` Query reply extract for hit points `bIsTargeting`And write it in the frame. `aiming` Mark. During the bunker, queries may not be running or generate a reply that can be used in the current scene; even if the controller is still aiming at it,`aiming` Also keep the default false, normal HUD returns to the header plane. Whether a limited hit point is available or not is carrying a gun is two different conditions.
+
+Read the certificated controller target properties independently when constructing the current frame. Read the frame anchovies/Pawn as a controlr, double check registration identity, class inheritance, two-way holding relationship, attribute type/size/diversion/bit mask and Bool access assignment; only submit it when the sight position of the read is identical. This reading does not require searching for script frames, local variables or midpoints, nor depends on the last weapon remaining. Use the current status after detargeting without retaining the upper frame.
+
+The hit point is still checked by the original identity, time and camera but its authorized results no longer cover the frame of the scene with a gun. The star-point and HUD continue to share the same frozen eye geometry: use the world point when available for limited points and use the original game source view when missing. So head postures change only their projection in the eyes and do not re-choose head centre because of missing queries. This direction does not amount to an actual weapon-launching ray certified; this time there are no weapons, ballistics or role animations.
+
+## Automatically check
+
+- 13 The primary inspection is carried out, including new search frames that are not readable, old weapons that are not readable after a change of gun, de-targeting, changes in state during reading and cases of identity/ attribute rejection; and the simultaneous performance of checks which are already aimed at HUD, parastar projection, frame life cycle, first person designation and final output.
+- HUD Projectivation Overwrite 1,215 Group head position/rotation/target depth; quasi-star projection overwrite 729 Group posture. The limited points are still checked for source world direction when they are not available, and ordinary non-targeting behaviour maintains the planned results.
+- 22 The first step is to get the original check passed before it's started.208 The item starter check passed. An old test that started the diagnosis directly compared mtime to a high-precision wall clock and obtained a false old determination on Windows; bound only the fresh test sample to its actual mtime, retaining missing, erroneous PID, old time stamp and dissensitisation claims, without changing the logic of the diagnostic. The first failure and rerun record is kept.
+- MSVC/Ninja Record 484 The item relies on confirmation that the actual compilation contains two original documents, the original first person ' s achievement and the original output strategy after the modification.
+
+The primary test binder is complete with valid, two-way metadata on the objectProperty; the missing and failed initial test parameters are kept in the ignored directory and not considered as a result.
+
+## Retail back-office evidence and limitations
+
+Test only started `J:\gearsVr\Gears of War Reloaded` . A copy of the working version, disk EXE SHA 256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`. Use independent examples, private archive/sets, validated bend-windows policy, read-only output surveillance, test silent sound and keep the physical handle backstage input closed. No historical archive folders are used to cover user progress.
+
+Move into the bunker through original/shelter key, get it 10 Number of times `CoverType=2`、`CoverAction=7`. The original records are as follows:
+
+| Inspection | Result |
+| --- | --- |
+| Current scene sighting effective read | 10,017 Frame |
+| Raise frame/no HUD query reply | 796／796 |
+| Current scene aimed at reading rejection | 0 |
+| Aim HUD Planning | 4,354 Every second, use source world direction back |
+| Observator budget exceeding limit | 0;maximum single record 0.3312 ms |
+
+This confirms that the actual bunker is still in target UI path when the query is missing. The latter section appears as original `PenderCrossplayInvitePopUp`, automatically enter the stop by the guard;16 The sub-plan entered was not all completed, and the reply retention status was interrupted.
+
+Original strict session reply to incomplete: independent stoppage check 7 System `dxgi.dll` The entry is different from the disk PE byte. This is also the default check limit for building an existing one that cannot be original `entries_restored=1` Separately. This round of independent checks saves another byte of the actual stoppage SHA.256;additional audit prior to installation of line-by-line reconciliation with PID 32 Byte Record,7 All of them are the same as the actual shutdown to read back Hashi, among which 5 The entry also has consistent pre-installation/drying double records. Independent check of the game entrance is passed. Original strict reply was not rewritten as passed, and supplementary audit only confirms that the inspected access returned to pre-installation status.
+
+Native Resource Cleanup Pass, XR exit 0, Playground entrance is back through, audio is back through and then confirmed that the game process exits. The user's original location 10 A set/archived file corresponds to a single copy before it is prepared. No FPS comparison conclusion.
+
+The head motion was not applied to the active simulator: the diagnostic entry was directed at another parallel example and therefore did not modify the overall attitude. The evidence for head movement is derived from the above-mentioned CPU projection; no new GPU pixel alignment, actual launch line/bullet impact point or physical headshot acceptance were added.
+
+## Default Integration
+
+From the latest default `bf0a8f730d41718cc6002625848f9f8c3f7ef15aaa4bb0a15153dd3498978855` Playground output freezes source code production, replacing only original files and test folders involved in this time; retaining all original build switches, first person names and FXA output changes.
+
+Normal starter is now in use `tools/native-capture/build-cover-aim2/GearsCaptureCoverAim2.dll`，SHA 256 Yes `04ff9ff8c1465c2019c78b8b0309275a18c4e7208117fa65e8e00396041b71e0`. The default list is only updated `native_build`、`native_dll`、`native_sha256`, the rest of the fields and current 0.7 Render ratio is unchanged. Original XR/Playground binary and old freeze build-up reservation; tags/packages are published without change.
+
+Private sources, build, test and supplementary audit responses `analysis/cover-aim-20261022-build2/`、`analysis/native-build-cover-aim2/`、`analysis/instances/cover-aim2-retail/`, Original run report prefix to `analysis/runtime/continuous-stereo-43608-20261022-020338-106b0cf1`. These evidence and game-derived data do not enter the distribution package.
+
+---
+
+## 中文
+
 # 掩体举枪时的瞄准锁定修复
 
 2026-10-22，已集成到 0.1.0 开发版正常启动器。本次修复掩体举枪时准星／相关 HUD 退回随头定位的遗漏，不构成新版本发布或头显验收。

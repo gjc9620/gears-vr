@@ -1,3 +1,33 @@
+# A quasi-star sample of non-neutral simulated head positions
+
+2026-10-17。CallTrace 42 Experimental version, default Reticle 39. No cross-payload correction enabled.
+
+## Posture and Example Confirmation
+
+Session 20040-20261017-081036-233490 d;playPID 20040，XR PID 38508, create full identity to the poste 66-ready.json/normal-close.json.Simulator MCP reports runningtime_live=true, log_file=openxr_simulator.38508...log, corresponding to this XR identity, did not use the same PID or cache of FOCUSED as a live example.
+
+Actual first projection and at least 10 After the subsubmission, the simulator position is from the location (0,1.7,0, zero rotation is ()0.05,1.7,0)、yaw 10°／pitch 0°／roll 5°. set_head_pose returns only first and the diagnosis immediately read is still old; the former post-applied mark actually indicates that the order has been queued, not confirmed. Follow-up diagnostic clear report x 0.05, yaw-yaw-yaw-yaw-yaw-yaw-yaw-yaw-yaw-yow-yu-yaw-yaw-yaw-yaw-yaw-yaw-yu-yaw-yaw-yaw-yaw-yu-yaw-yu-soo 0.175 rad, roll around 0.087 radians, the submission records also contain non-04-digits and a shift in eye after rotation. The actual application is therefore based on this follow-up evidence, which does not follow the line of endorsement to claim success.
+
+Submit Record 4643／4644 The left eye is about to have a position.0.018606,1.697211,0.005536,4Ds (0.003802,0.087073,0.043453,0.995247 Two eyes, both of which are recap.1920×2160, keep their respective asymmetric FOVs. A single poste field is a projection slot and cannot be compared directly to the centre of the head.
+
+## Call and Image
+
+Same request under direction/back right LT/RT 3 seconds;involved in actual cycle 3 Weap_AssaultRifle.DrawAdditionalCrosshair path.32 The body is still the sample 16 Group: scope 1 Every time.4 Tile，scope 3 Every time.1 Tile. Accepted/completed 1705 Canvas' rejection.0, text Tile 575. The parastar plan/application 147、finite 147、direction_fallback 0,center/geometry/projection refused 0。
+
+Two.3840×2160 Image: ticket 279／source 277 is the previous neutral attitude scene; ticket 869／source 866 The latter is a non-neutral attitude opening image. The latter displays an oscillation, shooting and white marking, but also has a re-gun UI, which cannot be considered as the additional superstar by its appearance. It appears that the white brackets close to the single eye centre are the follow-up clue, not the proven faulty layer.
+
+First planned record retained from ticket 829,view port left eye.386.843,-178.937,1920,2160 Not a PNG ticket.869. It's not working.829 Plan location is directly determined 869 pixels disability or declared renderer is not corrected.
+
+The subsequent tests should wait for the weapon to be selected UI to recede and obtain images of the same size as the plan to verify visible markings and source ranges; no further assumptions can be made about the root causes from the image. MCP diagnoses, data submissions, original lines, images and tailors are located in anignored analysis/runtime/pose66-*。
+
+## Restoration of borders
+
+Submit a neutral attitude restoration order after testing, and then confirm position in the same XR example that is still active (0,1.7,0 The following are some of the most important features:0, stop normal. Native clean-up, stop after entrance recovery, XR exit and game custom close pass. No changes to the global OpenXR registration form. This is a simulator link and limited sample drawing, not physical head start displays, target hits or comfort check.
+
+---
+
+## 中文
+
 # 非中性模拟头姿的准星采样
 
 2026-10-17。CallTrace42实验版，默认Reticle39及玩家包未替换。没有启用跨payload校正。

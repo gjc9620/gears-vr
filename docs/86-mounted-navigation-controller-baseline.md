@@ -1,3 +1,37 @@
+# The machine gun is approaching the handle and turning.
+
+2026-10-17 This round did not succeed in having a machine gun on board and could not be scanned to Troika or the ordinary mobile script used for mounted VR acceptance.
+
+## Current read-only target and limited attempt
+
+Caption 38 Actual Session Continuous-stereo-31124-20261017-065133-f 23bbd 2 f Rediscovered two non-tempo Turret_TroikaCabal, position (-)4052.71,-12215.18,-315)、(-638.85,-10770.90,-62) Driver/Controller is empty; Actor identity/field read again stable, WorldInfo is the same as current controller.6 This round scout is same-world judgement that allows different direct Leve to be removed from the old same-Leve condition.
+
+Read the check points and use them as normal moving indicators. No transient, call-time or rearchiving.8 The subright requested a successful return, but POV yaw only experienced small shaking and angle error still around 33°; no left swinger is sent. Last camera time does not move forward/player dies and script stops. No position change can be used to assert that the left pole is broken or that it has arrived/held a machine gun.
+
+The event is closed. Evidence was pressed 51-live-scout.json, Pilot-audit.json, normal-close.json and session logs. Only scout sample role Health 450 Not a proof of survival.
+
+## Not first because of the VR code.
+
+Read-only source review shows that the steeo_matrices multiply this original_source view against HMD, and the fixed neutral head position of the simulator does not fix the source shot by design. Game_io CLI right axis parameters do enter light_joystick_float. The request is still not a game consumption.
+
+Another game without injectionPID 26868／creation 134366649566560208, without VR DLL or XR; still debugging configuration and therefore not zero. Navigator enters the same check point, right axis 0.6 Continuing 0.406 sec, POV yaw changes 0. After reading the checkpoint again, the first right axis of the two-part test 0.6／0.8 Seconds still in 0, the second part sends a copy of the same right-hand line, the POV yaw change.7768 RU（42.6709°. The front and back window diagrams can be seen with visible lens rotation, not just the cache values.
+
+The number keys and extra time changes at the same time, but it does not prove that the "choice handle" is the only reason; it suffices to show that the original failure was preceded by VR injection, and that the virtual right axis works in this game state. A speculative yaw patch cannot be added to the VR camera at this time.
+
+Old server.json's xinput_slot=0 is the cache on startup.0 XInputGetstate does not read expected+19660 Right-axis value instead max_rx=-1920; The slot was not confirmed as a test device at the time, so it cannot be considered evidence of loss of virtual axes or identify specific slots.
+
+## Next try doorbar
+
+Navigation test template adjusted: a clear number key must be measured at least 3°And the shift in the right direction, and each school accurately reduces the error towards it or stops; no more than 1°The vibrating is used to control the response. Targets are approaching and need to be 3 D-range, avoids requesting interaction at different heights with a horizontal distance. This new template has not been implemented; normal player starters are not added to automatic gun exchange or new input.
+
+The next one is still VR injection, which is activated and actually transferred to confirmation, before trying to get in touch. If you cannot reach the border, keep it and not change the role status to make possession success.3 Tie, actual new eyes and subsequent machine checks.
+
+The game is closed without injection.52-normal-close.json; see yaw for login and image path 52-vanilla-audit.json、yaw 52-axis-audit.json、yaw 52-before-after.png. All kept in signed analysis/runtime- No, no.
+
+---
+
+## 中文
+
 # 机枪接近尝试与手柄转向对照
 
 2026-10-17。本轮没有上机枪成功，不能把扫描到Troika或普通移动脚本当mounted VR验收。

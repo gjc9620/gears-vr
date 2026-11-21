@@ -1,3 +1,53 @@
+# Receiving and Inspection and Residual Operation Certification
+
+The following is the test for subsequent implementation. This round only validates document integrity and source-code positioning, without performing C++, game, XR, simulator or header tests as shown below.64 Item/192 The actual execution of the short basic check is subject to user authorization and main line protection.
+
+| Numbering | Site/check | The result must be seen. | Evidence level |
+| --- | --- | --- | --- |
+| A 01 | Current closing baseline, missing edges, error slot/not authorized/suspend | No new scratches; no impact on existing body/weapons; clear reasons for refusal | Source/Simplistic Logic, subsequent basic game |
+| A 02 | Legitimate left/right/top, ordinary wall, high wall, back and corner | Only legitimate edges to reach; right or right pull sign; top-down pressure up | Pure logic + actual geometry, hand-to-hand. |
+| A 03 | Ordinary curver-orderinary; check Tick owner, C 0/view publication | One body Writer; cover is not rejected by the old switch, does not produce a second camera overlay | Source + Actual Callback/Eye |
+| A 04 | Actor. Trade ABI, Raw field sequence, valid hit, back failure, re-entry of queries, time budget | Correct.116 Byte layout and current code/GNatives; not called in lock; failure cannot be counted empty; overbudget waiting | Static Certificate + Controlled Run |
+| A 05 | Dimples, thin walls, beams, initial overlap, round bunkers, mobile doors/destructors | Authenticate actual query shape/overlap semantics; do not sign security cards for dynamic unknown areas; do not scratch sides from walls | Run Controlled Geometry |
+| A 06 | Pull first, pull up, reverse sequence, four-point secure but with a barrier in the middle of the path. | Check group postures and looting; tailor to physical security points, counter-argument immediately and without accumulation of transborder migration | Pure Logic + Geometry |
+| A 07 | Query back door entry/barrier generation, return disorder, different collision versions with Actor, crossworld/ref | Old result rejected; valid from-version and current occupancy evidence submitted; no new time for forgery | Pure Logic + Orientation Run |
+| A 08 | Query waiting frames, release/weapons exchange/tracking interrupted while waiting | Waiting for the normal lease; release when round is effective; real release after break; old incent not to be revived | Pure Logic + Enter Basic Check |
+| A 09 | Keep your hands free, catch back and pull back, keep your position occupied, runge shrinks. | Uncut and unfrozen; old position lapses into recovery, no clamp post-authentication, and no transient zeroes | Pure Logic + Practical Game |
+| A 10 | Go in the direction, look on the side,180°Turning head, circle/reverse | Body wall, no hard-to-do head; automatic BeginTurn not to intervene; grab axis not to retort. | Source code +eyes + physical header |
+| A 11 | Real foot/right/right/back and back, rotation only, real action folded with virtual pull | HMD moves once each; right-hand/right hand/guns same benchmark; in situ rotation without additional shift | Pure logic + eyes + physical headlight |
+| A 12 | Enter, change slots along walls, side/back exit, recenter, snap-turn, checkpoint/Pawn replacement | Normal transition without a zero jump; exit is always available; no automatic retake; no poste will be used across the world | Pure Logic + Short Basic Game/Signation |
+| A 13 | LT/RT, targing delay, blind shooting, swapping/cutting guns, flipping/CoverSlip | No automatic access but legal targeting and firing are still operational; only CA/CD is suitable; movement along walls, special action side effects retained | Original Call Border + Actual Action |
+| A 14 | Co-location/showing/torn/stretch under attack in the same direction; special DamageType | Exposure to exposure without the clearance of the bunker/human blind-scrap branch; hidden protection, other original injury modification retention; harm context matching pose | Controlled actual hit/harm response |
+| A 15 | Checking bone frame rendering, philsics/hit consumption, harm to HitInfo; no skeleton/online support | Same model and post version; not just models. Extensions are not enabled without certification of skeleton/non-local authority | Real consumer chain; no claims on-line |
+| A 16 | Legal blinding of the outside, inside the head, long-guns through walls, close targets, projectiles | Authority muzzle corresponds to ballistics; the gun does not cross the barrier to access outside the wall; HUD does not write aaim | Actual original shooting/crash |
+| A 17 | Accompanied by the holding of a gun/box, unstucking and then unsupported, beyond arm. | Incument priority; press the next action at a time; fixed bone length; release without additional physical deviation | Pure logic + visual/real weapons |
+| A 18 | Ordinary running, sprinting, stopping, up and down, running into/out of bunkers, active diversion and recoil | Remove manual staggering; real movement/crowding/diversion/resistance of independent recoil; benchmark switching continuity | Actual camera source decomposition + header |
+| A 19 | Field Chain 933＋360 Overcapacity, growth and rollback, allocation change, self-replaced slot replacement | Success without interruption; single history and identity lapses effective; caches do not mask changes; read budgets are visible | Reader's directed, follow-up real binding. |
+| A 20 | Stable semi-probation continues to press the trigger, fire first and change altitude, mirror/gun exchange transition, blind bow release | Semi-stable and non-permanent deray; genuine transition remains limited; no automatic release of bows or aborting process due to bunker suitability | Original Function Chain + Controlled Actual Actions |
+
+## Specific unclosed operating conditions
+
+| Item | There's evidence. | Identification check/failure processing at start-up |
+| --- | --- | --- |
+| U 1 • Original action and damage branch written to ABI | Script syntax, six-function passive observer for two States; historical PlayerMove local fields; two sets of actual carler-local changes and setter extension in T report | The current real embedded call is reflected, script bytes, local storage and setter reading time points after return; original damage parameters and cover-only return to the border. No duplicates are required to prove that a historical chain exists; modules are not enabled without authentication of writing permission, rather than using locals/RAX guess addresses. |
+| U 2 :: Consistency of occupation in the current collision world | Trace Refraction Layout/Code Certificate Rules; History CT 17 Radiometric reporting | Authenticate the search and submission of a physical update/scene guarantee, auto-overlap, dynamic object and self exclusion in realowner Tick. Uncertified does not equate Actor identity to space. |
+| U 3 :: Physical prose is genuinely involved in hit and shot | C 0 Trading and target structure; evidence of the phasing of old cameras/bones | The actual propose consumer, HitInfo, damage and authority muzzle are connected; the same Goal is received as a hit consumption if necessary. The correct rendering is not a substitute. |
+| U 4 :: Comfortableness and accessibility | Interacting contracts and default parameters | The main line allows short header check after delivery: tilt into the wall, pull to hold/reverse, switch out. |
+
+U 1–U 3 They are located wire authentication missions, not continuing open selection options. They are currently not eliminated by the current static survey; they cannot be marked as “runtime ready.” Other realization and pure logical preparation can proceed at the established stage without requiring users to answer new design questions first.
+
+## Minimum Reply
+
+The follow-up diagnosis is event centred and documented as follows: context/basis development, Scene/Tick/compose/information, input sample and prospecten, incent/committee/from-version, capture of edge, requested/acceded upon fset, query vrdict and geometry generation, same-pose view/hit/muzzle version, original state/CA/CD, first refusal reason, normal end/restoration result.Object address, script, private running information is only available in signed annualsis;Public descriptions are in symbols and versions.
+
+Each conclusion is marked separately: complete, compiled, basic action achieved, concrete results, clean-up, candidate delivery and user header feedback.
+
+Second round.[Specification Reference Model Results](contract-check-results.json)Yes 28 Synthetic Time series cases,78 A claim and 3 Passed by place transfer; it does not execute the existing C++ or any of the actual games above, nor closes U 1–U 4。
+
+---
+
+## 中文
+
 # 验收与剩余运行认证
 
 以下是后续实施的判据。本轮只验证文档完整性和源码定位，没有执行下表的 C++、游戏、XR、模拟器或头显测试。场景为定向检查库，不要求每次改动都跑完整矩阵，也不恢复旧64项／192动作门禁。短基本检查的实际执行遵循届时用户授权及主线保护。

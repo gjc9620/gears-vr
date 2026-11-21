@@ -1,3 +1,79 @@
+# Ammunition model and 6 DIF prefill survey (DIF)2026-10-21）
+
+This round will first complete the resource search, real geometry export and original reloading. Body sensor filling is not achieved, nor is it modified for normal starter, first person or game reloading. The resources are a copy of analysis from the current Reloaded installation package; these results cannot be extended to 2006 Full resource conclusion for all original versions.
+
+## User-recognized targets
+
+2026-10-22 Supplemented[Weapons 6DoF Interactive Specification](weapon-6dof-interaction-design-20261022.md), R-R-R-R-A-T-E-S.3 Start, shoot-by-gun yellow steps, insufficient number processing and time calibres selected by the user: from effective start to final necessary action complete, a perfect end of the original perfect window is perfect and valid before the beginning of the window. The starting point below “defended” is based on new documents; actual thresholds and mechanical actions for each gun still need to be checked.
+
+The left hand removes the full cartridge, revolver or shotgun ammunition of the corresponding weapon from the left shoulder and loads it into a right hand-held gun, then executes the final bolt/loading. Complete the entire set of actions within the specified time frame triggers a perfect reload; complete the original reload without triggering failure/crash punishment. Time length, starting point and final mechanical action of each weapon are determined when the interactive design and actual measurements are made.
+
+The current priority is to find the original complete munition in hand and not to use empty shell or tracer models as full ammunition that has been found.
+
+## Exported resources
+
+All products are left behind. `analysis/ammo-reload-20261021/` , does not add Mod release packages. Each provides OBJ, GLB, original package export Hash, Bohashi, offset, parsing layout and classification description.
+
+| Resources | Conclusion for the current round | Body-loading use |
+| --- | --- | --- |
+| `COG_AssaultRifle.Assault_Rifle_Magazine` | Lancer's separate cartridge,40 Triangle;old weapon `MagazineMesh` Component quotes this resource | Source geometry as capture/insert prototypes, close-range details, stickers and interactive points still need to be addressed |
+| `Locust_Hammerburst.Hammerburst_Magazine` | The video shows the number of people in the country.158 Triangle;old weapon `MagazineMesh` Component quotes this resource | Ibid. |
+| `Locust_Boomshot.Mesh.Locust_Boomshot_Magazine` | The blog also highlights the impact of the project on the country's population.124 Triangle | specible shape; current round does not prove running time load binding |
+| `Locust_Boomshot.locust_boomshot_ammo2` | The independent ammunition naming resource,268 Triangle, exported physical shape | Unaccompanied handheld filler not yet recognized as applicable |
+| `Locust_Hammerburst.Mesh.S_Hammerburst_Shell` | Independent Shell Naming Resource,72 Triangle | Use is not nuclear, and can not be considered a Boltok munition. |
+| `Delta_Assets.shell_spent_single_02b_SMesh` | Visually confirmed open-mouth empty shell; Gnasher shell particle module directly referenced | It's not a complete unlaunched shotgun. |
+| Four. `bullet_spent_single*` Resources | Visual confirmation shell, citation of Lancer/Snub/ Hammerburst/ Longshot shell module | Not a full warhead at this time. |
+| Three. `AmmoPickups` Resources | Pick-up of Magazine, Case, Box; source geometry display/ground level | It can't be directly equivalent to a magazine or a shotgun. |
+| Four surface shell casings scattered resources | Environmental grid of multiple empty shells | Not as a single full-fired munition |
+
+Total 17 A real resource. This round covers the main resource package `WarfareGame.u` and saved `MP_WarMachine`、`MP_Mansion`、`MP_Rooftops` Three map lists; currently unrecognized **Boltok Single, Independent and Complete Ammunition** and **Gnasher complete unlaunched shotgun**And that's not proof of the whole game.
+
+Then we'll check all the machines. **1,034 Delocalize `.u/.upk/.war` Name list of the package**, the full decompression of the piece that is attached to the name list is successful. Only the compressions are unpressed and not all maps or game packages are fully developed. The names of ammunition, cartridges, warheads, magazines, cartridge/roll/slug and both target weapons are retrieved without a single dedicated resource name. The title sheet is only a clue and does not prove that there is no complete ammunition in the randomly named grid; the full result is stored with the name chart Hash. `analysis/ammo-reload-20261021/global-name-scan.json`。
+
+The name scan also found Comando Dom's skin. `Bullet_Strap`. The role package has been further analysed for copying, bone reading and physical examination of a role grid: the name appears in the role skeleton and is not exported from the StaticMesh; no complete release is currently identified from it that can be removed directly. Role checking files are also left in the caractor subdirectories of anallysis, which are not mixed 17 A model ammunition delivery package.
+
+Gnasher has only Root, Main, and Lever reference bones; Boltok uses several generic Object names. It is not proven from this information that the individual munition can be removed directly; nor does the skeletal naming itself prove that the Gorge did not have ammunition.
+
+If the original version of the single-shot ammunition is not found afterward, it can be based on existing shell casings and weapon fillings with a closed-locked shotgun and a warhead revolver. Such models should be clearly marked as new/modified models and cannot be manufactured directly into the original package.
+
+## Identified original reloading process
+
+Use saved UnrealScript/ Class Export Evidence to locate the entry, without adding an EXE indent or running time. See Hashi `analysis/ammo-reload-20261021/reload-evidence.json`。
+
+- `WarWeapon.Reloading.BeginState` Records `ReloadStartTime`, clear the active reloading attempt sign and set the reloading fire mode;`PlayWeaponReloading` Starts the original aerobic re-alignment and end time.
+- Normal Path is `EndOfReloadTimer → PerformReload → Active`。`PerformReload` Handle the ammunition back-up into weapons and not just play animation.
+- Original Second Press by `Reloading.HandleButtonPress` Enter `DetermineActiveReloadSuccessOrFailure`. The latter only holds evidence **Native declaration**The precise determination of the inter-area and threshold values has not yet been verified.
+- `WarWeapon.ActiveReloadSuccess` Including success awards and fire Mode 10／11 . A single call function cannot be used as a whole body sensor swap access at this time.
+- `FailedActiveReload` Clear the active bullet incentive and choose failed fire mode 9; there are also local failures of feedback, failed animation and timing.
+- `WarPawn.PistolJammed` It'll be transferred. `Weap_PistolBase.Jammed`. Save scripts have not proven that the active switch failed to complete the connection of the event, and it cannot be asserted that all card cases are eliminated by skipping a single failure function.
+- Pawn Exists `Notify_AmmoGrab`、`Notify_AmmoRelease`、`Notify_AmmoThrow`、`Notify_AmmoReload` Forward entry; the saved script corresponding to WarWeapon base class is empty and cannot be declared as providing full generic capture/plug interaction.
+
+User vision is achieved by the independent perception phase: after the taking, insertion, final mechanical action has been completed, then selection of a successful reward or regular filling submission based on time-consuming hours. Timeout branches do not enter the original active re-loading failure decision. This is done only if they verify their primary state, normal automatic completion of timing and recording of ammunition, so as to avoid automatically loading the original clock before they are loaded; this round records only the design without modifying these paths.
+
+## Export and Authentication
+
+Use existing UE 3 Label Reader and press UEVIewer `GAME_GoWU` The static grid sequenced branch produces a border reader; unknown structures fail directly and do not scan geometry. The physics package version 835/76, with a valid version of GoWU 614 Path; KDOP, section, position flow, UV stream and two index streams are read by structure.17 Keep all entries 56 Byte does not explain the end, and does not count it as geometry. The format is as follows: [UEVIewer Official Warehouse](https://github.com/gildor2/UEViewer/blob/master/Unreal/UnrealMesh/UnMesh3.cpp), downloading sha 256 Yes `404f6f5f11e56f8d8cdaa7d85131bd98d161f155214d18a78a73b1c83a1211cd`. No analytical tool has been installed or replaced.
+
+Validation results:17/17 Source Export SHA 256 Matching;17/17 OBJ, GLB aligns to the embedded location/index within the web page; triangle index range, section face number, limited coordinates, GLB length and buffer border pass; Node of JavaScript `--check` The page is open for external requests.
+
+Auto Open in Browser `file://` The preview page was rejected by the URL security policy and did not be bypassed by other browsers, service forwarders or indirects. HTML is delivered as a local file, actual WebGL operations in the browser have not been completed. All models are shown with neutral ash, no posters are exported; original dimensions are not calibrated to VR hands, guns or plug-in mouths.
+
+Main products:
+
+- `analysis/ammo-reload-20261021/ammo-viewer.html`
+- `analysis/ammo-reload-20261021/ammo-priority-previews.png`
+- `analysis/ammo-reload-20261021/ammo-previews.png`
+- `analysis/ammo-reload-20261021/export-manifest.json`
+- `analysis/ammo-reload-20261021/particle-mesh-references.json`
+- `analysis/ammo-reload-20261021/resource-coverage.json`
+- `analysis/ammo-reload-20261021/global-name-scan.json`
+- `analysis/ammo-reload-20261021/verification.json`
+- `analysis/ammo-reload-20261021/ammo-models-17-local.zip`
+
+---
+
+## 中文
+
 # 弹药模型与 6DoF 装填前期调查（2026-10-21）
 
 本轮先完成资源查找、真实几何导出和原有换弹入口定位。尚未实现体感装填，也未修改正常启动器、第一人称或游戏换弹行为。资源来自本机 Reloaded 安装包的分析副本；不能把这些结果扩展为 2006 原版所有版本的完整资源结论。

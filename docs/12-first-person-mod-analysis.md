@@ -1,3 +1,164 @@
+# First Person 1.0: Local package comparison study
+
+2026-10-11. Enter the download for the user `First Person-21-1-0-1764109229`。
+Only depressurized copy, parsing and contrasting; Mod is not installed, game packages are replaced or scripts are executed.
+
+## Conclusions
+
+This is by rewriting UE 3 The default properties, the person model and the first person of the plane to be achieved by animated lens in the package are Mod.
+Reference is made to the location of its lens, original camera mode and body display processing; it does not provide OpenXR,
+Real-time head startup or double-eye mapping. We still need to add a header position at the validated entry point of the original view.
+
+## Scope of documentation and evidence
+
+Only two files without DLL, EXE or installation instructions:
+
+| Documentation | Bytes | SHA 256 |
+| --- | ---: | --- |
+| Engine.xxx | 26270651 | 983f0d5d6757e2652ce29f27bc8fb8bd7a979ff3d87446e004c771e5188ae8f5 |
+| WarfareGame.xxx | 261301387 | 98872b93f7a2257e1aeb0a25ae29347dc5950e3ee75af178df12bc091eec219a |
+
+Two packages of versions 835/76, same as the currently installed analytical copy.
+The baseline for this comparison is our current installation, not the original bottom package of the author when he made Mod.
+The differences may therefore also include variations in the version/platform, and not all of them can be classified as intentional changes by the author.
+LZ 4 All dimensions of the breakout pressure verified; output is in analysis/first-person/decompressed。
+UElib failed to compile the partial properties back, so it also prepared a attribute label reader for strict border checks.
+Reads Victor, Rotator, Boolean and Embedded Viewofset to avoid relying on incorrect inverted translations.
+The attribute starting point in the object prefix is defined by the prefix 80 Byte, full tag flow resolution positioning; this is a format research tool.
+Not a general package editor. Undeconstructed original resource tails keep length records without extrapolating their specific geometry.
+
+## Category of change
+
+Engineering 37299 Export, WarfareGame 149763 individual;no new/deleted report.
+All of the two packages 1211+1117) and the Fund export()5373+7702）
+Sequenced data are identical to the original version. WarfareGame name table is added 38 entry, index and value of the original name unchanged.
+Therefore, no changes to the function numerical code or class definition were observed, mainly by default objects and resource changes.
+
+Original Hash is Engineering 587 Oh, my God. WarfareGame. 3484 THE ONE.
+of which 582 / 3413 The variance between resources is fully consistent with the pattern of absolute document deviations updated by moving an export.
+This is a byte classification, not complete resource format proof; all the different Hashi cannot be treated as authors to change asset content.
+The rest is mainly... 5+56 Default object,14 Animated sequences and 1 A Marcus Bones Model.
+The complete attribute flow resolution of these default objects is passed, and the specific differences are saved in this machine's analysis directory.
+
+## How did the camera move to the people?
+
+Viewofset:
+
+| Subfields | Original value [p] | Mod Value |
+| --- | --- | --- |
+| OffsetHigh | [-128,56,40] | [0,0,0] |
+| OffsetMid | [-160,48,16] | [0,0,0] |
+| OffsetLow | [-160,48,56] | [0,0,0] |
+
+Negative X shoulder back-off and side-side off were removed, and multiple partition/view adjustments were eliminated.
+PawnRelative Offset, also set to state settings, still uses the current camera mode of the game:
+
+| Mode | Mod Add PawnRelativeofset |
+| --- | --- |
+| WarCameraMode_Default | [35,0,15] |
+| WarCam_Targeting (targeting) | [40,0,10] |
+| WarCam_TargetingGrenade | [40,0,10] |
+| WarCam_Cover (Failment) | [80,0,50] |
+| WarCam_Crouch (Standing) | [0,0,0] |
+| WarCam_RoadieRun (sprinting) | [65,0,-36] |
+
+"New" means that the object has no visible sequenced field and cannot be considered as having a valid value directly zero,
+Nor can you ignore the parent inheritance. Fields need to run validation of their relative primary axis and final location.
+EvadePawnRelativeofset from [0,0,-28 was replaced by [..........100,0,-20]。
+The bunkers are also specially modified for stand-up, low-season, probe, ejection and diversion restrictions.
+Not all states use only the same fixed first person position.
+
+## Reduce camera tailing, adjust shield and FOV
+
+WarCameraMode / Default put LazyCamSpeed, FlowingInterpSpeed,
+Run and cross-plug speed up 999 / 99999(Other 100009) and the text of the text should read 0.1。
+Run/Scatter side offset zero for normal mode, RunofsetScalingThreshold read 99999；
+bdirectLook = True. Combined with the meaning of fields, expected to reduce lens drag and automatically offset, actual smoothing still requires original logical validation.
+
+WarPlayerCamera：
+
+- DirectLookInterpped, WordLocInterpped, TemporaryPivotInterpped 99999；
+- The plan of action for the new system is to create a new system for the future. 0, Focus_BackOffStrength is 0, Focus_MaxTries 0；
+- WordLocofset zero in default camera mode; bBlockCamera=false in Marcus;
+- bIgnorreRigidBodyPawns, bIgnoreEncroachers, bNoEncroachCheck etc. are true;
+- bAlwaysTick=true, bHardAttach=true with multiple impact marks of false;
+- WarCameraMode FOVAngle 80→105；WarPlayerCamera DefaultFOV 70→120，
+  ForcedCamFOV / LockedFOV=120, the associated enabled sign is true.
+
+This does not allow all cameras to be considered disabled: part of the bDoPredictiveAvoidance is still true.
+The VR's eye projection should be based on each eye provided by the head.
+I won't just put it in. 105/120 . The plane parameters are projected as eye-eyes.
+
+## Body, weapons and animation
+
+Marcus, the main bone model. `COG_MarcusFenix.COG_Marcus_Fenix_CamSkel` The report
+From 3067964 Byte Zero 1544075 Bytes, the content of primary resources has changed significantly.
+No top point/triangular has been decoded and no specific head or body can be claimed to have been removed.
+
+Marcus WarPawnMesh, WarWeapon WeaponMesh explicitly set HiddenGame=false,
+bowwnerNosee=false, bOnlyOwnerSee=false and alter properties such as de-listing, light and shade;
+Changes in the display/excission parameters were also observed in multiple gunpoints, cartridge casings and weapon smoke components.
+This means that it does not simply hide the whole body. The first person specifically claims to be visible, gun position and modeling still need to be observed.
+
+14 AnimSequence Changes, of which 13 The blog is a website of the National Association for the Advancement of Women (Asociación de las Mujeres) and a video by the Ministry of Education.
+The data includes NumFrames, SequenceLength, RateScale and raw animation.
+For example, a few. 101 The frame sequence should read 44 Frame, Length 3.3667→7 Seconds, LateScale Add 2；
+Several 66 The frame sequence should read 43 Frame, LateScale Add 0.75。
+And one of Marcus AnimSet's RateScale=2.5。
+Unmap action name or complete decode curve does not claim that all lens shakes were eliminated.
+
+The Canadian CameraActor default object also adds Tag=None, bDeleteMe=true.
+It may affect the life cycle of an over-the-counter lens, but it is not measured; it cannot be considered as having jumped all the over-the-counter.
+
+Also observed the Engineering Default Object Font List, the IniLocPatcher Postfix list and
+OnlineURLManager has a retry/excess field, etc. that is not directly related to the first person's claim, but it is not a matter of time before the first person's claim.
+It may be from the production of bottom-pack differences; it is not classified as a first person ' s required modification, nor is it used to adjust the network waiting.
+
+## Use for GearsVR
+
+Available: Basic visual sites in general/targeting/scrambling, etc.; separate treatment of third person shoulder and back-of-the-counter deviation,
+Auto-scenes motion and body display. Our head is relativized to a verified protometric spot.
+The automatic transition of the original animated/shelter to a relationship with free observation of the head must be verified, rather than blindly copying all properties.
+
+This Mod still follows the original state and animation. It doesn't solve our weapons-targeting,
+Head observation interacts with the direction of the gun, virtual station crouching/probing and does not solve eye mapping.
+
+The author labels it as incomplete Beta and describes possible lens position errors and internal flashes of the model in animation and bunkers.
+This is the author ' s statement that it should be viewed separately from the static analysis of this round; no measurements have been installed.
+[Author Page](https://www.nexusmods.com/gearsofwarreloaded/mods/21?tab=description)。
+
+## First person-name camera reference orientation used
+
+2026-10-12, user confirms that the next GearsVR can be used to refer to this Mod's first person-to-person view point. This time only records the direction of the game and does not add or modify a playpack accordingly; VR development is still suspended.
+
+The package comparison shows that it adjusts the deviation and default behaviour of the original third person's characterization, without observing a new independent first person camera class or function. It provides a set of available first person visual point parameters instead of a direct reused original camera address.
+
+The following research directions were used:
+
+- Quote Behind the Shoulder `ViewOffset` Zero approaches, study of stable first person-based sites.
+- Reference to common, aim, bunker, sprint and roll-over settings `PawnRelativeOffset` method; current values are used as the starting point for the survey to verify coordinates, man anchors and final view points of each state.
+- The entry point of our certified protozoa, the assembly base view point, relative head transformation and eye-to-eye variation; rotational peaceful migration is to be organized by coordinates and cannot simply add up all the corners of Ori.
+- Reference body / weapon visibility and model stabilization, but self-validation of impervious moulds, gun mouth cover, bone control and recoil to avoid direct neglect of all bone control.
+
+The requirements of the final interactive approach must be maintained: head observation and gun-point targeting are independent; head viewing cannot be used as virtual station crouch/ body search; body rolls cannot force head-vision point flip. Users observe that the Mod mouse lifts a higher mask lens, which is not yet validated as VR control.
+
+The following tasks are still independently performed and validated by GearsVR: Left-Eye rendering, OpenXR position synchronization with image, real head leveling, scale and center, life cycle processing, and hand-held guns and bunkers. Third-party packages and models are not included in our deployment package; reference studies do not represent mandated reused assets.
+
+Subsequent evidence:[Installation and Restoration](18-first-person-mod-install.md)、[Shake and recoil.](19-first-person-motion-and-recoil.md). The previous "uninstalled " and " unmapped action name" describe 2026-10-11 ; the first person viewing point of the subsequent confirmation level has been installed and the associated animation name is mapd, while the full curve and actions are still operating with a validation.
+
+## Tools and review
+
+- ExportInventory.cs: Read only the list of export locations, length, Hash, and name lists using existing UElib.
+- Compare_export_inventory.py: Compare, group correction candidate, output short count.
+- Compare_default_properties.py: Read default properties, support --include-class AnimSequence/ SkeletalMesh.
+
+The original package and the exported content are ignored by Git; only tools and studies we write are kept in the warehouse.
+No copy of third-party model or package into Mod source code is copied.
+
+---
+
+## 中文
+
 # First Person 1.0：本地包对比研究
 
 2026-10-11。输入为用户下载的 `First Person-21-1-0-1764109229`。

@@ -1,3 +1,35 @@
+# Validity of dynamic attitude-to-star tests
+
+2026-10-17. The player default is still retial 39 All right, all down here is CallTrace.42 Diagnostic sessions, not the issuance of acceptances.
+
+## Invalidity of a second reservation
+
+pose 67 Waits for attitude confirmation timeout, no input sent.68 Recheck is already in the death menu, and no input was sent.69 Read checkpoint appointment 31.65 Seconds into the death menu, attitude confirmation is about to be read. 43.36 The second is not until the second; the old script does not recheck the menu after waiting, and then the old auto-interceptor error is considered a new result. Its adit.error=nul does not mean that the test is valid, which does not allow for the new black screen to be determined.70 Adds a status check, and stops all game entries in the Death menu; only previous auto-interceptions are available.
+
+These original logs and failures are kept in signed analysis/runtime/pose67-* To pue 70*/ The rounds have been stopped as they are;69、pose 70 The primary clean-up and the game usually close through.
+
+## Valid sampling 71
+
+Session 32336-20261017-083755-fa 1eb 158. Full game/owner/ XR create identity for post 71-ready.json；XR PID 7080 Set header position (after diagnosis confirmed)0.05,1.7,0)、yaw 10°、roll 5°, the actual diagnosis confirms a new attitude before releasing the input.
+
+Script revalidate the menu status before input and after waiting for weapon UI to recede; allows readouts through double-checking of the btnCheckpoint when a clear death menu, focus is btnCheckpoint. This first check is still on a swim, without having to restore branch. Wait five seconds below direction/right back, only LT open three seconds, RT=0 No shooting.
+
+The intercept request requires new snapshot_index, source_serial and the time of saving after the request. The old reply is not accepted. Finally, five copies are saved 3840×2160 Images, where automatic screenshot ticket 275 Prior baseline for this; new images requested manually include ticket 509／515／520, the last letter is saved after the return of the observer and eventually stdout. Not all five are from the same gesture or the same opening moment.
+
+32 The body sample is:16 Group 1 Four, scope 3 Attach a Tile. Save the ticket 505–508 Matching, same for each eye view of the report/scissor, index, geometry, complete record-keeping;198 Sub-consideration/plan/application successful, fine 198、fallback 0. This range does not prove that different projection is used for the outer circle and inner layer.
+
+ticket 515 The local figure can be found in brackets and above the weapon/ammunition; the upper icon cannot be identified as DrawAdditional Crossshair by its appearance alone. This screenshot does not have a detailed projection line with ticket, which is not available 505–508 Coordinate Counting 515 The image of the simulator does not prove that the head is integrated or targeted.
+
+After testing, confirm that the same active XR instance is neutral and then stopped; primary clean-up, independent entrance restoration, XR exit and normal game close pass. Evidence is in signed analysis/runtime/pose71-* and the documents of the above-mentioned session under the same name.
+
+## Next deposition.
+
+Detailed lines were only saved before 8 bar, then sample every second, resulting in the lens image missing a frame record. When the diagnostic monitor is on, use the star as it was.24 A fixed-capacity continuous sampling and the current source geometry range is saved; other types and default closed versions are used to maintain original sampling policies. This range may have been expanded by a homogroup, not texture alpha visible ranges. First you get a match between the screenshot and the ticket that is recorded internally and externally, then decide whether or not to modify the display behaviour.
+
+---
+
+## 中文
+
 # 动态姿态准星测试的有效性
 
 2026-10-17。玩家默认仍为 Reticle39，下面均是 CallTrace42 诊断会话，不是发布验收。

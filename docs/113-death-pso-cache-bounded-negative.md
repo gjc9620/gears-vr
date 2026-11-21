@@ -1,3 +1,34 @@
+# Death Mapping PSO Cache: Restore Actual VS/PS and Correct Initial Parsing Conclusion
+
+2026-10-17. Experiment submitted to e-mail:26067，Hdrpixels 57 DLL SHA 256cdfc 9f 78459f 02bce 62e 91d 838c 87e 20814fc 196a 7f 712c 434f 51c 75209eae 32;full DLL and 18 The block CPU/SDK check is passed. The player defaults to reticle 47／Borderless 1, not the version of the diagnosis.
+
+Only SDK SetPipeline State, Clearstate and ExecuteBundle are observed for selected death notes. Reset the existing Reset/Draw position.64 A list, up to two permanent PSO and two eye-drawing records; Relet, Clearstate, Bundle, unknown generation or insufficient tracking capacity all refuse succession status. Cache is read only once per PSO in workker.4 MiB, do not add a GPU command. The cache does not guarantee that it contains a recoverable Shader.
+
+Actual 98 Session 29064-20261017-125624-f 91d 4b 05: Instruments 337/world 1 Two eyesd 80a 7 b Draw, same as Canonical 3ff 5950c 0、generation 108356 Each has a pre-eminent SetPipelinestate testimony, all associated with PSO canonical 3dfcf 9b 40. Clearstate/ExecuteBundle count is not duplicated, spilled or rejected 0。
+
+The only GetCachedBlob call to this PSO is S_OK, save 17530 Bytes, SHA 256ba 49630dcff 715e 1fbed 1701a 4495faad 9865f 4c 2dbee 3e 76ed 5b 09230c 0c 4c 5. The initial offline resolution wrongly requires that DXIL Programme be of the same size as part and that no container be misreported; the old failure report is retained as.containers.json.intial-projected.json. Microsoft format authentication allows part to retain additional tail space. After amending the border check, you can reset the same RAW directly, without starting a game, and find two complete containers:
+
+| Phase | Cache Internal Offset/Container Length | SHA 256 |
+| --- | --- | --- |
+| VS 6.0 | 954／2132 | 7574568978a7d8c845aea694093e145b35fc8c773e52acd332b93e612e54c822 |
+| PS 6.0 | 3086／7680 | 6411515e9fb9305d5ebe1b5605e2890303e7ac6720a7553d782e0bfbdf2de1fd |
+
+We have Dxc.exe-dumpbin of Windows SDK exited both containers.0 And output the actual DXIL command, authenticating the endorsement as analysis/runtime/deathpso98-dxc-validation.json. No tool installed, no speculation about the manufacturer ' s private deviation; container verification and no separate independent calculations. PS actual statement 7 Texture/sampling and cb 0、cb 2, the old four-leg observation cannot therefore be considered as all inputs.
+
+Format by:[Microsoft DxilContainer.h](https://github.com/microsoft/DirectXShaderCompiler/blob/main/include/dxc/DxilContainer/DxilContainer.h)If you have a problem with the data, then if you want to see it, then you can find it.
+
+Another HDR/final map pair for the round 4 No matches were obtained in seconds, the monitor clearly reported TimeoutError ('no actual HDR final pixel match '), and did not perform follow-up check point actions. This round cannot be called as having completed cosmetic pixel verification; document 111／112 The PSO identity and the cache call evidence do not presuppose success of the pair, nor is it equal to the Shader syntax.
+
+After normal stoppage 46 The total test monitor is still not rewritten to be fully passed.
+
+Original cache, structure report, status and GPU information in signed analysis/runtime/hdrpixels98-*, the above-mentioned session documents and tools/native-capture/build-hdrpixels57/death-pso-cache-29064-337-0-745265632724.raw:: Not packaged for distribution.
+
+Next step, rely on this for the actual Shader check texture coordinates and colour output, then determine the minimum parameters to be compared. The exact root causes have not been announced.115 Byte History 1c 6340 Compilation only confirms R 8 owner+0x 48 And R.9 owner+0x 50 The introduction of binding caches is not a byte code pointer; Shader has now been obtained from the SDK interface and there is no need to continue guessing for RHI memory layouts for this purpose.
+
+---
+
+## 中文
+
 # 死亡绘制 PSO 缓存：恢复实际 VS／PS，并更正初次解析结论
 
 2026-10-17。实验提交fe26067，Hdrpixels57 DLL SHA256cdfc9f78459f02bce62e91d838c87e20814fc196a7f712c434f51c75209eae32；完整DLL及18项冻结CPU／SDK检查通过。玩家默认仍Reticle47／Borderless1，不采用该诊断版本。

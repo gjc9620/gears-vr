@@ -1,3 +1,34 @@
+# Private controller reader's Stereo open failure diagnosis
+
+HI right hand restored exit 66 It's already in the original.`StereoBridge::open`Not yet.400- It's a little bit of a sauna.1/age matches the cycle. Old stderr only remembers stage=stereo, and cannot distinguish between opening mutex, mapping, mapping view, zero waiting or initial packet check failed, nor can it be found that the file is out of date.
+
+Candidatures from Actual`0c707034…fe179e` Reader's freeze 9 Part-source and original MSVC flags, only private`stereo_bridge.h`and`reader.cpp`I'm sorry.7 All source/test, exe and old reply are retained; shared headers, Native, XR, Enderer, regular starter. All sources, works and test derivatives are in signored `analysis/stereo-reader-open-diagnostic-20261027/`, not in the release package.
+
+Select the exe:`validation-1793056273353595900/reader.exe`，SHA 256 `01d8b9db36bfa57b580dc98d47e0969eec1b31be32d44e8b03759fcfc11ffc83`Seal`candidate-manifest.json` SHA `0dac77b18fde597cadac1660f246be2757c89093683e61b1ab30a0e2951c649b`,Practical build/validation`result.json` SHA `b66b388aa1e9234e957d2d733d3de405af30d10c01ad6d6f242bb3f8769ea0fb`2 files plus`delta.patch` SHA `098147ac281eac3b975355d7d0b010c0955b2964eb1ad644c45445def069e846`. Manifest contains original 9 Sourcehash, accurate flags, compiler actual 7 Private include and counterpart identity.
+
+Old Stderr`reader_open stage=stereo code=66...`holding;only adding one line to failure`reader_stereo_open_v1 key=value...`. stdout, exit 64／65／66／2／0 And the original 400 ms Match/Dual Sourceage Code maintained, diagnosis cannot be retried or changed. The original two Open sequences are kept and mutex failed to continue using the original amapping; access rights, MapView length, zero waiting, copying and packet checking order are maintained. Diagnosis only consumes immediate results as originally called and copied packaget without adding object opening, sample reading, QPC query, waiting or permission.
+
+| Fields | Interpretation and validity |
+| --- | --- |
+| reason | The first actual rejection position of the original open/first reading path; not final cause proof |
+| Called/ok/win by API 32_valid／win 32 | Only after failure to call, follow-up Win 32 Read LastError before calling; not using olderrr as valid when successfully called |
+| wait_called／wait_result | The blogger says that the government is not a party to the law.0; WAILD only has effective Win 32 Error |
+| Releasing Fields | Original release call result; failure of ordinary copy release did not prevent acceptance and this candidate has not added the door |
+| Packet_copid and packet fields | Only from original copied values; default zero is not valid packet if not copied, and copying does not represent subsequent verification approval |
+| qpc field/observed_frequency | The results of the original packet verifications were available from QueryPerformanceFrequency, without adding additional queries |
+
+WAIT_ABANDONED is still released and rejected on its original path. Failed record kept after the previous close/cleanup; follow-up normal`read`The first open diagnosis is not covered.4 No change, the new members fall only into this private exe category.
+
+Directed validation using original mechanical test view and candidate 19 Win.32 Subsistence scene contrast, compare return, call order, name/authority/magnification size/0 Wait and cover each package that is rejected, cleanup over LastError, successful API old error, ReleaseMutex failed to accept the diagnosis, and normal read does not overwrite the diagnosis. Test view only removes the duplicate SteeoFrame include from its original head, then changes the original file by macrorename category. All packet tests its static bytes without Game, XR or target process RAM reading.
+
+Use the current Python process ' s own real PID/create time to execute the original exe and candidate each 3 Small CLI check: Parameters 64, illegal parameters 64 Short of your own Stereo object 66;exiting in line with emptystdout, and candidate for the correct recording of the error on OpenMutex/OpenFileMapping 2. This check does not create a Bridger, does not replay controller commands or verify historical HI failure. No unmodified package of controller observer returns. One round of independent Astra read-only incremental reviews is P-free 1／P 2, still not the operational cause of conclusion.
+
+Next step is to pool this reader, and Body's capture rejection and temporary saving.`5fdc2f`Sample candidate is verified in a serial with the original template. This round delivers only diagnostic products, without new Game/SDK sessions, freeness conclusions, play-through or default integration; do not reset right hand commands that have closed an unknown execution status on an HI session.
+
+---
+
+## 中文
+
 # 私有控制器reader的Stereo打开失败诊断
 
 HI右手恢复的退出66已经限定在原`StereoBridge::open`，尚未进入400ms的Source1／age匹配循环。旧stderr只记stage=stereo，不能区分打开mutex、mapping、映射视图、零等待或首份packet检查失败，也不能据错误文案认定freshness过期。

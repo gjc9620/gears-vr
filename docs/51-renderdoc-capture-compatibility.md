@@ -1,3 +1,41 @@
+# ReaderDoc Access Authentication
+
+Date:2026-10-12. The goal is to directly view the right-hand texture and final drawing of the two views; this time, no frame is available.
+
+## Actual results
+
+- Official RinderDoc 1.46 Portable release unpressed on J drive, DLL signature Valid.
+- Add an official replay API single frame control tool and a separate minimum D 3D 12 Clearing program, all compiled successfully.
+- Old PlayPID 16996 Normal exit, start new PID from RinderDoc 33108;renderdoc.dll of module count confirmation of official path is loaded.
+- Back to the appointment on a user-recognized basis. 10 sec, and telemetry shows the time of the lens update. There is no page-by-page cut-off.
+- RinderDoc Control Connection ID 38920 Play-back game PID 33108 However, no graphic API is registered. One request is waiting for the end of the application, and no .rdc is generated; then tool check is enhanced and no API is requested to capture.
+- Minimum Program PID 47536 Register D 3D 12，presenting=1、supported=1. Single frame 783 Capture successful, file 1,524,351 bytes.
+- Export from .rdc successfully 320×240 Thumbnail, Centre RGB=()20,64,127) , clear the color of the program (0.08,0.25,0.5) 8 The result is consistent.
+- Read-only check of static import tables for games did not find D 3 D/DXGI entry. It does not cover dynamic device creation and cannot locate the failure of access separately.
+- DLSS/FSR 2/FSR 3/MFSR is still all False.
+
+## Next steps
+
+Minimum program to prove this installation, official control interface and basic D 3D 12 Frame captures workable. The game only appears "DLL loaded" and there is no graphic API registration, so that RenderDoc cannot claim to have taken over the game device.
+Log has Hook registration information but no game D 3D 12 Evidence of equipment registration; access may be affected by dynamic creation or re-entry at running time, as a presumption to be validated.
+
+Next check the game device creation portal and the time of RinderDoc access; if you cannot take over reliably, use another GPU debug access. Do not repeat a capture request for an API-free connection.
+This time, no two-view diagnosis can be used. 50 The conclusion in the record that the final call parameters are correct and the right image is still incorrect.
+
+## Intelligent evidence.
+
+- `analysis/renderdoc/smoke_frame783.rdc`
+- `analysis/renderdoc/smoke_frame783.png`
+- `analysis/renderdoc/game-33108-renderdoc.log`
+- `analysis/renderdoc/game-33108-imports.json`
+
+Cleared a verified modem synthetic_env_server PID 40820 It's occupied the approximation. 24.15 GB private memory.
+It is not related to the frame capture of this round; no simulator restarted.
+
+---
+
+## 中文
+
 # RenderDoc 接入验证
 
 日期：2026-10-12。目标是直接查看双视图的右侧输入纹理与最终绘制；本次没有拿到游戏帧。

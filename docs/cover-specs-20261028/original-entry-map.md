@@ -1,3 +1,68 @@
+# Original code portal
+
+Evidence is saved. `WarfareGame` Script, reflect reader and history record. Original package `WarfareGame.u` The current identity is SHA.256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`;The round is in private `analysis/cover-prep-20261028/script-evidence-index.json`. The following original function name is a positioning key and is not a C++ declaration that can be called directly.
+
+## Status and action chain
+
+| Access | Original act/implementation decision |
+| --- | --- |
+| `WarPC.CoverAcquired` → `WarPawn.CoverAcquired` | The former selects the right- and left-hand side, notifying slots, clears RodieRun timer, trigger-cam BeginTurn, and chooses either regular or state. The latter has a CoverType/Action, CovPosInfo, Claim slot that can run into special actions, update times and transitions. Retain status/slot claim; local VR self-pressors automatic alignment of cameras. |
+| `WarPC.PlayerTakingCover.BeginState` | Saves the control remapRotation, clears the break logo/input state. The model cannot be rotated without neglecting the original control remagnation; bunkers enter the syntax of moving from the wall to the same place. |
+| Two state `PlayerMove` | Read CT/CA/CD, call this state's UpdatePlayerPosture, SetPawnCoverType, SetPawnCoverAction, SetCoverDirect,SetPawnSide, and finally,user.PlayerMove. Here is the preferred action output appropriate border. The original process is one, input and special actions side effects are maintained. |
+| Normal `UpdatePlayerPosture` | Get the current Link/slot, update CurrentSlotDirect, static bunker switching, mirror/special move and left-side preferences. Last call is DetermineLeanDirect. Not all functions are replaced by empty. |
+| Normal `DetermineLeanDirection` | For heavy load/cutting gun/360 ailing clear output, clicking on targing, delaying, slot endpoint, bCanPopUp, bLeanLeft/Right and Circular status; there is also a blind-fire branch without setting. It cannot be checked if the LT is pressed. |
+| Stationary `DetermineLeanDirection`、`UpdatePlayerPosture` | There is an independent upward detection and blinding logic;updater can still write up blind shooting after the Lean function. Therefore, submitting to boundary two states in final action cannot be a single function. |
+| `WarPC.SetPawnCoverAction` → `WarPawn.SetCoverAction` | The Contractor issue creates events for blind action, and calls Pawn matter. The Lawn issue updates LastCoverActionTime, Authority NetUpdateTime and handles non-human motion change intervals. The CoverAcade byte cannot be written directly over a long period of time. |
+| `PlayerTakingCover.ProcessMove` | The VR grabs must leave the original legal entrances and cannot be seen as turning all forward gestures. |
+| `TryToCoverSlip` → `WarSpecialMove_CoverSlip.InternalCanDoSpecialMove` | Checks bunker status, special move, break sign, circle type, left and right slot endpoint, bCanCoverSlip_Left/Right, input and distance. Keep the original Cando/ Do chain and call directly from scratching border signs. |
+| Two state `ClientBreakFromCover`／`EndState` | break sign driver exit; Endstate clears CA/CD/CT, Statery and sound mode. The original exit is authoritative; expands the listening to it and releases the lease/turnover without blocking it with a new key state. |
+
+Normal shipping path readable in script `CA=3/CD=1`、`CA=4/CD=2`、`CA=7/CD=3`;blind-fire paths CA 1/2/8, the incident string of the Controller matter is clearly corresponding to the BrendLeft/BlindRight/BlindUp. Only these static branches are identified here. The actual count/reference segments are still checked with current reflector certificates and cannot be plugged directly into an uncertain parameter address.
+
+### Clear choice for action.
+
+Select the actual selected `PlayerMove` Keeps CT, CurrentSlotDiraction, exit/turning and original aiming/fire requests; CA/CD expresses current real exposure and legitimate blinding, and is now available for the user to read.**No more reverse-drive automatic camera or body detection**. If the original animation is based on CA and does the same line again, it must be C 0 The strategy prevents duplicate supersing, rather than setting all CAs permanently to zero.
+
+Existing `cover_call_config.py`、`cover_call_trace.h`、`cover_call_live.inl` Only passive observation is provided. Two sets of PlayerMove/ UpdatePlayerPosture and two matters have been exported from the historical records. Two PlayerMove locals size 20, CT/CA/CD is independent byte. The second round of updates the T-test history report: two sets of calls calleder-local did change and two later setter retained new values; therefore no longer includes "value back" as completely unsubstantiated.**This is still not the current full out argument ABI or secure write permission authentication**. Recheck the actual carler frame, funct bytes, locals, updater return values and setter reading points before achieving this; parameters flags do not rely on export statements. Resault/RAX is not an outpam address. It is forbidden to create another global certificateEvent hook or write later locals.[Second round of replenishment](research-followup-v2.md)。
+
+### Original firing waiting chain (second round added)
+
+`WarPawn.DoingAnimationTransition` The decision is made by the real transition/simulation state, and the difference between the CA and LastCoverActionAnim of the cover, bDoingCoverAction AnimTransion.`WarPawn.ShouldDelayFiring` In human cover/CA 0/ Not 360 (b) Waiting directly while aging, and reading the animation judgement under other conditions;`WarWeapon.ShouldRefire` The continuation of the firing was refused.`WarPawn.Tick` Consumption waiting for results, bow. `Weap_Bow_base.CanReleaseFire` The chain is also checked under blind shooting conditions. The stabilization semi-protocol must be legally open and cannot close the entire area until judgement has been reached.20。
+
+## Original Protection and Injury
+
+`WarPawn.IsProtectedByCover` It is a readable script function that no longer lists the entire protection logic as unknown in general terms: it first checks CoverType/player identity, excludes body-detection or blind-shooting actions, then judges according to Pawn Rotation, direction of attack and CoverProtectionFOV. The shift from back to wall may change that judgment, and must be matched by physical protection of surfaces/collapse, not merely animated.
+
+`WarPawn.AdjustPawnDamage`: Multiple walkers `MultiplayerCoverDamageAdjust`; In a single person, the injury of a non-minority bunker calls for protection judgement and is satisfied with Damage and Momentum; then humans blindly return independently in zero form, and non-humans have harm shrunk. Both protections must be addressed together.`MultiplayerCoverDamageAdjust` CoverType/Action, Pawn Direction, Cylinder, Left-Ridd, Distance; this round does not extend individual support to online authority.
+
+The selection range is currently local VR Pawn's cover-only protection judgement and blindly re-entry early. Decisions to preserve protection are based on actual hit/exposure evidence, then continue the chain of injury. Original injuries, attackers, HitLocation, Momentum, DamageType, DamageCauser, HitInfo and call identification must be tied; no CoverAcade, change other roles or write Health bypasses through temporary modifications. When a center area cannot respond to the same submission, it cannot claim that exposure has been addressed.
+
+## Collision entrance Actor.
+
+The diagnosis is... `tools/game-playtest/cover_trace_query.py`;it is not a frame of production backend. Accredited cohort condition: native index 277，`ParmsSize=116`，return offset 108,FunctionFlags is located `0xf4` And value `0x424401`, the history of the portal RVA `0xcdacc`, Gnatives History RVA `0x1b86280`. Disk retail EXE SHA 256 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`;history running codeblob SHA 256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`I can't mix these two identities.
+
+| Parameters | Offset/Size | Semantic |
+| --- | --- | --- |
+| HitLocation / HitNormal | 0/12；12/12 | Output |
+| TraceEnd / TraceStart | 24/12；36/12 | Endpoint/start |
+| bTraceActors | 48/4 | bool mask 1, select explicitly when calling |
+| Extent | 52/12 | Sweeping expanses; zero extent only rays |
+| HitInfo | 64/40 | Material、PhysMaterial、Item、LevelIndex、BoneName、HitComponent |
+| ExtraTraceFlags | 104/4 | Diagnosis Supported Visibility 0 or 8；8 For blocking queries |
+| ReturnValue | 108/8 | Actor returns value; call failure must be separated from valid hit |
+
+The authentication requirements include full reflector head, field type/flags/order, bool mask, Gnatives[277 Target and code chunk bytes; call if not address matching. `_certificate` Specially validates the original Ufield.Next order because the packaging produces NativeParm tokens in that order. Do not repeat history PID/base or ignore return fields as non-natural alignment 116 byte block.
+
+World inquiries, dynamic inactor queries, self exclusions and volume overlaps must be clearly distinguished.17 The world-only query is not covered by dynamic characters/mobile objects. The shape of the Express Trace and the syntax of the intimal-overlap also have to be A-based 04/A 05 Authentication; AABB cannot claim to be a precise human capsule test for all gestures.
+
+## Where can history be used?
+
+Checked [PROGRESS](../releases/0.0.4/PROGRESS.md) CT 17 Records multiple hits and valid empty results of the same Link/slot, toplined off-site 96–112 units；`collision_verified=false`、`grab_authorized=false`. Following 4 Not compiled. Early bones, tops, camera tests are used only as a locator thread; current protection writer is not changed, the current frozen Native/XR is not replaced and this round is not automatically authorized to run.
+
+---
+
+## 中文
+
 # 原版代码接入口
 
 证据源为保存的 `WarfareGame` 脚本、已有反射读取器及历史记录。原包 `WarfareGame.u` 的已有身份为 SHA256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`；本轮逐份脚本哈希在私有 `analysis/cover-prep-20261028/script-evidence-index.json`。下列原函数名是定位键，不是可以直接调用的 C++ 声明。

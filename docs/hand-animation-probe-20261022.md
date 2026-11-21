@@ -1,3 +1,73 @@
+# Original pick-up/near-war animation observation
+
+`GEARS_PLAYGROUND_HAND_ANIMATION_PROBE` Default closes only for the Playground test field. It does not call engine functions, does not send input, does not change game properties, animations, controllers or bones. It only observes original action initiated by a different test driver; all records are fixed `ownership_proved=0 writes=0`. This candidate does not access the default starter.
+
+Enable in the quarantine output directory:
+
+```powershell
+cmake -S tools/playground -B analysis/build-hand-animation-probe -G "Visual Studio 18 2026" -A x64 -DGEARS_PLAYGROUND_HAND_ANIMATION_PROBE=ON -DGEARS_PLAYGROUND_OUTPUT_NAME=GearsPlaygroundHandAnimationProbe
+cmake --build analysis/build-hand-animation-probe --config Release --target GearsPlayground HandAnimationObservationTest PlaygroundHookTest --parallel
+```
+
+The entrance must satisfy both initialization, automatic testing mode, test field ready and test subprocess. `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`、`GEARSVR_TEST_WINDOWS_BEHIND=1`、`GEARSVR_TEST_MUTE_GAME=1`. The probe does not support replacing role grids or animated trees and continues to record them once each time the game thread is sampled.
+
+| Export | Return value |
+| --- | --- |
+| `PlaygroundHandAnimationProbeStart` | 0 Queued;1 Environment/testing field/initialization rejection;2 Queued or Rund |
+| `PlaygroundHandAnimationProbeStop` | 0 Request submitted for shutdown, next original PlayerTick processing |
+| `PlaygroundHandAnimationProbeStatus` | Low 16 bits;high 16 Bit-cycle frame |
+
+Status as 0 idle、1 queued、2 sampling、3 bounded complete、4 explicit stop、5 Invalidated. 3 Only means that the sample reaches the boundary; it does not mean that the full action life cycle or animate the intersection has passed. The upper limit is 30 seconds,1,500 * Periodic frame,256 Match call or call 16 Layer matching call nesting; minimum interval of cycle 20 milliseconds. Extra limit is 32 No actual body slots, no physical cell sets to reserve capacity 256, per slot 8 A node, a bone chain. 16 Sections,32 A chain of control,512 Cache Properties Layout and 512 function name. Actual slots are separated from array reserved capacity: current person measurements for purchase editions 19 Slots, capacity 42;in the early stages of limiting capacity to 32 Reads the entire slot, corrected and re-detected. Overwatching is a state 5 end;normal arrival time/frame/call maximum state 3。
+
+Existing Auto Mode `ProcessEvent` Hook handles only the view/menu/PlayerTick. This candidate adds an independent read-only observation field to the filter and backside, with the original forwarding still being performed as usual. `invoke` Top Level Direct Call Original `ProcessEvent`So there's something else. `source=bridge_invoke` Record; only real detour calls are recorded as `source=hook`. The VM direct call or index native may still not go through the Hook, and lack of logs does not allow for the original version to be unexecuted.
+
+Log is still next to the DLL. `playground-<PID>.log`. The space separated in each row `key=value`：
+
+| Prefix | Links and content |
+| --- | --- |
+| `hand_animation_probe_begin` | schema=1 5 standing case identities, ceilings, observational positions and bridge bypass statements |
+| `hand_animation_event` | seq is log boundary number; call numbers are paired; parent/depth describes matching call nesting; case is pre/post; source distinguishes Hook and bridge; function/outer identification function and declaration status;kind is shown in the table below; naming parameters certified by real-time parameter type to `param_*` Records |
+| `hand_animation_frame` | snapshot is the only serial number for all snapshots; sample is the periodic sample number; trigger_call=0 Call as cycle, otherwise associated;case is periodic/pre/post; contains state known location, original instance identity, world time and QPC, pick-up/near war request and round call |
+| `hand_animation_control` | snapshot, index, known, object registration index/Name/class/outer, grid, NextControl, current/target strength, residual mix, list_mask of current tree chain |
+| `hand_animation_slot` | snapshot, index, ktown, current slot identity/NodeName, grid, total weight, remaining mixing, waiting to be mixed, custom/target sub-index and all with boundary subnodes |
+| `hand_animation_snapshot_gap` | No snapshot of the same set of examples was obtained for a call border; no nearby periodic frame could be used to replace the boundary |
+| `hand_animation_probe_end` | Status/cause, frame/scatter/call number, Hook/bridge kind mask, observed state change, capacity failure and clarity Gap |
+
+`pickup_request` Every time I see you, `ServerUse` Add one, on that basis the gun cannot be claimed to have been picked up.`melee_request` Every time I see you, `StartMeleeAttack` Add one.`pickup_episode` I saw new special actions in the round of questioning. 42／53 Add one at a time;42→53 A new generation is also being created.`melee_episode` Adds a new one when you see Near War Bull changing from known false or unknown to true. They are log links, and they cannot replace the original boundary.`transition` bits 1 Read changes, bits for special actions 2 (a) Changes in the reading of close-to-war;`previous_known` bits 1／2 Each of the last two readings is known, and initially the final line will be marked in action `started_active=1`。
+
+| kind | Call Category |
+| --- | --- |
+| 0／1／2／3／4 | ServerUse／GrabPickup／ServerDictateSpecialMove／DoSpecialMove／EndSpecialMove |
+| 5／6／7／8 | StartSpecialMove／StopSpecialMove／BodyStanceAnimEndNotification／OnAnimEnd |
+| 9／10 | Body slot play/stop |
+| 11／12／13／14 | Close-off/stop request/MeleeAttackStard/MeleAttackEnded |
+| 15／16 | Beginstate/EndState, precisely in MeleeAttacking state |
+| 17／18 | PlayCustomAnim/StopCustomAnim of the current body slot |
+
+`frame.state_known` Bits:1 weapon、2 SpecialMove、4 bDoingMeleeAttack、8 bWantsToMelee、16 bSwitchingWeapons、32 bDoingSpecialAttackMove、64 TimeSeconds、128 Health、256 BodyStanceNodes array. The zero value of the unknown item is not a idle certificate.
+
+controller index 0–3 It's right. `IKBoneCtrl`、`IKBoneRotCtrl`、`IKCtrl`、`IKRotCtrl`；4–7 To the left of the same sequence.`control.known` Bits:1 Current validity SkelControllBase,2 SkelComponent、4 NextControl、8 ControlStrength、16 StrengthTarget、32 BlendTimeToGo、64 ControlName、128 Object Name. Only this frame `control_lists_known=1` The blog also highlights the situation:`list_mask` To be recorded as full-fledged tree chain members; part of the failure is only partially observed.
+
+`slot.known` Bits:1 It's working. Anim NodeSlot,2 SkelComponent、4 NodeName、8 NodeTotalWeight、16 BlendTimeToGo、32 PendingBlendOutTime、64 CustomChildIndex、128 TargetChildIndex、256 bIsPlayingCustomAnim、512 Children layout/number,1024 TargetWeight layout/number.`child_data` Comma-separated. Each sub-item is `object:known:Weight:TotalWeight:TargetWeight:AnimSeqNameIndex:AnimSeqNameNumber:AnimSeqNameText:CurrentTime:bPlaying`. Sub-point known bits 1 The main objective is to be readable/both of the actual weights.2 The goal is readable.4／8／16 Reads the serial name/current time/play mark. The current slot and subpoint identity is read again on each frame, and the new animation cannot be used when the slot is reused as the end of the original action.
+
+Purchase of the own version of the test site PID 57480 One regular pick-up and ordinary near-war has been observed: Longshot `ServerUse` After entering special action 53 Original `OnAnimEnd` Hit. `Custom_FullBody` It's... `AR_Idle_Ready_Kickup` subpoint, returns with zero action and zero actual/target weight; then two ordinary `MeleeAttacking` Beginstate/EndState `AR_Melee_Smack_A`／`C`, the person concerned shall be given zero weight at each end.189 A quick look at the same. 19 Private reply. `analysis/hand-animation-probe-runtime-1022e.json`;playout, Playground off and 11 The preservation of scripts suggests that the inventory can be changed before moving; normal close-to-war postures may continue to blend. This probe only authenticates the observational boundary of the normal path and does not certify a full ownership agreement. VM internal calls, cancellation/injury, Lancer chainsaws, other fixed actions, XR hand drives and headlight images must still be verified separately; keep the original version in hand when any necessary evidence is missing.
+
+## Purchaser authentication for internal animated slots
+
+Also with Default Closed `GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE`. It is active already. [Four Parameters CallFunction Evidence](91-reticle-inline-call-boundary.md), only installed silent environment after ownership and RVA required `0x1d6f30` Current access and existing 32 The byte certificate is identical; the entrance has been rewritten by another Native owner and no superimposes. Caller FFrame is an unconsumpted parameter expression that cannot be used as a buffer for parameters; candidate only reads its nonde/object/code/locals/previous space, four parameters and returns the Rax position to keep the original passover. `source=call_function` Separated from Hook/bridge source, still fixed `ownership_proved=0 writes=0`。
+
+Add when Build `-DGEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE=ON`;test driver increases `--require-call-boundary`. This mode independently cross-checks CallFunction bytes before loading, and independently reread CallFunction after the stoppage 32 Bytes and ProcessEvent 64 bytes; full pairing is also required `kind=17` slot playing call.`hand_animation_call_probe_end` Recording of callsbacks/accepted/completed/frame_projected/ hexadecimal; `param_transport=caller_frame_unconsumed` Expressly uncoded parameters.
+
+Purchase of PID 59828 By the original version `ServerUse` Take the previously unknown Longshot and do two more regular close combats. **44 Rejects, calls to complete, zero caller frame 11 Subtraction Play**Total, original monitor 53 Against Call,274 A snapshot, no spill. 3／10／14 Three. `PlayCustomAnimByDuration` Replace the same sub-point with the following: `AR_*Holster_Rt`, three subsequent pairs of calls (18／19／20) On the same object, replace `AR_*Equip_Lt`The target weights are both 1 This result does not mean that all Native calls, cancellations or executions are covered and the events have yet to be accessed into the remains.
+
+DLL SHA 256 `cb74b6d3c03aab59b07217362eacd013a141c979ce4c71de952e14670aa8781f`;private returns `analysis/hand-animation-call-runtime-1023a.json`Summary of changes in the same frame `analysis/hand-animation-call-transitions-1023a.json`Original log SHA 256 `433605e0aed03bfa33df34c04663c7930b97fb1c4fac892da93139b16bdd0a47`。`PlaygroundShutdown=0`The two entrances are independently compared.11 Recovers audio sessions, exits with your own game. Private/default disables construction, calls forwarding/occupancy entrance/restoration failure offline testing, monitors and Hook tests,23 Item Python certifier check passed; default DLL not-observer export. This is the game thread call evidence and does not verify the final image or headline.
+
+Follow-up [IK test with consecutive hands](hand-ik-stream-trial-20261023.md) Reverts the separate game thread that is connected to these three action entry points. It restores the original print type of line, independent of whether this monitor is active, log limit and end time; this read-only probe and its `writes=0` Still, it describes the observers themselves and cannot replace a private-driven writing count. The new limited four-channel candidate and the original observer candidate are to be interpreted separately by DLL Hashi and his reply, without raising global animated ownership certificates.
+
+---
+
+## 中文
+
 # 原版拾取／近战只读动画观察器
 
 `GEARS_PLAYGROUND_HAND_ANIMATION_PROBE` 默认关闭，仅用于自有 Playground 测试场。它不调用引擎函数，不发送输入，不改游戏属性、动画图、控制器或骨骼。它只观察另由测试驱动发起的原版动作；全部记录固定 `ownership_proved=0 writes=0`。此候选不接入默认启动器。

@@ -1,3 +1,70 @@
+# Camera Switch View & Menu Restoration
+
+2026-10-15. Continue to use the GameRecovery 8 / SpaceRecovery 3, follows game resolution; does not add rendering Hook or enable DLSS/DLAA.
+
+## UI Final Enter Player does not equal local player identity
+
+Actual PID 33072 The same repetition shows:`PenderCrossplayInvitePopUp / WarUIScene_CrossplayInvitePopUp / input_mode=2`Block count.0, but `player_index=-1`。`MenuReader` Returned Fields From Top Layer `UIScene.LastPlayerIndex`No, it's not. `LocalPlayer` or the number of the Controller. The old display classifier requires uniform requirements 0, the observed game is misclassified as UNKNOWN; after the death menu, this may prevent candidates from returning to the race.
+
+Now only the integers of the above exact matching non-modular scenes are accepted -1 or 0. The death menu still requires 0; other negative values, other players, missing values, type errors, blocking, scenes or repetitions are rejected. GAMEPLAY shows only that candidates are restored and that the actual eyes still need a new rendering after the time boundary is restored; no UI status is considered camera or GPU evidence.
+
+9 The Python classification/publishing test is passed; the existing Startup Panelpolicytest does not release the old paper from the restoration of the border by retaining the death Queen’s candidacy for UNKNOWN.
+
+## Read-only camera route sampling
+
+Add `tools/game-io/camera_phase.py`: Tie up the process PID+ creation time to read controlled Pawn, ViewTarget, CameronStyle and camera times around the current reflection field. Check role identities, interrelations, registration forms and name slots and reread the reading; reject this time during competition and rediscover it, and change process identity is terminated. It does not enter, changes memory or authorize display.
+
+First edition only `bCinematicMode` Original storage bytes; the following two rounds have not been decoded and do not output the story true/false. CameronActor is not always the story. Output saves EXE Hashi, the module base site and reflection metadata, time stamping does not represent an atomic snapshot of the game. The subsequent decoding subject to code verification is shown in the end section of this document.
+
+Actual running:
+
+| Run | Camera Sample | XR Double-Fixing / Image Copy | Range / Max. Submission interval |
+| --- | --- | --- | --- |
+| PID 33072，`203226-8bc8d4e3` | 612 Acceptance, acceptance 13 rejecting;after reloading Pawn replacement | 5424 / 2446 | 60.235 sec/ 12.234 milliseconds |
+| PID 6816，`204724-b7b115ae` | 606 Acceptance, acceptance 29 Repeated refusal; opening of the scene, Cameron Actor, return to Pawn, reload new Pawn | 5321 / 2477 | 59.110 sec/ 12.288 milliseconds |
+
+Both rounds actually pass the status check and reload the same process check point; primary clean-up completed,42 The entry recovery and XR destruction, report is stopped/passed, followed by normal closure. The second round uses the new UI classification rule. The number of submissions includes short-terms, which does not mean that there are new game images at each time, nor is it black pixel testing or real header recognition.
+
+The opening sample confirmed the CameraActor route, but there was a sampling gap during the re-reading period that did not allow for all time between the two sites to be added to the same route. First access is still required.35 The last round of PIDs is not declared to have been eliminated.18196 Automatic navigation is cancelled because of test input service stop tags, and no level entry; it does not act as a rendering failure or CG evidence.
+
+Original JSONL, full report and tape SHA 256 It's... `camera-phase8-audit.json` at ignored `analysis/runtime/`, may not be packed. Real time drama cameras, prerecorded videos, black frames for all scenes and real-time UI/quasistar comfort remain to be verified; no 3D rendering access of non-Pawn camera is relaxed during this round.
+
+## Reduced duplication of detections in the same preparation
+
+`acquire_observer_preparation` Has tried to create a new Resolver and call resolve; the original setup function of the AngelSampler immediately recreates the check of disk Hash and all objects found. Now by visible `prepared_camera` Passes the same discovery hint, and the default call path is still self-resolved.`expected_camera` Retains the meaning of independent comparisons; current identity, Pawn/ViewTarget/Cactor two-way relationship, sampling and end-reading are all executed and still fail to retake the whole set.
+
+54 The relevant Python test is passed, including default rediscovering, preparation of hints not to trigger a second discovery, rejection of current object or relationship change and refusal of final boundary change for the certificate. When first running UI retake tests, its old mock failed without receiving new keywords; after completion of matching and matching object assertion, it was recorded in the record `prepared-camera-unit-tests.txt`。
+
+Actual PID 33292（`continuous-stereo-33292-20261015-210241-5319386f`The government has also been able to re-load the process.5367 Sub-submitted XR,2397 Sub-copy,59.621 sec, maximum submission interval 12.458 msec, cleanup/entry recovery/exit pass. Original readiness 15.983 sec, compared to PID 33072 It's...16.390 Small change in seconds; first pair of eyes still around 35.594 Seconds. This is only confirmed by removing the double scan and actually operating through, without interpreting a single time difference as stable returns, let alone claiming that the initial delay has been resolved. The log still shows multiple waiting times for the camera to return to control Pawn.
+
+## Story tag: static compilation and run bytes reconciliation
+
+Check the existing KB and then use the private copy of the history IDB `analysis/ida/cinematic-bool-20261015/snapshot.i64`. The original Kuhashi remains unchanged and the exclusive list is closed. Only Boolean reads and reproduces functions are checked, without repeating full inverted translations.
+
+- Current PID 33292 Gnatives Table Confirms 0x 2 d Points to RVA 0x 1d 6ea 4。127 Byte Functions Align to History Snapshot and IDA Bytes, SHA 256 `b71e2f794b38111292c497fa82c685f18a50822c44857853bb46acb6ad88609e`. Compile reading properties objects+0xd 0 It's...32 bitmask, and perform a place test with the actual value storage.
+- Reactions obtained `bCinematicMode` Properties, vtable+0x2a0 Pointing at RVA 0x 1daba 0 That's...25 Byte Copy function also uses +0xd 0 mask, only update target corresponding position; current run bytes and IDA are consistent, SHA 256 `f4c26fb034bd7529efd10838092da31c9745e7b66f56cd054e793a1957a2915f`. The old library does not define this leaf function, which is read using the IDA command decoding and is not therefore guessed as empty functions.
+- The mask for the reflection properties of this instance is 0x 8000. The new sampler includes all rereading of the full bytes, a table of functions, a Vtable target, two function byte Hash, a standard layout and non-zero single bit mask. It produces only diagnostic status and is not used to ease entry in raw rendering.
+
+PID 11788（`continuous-stereo-11788-20261015-212911-8164a1b2`Actual capture `CameraActor + cinematic=false`、`CameraActor + cinematic=true`、`Pawn_COGMarcus + cinematic=false` Three states. This means that the story cannot be judged by a Cameron Actor type only. The drama camera accepts the first time stamp of the sample.5.495 Second, next player camera status is about 16.895 sec; sampling is blank and does not prove a continuous period.
+
+The cycle is reloading and suspending:5352 Second Bibliography,2438 Sub-image copy,59.436 sec, maximum submission interval 12.641 ms. Only four reverse cases (zero mask, multiple-digit mask, copy entry changes, reading function numeral section changes) of the return value are read locally. The remix, current bytes and cross-references are only stored in signed arrays.
+
+Next step is to check the display transition from this differentiated status check "real time drama after entering both eyes" and find another path for prerecorded video. The confirmed state recognition does not equal the CG output to fixed; the XR show strategy has still not been modified.
+
+## 2026-10-16: Redetroactive UI double-read changes at startup
+
+9s（game 34880，`continuous-stereo-34880-20261016-020159-dede3de1`The government has been working on the issue of “the safety of the city” and has been preparing for the actual level.`build_ui_observer_config` Recipe 128 Byte range repeats changes and throws `UIConfigRejected('UI certificate read changed')`. At that time, the original activation was not performed and the binary submission was made as 0; XR exits by failure to clean, owner cancels the prime and confirms that the entrance is restored, then the game is closed normally. This time it is not a run-off of both eyes, nor does it prove that all black screens were previously for the same reason.
+
+Now**Accurate type and precise message**This double-read change is included in the existing UI Full Certificate Retrieving Cycle: Most 3 Minor/10 Seconds and shared preparation time limits are limited, each time the old Resolver is shut down, cameras rediscovered, code signatures reviewed, and anchovies were re-established. Current inconsistent data are still rejected; the number of times is exhausted and no more external cameras are retried. Identity, class, byte/hash and other unknown anomalies continue to be refused directly; no resuscitation activity is restored.
+
+75 The relevant Python test was passed, and the certificates were added to cover the whole reconstruction using the same new camera, the readsumed handle closed, the number/duration exhausted, and the type of error or unknown failure that did not retry. Simulate failure to validate recovery paths, with actual new session results recorded; no claim is made that the real UI instant changes have been reproduced again and restored. The original logs, failed and normal closure evidence remain in signed airsis.
+
+And then...9t（game 37956，`continuous-stereo-37956-20261016-021704-b84f4393`) Use this repair, Native 9/XR 7/quiet 6 We're going to start the binoculars.8.395 Second, first projection after XR Runner begins 32.302 Seconds. The round does not repeat the same double-read anomaly, so it only validates normal start path and instant retakes are still supported by a fail-injection test. Simulator in frame 3163–3164 Recording of two or so brightness anomalies: preservation of images with complete visions and local light on the left edge; follow-up frame 3165 Restore. No black eye was found, no light source confirmed without GPU tracking and this alarm was not used as evidence that all the flashing problems had been resolved.
+
+---
+
+## 中文
+
 # 相机切换观测与菜单恢复
 
 2026-10-15。继续采用冻结 GameRecovery8 / SpaceRecovery3，遵循游戏分辨率；没有增加渲染 Hook，也没有启用 DLSS/DLAA。

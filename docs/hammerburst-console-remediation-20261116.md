@@ -1,3 +1,42 @@
+# Orc rifle session: Changed window of the control table
+
+The objective of this round is to implement the aforementioned offline entrance, subprocess, refusal to inspect and Vidio Demo skills rules, and to implement actual window validation before completing the workspace.J:/codexWorktree/gearsVr. This round does not start the game, does not take over other sessions or re-enacts or recodes the existing video.
+
+## Modify
+
+- `analysis/hammerburst-20261115/invoke_hidden_python.ps1`Offline selection of the GUI subsystem pythonw.exe; continue UseShellExecute=false, CreateNoWindow, redirection log and visible waiting. The exception for game running is canonical python.exe to close to three complete paths and not to be released by the same name.
+- `official-owner-support-action/hammerburst_isolated_operator.py`: Current sub-process reader selects the same directory as pythonw.exe; failure to execute when missing does not retreat from python.exe. Read within original process is still performed in the original process. Normal stop game is a running entry, the original interpreter rules are maintained.
+- `official-owner-support-action/hb_recorded_operator.py`: Original window video post-processing changed to GUI interpreter, retaining CREATE_NO_WINDOW, log and exit code processing.
+- `make_demo_video.py`: Keep and validate the uncontrollable console check and the GUI interpreter requirements; if normal offline work is refused directly using a console interpreter, the subtitle/coding will not continue. Only clear short-temporal process models allow for the authentication of canonic python.exe ' s windowless creation.
+- `finalize_normal_video_review.py`: CREATE_NO_WINDOW, which is missing to complete the PowerShell subprocess; it has not been re-engineered for its old delivery status.
+- `.agents/skills/gearsvr-demo-video/SKILL.md`shared offline GUI interpreter, subprocessor without windows and actual validation rules; do not expand to a global replacement game interpreter.
+
+## Authentication
+
+`verify_console_remediation.py` Implemented:
+
+1. The current Python changes can be compiled.
+2. This session analysis table tops with the current profile call to direct filepress; history snapshot directory is not rewritten or rerun.
+3. GUI interpreter is selected normally and does not downgrade when missing.
+4. The production reader and video post-processing call point uses GUI interpretor with no window parameters.
+5. Actual GUI Reader`--check`Successfully, compiler and confirm game_standarded=false, runtime_verified=false without claiming to validate the interactive game.
+6. Real GUI Subtitle Generation Entry Successfully Generated 25 Subtitles; uncoded video.
+7. Even if run by CREATE_NO_WINDOW, normal offline video access was denied and no subsequent processing products were generated.
+
+Actual window records`console-remediation-goal-probe.json`:Gui father process 58148♪ The world is so full of shit ♪0, no-spectrum visible window; short-scale test subprocesses 54572♪ The world is so full of shit ♪0;FFmpeg short 51488 Quit 0，158 The sub-windows are sampled without a single window. These validation processes have been completed.
+
+Summary and document Hash:`analysis/hammerburst-20261115/console-remediation-goal-review.json`;full validation log:`console-remediation-final-verification.stdout.log`And corresponding to Stderr.
+
+## Scope and subsequent entry
+
+The current official script uses the above entry; back-up copies of old active-stow, trade and so on are kept only as historical evidence and no longer as current running access. Game start-up retains its installation validation compatibility except for soloted_sim.py, canonical python; this round does not restart the game start-up chain or claim that other sessions have been independently started.
+
+The conclusion of this round covers only modified and tested offline start-up chains. The previous conclusion that windows were not loaded on hidden parameters is no longer accepted evidence.
+
+---
+
+## 中文
+
 # 兽族步枪会话：控制台弹窗整改
 
 本轮目标是落实前述离线入口、子进程、拒绝检查和Video Demo技能规则，执行实际窗口验证后再完成。工作区J:/codexWorktree/gearsVr。本轮未启动游戏、未接管其他会话进程，也未重录或重新编码现有视频。

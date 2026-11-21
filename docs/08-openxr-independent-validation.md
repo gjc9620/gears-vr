@@ -1,3 +1,53 @@
+# OpenXR Independent Session Authentication
+
+2026-10-11, the default registration form is running as
+`D:\KRVR Native\krvr_xr2\krvr_xr2.runtime.json`。
+No changes to the registration entry, no switch to VDXR for Virtual Desktop.
+
+Interface query successfully: Run-time `KRVR XR Runtime 2.0.0`,system name
+`KRVR Apple Vision Pro (remote)`. Supporting D 3D 11、D 3D 12 , report rotation and position tracking support.
+I recommend every eye. 4096×3288，sampleCount=1. The recommended size does not equal the current actual image or connection status.
+
+12 sec D 3D 12 session bit test:1078 Frames;1078 The frame VALID / TRACKED is complete.
+1078 The frame should be Render,1077 Frame FOCUSED. Session appointment 90 Hz, but head position is constant (0,0,0)，
+Four constants (%)0,0,0,1) Only one head position. Left and right eye X is  ⁇0.0355000012 Rice.
+Runtime log report headset history=0Hz、pace feedback recv=0/s。
+
+Therefore: the session and API are clear; no remote headline connection has been confirmed, nor is there any physical movement in real time.
+The default position cannot be considered a successful tracker simply by the VALID/TRACKED logo.
+
+5 Second independent video test:447 Frames, successful submission 447 Two eyes,
+Every eye image 512×512. GPU first readback validation:
+
+| Eyes. | Background RGB | Cross RGB | Cross pixels | FNV 64 |
+| --- | --- | --- | --- | --- |
+| Left | (64,5,5) | (204,204,204) | 9728 | 18273855778751525669 |
+| Right | (5,5,64) | (204,204,204) | 9728 | 2312199282545496869 |
+
+I've got eyes. 252416 Background pixels, size and content are consistent with the test map design.
+Normal exit from consumption STOPPING and EndSsession; no game injection.
+The headline is not observed by the user and cannot be claimed to have been normal.
+
+Bitmathematic tests for bit conversion are obtained by: Right/ Top/ Front-direction of OpenXR, symbol of pitch/yaw/roll,
+Mi to preset game units, non-zero attitude back,71 mm eye,10000 Group random rotation matrix round-trip and
+Four-dollar q/-q equivalent, zero four-dollar and NAN rejected.
+The mathematical engagement here has yet to be validated with the real game prototype matrix and real head start.
+
+Post-input check and test for subsequent addition: default not to apply header input, visible enable post-check
+100 ms freshness, complete tracking signs, focus, sequence and limited values; when lost, return to the clean spot of the game.
+Restores again. Test passed; no game or transfer layer is yet connected.
+
+Original logs, CSV, GPU return images ignored in Git `analysis/openxr/`。
+See you at the tool. `tools/openxr-probe/README.md`。
+
+Quest 3 / VDXR physical header and header display verified. See
+`docs/11-headset-connection-validation.md`. Default postures and unobserved displays of the page
+Limit description to an earlier KRVR experiment; cannot be inferred from this 3 Follow-up tests failed.
+
+---
+
+## 中文
+
 # OpenXR 独立会话验证
 
 2026-10-11，本机默认注册表运行时为

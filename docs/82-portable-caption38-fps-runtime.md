@@ -1,3 +1,33 @@
+# Caption 38 Independent package and running FPS on
+
+2026-10-17. Use an independent candidate analysis/release-staging/caption38-rebind5-20261017, Python in package --I-B running bag launcher.py; external temporary configuration only specifies extra games EXE and 100 unit/m. Use the candidate default HUD 65°Close the camera.0, not the machine.45°／0.3 Rice. Runtme Appearance Selection extraquiet 2 Simulator, no change in system XR and no enabler of back-office physical handles.
+
+## Independent package operational
+
+Actual Session Continuous-stereo-38628-20261017-062218-344ac 2d 2, owned by Python in the bag, game PID 38628/ Create FILETME 134366629256760160. Sessions, native commands, DLL/self-detection and XR commands are from candidate packages; games are outside the package. Automatically continue fighting into two eyes, then read a check point in the exact death menu to restore the world generation 2; this is not the beginning of a new campaign or modification of archives to make scenes.
+
+Stop primary cleaning, restore entrances, exit XR and normal game close. After running, you can also use the user's computer to get a new user in your computer.700 Length of release payload/SHA 256 It's consistent, it's changing.0;run logs do not include releasepayload. Reply analysis/runtime/portable47-actual-runtime-audit.json. This check does not activate GUI, nor is it a clean player machine or real head viewing acceptance.
+
+## Running to open FPS
+
+WarUlistButton ... DeltaVideoSettings...optFpsDisplay for positioning; UIDataStoree_WarfareGameResource.buseFrameCtr's statement and historical Framectr string are only threads, not tied accordingly. The actual menu status gradually confirms Pause to Options  ⁇ Display and through four protected Down-to-optFpsDisplays; each action still checks the exact process, window, two fresh menu states, input blocking and stop/Fop 8。
+
+Earlier keyboard Right/Enter tried not to produce lasting opening evidence, confirming that the dialogue resumed over time, retaining failed confirmations and not counting switch success. Then it was only when FPS controls were confirmed that the front-office virtual handle, right, switched out of display settings, applied in a timely manner under two unanimous confirmations clearly given by MessageText to ConfirtroSettings; FrameCt changed from False to True.
+
+Get a new GPU, paper after returning to the game 18457 Source number 1681、3840×2160,savage monotonic_ns 51254815021100. The frame has a normal non-black scene, read from the top right corner.38.87 FPS. Checking charts analysis/runtime/portable47-fps-full.png及fps-corners.png The latter is a cut to the upper right of each of the same original frames, not a chord of images at different times. It proves that after opening and applying the FPS in this operation, two-eye scenes and counting text can be obtained without proof that the application does not black screens for any frame, repeat switches, all paint combinations or headlights.
+
+Stops and confirms that the game exits, only the current INI FrameCtr=True is replaced by the initial False, single-place replacement, other bytes are maintained; back and forth Hashi returns. The FPS is not saved as a player's default.
+
+## Tools to call boundaries
+
+Directly using -I, while executing internal run-stereo_continuous.py snapshot, the quarantine mode removes the path to the entry of script catalogues and reports that run_stereo_probe has failed; games and owners are still running. This time, no diagnostic command fails as a game retreat. Later, Python in the package successfully requested and obtained the above receipt through an initialized package of Backend.runner.request_snapsshot. The regular access to the GUI/starter is passed but does not claim that any internal script can be executed directly under-I.
+
+The first edition is still short of machine guns for physical possession, more over-the-horizon, long tours and real UI/frame beat checks.
+
+---
+
+## 中文
+
 # Caption38独立包与运行中FPS开启
 
 2026-10-17。使用独立候选analysis/release-staging/caption38-rebind5-20261017，包内Python以-I -B运行包内launcher.py；外部临时配置仅指定包外游戏EXE和100单位／米。采用候选默认HUD65°、镜头拉近0，而非本机45°／0.3米。Runtime显式选择包外quiet2模拟器，不改系统XR、不启用后台实体手柄。

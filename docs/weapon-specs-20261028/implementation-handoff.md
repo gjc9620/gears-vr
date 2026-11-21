@@ -1,3 +1,131 @@
+# All weapons cross-exposure handouts
+
+2026-10-28, replace it with the user " Write code after order, no re-engineering" . [12 v2 specification cards](weapon-cards.md)Yes, the original act is[Access contract](original-entry-map.md)This list freezes liability changes, the format of requests/receipts, the order of application and specific inspection cases.**The following changes to the running codes are not implemented during this cycle, nor is construction, games, XRs or simulators started.**
+
+Complement [33 File/78 Function Location Table](code-locations.md)and[Index with SHA256](code-locations.json). The current main line will still renumber lines and codes; the symbol is repositioned and new changes are kept when it is started, which is normal source alignment rather than a re-engineering of interactive designs. No old checkout is restored, no other writeer is created, no history RVA is treated as a direct callable ABI.
+
+## 1 1. Decision frozen
+
+- W 01–08 Start with the first clear physical action of each gun. `ReloadIntent`No fake R.3 keys;R 3 Only the supporting source. Full process and original example accept time points for specification cards.
+- The original gun is separated from the part. Old ammunition remains, uninjected new items are reserved and inserted before submission. The original box is plugged back without a patch or incentive. Full boxes and no backup are still allowed to be checked and forceReload is not forced.
+- Gnasher, maximum per round. 3 The original target is not reduced with the early exit, so that the award is not wrong.
+- Boltok Object 03 Wallband 02/08，Object 01 fixed;Object 02 Change to six-hole.80° is the offline design start, and the original animation has not been found. Uninteracting a separate shell pole shows the back shell hyphenation.
+- Bow Respiration 3 Only public assignments `cancel_charge(stamp, edge)`, no more bullets are replaced with a malfunction entry.`abort_original_charge` Execute the pending  ⁇  ChargeEnded  ⁇  normal exit from Charge  ⁇  automatic Endstate cleanup. The common trigger is still fired; the two are not shared. After cancellation, wait for the real  ⁇ creator to be rearmed.
+- The grenade is not ready to add a new cookie; Frag/Smoke keeps each of the stopBouchInit and special Hitwall. Original XR hand history determines hand speed, using only one space conversion and one certified base speed synthesis. The bunker manual flattening changes only the point where the hand was generated and does not inject the intended initial speed; the trans-frill is entered into the reference point and no more angular speed items are added.[Common rules](../offline-tech-prep-20261028/shared-contracts.md)。
+- The original component is removed from the original engine component/pregeneral bone, and the original element uses the same asset backend. Showing, interactive testing, games inventory are independent; no handheld model is used as authoritative ammunition.
+
+## 2 Common connection position and additional file boundary
+
+| Task | Current exact location | Contents to write |
+| --- | --- | --- |
+| I 01 Frame Schedule | `weapon_equipment_backend.inl::tick`It's inside. `nativeequipment_rig::tick(frame)`；`weapon_equipment_rig.inl::acquire`；`weapon_hand_client.inl::observe` | Call an interactive scheduler after the same certified frame, equipment update and identity readback; reuse the same hand/body space and current check. Each frame assigns only specific current weapons, and action is interrupted when the original frame fails |
+| I 02 Enter and left-hand occupation | `left_hand_interaction_owner.h`, existing equipment/support input; guns `begin_r3` And Gnasher. `begin_reload` | fresh Grip+ Clear motion generation inent; left hand support, old boxes, new bullets, institutional retort; replicating epoch cannot replace from "Current hold" pres |
+| I 03 Line Call for Game | `weapon_action_entry.inl::prepare/invoke_owned/process_event`、`weapon_call_subscriber.inl::begin/cleanup`、`weapon_equipment_domain.inl::domain_ready` | Re-use existing action/call ownership, unusual spread and restoration.`domain_ready` Reject conflict only, not write permission; do not directly from XR threadProcessEvent |
+| I 04 Public swap. | `vr_lancer_reload_hold.inl::lancer_clear_timer/lancer_set_fallback/lancer_finish_now/lancer_refresh`；metadata reader/parse | Extract reusable functions from old tests and find fit with timer operations to write official services; delete process pairs 8 seconds fallback-dependent. Use the current class and status check function to do parameter layout checks, quota reading back and exit weighting |
+| I 05 Shoot the door. | `weapon_lancer_r2_native.inl::tick/yield_for_native_equipment`；`weapon_unified_fire.inl::prepare_current/begin/normal_return/cleanup` | New unified machine can be used for firing queries as one of the established conditions for firing; no replacement of main line weapon postures, target return values coverage and original injury/dispersion chain. Bow, HOD, Troika remains in their own condition |
+| I 06 Models/institutions | Lancer feed_archor/inservation/magazine_pose; existing components read, original bone only written end;`weapon_lancer_component_probe.inl::tick` It's the historical observation base. | Fixed entry-mounted gun; original bone collection written once in each frame, with recovery snapshots maintained; handheld and weapon-on-hand covert cross-repeated; additional shared asset backend and owner |
+| I 07 The grenade launch field | `weapon_unified_fire.inl::typed_result/normal_return` Type verification, existing call subscriber | Create an independent call field for the current local ThrowGrende to replace hand position, Init direction and start speed Getter; retain original order of Spawn ⁇ ConsumeAmmorit cache/notification without covering the gun's mouth directly to re-use the grenade |
+| I 08 Main line integration | `playground.cpp` inclode/ has post-Tick points,`tools/playground/CMakeLists.txt` Current target | Adds a final match-up include/write-on-demand dependency; uses the then main line configuration, fixed candidate path and rollback. Do not recreate different global running configuration or create a second runner |
+
+Four additional units are expected to be added with a fixed name for start-up; these operating source codes have not been created in this round:
+
+1. `tools/playground/weapon_interaction_dispatch.inl`: Select the current W 01–12, enter intent, call sequence, mechanical shooting status and end of interruption.
+2. `tools/playground/weapon_reload_adapter.inl`ForceReload Accepted, Timer/Notify Ownership, Original Inventory Readout and Quota Submission, Incentives/Exit of Only Execution.
+3. `tools/playground/weapon_throw_adapter.inl`Preparation/release request, short call domain, Getter return value and Init orientation, post-drop notification and ballistic readback.
+4. `tools/playground/weapon_part_assets.inl`: original resource components are created/updated/discovery/destruction in harmony with originals; no ammunition is accounted for.
+
+Public Request Type Release `tools/vr-common/weapon_reload_transaction.h`;shoot-by-gun logic continues to place the corresponding file. Do not create a new hand protocol or load all machines into Lancer running files.
+
+## 3 Differences in the gun-by-gun code
+
+The following functions are already located in source code; the exact line number and source code Hash is in code-localizations. Old field names can be kept compatible packaging, but new paths must use real physical incentents and cannot be used to fake Rs from old fields 3 Serial number.
+
+| Weapons | Existing Logic and Specific Functions | Modify Task |
+| --- | --- | --- |
+| W 01 Lancer | `weapon_reload_model.h::begin/insert/finish/cycle/cancel`；Lancer feed/insertion/magazine_pose | `begin` Adding old L to reserv and clearing loads requires distinguishing between existing inventory, the appearance of old boxes and the pre-loading of new bullets; adding a new old box to reinsert cancellation/unfilled cartridge check. First action is pulled out of the box and finally you use a connection to close it down.`perfect_end_ticks<=0` No more direct invalidation of normal reloads, adding normal results when windows are unknown |
+| W 02 Hammerburst | `weapon_hammerburst_reload.h::begin_r3/confirm_latch_open/insert_magazine/confirm_latch_closed` | Change to generic start inent; confirm_watch_open also has old bombback pool logic, shared accountkeeping and cannot write projection back into original inventory; keep lock buttons before switch-off and real old box return path |
+| W 03 Gnasher | `weapon_gnasher_mechanics.h::begin_reload/acknowledge_inventory/observe/acknowledge_cycle` | taking the start of a start;add `close_requested`Allows early entry when no handheld/no confirmation is given. Keep target, only perfected =target; original Shotgun Locking timer is locked off with a lever |
+| W 04 Longshot | `weapon_longshot_reload.h::begin_r3/complete_step/acknowledge_inventory/acknowledge_completion` | Incent starting of the bolt; connect in a step-by-step mode q=1. Shellbacking automatically drives the object_case, without extra crusts; retaining sub-resilver cleanup |
+| W 05 Snub | `weapon_snub_reload.h::begin_r3/confirm_ejection/insert_magazine/move_original_parts` | Generic inent; confirm_ejection also has old bombback pools that fit into original inventory and set aside; fixed emtty/partial branch at the start of service; no incentive for box exits; empty silo slides to be linked to flank |
+| W 06 Boltok | `weapon_boltok_reload.h::begin_r3/advance/insert_ammunition/acknowledge_inventory` | Original planned `closing_phase` & Six ounces; the only item/slot submitted cannot be added to the hole. The early close will skip the remaining insert, execute the actual closure and keep planned targets/filed.03/02/08 With Hexagon Replacer,Object 01 Fixed |
+| W 07 Boomshot | `weapon_boomshot_interaction.h::begin_r3/insert_ammunition/acknowledge_inventory/acknowledge_completion` | Initial institutional trigger; fixed-format MagazineMesh 0 carrier, no longer requesting to re-select ballistic resources; one component q=1 ProjectFire still determines flight class and reward |
+| W 08 Torque Bow | `weapon_torque_bow_interaction.h::begin_r3/trigger/request_abort/take_request/acknowledge` | (a) Start with the taking of arrows, which are separated from the original submission;`abort_original_charge` Take C.3 The group is cancelled.`end_original_fire` Specialises normal debunker; pending calls before aborting, without a trace to create loose arrows. Reflects the original charge count and Pawn delay syntax |
+| W 09 Hammer of Dawn | `weapon_hammer_of_dawn_interaction.h::observe/begin_r3/take_request/acknowledge` | This confirmed that specific class does not configure normal reloads, begin_r 3 Maintain not applicable; BeginFire/EndFire, Actual Trace shared weapon orientation with BeauManager and read the end beam/sound result in full |
+| W 10 Troika | `weapon_troika_interaction.h::edge/update_aim/take_request/acknowledge` | Forced artillery positions, Claim/Leave, double-share, original angle limit/double-gun; no manual refill machine plan activated; retention of automatic Reloading, Loader differences and loss of ownership to terminate the fire |
+| W 11 Frag | `weapon_bolo_grenade_interaction.h::bind/take_request/cancel/acknowledge` | Configure fuse_owner=original_projectile; preparare return not to have projectile or active fuses; drop only the original Frag. Normal stop, adhesion, special touch wall back and self-processing; no virtual help can be maintained after local acceptance of actual cartridges |
+| W 12 Smoke | `weapon_smoke_grenade_interaction.h::bind/take_request/cancel/acknowledge` | Use the same type of original_projectile, but generate class/bomb consumption separation; retain a special stopbook/AttachInit/GrendeExplesion, without frag fuse. Type toggle token/sampling window |
+
+`grenade_throw.h::GrenadeThrowTracker::solve` Two direct changes: default minum_speed_mps=.5 And shift.04 . Supports the removal of minimum playtime moves when effectively slow/static discharges, with minimum speed 0; retention of sample numbers, time spans, limited values, maximum sample spacing, abnormal speed cap and space-generation check already available. 140 ms window as the first parameter no longer selects the drop algorithm.`grenade_world_launch` Only one axis/unit conversion is made to synthesize the base speed; zero velocity Init is directed towards objects in your hands, without a uniform zero vector or head direction.
+
+## 4 Public interfaces and status contracts
+
+The interface follows the existing FrameKey, ObjectIntensity, Current World/Equip Generation; the following is the requirement for new fields to be achieved and not a second identity system.
+
+| Type | Fields and Semantics to Contain |
+| --- | --- |
+| `ReloadIntent` | Current frame/weapon education; strict incremental_id; source=`physical` or `assist`；kind=`extract_magazine/open_latch/open_breech/take_round/open_yoke/open_carrier/take_arrow`;samples, motion epoch, first effective action game tick; original planned version |
+| `ReloadSession` | accepted, L/S/C, target q, result, received, only helped item, old magazine id, feed_present, mechanism_closed, original window Valid/end, current case; original timer/Notify |
+| `InventoryCommitRequest` | Identity/security, only token, item_id/slot_id, before review, before L/S, delta q, excepted L+q/S-q. Value is original inventory and not available projection less reserve |
+| `InventoryReceipt` | Same token, actual count back and forth with review, original call result, execution serial number. Unknown call results read them back and cannot be retried; half setter is compensated for success to a clear state |
+| `PartMotionReceipt` | Plan/face/part Gathering, sample start and end of movement, continuity, clarity of fresh Grip, axis/lock endpoint, current original identity; not shown to claim inventory submission |
+| `ReloadFinishRequest` | serial, end-action credible tick, all necessary mechanical returns, submitted to inventory review, oriental/perfect/cancel, early closure; prohibition of retransfer of stocks |
+| `InteractionGate` | Current example, feed_present, mechanism_closed, putt_shot_cycle_complete, original_ready, owned_action_ping. Machines still need to be allowed by the original game |
+| `ThrowPlan` | Current W 11/W 12, release token, freeze body/reference space generation, refereavs in hand, location/direction/first speed, whether base speed is synthesized, original inventory, validity period and preparation |
+| `ThrowReceipt` | Token, actual Spawn class/object, initial Lolicing/Velacy/Initial VX/Y/Z, generation, physical pre- and post-existing stocks, correctness of original notification; fuses are repossessed by the original bomb body |
+| `WeaponPartAssetBackend` | `create(asset_id,owner_generation)`、`set_pose(handle,world_transform)`、`set_visible`、`destroy`;returning the alpha-based handle/original component identity. Unit conversion is done only once at the back end, and failure does not create a scratchable object |
+
+Change of bomb sharing order:`idle → intent_pending → original_accepted → open/extract → reserve → insert_pending → inventory_confirmed → close → finish_pending → complete`. The round of the reserve to inventory_confird. The status machine can repeat existing enumerator and not require all types to be rewrited; the key is that the original return border cannot be merged.
+
+Check/replace original box and leave `inspection_open → restore_original_item → close → idle`, does not trigger a patch and incentive. Retain the original example of submitted/unclosed mechanical state at the time of interruption, release unsubmitted reservation; change the old handle in the world or for instance, without entrapting the old state into new guns.
+
+## 5 The extent to which asset assembly and loading have been determined
+
+Delivery path:`assets/weapon-6dof/offline-v2/`; four new geometric doubles, three live rounds, six holes and a reusable Lancer starter. Units, UV, PBR, naming, scratching/inserting nodes and verifying machines are all in place. Six holes + six of live bullets are equipped to translate `boltok-assembly.json`;backslide 3 mm, six holes and ballistics have been checked by actual GLB.
+
+- Original: Continue with the original StaticMeshComponent/SkeletalMesh bone control, using specific resource paths; Snub original private scrap is already UV/modeline/material attributed. Original model does not copy into issue ZIP.
+- New: GLB, the only offline production source, receives only empirical vertex/index/method/UV/materials/LOD/node data from the back end of the asset. The running target is fixed to be a 3-D component in the engine world and inherits its eye projection and scene depth, not replaced by XR Quad or laminate.
+- **Bottom level work identified, to be coded:** Harmonize the original UObject construction of temporary StaticMesh initializers for LOD and vertex components to publish original resource fence and GC. Access, byte evidence, root reference lease, data format and first validation[Asset backend](../offline-tech-prep-20261028/asset-backend.md). Matches 11 Grid input has been generated and independently checked; no game loader has yet been written.
+- Gnasher's full live ammunition is the only first. Enter the active ammunition 60 Byte angular point format, retention method lines; RawTriangles Build that does not call recalculated lines. The actual version/ABI and GPU results are validated by the implementation phase, fail to roll back their own affairs and report on the corresponding entry, and cannot be changed to a second set of painters or backlines.
+- LOD Defaults for only exemplifying LOD 0♪ I'm gonna change the LOD 1, two scene stacks cannot be loaded simultaneously. The impact of a bomb nest is based on the perforation zone and it is forbidden to block six holes in a single convex; geometry is only an expression, and penetration still requires continuous process and sole slot judgement.
+
+## 6 Order of commencement and results to be checked at each stage
+
+| Order | Encoding Contents | Specific evidence completed |
+| --- | --- | --- |
+| P 1 | Universal inent, unknown branch of normal window, authoritative inventory/precaring separation, old box location, partial closure; amendment with pure logic and corresponding narrow use examples | Compile and associated offline examples; no games are required to determine the interactive scheme |
+| P 2 | Public read acceptance/timer/insert q/ one exit | L=20/S=5 Only to 25;waiting without automatic filling 60; cutting guns without weight; R 3 Merge with the grab box for a transaction |
+| P 3 | Original component/institutional fit;Snub/ Hammerburst; also initial Gnasher asset backend | Hand-to-gun vehement; air and half-barrel correct; original actual world rendering/deep/life cycle clear |
+| P 4 | Gnasher/Longshot/Boltok/Boomshot machine and new assembly | Individual flat loads, early closing, post-shoot cycle and original effects readback; Boltok original animation not found using clearly defined design drivers and retaining recovery |
+| P 5 | Bow Cancel, HOD track/stop, Troika Guns/ Double Handheld | Special status can stop and not miss the bomb/residual beam/ingestion, no general use |
+| P 6 | Share throw attendant + Frag, interface with Smoke | The original body does consume first-time hand speed and one-time bomb consumption; two sets of original fuses/effect independently verified |
+| P 7 | Compile, mark candidates, properly close down and manual header checks according to the main line configuration at that time | Separate records of source code, compilation, candidate delivery, basic operations and headline feedback |
+
+P 1 To P 7 The sequence of execution after start-up is not the current build or run authorization. Follow-up measures continue to be largely subject to the sole coordinator and protection/scope in effect at that time, without restoring the old full matrix; physical hand sense is based on user feedback.
+
+## 7 Key inspections prepared
+
+| Object | Input & Expectation |
+| --- | --- |
+| Lancer | L 20/S 5, New Box Inserts L 25/S 0; same token reset; original box plugs back L 20/S 5, No incentive; no firing during full box extraction |
+| Hammerburst | Locks cannot be unplugged/plugged; L 70/S 3 Completed as 73; closing only once; Notify_Throw does not destroy transferred new |
+| Gnasher | L 2/S 10 One round at the most.5;only 1 Locked back to 3 normal;timer after original firing is not a substitute for manual leverage |
+| Longshot | L 0/S 1, insert L 1/S 0 Unlocked, exited for clearance; repeated completion without second round |
+| Snub | L 0/S 4- I'll put it in the back.4 However, slides are required;4/S 2- I'll put it in the back.6 free; no old box plug-in |
+| Boltok | L 2/S 3, only 1 Turn Back 3;completed as 5; repeat cavity insertions are not allowed; the back disk is fixed when the frame opens |
+| Boomshot | q=1 Use old carrier; repeat Notify does not generate second; player projectile and original reward retention |
+| Torque Bow | No Fire/ Unbulled/ Not Re-BeginFire; Normal Keys still fit Fire; Fire does not roll back |
+| Hammer of Dawn | The former illegal areas remain unreceivable; the target, the Beam and the circular sound are terminated while the key/failure is lost; the weapon targets are not changed at the turn of the head |
+| Troika | Failed to collect unhandled; any handshakes stopped firing; exit from non-removed occupation; Loader recovery time follows former branch |
+| Frag | Effective static/light throw can be generated; repeat release one; normal StopBounce uses the default delay, special Hitwall/Send separate check |
+| Smoke | Absorption only smoke inventory; regular StopBounce directly into smoke; adhesive original emiter; never wrongly generate Frag or reuse Frag timer |
+| All Objects | Lost/Returning/Snap Turning to/Forging the Old World: Unrecovered without submitting items and submitted without rolling back; Script Destruction and Action Call Exit once each time |
+
+Existing `weapon_*_test.cpp` and `grenade_throw_test.cpp` Expands the corresponding gap, using a narrow use of new syntax and not creating additional test projects for each field. The file index can be located to the current type and entry, the original function/source code Hashi can be located to preserve evidence; no re-requesting key, mechanical step or model list is required to start.
+
+---
+
+## 中文
+
 # 全武器交互实施交接单
 
 2026-10-28，按用户“下令后直接写代码、不再重新设计”补齐。交互决定以 [12 张 v2 规格卡](weapon-cards.md)为准，原行为以[接入口合同](original-entry-map.md)为准。本单冻结修改责任、请求／回执格式、实施次序和具体检查例。**本轮没有实施下面的运行代码修改，也没有启动构建、游戏、XR 或模拟器。**

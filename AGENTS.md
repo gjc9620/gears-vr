@@ -1,3 +1,151 @@
+# GearsVR - Agent Development Code
+
+## 1 Basic information on the project
+
+- Projects: Gains of War Reloaded PCVR / OpenXR Mod.
+- Current main working area:`J:/codexWorktree/gearsVr`
+- Original items and delivery catalogue:`J:/gearsVr`
+- Current priorities are based on the latest user directives and actual project status.
+- Keeps the current functionality, source code, user configuration, archiving, testing evidence and reversionable versions.
+- Do not duplicate an old document because it failed or expired.
+
+## 2 MultiAgent/ Multi-Mechanism
+
+Project may be 20 One or more Cordex sessions developed in parallel.
+
+- Each session is responsible only for its own mandate and for the module with clear delegation of authority.
+- Use independent Git Worktree, stand-alone build catalogues and test output as a priority.
+- Checks changes to the current Git status and other sessions before changing shared files.
+- Unsubmitted changes that do not cover, back off, and delete other sessions.
+- No unauthorized modifications to other weapons, workstations or public modules.
+- When changes are needed to share modules, the scope of changes will be clearly defined and minimal changes introduced.
+- Do not close other sessions, games or work processes to release resources.
+- No unauthorized creation of a son, Agent; only clear scope is assigned where necessary.
+- No repetition of tested results with unchanged source code.
+- Do not add a streaming account, test logs per round or full chat history to this document.
+
+## 3 Development principles
+
+- Priority is given to repairing real problems without re-engineering with no clear benefits.
+- The actual code path and evidence of failure are confirmed before the change is made.
+- Reuse existing modules, readers, testers and running tools as much as possible.
+- Maintain normal life cycles, competencies and error handling.
+- The period of validity, identification, tracing or security protection for the purposes of testing is not relaxed.
+- It is prohibited to forge controls for input, game status, test success results or time stamp.
+- All conclusions must be distinguished: source code achievement, compilation success, simulator validation, actual game certification, physical header verification.
+- Compiled successfully does not equal the functional completion; a test is not equivalent to an inter-historic breakdown.
+- First clear error checked in case of failure, not blindly retrying the whole process.
+
+## 4 VR Mod Core Constraints
+
+- Use OpenXR to maintain real eye-sterilisation 6 DoF head tracking.
+- Maintains the only final camera/eye benchmark and necessary bone ownership.
+- Do not introduce a second competitive camera or bone writer.
+- The original bone length, skin skinning, physical input and weapons are retained.
+- Head movement changes only the direction of observation and does not automatically change the actual orientation of the gun.
+- The gun, the gun, the auxiliary handheld and the actual firing line must be in a consistent relationship.
+- Hover Snap is responsible only for visual adsorption and does not automatically acquire physical control.
+- Active Grab must be authorized by genuine and effective control of input and current conditions of exposure.
+- Physical push, cartridge filling, shooting and sawing must be in compliance with the actual game state and inventory rules.
+- Retain tracking freshness, input edges, identity, life cycle and re-entry checks.
+- The simulator posture is not considered a real headprint tracking or end-user experience certificate.
+
+## 5 Play and simulator tests
+
+Controlled games, XRs and simulators are authorized in the tasks concerned without having to repeat each query.
+
+- Prefer Reuse Already `isolated_sim.py`, do not create a duplicate startup platform.
+- Do not directly start the game EXE, must use the already controlled startup entrance.
+- Each new test instance uses a brand-new and unique name.
+- Test examples use independent configuration, archiving and process identity.
+- No focus on the current desktop, without prejudice to software being used by users.
+- Current Visible Test Mode `--visible --lowest --render-scale 0.5`。
+- Use as most recent request on startup `--wait-resources-seconds 0`。
+- Reservations `-nomoviestartup` And the longest 180 Second player waits.
+- Just... `startup_status.startup_confirmed=true` The first of these is the launch of a new video, which will be used to confirm success.
+- Current performance tests do not record and no additional video collection is enabled.
+- No fixed multi-volume cap; no human-set memory residual threshold is denied.
+- Disk space, stand-alone configuration, process identity and normal exit conditions are still checked.
+- There are examples of cases that are not closed for new example.
+- The government has been able to provide information on the situation in the country, but it is not clear that the process and resources are being used to clean up its own identity.
+- Tests to end the restoration of temporary changes in settings, inputs, audio and other user profiles.
+- The user ' s latest clear operational instructions can override the test parameters of this section.
+
+## 6 Performance analysis
+
+Current performance target:**Practical game new eye frames reached 120 Hz, Single-Specific Budget 8.33 ms。**
+
+- Strictly separates the game Precent, the new eye frame and XR Runtime loop frequency.
+- XR 90/120 Hz does not mean the actual rendering of the game 90/120 FPS。
+- The main FPS displays priority for actual game frames, which cannot be impersonated by XR loop count.
+- The real bottlenecks are measured before the optimization is decided.
+- The following are the most important examples of how to get a picture of the game, how to do it:
+- The screen may not be used as a root cause for the absence of video tests where frame rates are still low.
+- Performance A/B comparisons must ensure comparable conditions; other examples are not valid when they interfere with the marking and do not automatically close them.
+- Do not consider the reduction of the number of calls, log numbers or successful compilations directly as FPS upgrades.
+- Keeps real measurements, test conditions and failure results.
+
+## 7. Lancer and Weapons Work
+
+- Lancer ' s current assignment is based on up-to-date and real user feedback, desk data and evidence of effective testing.
+- The first group of people in the country is the one who has been working with the government and the other, which is a member of the National Police.
+- Focus on performance, left-hand trigger flashing, C grab position, natural direction of the gun and hand alignment.
+- The user has confirmed that the real Grab Pose, Volume, Snap parameters have priority over old auto-generated postures.
+- No unauthorized hand-collection coverage.
+- No complete Lancer is claimed to have been completed because of a local mechanical test.
+- No changes to the current user access point unless the current task explicitly requires delivery or replacement.
+- The public version, the candidate for segregation and the historical retreat are clearly distinguished.
+
+## 8. Quest 3 Weapons workstation
+
+- The main source code for the workstation is located in `tools/quest-workbench`。
+- Retain independent weapons, master handcuffs, Second Hand, deputy postures, ammunition and parts editing mechanisms for activity components.
+- Use of real attitude confirmed by current users and latest equipment data, without reverting to historical attitudes that have been denied by users.
+- Backup of original collection files, project configuration and existing AAPK.
+- Current Authorization Allows Quest 3 On-line and USB is authorized to complete the new version of the build validation and backup after overlay installation.
+- Do not modify PCVR Mod, other devices or games without permission because of the update of the workstation.
+- The workstation simulation interactive, successful collection, successful AAK installation and real game hand-checking are recorded separately.
+
+## 9 Reverse engineering
+
+- Priority is given to existing IDA, Ghidra, knowledge base and stored analytical evidence.
+- Add a new inverse first query `analysis/re-kb/knowledge.sqlite`。
+- Distinguishing disk EXE, running memory, historical snapshot and UnrealScript metadata.
+- The same code address does not mean the original bytes, and the version must be checked against identity.
+- Do not allow multiple Agents to write the same IDA database at the same time.
+- Original game resources, back-compilation results and private analysis may not be mixed into public distribution packages.
+- Static analysis cannot replace real running or GPU/headprint validation.
+
+## 10 Documentation and historical records
+
+- `AGENTS.md` Only long-standing project rules are retained.
+- `docs/` (c) Preservation of structures, current status, operational descriptions and development plans.
+- `analysis/` Maintain logs, diagnostic data, historical tests, SHA, operational returns and laboratory results.
+- Each session can be in its own right. `analysis/` Subdirectories maintain independent progress.
+- Stops adding complete test flowbooks to the `AGENTS.md`。
+- Historical records are accessible on demand and should not be fully loaded at the start of each mission.
+- Old failures are known to be retained in historical evidence but not automatically become a barrier for new missions.
+- The testing media generated by the project follow existing clean-up strategies; maintain source code, configuration, archiving, text evidence and back editions.
+- Do not clear the user's personal file, other session data or the Cordex session database.
+
+## 11 F. Reporting
+
+In each case where a real impediment to the completion of a mission occurs, a brief description is given:
+
+1. Do what you do.
+2. Which documents have been modified.
+3. Which compilers or tests actually pass.
+4. What problems remain.
+5. Gives the next step if necessary.
+
+Only confirmed facts are reported and the results of tests are not false.
+
+**Core principles: Fewer logs, less repetition tests and less context waste; protection of other sessions with priority given to the delivery of operationally operational functions.**
+
+---
+
+## 中文
+
 # GearsVR — Agent 开发规范
 
 ## 1. 项目基本信息

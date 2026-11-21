@@ -1,3 +1,250 @@
+# 12 A weapons interactive specification card
+
+Version: Design specifications 2，2026-10-28. Pressed[Interactive review](interaction-review-v2.md)Ununify R 3 The mechanism for pre-loading, adding the filling part to exit and amending Boltok, twisting bows and two grenades.[Model worksheet](model-work-orders.md)and[Original access.](original-entry-map.md). The action " complete " in this document is a future acceptance requirement and does not represent the result of this operation.
+
+## C 0 - A joint contract for all guns.
+
+**Enter and hold.** Follow the established body slot: Right Grip picks up the main weapon/ pistol/hand grenade, Left Grip holds hold on to a support point, institution or ammunition; left shoulder supplies the current gun with ammunition. Right trigger opens fire in the same way as the original weapon. First clear reloading request is made for the former Force Reload and at the time of acceptance; no longer requires R first 3。R 3 Only release/compatibility aids, shared with the physical path, and long-click or repeat input not to restart. Grip holding a front log must recaptulate the body after release, and sweeps and miss jumps cannot be dismantled. 1 Left shoulder weapon. 2 The gun is directed in the direction of a weapon, and HMD influences only observation.
+
+**Number.** The original instance C, loaded L, and available as backup S. The addition of the normal box q=min (C-L, S) retains the original L without introducing a penalty for "real discard halfbox". Retain new pieces before submitting them to q; hold uninserted q is still available and re-staves are prohibited. 1. The submission must be confirmed by the original inventory and not declared successful by hand animation. All guns are added "Inner chamber"+1”。
+
+**Old boxes and partial filling.** The old box is re-inserted only in its original quantity and usable state, without filling or giving incentives; the unrecovered old box shows no missing bullet. Old/new pieces have different item IDs that cannot be recorded with hand folding or repeatedly inserted over and over again. Gnasher/Boltok allows locking to exit before the current round has been fully completed, and the number is kept; unplanned completion is normal. A completely unloaded opening is checked/ cancelled, no reward.
+
+**Geometric and timing.** The object type, continuous approach, direction and effective insertion process are fully satisfied; it is not counted as completed; the entry point is fixed on the gun without following the parts removed. Mechanical actions must reach the required end/return level; the original animation angle is not a direct threshold for the player handle. Yellow shows only the current operational area and the vibration is successfully in place once. Last necessary action does not last later than the end of the perfect window in this instance, i.e., a perfect result is submitted; completion is allowed earlier. It is done late to normal, without automatic filling or mandatory card casings. Use original game time; tracking lost cannot extend the period.
+
+**Interrupt.** The change of gun, the reading file, death, failure to pursue, and taking over of the plot prevent new movement requests. The release of retentions without the submission of items; the number submitted cannot be reversed/heavyed. Short-track recovery keeps the institutional status but suspends the movement; recovery of tracking is followed by recapturing without using jumpovers. Scripts keep the weapons in numbers and unclosed institutions; then removes the mechanical state first. Reader/rebirth rereads the inventory as new examples, discards old affairs and backfills. If the original exit function is able to fill a bullet, it must first take up the duplicate account of this example and not use "Abort" as a security assumption.
+
+**Shoot the door control.** The non-location of the filling, the unclosed agency and the failure to launch after the firing cycle ends even if there are still rounds. The speed of the discharge, injury/established single-handed strategy, dispersal, bullet body and effects follow the same chain. Physical inspection/retrievation of originals and closed-off services is allowed when full or zero back-up, but no patch or reward service is created.
+
+<a id="w01"></a>
+
+## W 01 - Lancer saw rifle.
+
+2026-11-05 Current Lancer coverage: the Grab area is used only for new capture competitions; actual initial Grip/Fingercrush ownership is retained when the same component is held, the parts are attached to their wrists and finger positions without returning to hand by common horizontal/reverse minor adjustments. Capture/hand shows a fit/bulk well step-by-step support/real body process separated; cannot be adsorbed or shown as sorption 12 E is the front end small pull, moving along the original long slot; the long slot provides a motion axis and end point, not another whole piece. B does not allow players to grab, C folds up in time, genuinely grabs, starts at gunpoint, stops at gunpoint. The cartridge/E/C/wood accepts Grip or finger triggers, which are not used to trigger other actions when they belong. This covers the crossword of Grip-only/box that replaces the next history; it does not yet represent physical hand sense acceptance.
+
+Old C 0 The inspection contract for fully loaded/unreserved bombs continues to be in force: it allows the removal and return of the same original cartridge, retains the actual amount of ammunition, and does not create a replenishment or incentive service.63 Actual recorded to full box 60/ Stand-by 360 Recapture and re-launch after interruption; no backup rounds 20／0 Only compiled and bound, operating with physical sensitivity.
+
+2026-10-31 User Overwrite: Old/uninserted new box will disappear and no landing pick-up will be achieved.0 Tactical re-loading resumed firing after plug/closed; start L =0 The empty silo changer is also required to have a real loaded and reset action, which is the end point of a perfect timing. The loaded parts and attitude must be based on actual original access and cannot pass through keys, waiting for time count or a saw starter as a bolt. The following early "no extra body" clauses cover this. Code/original access/ compile/video/headprint confirmation are separate records.
+
+Perfect timing by `tools/vr-launcher/6dof-reload.ini` Configure, hand-on candidate to the starter `6dof-reload.ini`。`perfect_reload=vr/original/off`Press 2026-10-31 User 's latest simplification requirement, VR start value `tactical_seconds=4.0`、`empty_seconds=4.0`, effective range 0.1～60 sec. The empty silo still needs to be actually pulled and released back.4 The next launch takes effect, with the deadline fixed for each acceptance starting; no reward, no replacement and only once. The original model still reads the example's original window; normal completion and ammunition maintenance do not depend on the incentive model.
+
+User Supplement: The UI reloading process and the perfect area must be used for the same set time, not to keep old 2.5 The current manual reloading of the original "Default of Time/Carder/Extension of Punishment" route is cancelled and can still be completed beyond the deadline. Progress cannot replace actual insertion, empty silo loading and repositioning. UI/state access cannot be marked as complete without checking.
+
+Category `WarfareGame.Weap_AssaultRifle`;static reference C =60 Reserve ceiling 600 ReloadDuration =2.5 s. The capacity and time are not rigid encoded operational parameters.
+
+1. Re-click Grip with the left hand in the magazine/release area, clearly pull it out of the extraction direction; grab the hidden unlock and lock/box open with the original connection. Request the original switch and acquire the timer/animation title when crossing a valid debarment threshold; not first press R 3- Take the old box in your hand, and keep the bullet.
+2. When you have released your hand to retrieve the old box, you can grab the new one from the left shoulder; you can also cancel the old one. You keep holding the gun in your right hand and the new one is aimed at the fixed filling and completing the insertion process; submit q=min (C-L, S). The visible, invisible handheld box of the original one that has been inserted cannot be displayed simultaneously.
+3. Merges the locking of a button/box into a natural push-in/cover operation without forcing two simultaneous motion pieces to be seized separately. If the actual structure requires independent contact closed, then you will be prompted to close it again. Finally, the necessary locking is at the end point of the perfect/normal result and no additional false straight-line bolts.
+4. Ordinary shooting does not require a hand-pull handle. The saw is independent: the original starter is pulled with the left hand to meet the target after having initiated action, and the execution takes over in its original form and regains hold.
+
+Model Task M 01: Original `MagazineMesh`、`b_AR_Magazine`、`b_AR_Latch`、`b_AR_Receiver`;Receiver_Spin as a joint; saw area retains its original skin. Start M 15 (c) Relayable projects for independence.
+
+Code: Reuse `weapon_reload_model.h`、`weapon_lancer_feed_anchor.h`、`weapon_lancer_insertion.h`、`weapon_lancer_magazine_pose.h`. Original entry is C 1 Public exchange of bullets,`Weap_AssaultRifle.Reloading.BeginState`、`Notify_AmmoGrab/Release/Reload`Playground two Lancer `.inl` Provide historical justification only, formal process removal 8 Seconds automatically fill the bottom.
+
+Future reconciliation: historical card deductions 114.5°The package. 28.5°Only movement can be demonstrated; a connection attitude and fixed access will need to be determined for the same example.20、S=5 Only after the box. 25, after closing; placement 8 The seconds can't change by themselves. 60; no more gun cuts. 5。
+
+<a id="w02"></a>
+
+## W 02 - Hammerburst.
+
+Category `WarfareGame.Weap_LocustAssaultRifle`;static reference C =78 Reserve ceiling 702、ReloadDuration=2.5 s。
+
+1. Retake left hand. `b_HB_MagLatch` Locks are clearly opened along the original chain, triggering this rotation bomb; the original acceptance time is counted and the receiver is automatically completed. The lock cannot be unlocked directly to the plugin/plug-in.
+2. The old box enters the removal display, leaving a bullet. The left shoulder takes this independent cartridge, inserts it along its own entry axis and confirms the q and returns the visual to the gun. `b_HB_Mag`。
+3. The left-hand lock is in place and the switch is completed.2026-11-12 User clearly covered: Veterinary rifles are temporarily disposed of without a canal bolt, empty and half-silos are not added to the bolt, load count is not increased +1。
+4. Keep shooting. `FireAmmunition` The rhythm, which does not repeat the launch as per frame request for holding layers.
+
+Model Task M 02: Lock button 2232 Triangles, Boxes 272 Triangulars can be rigidly attributed; the original box is used, with locks directly driving the original bone.`HB_Reload` The box is a constant relative to the parent bone, and does not mean that the gun space is not moving.
+
+Code:`weapon_hammerburst_reload.h`;old C 1、`Notify_AmmoGrab/Release/Reload/Throw` The same thing is integrated.`Throw` Handhelds that have been transferred cannot be destroyed again. Fire is prohibited when not plugged in; left Grip is released without automatic locking.
+
+Acceptance: first button and then close to the cartridge without counting; L=70、S=3 Only to 73; notification triggers repeated not to lose the new box. The pending items are locking real chains, opening end points, hand-held gestures.
+
+<a id="w03"></a>
+
+## W 03 - Gnasher shotgun.
+
+Category `WarfareGame.Weap_Shotgun`;static reference C =8 Reserve ceiling 31、ReloadDuration=3 s。
+
+1. First left shoulder-taker bullet when missing begins the current round, target q=min (3,C-L,S; full or q=0 Do not create a bullet-taker step. The left hand takes one load of live ammunition at a time, inserts the actual loading entrance and every account is kept 1, take another round up to the current round.
+2. The left hand holds and fixes the wood, and the right hand holds the handle down significantly and then lifts back to the finish lever.2026-11-12 Video coverage: Do not end with decorative retort. 1／2 Locks are closed early and only actual additions, normal completions; the term is given when the q is reached. Not a straight line of up-front wood pumping.
+3. Entering cycle after each original shot is confirmed; the next one is allowed only when the leverage action is also completed. `FinishedCockingShotgun` The timer arrived first and jumped over the gesture.
+4. When the re-barrel has been recycled before it begins, the final lever is unified to a lock check and cannot require two consecutive equals actions. Breaking the number of rounds inserted; recalculating the shortfall when restarting.
+
+Model Task M 03+M 13: Original `b_Shotgun_Lever` 1260 Triangular, direct protobic control;[v2 Complete ammunition](../../assets/weapon-6dof/offline-v2/gnasher-round.glb)The blog is also available on Facebook.960／320 Triangular double LOD, rice made, +Z pointed to the closed. The size of the production is taken from a shell envelope reference and cannot be determined directly as the final size in the game.
+
+Code:`weapon_gnasher_mechanics.h`、C 1;suspending original shooting `CustomFire/FireAllPellets`After the shoot, fit. `ShotgunCocking.BeginState`, state `FinishedCockingShotgun`、`PlayShotgunCocking`。`BeginState` Original setup 0.75×The timer for the launch of a completed timer at intervals must take over the current instance; only the trigger is not equal to the completion of the institutional state.
+
+Acceptance: L=2、S=10 The round is only possible. 5; the second has been submitted and the missing track will not return 2 And it won't automatically arrive. 8 History. 32.43° The leverage range is used for attitude marking, not as a handle threshold. Retaliation after firing takes place and the locks are eventually closed.
+
+<a id="w04"></a>
+
+## W 04 - Longshot sniper.
+
+Category `WarfareGame.Weap_SniperRifle`;static reference C =1 Reserve ceiling 23、ReloadDuration=3 s. Normal rules do not have an independent "semi-port" branch; installed 1 No additional rounds are collected for animation.
+
+1. The shell is an automatic visual step to be loaded and no longer requires hand-strangling.
+2. Remove a full live bullet from the left shoulder and insert it along the mouth axis; type, direction, route after adoption q =1 Recording.
+3. The left hand is closed and locked with a bolt. The unlock can not eject; the next chamber will be this rotation after firing without another independent pre-fill loop.
+4. The mirror view is used as an original gun-targeting companion, and the ray follows the axis of the gun; it does not replace the actual mirror image with a full screen FOV magnification.
+
+Model Task M 04+M 14：`b_LS_Bolt` 894 (b) Triangular retention of the original bone;`LensCap/Scope` Bones in the lod.0 Without a complete triangle, it cannot be claimed that there is an independent mirror.[Full Longshot live ammunition](../../assets/weapon-6dof/offline-v2/longshot-round.glb)The blog is also available on Facebook.1248／416 Triangular double LOD; checked for original particles `bullet_spent_single_clean_03b_SMesh`, the shell is for reference only.
+
+Code:`weapon_longshot_reload.h`;old C 1 Add `PlayWeaponReloading`、`Reloading.EndState/ForceReload/TargetingModeChanged`、`ShouldAutoReload`. The aim/backscan cleanup needs to be maintained, not just call the public base category exit. Step map `open_breech → eject_case → take_round → insert_round → close_breech`, object_case is driven by the original action back.
+
+Acceptance: S=1 , and then insert only consumption 1; return to open after reloading during opening; the original automatic reload cannot be filled without loading 1. The full composite movement of the bolt is to be marked, and cannot be assumed to be straight first.
+
+<a id="w05"></a>
+
+## W 05 - Snub pistol.
+
+Category `WarfareGame.Weap_COGPistol`;static reference C =12 Reserve ceiling 60、ReloadDuration=2 s。
+
+1. Left hand grabs and explicitly pulls out, captures implied release; optional buttons release into the same business. Release the old box from the left shoulder after recycling it and insert it, retain the old bullet and submit the q; unfilled bullet when the original box is inserted.
+2. **The fixed branch of the project:** ♪ At first L=0 For "Aerial Silo Process", the slider in the left hand behind the plugin to the back end before being released back to its place; at beginning L>0 For " Half-Silo Processes " , the plugin is in place and complete. The branch locks at the start of the transaction without skipping because of the size of L after the plug.
+3. The slider is associated with the wing as it is mechanically, and does not require a single grab of two wings.
+
+Model Task M 05: Original `Magazine` 314 The triangle has been removed from the single bone group and maintains UV, legal line and material indexes. Private OBJ only produces inputs and still needs to create operational components;`Slide` 445 Triangle,`Wing_L/R` Each 60, direct primary bone control. No new whole gun or different shape cartridges are required.
+
+Code:`weapon_snub_reload.h` Air silo/tactical plan, old C 1、`Weap_COGPistol.PlayWeaponReloading/StartFire`。`EjectClip/InsertClip/CockOpen/CockClose/CockCloseFinish` The saving functions only play sound, which is triggered once each time the effective action is completed; they are not munitions submission or motion control API.
+
+Acceptance: L=0、S=4 It's loaded after the plug. 4 But the slider is not allowed back; L=4、S=2 After the box. 6 The semi-silovolt is a VR design, not a certified original chamber mechanism. You are to be marked with slider axes and spaced visual gestures.
+
+<a id="w06"></a>
+
+## W 06 - Boltok revolver.
+
+Category `WarfareGame.Weap_LocustPistol`;static reference C =6 Reserve ceiling 24、ReloadDuration=2 s。
+
+2026-11-13 The latest user coverage: the revolver load operation uses whole-nuns as handheld and does not use single bullets; the entry for workstation filling is changed to “filling nest”, and the firing unit remains “blast”. Fill can be collected on a separate editing page, after moving and rotating. The account is still calculated by the original capacity deficit and reserve, and cannot be filled unconditionally with the shape of the whole nest; the bottom is covered by an old bulk/quick fill expression.
+
+2026-11-17 The latest oral statement covers the same rule: the left hand turns the institution like an open door and the old bomb nest disappears when it actually opens the end; a new whole bomb nest is taken from the left shoulder, inserted into the auto-loading, no longer requires a second Grip or hand push. Perfect reward starts with the first count of the new verb to be applied to the filling hole.600 ms; actual insertion, actual co-loading and backfilling of the original reward must still be confirmed. Release or lose this alignment continuity and debar from recapturing/reseting windows.600 The rule has been replaced by ms.
+
+2026-11-12 Users add: revolvers hold arms with both hands in hand and close to their handle; users then clarify that they retain independent “Second Hand” grab points, which are the common name of the second hand and do not restrict the position of the guard; no other body parts except for a bullet nest. The bullets can be collected as separate loads without adding an entity fast loader.
+
+1. Left hand grab the rotor area out and start the current round;Object 03 A stubby wheel, a strapped piece 02 Blast, Object 08 Shake out,Object 01 The back plate is kept in the gun. The empty shell is associated as a visual/part-based part after the opening of the warehouse, without any further evidence of an independent shell-release pole step.
+2. 2026-11-12 User video and clear coverage: a single take of the whole set of live ammunition required for this round (in the left shoulder)2026-11-12 This rule replaces the previous reloading programme.
+3. The whole group is only submitted once, with an q distributed to the empty slot and repeated contact not being recorded twice. Successfully inserts and automatically loads along this real business without requesting another Grip. The old fuse in the shape disappears after opening, new one is taken from the left shoulder and inserted; the original live ammunition remains on record and empty storage is at most filled 6 The back-up and reward for the original stock on the side of the game are still handled by the original business, and the workstation simulation cannot replace these returns.
+4. The index of the bullet nest and the distribution of live ammunition are shown in local mechanical displays, which are shown to be a map of the original total number.
+
+Model Task M 06+M 14+M 16: Reservations `alow_poly` Main and original active support.02 Both ends are actually closed. Made[Six-hole bullet nest replacement](../../assets/weapon-6dof/offline-v2/boltok-cylinder.glb)and[Full Boltok live ammunition](../../assets/weapon-6dof/offline-v2/boltok-round.glb)。Object 09 Under the barrel, not a proven shell rod;Object 01 It's root sub-component, not on the shelf. 12 Group is rigidly separated, with a hierarchy/reference coordinates as detailed v 2 Survey and private assembly plans.
+
+Code:`weapon_boltok_reload.h` It's... `move_original_parts/insert_ammunition` Plan, C 1. The filling phase maps multiple original components and does not facilitate the rigid filling of individual Object bones for adapters.`Cock*/EjectClip/InsertClip` Also only sound; the default reference to Snub animation does not prove that Boltok has the same track.
+
+Acceptance: L=2、S=3 Up to Add 3, all close to 5;reserve only 1 Filling only 1 Close on 3, normal completion; six slots cannot be added 7 hair. The frame/blast layer and the hole model have been delivered, and remain in place `current_instance_verified=false`Checked. 21 AnimSet, no match track, offline. 80° Expand only for design start-up; actual examples, ratios and itineraries are left to be wired.
+
+<a id="w07"></a>
+
+## W 07 - Boomshot grenade launcher
+
+Specific Category `warfaregamecontentweapons.Weap_Boomer`, Father `WarfareGame.Weap_Boomer_base`;static reference C =1 Reserve ceiling 11、ReloadDuration=2.5 s。
+
+1. When you're in the air, grab your left hand. `Boomshot_Barrel` Corresponding fillings are clearly open and the current round begins, after which they can be inserted.
+2. Left shoulder to the original `Locust_Boomshot.Mesh.Locust_Boomshot_Magazine` Filling components, inserted along the actual filling port; one component is moved only once. The current design uses a proven original vehicle and does not allow players to capture explosive objects in flight.
+3. Left hand closes the barrel/filling unit to lock and ends the current round. Normal capacity 1 There is no half-barrel swap; the after-jet open motion is placed in the next round, and there are no additional requirements for empty post-jet loops.
+
+Model Task M 07: Guns 1802 Triangular, gun, Magazine. 1236 Triangulars can be pelvis-controlled; map class. `MagazineMesh0` (b) The above-mentioned independent static grid is clearly bound.`ammo2` Not as a default load resource. The pipe static animation is flattened and the chain is not fabricated by name to open the corner.
+
+Code:`weapon_boomshot_interaction.h` Select the verified carrier type, old C 1、`Notify_AmmoGrab/Release/Reload`. Reservations `GetProjectileClass/GetProjectileFirePosition/ProjectileFire` ; local players follow the corresponding player's cartridge, without misusing the AI class.
+
+Acceptance: S=1 The bullet-capture wall does not generate a shell from outside the wall. The nuclear barrel is to be applied, the axes are actually inserted and the parameters of the original entry are to be generated. The conclusion for the replicatation is to be tightened by "unknown cartridges".
+
+<a id="w08"></a>
+
+## W 08 Torque Bow Whipbow.
+
+Specific Category `warfaregamecontentweapons.Weap_Bow`, Father `WarfareGame.Weap_Bow_base`;static reference C =1 Reserve ceiling 11、ReloadDuration=3 s。
+
+1. First left shoulder extraction when arrows are missing `Locust_Torquebow.Locust_Torquebow_Rocket` Start the current wheel. Full drop and lock in along the bow fixed slot, submit 1, end filling; no additional hand-string without evidence.
+2. The right trigger sets the original power and releases into CheckFireShot. CanReleaseFire determines that Pawn's delay in firing is not a minimum limit; the break-off may be immediately Fire, or bPendingEndFire waiting. The bow arm retains its active capacity.
+3. Regular holding of the retention-based fatigue. ChargeTimeCount starts with MinChargeTime, default ceiling is MaxChargeTime+HoldTimeUntilTired=3+3.5; perfect bullet swaps allow counting 2 Double-drive. Not fixed time. 6.5 S, and I can't. 3.5 s When all hold the ceiling.
+4. Resh R in the process 3 Short-click to cancel; no more switch rounds are assigned at the same time. `cancel_charge(stamp, edge)`Reqest_abort, private request_abort. Loss of pursuit, cut-off, death, playtime takeover also uses non-launch cancellation: stop injectioning ClearPending Fire and bPendingEndFire  ⁇ ChargeEnded  ⁇  normally leave Chile, automatically executes Charles. Endstate; cut guns are normal PutDownWeapon. Read unlaunched ammunition and unexploded until the actual trigger is released. Bans use EndFir/ StopFire to cancel and stop hand-to-hand transfers to EndStat again. Fire cannot roll back into unlaunched mode.[Common rules](../offline-tech-prep-20261028/shared-contracts.md)。
+
+Model Task M 08: The original arrow has been `MagazineMesh0` Specifically used for hand-held filling, reusable; bow arms retain the original bones and skins, Bow 05–08 You can't break the whole body. No new traditional string or another arrow is needed.
+
+Code:`weapon_torque_bow_interaction.h`、C 1，`Notify_AmmoGrab/Reload`、`PlayWeaponReloading`;launching docks `Charge.BeginState/EndFire/Tick/EndState → CheckFireShot → Fire`. Ungrouping is positioned by saving scripts, as detailed[Full order in review](interaction-review-v2.md);ChargeEnded calls incompletely, Active. Beginstate may also restart Pending Fire. native ABI and game thread-to-line state swaps are not yet certified, which is not equal to direct callability.
+
+Acceptance: Only one arrow is loaded; the head is turned but the hand is not turned and the line of launch remains unchanged; no arrows are fired, not restarted or unloaded after failure to pursue; normal overtime remains the rule. The rest is the actual binding verification of the original arrow position, slot marking and the design of the cancelled combination.
+
+<a id="w09"></a>
+
+## W 09 Hammer of Dawn
+
+Specific Category `warfaregamecontentweapons.WEAP_HammerOfDawn`, Succession WarWeapon. `HasAmmo/HasInfiniteSpareAmmo` returns true; normal bullet swaps are not applicable, R 3 No bullet removal, no trigger for a general change of bullets.
+
+1. Use a weapon posture to provide target rays and press the right trigger into the original BeginFire.
+2. Keep the gun on a legitimate target, following the original target to maintain, tolerance, preheat/cool, exposure process and feedback; move the target away from Invalid Target and not simply remove the laser vision.
+3. The break button calls the original EndFire, which fully executes NotifyInvalid Target, NotifyStopFire and TurnOnTurnTurfTargingLaser. Failure to track or leave hands with the same checked stopword and then return the action.
+
+Model Task M 09: Original `cog_hod_mesh` Subject & Trigger 156 Triangle); Target indicator and beam reference to original ParticleSystem. No new magazines, charge cells or energy supplementing actions are added.
+
+Code:`weapon_hammer_of_dawn_interaction.h`;supplied to specific category `BeginFire/EndFire/GetTraceImpact/Tick/TurnOnTargetingLaser/TurnOffTargetingLaser/UpdateFX`;Bamamanager `NotifyStopFire` The blogger says that the government is not in a position to do so.`GetTraceImpact` The starting point for the consumption of weapons and GetAdjustedaim must change the actual target search instead of just drawing lasers. Default paper time=1.2 s、grace=.25 s is static reference.
+
+Acceptance: The lawful target is only irradiated; the light beam and the circular sound are terminated by a loose key/failure; the original ban is not changed; the target condition and stop semantics are in place.
+
+<a id="w10"></a>
+
+## W 10 - Troika fixed machine gun
+
+Weapons `WarfareGameContent.Weap_Troika`, Father `WarfareGame.Weap_Troika_base`;barrell positions `WarfareGameContent.Turret_TroikaCabal`. Only take the gun slot, not into the shoulder sink.
+
+1. Following the main line interactive key, request the original ClaimTurret/DriverEnter. After confirmation of occupancy rights, the right-hand Grip grabs two handles, pushes and horizontally turns around the fixed tower axis, and adheres to the original rotation limit.
+2. The right trigger fire, which maintains two-hand hold until the request for firing continues; the loose trigger or any handshake is lost/released, the original fire stopped and the hand drive was removed. Recapturing does not automatically pull the trigger.
+3. R 3 No manual cartridge process. `CanReload` returns false, but the automatic Reloading status exists and requires that you keep access, timing and particle feedback.`GetReloadDuration` The Loader is selected for a long time; it cannot be changed to a self-defined "overheat bar".
+4. The main line exits and moves out of RiverLeave/UnclaimTurret; upon completion, free hand and role observation benchmark is restored. Do not rotate the gun camera into the direction of a free weapon.
+
+Model Task M 10: old latitude,longitude, spinner_L/R, muzzle_L/R; handle and playerref bone 0 It is not self-righteous, but it can be a reference point. It does not mean that there is no handshake. Turning to the original parent and son level without rebuilding the double barrel.
+
+Code:`weapon_troika_interaction.h`; original gun slots: ClaimTurret/UnclaimTurret/DriverEnter/DiverLeave/UpdateTurret/GetPhysicalFirStartLoc; weapons Active.BeginFire, WarmingUp. EndFire, Instant Fire, Reloating.BeginSate/Endstate, GetReloadDuration. 2.5 -S, Loader. 0.1 s is a reference in the package.
+
+Acceptance: Failed occupancy without hand tied; exit without firing or mandatory camera; automatic recovery still under consideration Loader; left and right gun point to remain in place. Until the nuclear artillery position is bound by the true grip, resource/heat linguistics are not presumed by Reloating name.
+
+<a id="w11"></a>
+
+## W 11 - Bolo / Frag fragmentation grenade
+
+**2026-11-08 User overwrite:** Continue right Grip pick-up/ hold, loose Grip throws no trigger preparation; Frag 2 kg, save the original track preview requirement.[The latest rule.](../frag-grip-release-20261108.md)Description; original generation/crash/stocking/fuses and model binding continues to be effective.
+
+**2026-11-09 The feeling confirms:** Users choose to keep moving directly with hands and chains without increasing inertia.2 kg Continues to be a virtual mass/slash configuration for Frag without scaling real handout speed; physical head-on receipt and inspection is on the record.
+
+Category `WarfareGame.Weap_FragGrenade`Weap_Grende, the bullet body Proj_FragGrende. The original base class MagSize=1、MaxSpareAmmo=3 handheld and standby count to read on example; not directly assume HUD equals 4。
+
+1. The right pocket keeps holding the right Grip, and does not need to be prepared for the right trigger; it does free the right Grip from a voluntary release. It is different from the rule of keeping hold with the gun pressing Grip. Tracking disappears, suspends, reads or returns old numbers cannot be impersonated as a real pine Grip, nor can they automatically re-manage or throw.
+2. Light throw/low-in situ release under effective posture should also be established, without the prototype 0.5 m/s with 4 cm as the minimum playtime threshold. Invalid tracking refuses to generate and retake a hint; slow speed does not mean that it is invalid.
+3. The position of the hand comes from the point of reference for the original bomb in hand, and the speed is from a pre-release hand trajectory. The role/carrying base is converted to the world of games by the same frozen body benchmark only once.
+4. The original animation notice cannot be generated after the gesture has been released.
+5. No hand-to-hand change of bullet; after dropping, automatically replaced to the desirable status, but a refilling device is not equal to holding it again. The next one must still be used by a new right-pants pocket Grip. The former close-to-earth war should be preserved and the pattern must be selected independently and followed with the original chain attached, and no continuous Grip holding or loose Grip throwing can be interpreted as an adhesion.
+
+Model Task M 11: old root, Counter,9 The novid chain, end maintain the mosaic/genetic. First phase takes a clear bullet reference point to estimate speed; rigid grip does not equal real chain-end movement; static ciphering after undismantling the chain.
+
+Code:`weapon_bolo_grenade_interaction.h`、`grenade_throw.h`I'm sorry. `AnimNotifyThrow → ThrowGrenade → GrenadeThrownNotification`;to be picked up in the TrowGrende `GetPhysicalFireStartLoc/GetGrenadeTossVelocity` Return value and Init orientation, for specific contracts see T 1. The fuses are associated with BeginExplosionSequence/DoExprosion to retain the original logic; LifeSpan=10 No, it's not. 10 Second-second fuse.
+
+The original fuse static conclusion: the detected function for preparation/ Spawn/Init does not activate explosion timer and does not add a new handcooking. Normal Bounce continues after stoppage to StopBounce, default.1 sTip Delay+1 s Post-explosion;base is Pawn time change 1.5+1 s, append AttachInit to 2.5 s. Special Hitwall and BeginExpletionSequence()0, TimeAfterBeep), must be retained. Stopping is not the same as first touch; low speed or rebound count can also be triggered. Ordinary stop already exists 67780 Timing/injury and 28120 Former StopBounce call back the actuals, and then post them.54784 Original attached/residual fuzes/harm and normal withdrawal are recorded; whole paragraph 2.5 S does not pretend to be complete. Special Hitwall still has no actual execution record.2 Path by Path Table and[Recent evidence](../frag-grip-release-20261108.md)。
+
+The test is accepted: the first speed of up, down, down and down is different; only one button is applied to repeat cleavages; head turns are not changed; stop, center and snap turn not to produce large speed; activated fuses cannot be updated by failure.
+
+<a id="w12"></a>
+
+## W 12 - Smoke.
+
+2026-11-09 User's latest command: Smoke is also responsible for the current fragmentation grenade session, which will finish Frag and start Smoke. Interoperating W 11 Keeps the right Grip holding/preparating, genuinely releasing and following hands; keeps Smoke's own original subject and chain. This instruction is a follow-up development authorization that does not represent Smoke's achieved or accepted; does not extend the current Frag operation until it starts, nor does the Frag record serve as Smoke evidence.
+
+Category `WarfareGame.Weap_SmokeGrenade`Access, preparation, release, low speed disposal, wallside inspection and W-ray inspection.11 Same, shared T 1 Motion algorithm.
+
+1. The type of smoke must be bound and its own quantities available for each withdrawal.
+2. Successfully generate a former Smoke bullet to submit one; hand over the original collision/fuse/GrendeExposion, create the original `Emit_SmokeGrenade` And keep it clean. Do not give the fragmentation blast damage as a general fallback.
+3. R 3 No general switch. Toggle old motion windows and token pending at the frag/Smoke switch; ungenerated retention returns to their respective stocks.
+
+Model Task M 12: Original Smoke Subject, Counter,9 The nodal chain and end; unlike the triangle, shape of Frag, cannot replace only material. Keep smoke emitter without adding a General Torrel grid.
+
+Code:`weapon_smoke_grenade_interaction.h`、`grenade_throw.h`,sharing the Weap_Grenade launch chain;Smoke is dedicated to StopBounce Direct SetPhysics()0) and DoExposion, GlenadeExplesion creates Emit_SmokeGrende; special AttachInit directly generates smoke attached to Frag 2.5 s. The special Hitwall path of succession remains in place. `PlayWeaponReloading` It's...001 s Automatically updates do not change bullets as users.
+
+Acceptance example: smoke inventory reduced only once, fragmentation stock remaining unchanged; Smoke class generated and continued with effects; normal stop-to-use process of original fumes, free of Frag.1+1 s; old requests cannot be generated after exchange of type. The static trigger difference has been identified, and actual collision/effect clean-up still needs to be independently validated and cannot be replaced by the passing of Frag.
+
+---
+
+## 中文
+
 # 12 张武器交互规格卡
 
 版本：设计规格 2，2026-10-28。已按[交互复核](interaction-review-v2.md)取消统一 R3 前置、加入部分装填退出，并修正 Boltok、扭力弓和两种手雷的机制。动作规则供实现使用；模型和原函数的依据分别见[模型工作单](model-work-orders.md)和[原版接入口](original-entry-map.md)。本文件中的动作“完成”是未来验收要求，不代表本次运行结果。

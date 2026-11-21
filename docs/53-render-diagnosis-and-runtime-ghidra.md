@@ -1,3 +1,96 @@
+# Double-Diagnosis Shifting to Ghidra Analysis
+
+2026-10-13. Conclusion: Keeps the current view construction and camera results, suspends the adjustment of final output parameters; checkes each view landscape drawing and colour resource first. The correct desktop SBS has not been achieved, and the right side black screen root is yet to be confirmed.
+
+See you for follow-up review. [Documents 54](54-render-route-review-and-geometry-limits.md)：`13cfcc` The range of observations does not represent a complete mapping, and the road map on this page only opens one of its optional branches; subsequent measurements do not prove that the right eye lacks world geometry.
+
+## Facts and additional evidence for the current round
+
+1. The current malfunction is the right-hand anomaly of the desktop double view output. Two separate game eye maps have not yet been connected to OpenXR, and cannot be described as a direct XR right exchange chain failure.
+2. 2026-10-11 The Red and Blue Cross has every eye GPU back-reading and Quest 3 User can be confirmed in visible form, see document 08、11. The game 2D panel is also validated. The latter is `XrCompositionLayerQuad`, does not amount to copying the same image to two separate projects.
+3. 1,531 The call to the final output only proves that the final processing is done around. There are run-time stacks that link them to `15a80c → 11908c → 2b0a98 → d82f58 → 1af42c`This does not justify geometric mapping in every eye.
+4. This session is directly accessible to Ghidra MCP, read `gears` In projects `GOWDE-Steam.exe`Yeah. `140d82f58` , and then the translation returns the funcing or integration not found;`14015a80c` , the list is undefined bytes, beginning `fb b0 a4 e7 …`。
+5. Normal Start PID 16812 Read-only validation of EXE SHA 256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`, module base `140000000`。10 Before running an entry 32 Bytes are all different from disks to read. `d82f58` unread raw data; the remaining nine are bytes different. Run-time `15a80c` Start `48 89 5c 24 10 55 48 8b ec 48 83 ec 70`, consistent with the existing life cycle Hook signature.
+6. Therefore, the current round uses a separate Gidra headless project to analyse running snapshots. The original Ghidra program is retained; the disk bytes are not defined as a function in the original program.6 General non-written savings 29.15 MiB;per 64 KiB block read two consecutive times the same, save sections SHA 256. This is a partial snapshot, not process atoms.
+7. Orientation definition 10 The most direct calls are made at the entrance and at the first floor of the scene. 80 individual;actual 80 I'm sorry.79 One of the successful creations of pseudocodes.`1741d0` , the function is not marked as successful.
+
+No new or active game Hook, no dynamic re-engineering of the double view, and no new single frame gPU capture. The snapshot is taken from a normal startup image, only for code analysis, not as level or second view to execute evidence.
+
+## Recreate Rendering Path
+
+The function below is used for a job name supported by evidence and not an official symbol that has been restored. The arrow contains static direct calls and existing running validation; the call is not referenced separately.
+
+```mermaid
+flowchart TD
+  A[3a148c 集合提交] --> B[116250 构造渲染器与视图副本]
+  A --> C[命令队列 → 15a7f4]
+  C --> D[15a80c 消费与清理]
+  D --> E[11908c 场景渲染总入口候选]
+  E --> F[1fc060 准备视图]
+  E --> G[170948 按视图遍历的绘制阶段候选]
+  G --> H[173170 写入当前视图与矩阵相关上下文]
+  G --> I[13cfcc 场景对象绘制候选]
+  E --> I
+  E --> J[2b0a98 每视图处理对象遍历]
+  J -->|对象虚表 +8；已有动态栈| K[d82f58 最终处理]
+  K --> L[1af42c 最终四边形输出]
+```
+
+The judgement that needs to be corrected is that the current scheme does not simply repeat Present or the last one. It has already allowed a retrofitting object with two views into the overall entrance; however, there is no dynamic evidence between “the object contains two views” and “both images generate valid geometric pixels”.
+
+New discoveries can be used for the next round of precision validation:
+
+| RVA / Field | The elements that are supported by the pseudocode and compilation | Not proven |
+| --- | --- | --- |
+| `11908c` | Call view preparation, multiple drawing candidates and finally call every view to process objects through the clock | Which stage is the first time you lose a right colour? |
+| `170948` | From Renderer `+68` taking view arrays; pressing `+70` Number,`D30` Step through the loop; each round uses an integer rectangle of views, binds the context of the view and can be called `13cfcc` | Which sub-conditions are the right view dynamic walking through? |
+| `173170` | Write the current view to context `+14C0`, copy matrix/position-related data | Final GPU constant correct or not to be subsequently overwritten |
+| `13cfcc` | Accept renderer, view, stage parameters and another mode parameter; run through the view list of connections, check for visible position and filter results, then call on the object's false method | Number of Draws, Draws and Pixels per Eye |
+| view `+450/+460` | `13cfcc` , and there is a pointer and inline storage selection | The formal structure type, the justification of the two-eye content |
+| view `+470/+4E0`、`+570 + stage*10` | Participate in filtering/drawing candidate calls and phased list access | complete type and semantics; cannot be modified directly by these deviations |
+| `2b0a98` | Walk through the view `+C84/+C8C` Object array, false call after matching phase | Shadow input resource contains right-hand content |
+
+Revealable original assembly point:
+
+- `170B8F` Check for renderer `+70`；`170BAC` Read `+68`；`170CE4` Call `13CFCC`；`171003` Increase `D30`；`171014` Compares the number of views.
+- `11A1E7` Call `173170`Right away. `11A1FB` Call `13CFCC`；`11A20D/11A214` Checks for view step bands and count.
+- `11A5E9` Call Phase Processing `2B0A98`；`11A604` ..the outer layer count and constant 4 Compare. This stage of the cycle cannot be interpreted as a circle of left and right eyes.
+- `11A6F4` By Phase Parameters 4 Call `2B0A98`, Return Point `11A6F9` With Document 48 The actual output post is consistent.
+
+There are clearly incomplete items in the pseudocode prototype, for example `1af42c` The lack of known stack parameters for some of the inversions is not a problem.`170948` Return type extrapolation cannot be used as ABI directly. The new Hook must determine the signature based on a compiler repository, stack layout and self-measurement.
+
+## Fault assumptions and minimal experiments
+
+The two segments between the creation of the scene and the final shadow input are currently the most deserving of verification; there is insufficient evidence to determine the sole root cause in both.
+
+| Assumptions | Minimum authentication and judgement |
+| --- | --- |
+| Right View Visibility/Pile List Empty, or Skip Right View at scene stage | Yes. `13cfcc` Within the same rendering consumption range, only the view address, phase, rectangular, matrix summary, list number and visible position summaries are recorded, differentiated by first/second view. The entry count is used as evidence of execution only; the relationship continues to be maintained with actual D 3D 12 Draw and Resource Content |
+| Two views share the target, but screens, status or reprocessing loses right | Saves the same frame resource map for scene colour, end of each view stage, final shadow input, Backbuffer to record the first right-hand invalid boundary. The phase has valid right pixels before disappearing to support over/copying assumptions |
+| OpenXR Two-System Copy Error | Independent A/B/C diagnostic; it is separated from the current desktop black screen |
+
+Experiment A has a history of Red and Blue Cross GPUs and user acceptance; strict pure colour variant is not done on the current wheel. Experiment B's "Two separate XR images receive the same frame" and C's'Independent Right RT Test Chart XR' are both pending, and cannot be replaced by an already 2D Quad panel. The real desktop view of Experiment D remains the target for receiving and inspection on the main line.
+
+PIX Officially Provides Command Line GPU Capture, Event Export and Resource Export. See [Pixtool Document](https://devblogs.microsoft.com/pix/pixtool/)This is another one. 2026-10-12 PIX smoke `.wpix`, CSV and PNG; Game Start Logs only go to failed foreground picture file without game capture files. These records do not constitute successful capture of the current round. RenderDoc does not try again with old failures.
+
+## Next steps in scope and structure judgement
+
+- Reservations `source_eye_args.h`, source view structure, independent state and life cycle tracking. First, you will diagnose the path of multiple viewing scenarios that already exist, without evidence to push back reconstruction.
+- Modify only the next round if you need to add a new observation point `native-capture/capture.cpp`, access sign/ preset, self-measure and corresponding analyser. Target is limited to each view phase. Do not modify the camera, visual area, final quad and XR submissions simultaneously.
+- Priority is given to collecting CPU view evidence and GPU scene colour evidence. The simultaneous refilling is assessed only if you confirm that the engine's existing multiview path does not produce two valid scenarios.
+- Synchronization of double-spinning requires the same logical state, historical resources and GPU life cycle, which does not directly clean up objects `15a80c` Call again.
+- Do not claim success with stereo rendering, SBS or complete VR until a credible geometric difference has occurred in the left and right image.
+
+## Recurrence and evidence
+
+Add tools:`tools/package-inspector/snapshot_render_code.py`、`DecompileRenderSnapshot.java`. See boxage-inspector README for snapshot and backcompilator only `analysis/ghidra/render-16812-verified/`; stand-alone projects in `analysis/ghidra/runtime-project/render-16812.gpr`. The original Ghidra MCP is still connected to the original project, and this round successfully re-compiled from the independent headless project, not known as the original project MCP, which has been able to reverse these entry points directly.
+
+Git checkpoint:`analysis/backups/diagnostic-20261013-010746/`, which contains the original version of the HEAD, status, modification patch and user interactive design document. `docs/10-vr-interaction-design.md` Modify the reservation.
+
+---
+
+## 中文
+
 # 双目诊断转向与运行时 Ghidra 分析
 
 2026-10-13。结论：保留当前视图构造和相机成果，暂停调整最终输出参数；先核对每视图场景绘制和颜色资源。正确的桌面 SBS 尚未实现，右侧黑屏根因尚未确认。

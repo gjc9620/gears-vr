@@ -1,3 +1,47 @@
+# RinderDoc Call Pointer Check and Failed Test
+
+2026-10-12. Conclusion: Game frame capture is still unsuccessful; the start-up test for temporary replacement device/plant function failed, and command line entry disabled and no automatic repetitions are repeated.
+
+## Read-only Positioning
+
+In PID 33108 Medium Readed Tests 33.8 MB normal image section, block search Windows graphics export function pointers to check RIP relative calls:
+
+| Game Data Tranche RVA | Point function | Normal Call Point RVA |
+| --- | --- | --- |
+| 1b43200 | Windows d3d12.dll!D3D12CreateDevice | 373dd7、3742ef、417dd7 |
+| 1b43228 | Windows dxgi.dll!CreateDXGIFactory1 | 417e3e |
+
+This is evidence of code references and current pointer, not dynamic execution counts. Both the disk and running time PE inventory directory are RVA 2011755、1720 bytes, general import name check not D 3 Item D.
+
+New loaded BridgeProbe DLL own D 3D 12/DXGI import also points to the original Windows export. First use of a function address for getting MSVC local import jumpboards, followed only by confirmed FF 25 RIP relative import springboard, get the real address.
+
+GetProcAddress, LoadLibraryExW, CreateDXGIFactory 1 Imports are actually pointing to RenderDoc. Checking with the same RederDoc DLL SHA by smoke 's GetProcAddress import address 256 and 32 Bytes entry, search for equipment and plant packaging functions that can be obtained from RinderDoc.
+This query does not modify game data; it uses internal access points measured on this machine, rather than stable open API.
+
+## Start Failed
+
+PID 32376 In the verified game of Hashi,4 Two data slots were temporarily replaced after a normal call point, an original system function pointer and a RenderDoc Hashi/entry.
+This plan 20 Restores the original pointer after seconds, but the game exits early and resumes operations because the process has been terminated. **We can't call it "renewal."**。
+Changes are only in the process memory, and the disk EXE and settings files are not modified as a result.
+
+Windows Application Error 1000／WER 1001 Record access anomalyc 0000005- It's a failure. 45357 c, Process ID 0x7e78（32376）。
+Started from Normal PID 6088 Decoding read-only: the location is `mov rax,[rcx]`,rcx just taken from the previous factory's false watch +78 Call the output local object; then prepare QueryInterface.
+This supports the problem of creating/output objects in the exchange chain, but without an abnormal repository, HRESULT or full crash dump, it is not possible to determine the specific return error or empty pointer value.
+Replacement equipment and plant portals alone are not sufficient to prove that the entire graphic object chain has been correctly taken over. Do not continue guessing and rewriting returns or skip errors.
+
+## Recovery and follow-up
+
+Started PID with normal launcher 6088, does not load the current RinderDoc/BridgeProbe; telemetry can read lenses, time updates. User then sees a reset hint of last start failure and suggests " No " to retain the existing settings.
+Read it live, DLSS, FSR 2、FSR 3 MFSR is all False.
+
+Save failed source code for review, but `launch_import_capture.py` Direct execution will refuse to run. Follow-up assessments of the official PIX start/synthesis command line capacity, or direct checks on final shadow input resources; test tools cannot be considered successful in their own right as a double-eye success.
+
+Invent:`analysis/renderdoc/game-33108-device-references.json`、`bridge-33108.txt`、`queried-wrapper-33108.json`、`smoke-wrapper-addresses.json`、`import-bridge-32376.json`、`crash-function-disassembly-6088.json`。
+
+---
+
+## 中文
+
 # RenderDoc 调用指针检查与失败试验
 
 2026-10-12。结论：游戏帧捕获仍未成功；临时替换设备／工厂函数的启动试验失败，命令行入口已禁用，不再自动重复。

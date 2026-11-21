@@ -1,3 +1,28 @@
+# Right eye black screen for death: pixels against the same instrument
+
+2026-10-17. The diagnostic code is submittede 8c 2026a 7767bcf 3e 9deeeb 50e 3bf 435b 7cddcfd；Hdrpixels 55 DLL SHA 256453338a 1d 9564cb 422f 7b 0dd 0939c 7bd 4c 2e 28e 4d 1ea 21321adb 4f 7014f 76f 27，Hdrmatched 55 XR EXE SHA 256b 6e 214f 9bd 762400b 09c 928adcf 3e 2f 00f 5efbf 65f 8e 8b 23e 19310a 192484681. Default player candidate still reticle 47／Borderless 1。
+
+To complement the document 110. XR only triggers a full-size testet/world after the new map has been accessed. Missing, scene does not match or reaches 8 The ceilings have clearly failed, not choosing the nearest frame, cache map or relaxing age, attitude, menu or geometry checks; the old Bridge ABI remains unchanged.
+
+Complete Native Build and 16 The test of the freezing CPU, complete XR construction and mapping strategy is passed.95 Session 39312-20261017-122011-2df 58c 72 Complete exact pairing:
+
+- HDR instrument 599/world 1/copy_seq 295, only executes, actually Reset succeeds and saves RAW after GPU is completed.
+- XR received the same note.599/world 1，source_serial 594,snapshot_index 2，cached_image=false。
+- HDR format 26 The whole scene of death, the only way to get there.100%;right-half RGB average.041836/.041277/.038001 Close to zero pixels.002435%。
+- **Final right half of the same instrument 97.4644%Pixels RGB Channels 8, of which 90.4792%Strictly zero; left half retains the scene and effects of death.**
+
+This defines the current recurring fault zone directly after the selected full source of HDR copying to the final shared map. It is no longer possible to explain this to the already pixels in a "this right-eyed world scene was not even retroverted/spaced inside the wall from the very beginning".80a 7 b Inputs, assistive texture or shadow constants at actual sampling do not determine which shader or copy is wrong. Nor does it promote a uniform root cause that triggers all black screens.
+
+RAW SHA 256bbdbbd 3872fddc 7cbc 5b 02594634c 36885b 533a 966d 0e 2864629337c 4f 1c 0cc 0;final GPU chart SHA 2560b 665d 9c 01693394dd 88543603811dae 73aee 592b 743b 4759bb 7a 28067993 Fab. Ignores the complete pairing of the directory as analysis/runtime/hdrpixels95-exact-pixel-audit.json. RAW, metadata, original GPU and only for viewing thumbnails are retained and not entered into the release package.
+
+One check point 1→2 Reactivate observation 8111 ms (including loading), normal stop, primary cleanup, regular closed game and four archive files are restored. This round is only tested when the visible emulator is running, without a change to global run, without real head start acceptance, release_ready still false.
+
+The next bounding check is the change of coordinates between the dedicated death treatment branch for the full HDR and smaller auxiliary texture.170/+178 Two floats.4 Uploading is a comparison to the left; it is only a hypothesis to be validated, without directly compensating UVs or replacing shadow constants. The inverted signature required for setter has found that it is inconsistent with the compiler and must be designed to be observed by authentication compilation and not Hook as per pseudo-code parameter position.
+
+---
+
+## 中文
+
 # 死亡右眼黑屏：同票据的前后像素对照
 
 2026-10-17。诊断代码提交e8c2026a7767bcf3e9deeeb50e3bf435b7cddcfd；Hdrpixels55 DLL SHA256453338a1d9564cb422f7b0dd0939c7bd4c2e28e4d1ea21321adb4f7014f76f27，Hdrmatched55 XR EXE SHA256b6e214f9bd762400b09c928adcf3e2f00f5efbf65f8e8b23e19310a192484681。默认玩家候选仍Reticle47／Borderless1。

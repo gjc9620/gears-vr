@@ -1,3 +1,40 @@
+# The final output call and regional parameters are observed.
+
+2026-10-12，PID 16996 original level, DLSS=False, FSR 2/FSR 3/MFSR=False. Still not having been accepted correctly for binary pixels.
+
+## Evidence of direct parameters
+
+Continue only decoded from captured call pads `1af42c`: This function uses the first eight float-point parameters to form target and texture ranges, and the last four integer parameters are integrated into windows/texture dimensions, generating four vertexes, calling DrawIndexedInstanced.`d83b17` The call point uses the view float area as the target area, and the integer region as the texture area.
+
+Add an optional view of the entry in the viewport diagnosis: original parameters are forwarded as they appear, only the test consumer function is recorded as a linear process and the call point is in place `d82f58..d83db9` call.64 A heliogram of fixed capacity, with a clear spill report. The new entry is bound by EXE Hashi and the original command signature, which is preloaded only for trampoline, not enabled; independent matching of signatures after stop.
+
+10 Second test record:
+
+| Target area | Texture Area | Window Dimensions | Texture Size | Number of calls |
+| --- | --- | --- | --- | ---: |
+| 0,0,960,1080 | 0,0,960,1080 | 1920,1080 | 1920,1080 | 1,531 |
+| 960,0,960,1080 | 960,0,960,1080 | 1920,1080 | 1920,1080 | 1,531 |
+
+Call return point is both `d83b1c`. The right view actually moves into the final area to draw, and not only the object of the processing. The target is correct with the parameters of the source area, nor does it prove that the separator's binding texture, constant, resource content or ultimate pixels are correct.
+
+Present round of submission/consumption/preparation/destruction 1,531,CSV Construct Range 9.9939195 sec; life cycle analysis passed, status released, pond empty.22 The analysis was not considered to be a 3D image.
+
+## Authentication and Failed Record
+
+- New ABI self-measures that the sender and stack parameters are transmitted as they appear, non-test call is not recorded, after stopping through a function of eight float and four unsigned parameters in the real MinHook packaging 32 Byte entrance resumes.
+- Both initiation and official sampling require self-measurement.
+- PID 42484 The pre-entitled white list was omitted at the time of initial activation and installation was rejected; no two viewing was enabled, and normal. The correction allows only the known Quad entrance to be used again without easing any address.
+- Local `analysis/runtime/output-quad-16996.*` (c) Preservation of direct parameters, life cycle and recovery of independent access.`output-quad-42484-install-failed.status.txt` Reason for failure to retain.
+- Starts a continuous return for 10 seconds in a user-identified manner, after which only one level check is performed.
+
+## Next
+
+The location of the area, the back buffer size, and the right-and-right output call are all supported. Priority is given to checking the texture content and binding of the final shadow, distinguishing between the right side of the middle colour that does not generate a wrong image/script with the shadower. Evaluating uses the graphic frame capture tool to view single frames directly to reduce the need for handwritten diagnosis. Two eyes projection and OpenXR delivery have not been completed.
+
+---
+
+## 中文
+
 # 左右最终输出调用和区域参数均被观测到
 
 2026-10-12，PID 16996，原版关卡、DLSS=False、FSR2/FSR3/MFSR=False。仍未达到正确双眼像素验收。

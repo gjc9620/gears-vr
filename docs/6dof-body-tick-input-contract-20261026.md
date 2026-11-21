@@ -1,3 +1,78 @@
+# 6 DPF Body Tick Inputs to Mark Associated Contract with Scene
+
+Status: Specific candidate design not accepted as a writeable path. First achieves only real Tick-read sample to confirm whether new input actually exists; no change in existing body input, no change in any available access or writing.42、PG a 54d 592／0ec 1 The current record of failures and clean-up continues to freeze.
+
+## Problems and choices
+
+EJ's 17 In a sample of ready, consultr sync already entered at Compose 36.506–39.139 ms, old Scene already 34.413–36.273 ms;real Composequery only 0.926–1.154♪ I'm, query still ♪6.346–6.869 ms. The original path from Scene is published, the cache is maintained, and the actual outside MeshTick Tick Tick is used with the same unchanging Scene Core. The subsequent reading of the cache does not retrace or continue.
+
+Move query to a more early position in Tick with the maximum approximate 0.32 ms observed TickCoopee interval; delayed release of the same package will not update data. Available evidence is not available earlier for a real Scene production point, but cannot be found in C 0 Change the Scene number or time. The PG finely parsed copy times are not supported by sufficient evidence to support the required wall. Select therefore the evaluation**Original Scene Device Qualification + Independent Real Tick Posture Input**, keep the only C 0 writer。
+
+It's not old. `admission_budget()` . Continues: Old Path Requires Scene and its Old Tracking 40 ms; new path must be clearly defined**New tracking of actual consumption and current body benchmark**Pass.40 ms, original Scene identity/qualification continues to be complete 50 ms check. If it's still old, scene tv 40 This solution does not solve EJs as an absolute prerequisite. Old path defaults with original 40 They decided that all reservations could not be replaced by 50 I'm saying it's a success.
+
+## Two distinct sources
+
+| Source | Getting a location and content | Identity and time | Facts as to be available |
+| --- | --- | --- | --- |
+| Scene Mark Source | Original `try_submit_pair`／`rig_tracking_live::publish` The real story of the parent Hand has been submitted to Frame | Former Scene/publication/bindingGeneral/complete Framekey, former head/controller/sync/receive time, Native example and cookie | Current held/attachment/fixed gripwrist marked for each sync query; not new traching or write permission |
+| Body Tick input | Existing, complete authentication real outer MeshTick, original match creation and homeer validation successful, original function and C 0 Read current Raw HMD/Hand Matching/Continuity once before starting | Separate real-life links, physical collection start and end of collection, original raw sequences and sync/receive, publicsher and reference review | New Tracking frozen in the same Tick; not disguised as Scene, not replacing old Core |
+| Current Body Benchmark | Old C 0 `backend.capture` Current CTI/metadata/model, and actual-local netral | Independent, conservative physical Capture start time; original intestry/tick/metadata and geometry identity | By `neutral::move(stored,currentCTW)` and `prepare_cover_view` Get this real worldbasis; not to add the old Scene matrix to the new time |
+
+Do not modify Rig V 1, the original coreSnapshot or PG request/response field meaning.0ec 1 Keeps the original bytes, continues to consume the former Framekey and Rig of Scene and implements them in their entirety.50 ms, two real Game independent observations, typed assets/enclosed/generation and final source review.1 Respone has no world target; it's only for the same C 0 Selects the fixed label.
+
+## Tick Access Rules
+
+1. Only available actual source MeshTick call point, not C 0. Follow the old World case, GT/caler/owner and Core Lat check to verify. Collect once; this failed Tick has no new input and cannot retry the swap for life.
+2. Short `stereo_mutex` Try-lock, protect only the life of a given institution; do not hold a Rig/binding mutex, do not hold a lock without PG callback and wait for a lock. Refusal to re-enter and compete with stereo.
+3. Only call open read-only `stereo_bridge.read`、`controllers.read_matching`／`publisher_identity`、`continuity_bridge.read_matching`. They copy the original package without updating the reference. Call is forbidden `stereo_gate.update`、`matching_input`、`select_continuity`, recenter rounds, opens/closingmapping or pushes existing Scene tracking ticket.
+4. HMD, hands, and continuity must come from a precise match of Raw session/security/space/source and publicsher. Keep the original sync, received, predicting timescale, profile/input, producer/tracking epoch; these fields cannot be replaced with localnow.
+5. The next and the next Native reference snapshots must be stable, corresponding to the original Scene actual reference review/epoch; stable reference position can be identified as coordinates, not using old view/world position as new data. Different steaum/reference, restarting process, back-sequence, and change of same sequence payload are rejected. Same series and same package can continue to be observed but not at the lower age.
+6. There is no proof of the existence of a new actual sample. Read-only probe to record the original Scene package and the Tick new package, the original timescale and the results; it cannot be considered as input for updates by API.
+
+## Same C.0 Inline Link Reply
+
+Follow-up writeable paths should be used in separate Native `BodyTickTrackingInput`/ Group reply, at least retain:
+
+- Practical tick, intestine, Compore, GT, Native example/game PID and start-up identity, world generation, formerly Scene identity.
+- Former parent cookie/lifecycle/full Framekey, same query query id and actual resonese key; no rewriting reponse key or binding General.
+- The two sources are the same: the current Avatar asset/reference header is separated from the model and the search returned by the webon consponent/asset, hold generation.
+- This is a continuous process.
+
+Must be in the same certified C 0 Scene still has the above data associated. The search is always synchronized, query-currelated, without retaining a license to re-use an eligibility or crossquery. Fixed tagging POD can be used as data upon return of Callback, but does not create new Hand/support/fire privileges or second writer. Parent revokes/activates/gun exchanges, etc., to render the connection ineffective and cannot continue using help to mark it.
+
+## Old and new protected mappings
+
+| Original protection | Old Path | New body path requirements |
+| --- | --- | --- |
+| Target Tracking Age of Access | Former Scene Core and its Tracking 40ms | Real Tick entered the original HMD/controller sync/receive and actually acquired time 40 ms, check before last use; cannot be renewed |
+| World/camera basis fresh | The original Scene view comes with Core Zen.40ms | Use this actual C 0 The CTV and the actual-local neutral constructs the same base, real Capture starts time 40 ms;target calculation does not read old Scene base_view/world_head/world_grip |
+| Scene/parent qualification | Same as Scene, original identity and life cycle | Full of Scene Core and query.50 ms, parent/world/actor/weapon/reference still checked; this is metadata dependent and does not claim old Scene 40♪ Ms by |
+| Consistency with the same package | Old TickLatch is the same Core, version and original byte | Original Scene match as it is; another private Tick match reads only after real Tick has been created, all head/hands use the same new package and base/reference |
+| Each writing of identity/time/metadata | Former ActualContext, Validate/exchange, CAS, Reread | All retained; new Tick original timescale and current body benchmark are checked before end-use/every writing 40 ms, old Scene-described dependence is still intact 50 ms. Current CTI/Reference/stop failure is still denied and does not slow down the current success result |
+| Failed-page and Restore | The new episode is the real after-no debt. | Neither reliance on either failure anymore CAS; not C 0 Repacking or reopening. Follow the old Rollback/finally/revision/debt rule, actual Tick end clears two match-checks |
+
+Read-only sources have been confirmed by the purchase of EK:32 All the actual Ticks are updated 2–4 Group package with a serial number and current C 0 Benchmark. Private Native 44 Independent type of access and same C as contract entered in table 0 Consumer, complete the orientation host and complete TU; default to retain old path with a new mode only enabled by visible compilation/INI. The actual gun-held check is not possible. A CoreSnapshot feed interface for change of time/controller cannot be constructed.
+
+## Same animation consumption submitted for attitude
+
+Every time before the bones are written,40／50 After writing, Kernel successfully notify and authenticate consumer, the remaining Arm alpha arbitration of Compose used a separate typeped interface to certify this already written Local; it can no longer prepare/committee, create CAS, refresh, reset, reset or extend. It must remain accurate bagend/Kernel case/stamp/GT, Canonical Scop address and Tick/Commove without finish, stop, exteption or protocol feature.
+
+The consumption interface is not allowed to write back when it is applied. The application of the typed interface is not available; it is only used for mode unenabled. It is not valid immediately after the actual Finnish, and is wrong lead/thread/scope.
+
+The original read-only hand monitor remained the same as the previous failure and sticky.Only when a named observation point expressly determines for the first time that source_age_only and retained is authorized can observer_source_expired be recorded without setting up a permanent hard-control-faault;Old TickLatch burned down as usual, was not read or restored and no longer sought to solve the old Tracking hypothesis.(a) The former Compute before/after continues to validate node/stack/headers, etc.;Their hard failure, entrapment, anomaly or stop is still permanently rejected and the recovery of fields or normal demixing in this Tick cannot be reauthorized.No blanket exemption based on failure of the gross particle sizes of the watch/metalata/prepare.
+
+Native 46/EN already 28 Link in the help record 27 Full consume/after Local/FK matching and four role actualpacket application; sequence 5／query 30 Still failed and kept as it is. The door was kept open.40／6 s Not implemented. This only confirms that there are covered sub-consumer amendments, which do not constitute complete held follow or covert experience. Build, host boundary, original byte and running evidence is recorded in`docs/releases/0.0.4/PROGRESS.md`The blog also shows the number of candidates who have been selected for election.
+
+## Invalidity and acceptance of borders
+
+Collect missing, locked, non-matched hands or links to trust, change of reference, stop, identity/geometry/query failed, either source expired: this Tick does not generate new body writing permissions and uses the existing unwritten/original animated transfer path. The new model does not quietly return old traching to disguise success; normal no-hold eligibility and hard failure are still processed according to current classification.
+
+Read-only running evidence completed: the same real Tick obtained HMD/Hands updated from original timescale and in group, public/reference/oldScene was clearly linked, no opening/off, recenter or ticket side effects were opened and all recovered.0 The new typeped goal/hands entrance and correlation check, running the original gun/fixed posture/small transfer movement, accepting actual held joint, consumer/original return and normal recovery. The source/host/ready count is not a substitute for target bone results; rays, collision/hitting, complete Cover, running stability and physical headline are still pending separately.
+
+---
+
+## 中文
+
 # 6DoF 身体 Tick 输入与 Scene 标定关联合同
 
 状态：具体候选设计，尚未作为可写入路径接受。第一实现只做真实 Tick 只读采样，确认新输入是否实际存在；不更换现有身体输入、不改变任何现有准入或写入。Native42、PG a54d592／0ec1、现有失败与清理记录继续冻结。

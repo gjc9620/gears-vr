@@ -1,3 +1,234 @@
+# Veterinary rifle checkpoint (Perhaps)2026-11-15）
+
+Workspace is as `J:/codexWorktree/gearsVr`. Keep this one full.13 The request is not yet complete. `hb-baseline-paced-1115-r4`、game 67204; follow-up gun collection/retribution from game 67068 Left hand missed exit and re-fired from game 46132 After the bullet is fired, finish and re-fire from Game.43836 Cut the existing pistol and then go back to finish and re-fire from Game.65300. All home examples stopped normally, DeepSeek workinger is idle; Git submitted not created, open v not replaced 71 Or fix the manual entrance.
+
+## This time it's verified.
+
+- Default 4000 Actual locking in ms window 3713 ms, insert 6 Target 6, finish result 3 original inventory.72/78→78/72;incentives count 0→6. After six rounds,72/72 awards 0- All right.12 Line numbers are continuous, and the sources of writing and tracking are consistent.
+- Perfect determination to use the actual game lock/checkback and independent typeed inventory for reading without easing product windows, speed thresholds, access/authorization or inventory rules.
+- Enter a clear simulator continuous action rhythm: Line speed limit 2.5 m/s, acceleration 28 m/s2, lock arc peak approximately 6.04 Rad/s; not a realistic measure of human action.55 A screen offline is available.8 The sample-by-sample track reconstruction, endpoint, speed, button sequence and abnormal input that is actually entered in the segment.
+- Previous 4042 The ms were kept in general for the change of bullets, failure to contact and failure to close their doors, without being commuted to pass.
+- `startup_confirmed=true` . Official prepare/start/stop path, visitible/lowest/render_scale 0.5 No video. launcher.0, game absent, no residue-free square process or forced end, Native cleanup/entry restoration and XR exit 0。
+
+## Achieved and tested for amendments
+
+The current role-replacement stop path protected by identity and function checks was previously only for Lancer/Snub, private candidates included Hammerburg on the same path, stopped role postures and retained a piece of the gun HB_Reload. Actual defunct, normal and perfect process has been completed. The exact sequence of the Zero-Scalding Carton Bone return has still not been recorded directly and does not claim that all the zero matrix issues have been repaired.
+
+The test program used the Closed Bonesshot World Contact Point directly for later gun-held posture.25 Cm, target is off the point of actual guidance.40.78 Raw. The observed point of local contact for the gun is maintained and map to current target; actual exposure/Native ' s new Grip authorization remains at the original level.
+
+Fast locks have moved before the capture baseline is established, and finally angle.023911 Rad didn't reach it.02 Close lock threshold. Candidate increase is only after success in original stoke.begin 1 Most of the most visible environment switches 8 Only read baseline checkback. Script is waiting for this round 7 The watch does not appear as an entity to issue a requirement.
+
+## Current product
+
+- Product baseline:`analysis/hammerburst-20261115/pawn-reload-stop-pg-r1`，PG SHA 256 `b524482ce750155f6ae9e319c6ccd42e47d3c6c096126986dab45d1f83b109b5`。
+- Candidates for this test:`analysis/hammerburst-20261115/latch-ready-pg-r1`，PG SHA 256 `f9c2c5da7d0c7a5cea759347a358d231e5119317b0cbc8e0cf58d1a3709145b0`. The only additional document relative to the baseline can be observed closed, actually compiled in a consistent manner and fully translated.
+- This time, input source archive:`analysis/hammerburst-20261115/fast-input-r6-paced-v2`。
+- Actual results:`analysis/hammerburst-20261115/runtime-67204-review.json`;failures against:`runtime-61892-review.json`、`runtime-27608-review.json`、`runtime-26484-review.json`。
+- Full demand state:`analysis/hammerburst-20261115/requirements-current.json`。
+
+## Next steps and boundaries
+
+Do not repeat the perfect re-load that has been passed without change. Continue to collect guns, miss/cut guns and repeat notifications of stock protections for missing verifications, and handle manual candidate integration, individual visualization and physical exposure.
+
+Freezing candidate and current working area 310 Different files, which contain existing changes to other weapons, bunkers and shared Native. The current tree cannot be covered in its entirety. Integration by functional difference; two homeer headers are missing the current root directory and need to be reviewed as additional relying. Simulate XR/source 1 The observation binary is not a substitute for the entity head starter. Codes, compilers, simulators, visual and physical header recognition are recorded separately.
+
+
+## Follow-up gun collection/retribution and left hand failure verification
+
+**game 67068- Take the gun/take it back through.** Current Original Weapon 3, actually stopped as an event 2/press 2/cookie 1 and this original attachment journal acquied 1/outstanding 1/revoked 0; same weapon is retrieved for the event 3/press 3/cookie 1 Before the guns are collected, after they are collected and taken back.72/78 awards 0;after actual six rounds 66/78- All right.12 The rays are continuous and sourced consistently.35 Offline reading/identity negative and 19 The source precheck is passed. DeepSeek was originally sent to retain the main session to correct the number of buttons read, current action log range, pending identity, original right hand position and complete inventory/reaction assertion.
+
+**game 46132, the left hand of the old box has not yet been untraceed.** Actual tracking flags 15→0→15♪ When we lose track and recover ♪1, maintained/released 2/1, publicsher/session/space/input/profile are identical and updated. When restored, no new begin, bomb, completion, extraction or stock changes are available.0, Count 2/2, create this sole serial stage 4 cleanup. Period 72/78 awards 0;after six rounds 66/78- All right.12 The rays are continuous and sourced consistently.23 Negative and Offline 20 Source precheck passed.
+
+game 66652 The same missing/cancelled partial evidence was obtained first, but the test returned hand-held unexpected-cleanup protection was used in a normal round-up without re-shooting; this failed to remain. The main session returned only empty-handed after cancellation and did not relax the normal switch protection; game 46132 Complete completion passed.
+
+The two official rounds of after-services traffic between the two main entrances are averaged as statup_confird, visible/lowest/scale 0.5 No video, normal exit, no mandatory end, Native clean-up/entry restoration/XR exit 0 Evidence:`analysis/hammerburst-20261115/runtime-67068-review.json`、`runtime-46132-review.json`。
+
+The missing conclusion only covers this stage 4 Left-hand scenes are not all stages, all source failures or physical follow-up.`hammerburst_restore_chain`In stage 4 Release your left hand, which triggers the cancellation of existing evidence; cannot run as it is and is called a re-barreling validation. The next parking lot scene should be extracted from the real old box and released, and then entered for delivery, and the original ledger and clock are not restarted.
+
+
+## Reload, recover and continue to complete the switch.43836）
+
+Actual complete extraction and release of the old box into stage 5 Wait for the new box, collect the gun with a new Grip on the right shoulder and then retrieve the same gun. Seven real recovery phases are parked ⁇ reborn ⁇ display_ready ⁇ up_baseline ⁇ inténative_reacquired ⁇ resumed.1 Old setem 1 Formerly accepted begin 503216681、reward_start 71.1202393、4000 ms window and lock angle maintained; gun bearing by 1 And become 2. Restore not original keys: First with actual left hand UP and then with new Grip position from shoulder 5 And get a new box.
+
+Collection of guns and recovery periods 72/78 awards 0 Hold. Continue inserting 6 After 78/72, the lock is actually time-consuming 15988 ms, correct for normal re-load 2 awards 0;after six rounds 72/72- All right.12 Physical ray continuum, consistent written/traced sources, oprato 0 Normal clean-up, no mandatory end, Native/entry recovery/XR exit 0 Evidence:`analysis/hammerburst-20261115/runtime-43836-review.json`。
+
+This round has fixed two specific defects and failed.35916 and 65088 Retain:
+
+1. The restored former ForceReload uses the new engine start, but the incentive/time must retain the first accepted clock. The original sequence begins with animated start and then UI writes back to old reward start, making locks more difficult and less successful. Now reset with the original protected UI, before restoring animation records; initial change point and failure rule maintained.
+2. The UI returns with the restoration of english start, which was before UI took over, and the original animation returns still expect only to be started during the UI period. Only the before-values of the same serial/identity as the original UI journal are accurately withdrawn from the forecast; the original version has been withdrawn from the reloading, the actual values match and the object/metadata is valid before updating the animated reading records.
+
+Old/new sequence returns failed/passed, real-life restoration controller 24 Examples 403 Passed; Actual animation returns old/new return and 20 The external values, status, object, metadata etc. are checked. Engine access in the test is visible Seam, and game results are shown above 43836 Proof of this.
+
+The latest private candidate for the complete process `analysis/hammerburst-20261115/restore-clock-handoff-pg-r1/build/Release/GearsPlaygroundHBRestoreClockExit.dll`，SHA 256 `0106b4178a8523aa6d083fc5feeecc4dc4c218c822f419d2974768319842e81f`. It contains the order of UI and precise return of both restorations; a separate UI sequence candidated 0b 1586 a Only closed lock repairs proved, not independently returned.4 A file, and more.2 Test fixture changes. Full compilation and same parent version of the definition check pass.
+
+The product remains a private validation candidate and has not been merged to the full working area containing other existing changes or replaces the fixed manual entrance.4 The perfect reloading of seconds is still clear from the previous candidate, Game.67204 Cuts, repeat notifications of protection, complete visual and physical recognition continue to be retained.
+
+
+## Original stock exchange breakback (game)65300）
+
+Switch to old box unplugged, pending new box 5 When the right hand to the left pocket cuts a new Grip to the actual inventory COGPStool (slot)0/event 2/press 2 Then to the right shoulder cut back to the same HB (slot)3/event 3/press 3 Actual current actor/class and complete chain of inventory.1/olditem 1/accepted 504888256/reward 58.6374474/window 4000 No change, hold 1→3;full sevenphase Parked/reborn/display_ready/up_baseline/intent/native_reacquired/remed adopted, new left hand Grip 3 I'm just recovering to the status 5。
+
+Switch and restore 72/78 awards 0;actual insertion 6 Back 78/72，24641- I'm closed.2 And reward.0;after actual six rounds 72/72- All right.12 The line is numbered continuously, written and tracked from the same source.0106b 417…、Native 482eb 9e…、XR 3df 9 The government has a lot of work to do with this.0.5 No video, action 0/launcher 0/game absent/children 0/noForce, Native clean-up/entry recovery and XR exit 0 Evidence:analysis/hammerburst-20261115/runtime-65300-review.json;accurate input for archive 3。
+
+Retain three previous test questions:62748 There's no slot.2, send Grip to refuse;55116 The original switch is taken but the certification error requires that the frame be an event each time;65420 Cut and recover pending passage, but 64 The logs of the thinly held guns are exhausted and subsequent coordinates are rejected.0 Inventory; first request for events, subsequent action identity + single-module frame; take back the last two existing assembly matrices to stabilize reading planning and actual contact/take is still confirmed by original realization. Failure was not converted to complete pass.
+
+The cut-off of the mechanical link has been completed, and the cuffs of each visual/full hand finger are still attached to each other, manual candidate integration and physical head start experience. Next priority is given to integrating the necessary HB differential into the current tree and compiling a manual candidate, retaining other weapons/shelter and currently not submitting changes, which do not cover the frozen file as a whole.
+
+
+## The current workspace differential integration has begun
+
+The main session has already brought two of the verified restorations into the current source code: HB will only exit UI when it returns and restores the existing UI preparation order before animation takes title. Shared animated files keep the current Longshot/Boomshot extension; HB only records new exit count.20 Re-entry, UI sequence targeted return and 24case/403 Check recovery package passes, all evidence of CPU/engine stitching.
+
+Current full Playground compiled/linking through (manual-institution-r) ( manual profile, current candidate for the same boolean option)1/current-build/Release/GearsPlaygroundHBIntegrationCheck.dll. First compilation of existing untracked machine_debug_volume_geometry.h does not quote vr-common, then amend a line to read include; no other workstation/weapons logic is removed.analysis/hammerburst-20261115/manual-integration-r1/review.json。
+
+This is part of the integrated translation product of the current tree, which does not yet contain all the hand/turn differences of the owner and does not run or deliver the DLL.65300 The evidence of the game is still PG.0106 Fixed manual entrance/public V 71 No change, all home examples are stopped normally and worker is idle; the necessary HB differential integration continues to be required for the next step.
+
+
+## Current Tree Second setup (manual-integration-r)2）
+
+Two homeer support/ball-capable files are used verbatim to re-use validated data; support 1794486500346-1 The magazine.1794499115840-2 The tree is now a universal V-based tree.4 Custom hand interface, so transmitted through the new HB pure profile helper 15 The reference/closed joint does not include the HB public Shape listing of candidates for freezing, nor does it modify Native ABI.0 Issue a path.
+
+Actual contact after moving into open cartridges, new Grip interface after UP, front frame supply/lock witness, typed uninitiated assembly scaling, insertion/extraction of original continuous samples, Pawn re-loading attitude inhibition, inspection of actual node after animation single play and opening of a magazine guidestep 4. Keep the current recover_serial and pending_work/service_unselected, keep sharing other weapons and workstation branches in the follow/grasp; do not cover shared files as a whole.
+
+It was also found that the current tree compilation did not have a visible HB-Six-Six Macro. Two CMake options for default OFF were added to the existing debt renewal waiting after the limited re-launch and real UP is enabled in this clearly manual candidate build; two HBs are sent back to the existing R 2 owner, no other transmitter, no update on the current event count.8 The point history agreement remains unchanged, and this module cannot be used in private 32 Point Native/XR mix.
+
+Full current Playground compilation/link is passed, containing the active HB launch branch; fixed product analysis/hammerburst-20261115/manual-integration-r2/artifacts/GearsPlaygroundHBIntegrated.dll，SHA 256 8f2b62141279d90047c4b47be992d0526e1d84016d92c68f8d70e4a35687521a，5752832B。517 The compilation of the SHA and the list of definitions are recorded.8 Group exposure/handprint/geometric/historical test passed; other real event adapter 335 Item, Unadaptor 103 The suture check of the engine is passed. The first question of the worker namespace/array type was corrected after the main review, and the error in the translation of the text of the test file on the back-slash n was corrected by the main session; the error text was retained and the product translation was not.
+
+This is the current source integration and compilation evidence, not a running/manual delivery. Next build match the current 8 Point protocol and V 4 Launch interface Native/XR packages, which are then consolidated with an existing independent case portal and then collated the manual candidate; already game 65300 The result is still only for the PG.0106 Public candidatures.v 71, fixed manual entrance and other session examples are not modified.13 Visual/physical headcount and final acceptance of items are still incomplete.
+
+
+## Match current Native/XR and first integration run (manual-integration-r)3）
+
+Current Native Compiled successfully 02626551595671fc 244e 53a 64cd 934817ab 716b 65c 18e 2f 6ec 92c 7810cf 5d 68 a Retains original.55 Defines that there are existing GEAS_COVER_CONTEXT_READER which is necessary to enable the current body code; the first compilation error of this configuration is missing. The actual PE export checked V 4/V 5. Native, also known as HAND_CONTINUITY_CANDIDATE, is the old parallel world-hand observation publisher, continuing OFF; XR, who is also a current input continuous producer, maintains ON without confusing the two.
+
+Normal 0 XR Compiled 4d 79dbb 9f 2b 91182a 0c 214da 7af 9f 00412993216a 64386854f 858698d 1eac 09 a, reservation rejectes 1 Protection of consecutive sessions.58088 So pre-screening quits.2, Native is not active, it's a normal ending. It can't be called a startup success.1 Three protections fit, using current 8 Nod and same Native/PG, compile test XR 7c 89ef 9e 11f 7b 14b 3d 6e 6771c 3fdffd 42785cef 5330af 3a 29790af 06ec 3f 693 b; it is not a headline delivery procedure.973 A currently compiled input is fixed, both SHA and normal/test lists are in r 3 Contents.
+
+MatchSurce 1 game 51728 Actual startup_confird true, but old gun script waits for the current optimized idle log of the UP timed diagnosis that has not been exported and stops without sending Grip. Test fit to reuse existing strict source 1 Original UP reads back and confirms the taking of a gun with Native Target/Stub/New Press/Time Reply; no diagnostic or relaxing conditions for the product. Failed to retain, example name is not used.
+
+game 16352 actualstartup_confird true; new fit-for-takess 3 Former HB helped event 1/press 1/cookie 1 Full box.78/78, real UP+NewGrip into the original box size 4 Pull out and return to the stage.7;general V 4 Actual CPU wrist/15 Joint to Downer Data 3 Sample checked. Maximum position error.0.000708 Raw, Rotate 0.000010 eg, finger section 0.000006 eg. This is only the CPU values, not GPU/face/full angle/headprint evidence.
+
+The lock of this cycle has failed:5、stage 7、interval 101 The old ones.100ms，latch_history gate 6/used 0, unrecaptured, incomplete, unshooted. Log and three faileds runtime-58088/51728/16352-review.json, all home examples stop normally and end without coercion. Offline actual relative-motion code synthesis 101 ms sequence:8 The blogger says:32 Dots are fully validated.10 Original point and 6 Category abnormal still rejected; no 16352 Original ring recovery, which cannot be said to have been fully substantiated or repaired.
+
+Next review of version 32 Point retains boundaries and compatibility with current HB/Longshot/Gnasher consumers, decides to repair and match re-compilation, retains 100 ms current freshness, mechanical/event/epoch/grant. Current source/compiled product is still 8 Point, unpublishedv 71 and fixed manual access, without submitting entity candidates.13 Item continues.
+
+
+Capacity review supplement: The main session found that Gnasher producer lever conversion had a real risk of expansion: sourceSegment by capacity+1 Growth, but target gnasher_lever_motion.h remains 9 Point, the conversion cycle only validates the source size. The extension must be rejected and tested with a target size, which is maintained at < =9 Behaviour; not copying of the first draft of the worker "No fixed 9"Judge. Reader_test only 8 Point, count.8 Still correct;bridge_test release 10 The real cut-off expectations and version maps of the point need to be updated.3/main-history-capacity-udit.json.8 Point, no change to the agreement has been made.
+
+
+## Current Tree GHC 4/32 Original historical integration and two actual failures (manual-integration-r)4/r 5）
+
+The development is still under way. J:/codexWorktree/gearsVr. Share a continuum of history from 8 Article extended to 32 Original sample, space sync for packet version and mapping/mutex namesv 4,Current Sample 100 ms, adjacent samples 100 ms. Identity/epoch/Grip/fail check is retained as it stands.9 Point, producer refuses to exceed target size before writing; real 9♪ A little success and 10/33 The CPU check is denied. Bridge tests are issued and the cut is verified by the level of capacity; real bridge 120 ms old to new chain 13 Raw, missing/tracking/epoch/button/time error rejection, current frame 100 The ms expired.7 The group affected by the CPU check was finally fully passed, with initial errors and amendments to the reservation.
+
+R 4 Compiled PG 90a 3f 4c 75e 24cd 51f 917fa 0d 6bea 2371953f 53eeca 9e 72812766d 088e 7e 38b 6e、Nativeaedaffd 8decb 7ab 1cd 29057c 860eb 4fe 10a 2d 1f 224a 0f 11ea 73efa 77115c 64a 9 Normal 0 XR 74cd 81c 54b 790c 7b 414c 686d 1bca 88173c 26ffc 5ffee 2978d 4a 4f 1e 36426d 386 And now private source 1 Fit XRb 735033be 70fce 57a 8b 12de 2eb 3b 70a 4672cf 4baf 4e 38d 55d 42a 2d 3c 48d 9c 784。R 4 During compilation 973 Source input remains unchanged. Normal XR is separated from test XR; old GHC 3 With the new GHC 4 Can't mix.
+
+New example of official entryhb-integradd 32-1115-r 4/game 67064，visible/lowest/scale 0.5/no-record, startup_confird true afteraction. Real original cartridges are pulled out/back to stage 7，3 A CPU wrist finger/actual Static pair passed; cover not completed.1908 Lifecle only 3→4、difference 64 It's the result of a cleanup of existing guards.101 ms reject is not reproduced, but cannot be described as repaired. No echoes, actual action failed to remain.
+
+Only HandCliter case/armed/last_disarm_reason and FrameReadObservation, compiled by R.5 PGf 7ad 4e 98523aa 80148c 4635bd 8323cee 8396ef 80f 50d 480d 01ba 9439faecd 6e 1, Native/XR remains unchanged. Share the new Lancer gasp socket ranking with the compiler and the main session is not rolling back, has been reviewed after the early return of HB and saves the real difference/new header and 974 Enter record; cannot entire R 5 Binary is described as only changes to the log.
+
+Official new examplehb-lifecycle-1115-r 5/game 53464, with configurationstartup_confird true.4，frame 3173 Start multiple times 1/theread_or_unarmed, final storage 256 Value cannot be considered as notification at the same time.3237 lifecycle 3→4、disarm 257 by actual enum=content_lost 0/input_lost 1, the latter is expressly Native input_lost notification, guard cleanup.7, incomplete, unrepeated. Both examples are launcher 0, game aside, no-one left-over process, no-force closure, public v 71/ Fixed manual entrances remain unchanged.
+
+Save binary review: body-mount-source-committees only header/count 0;continuous-hand-plans 32 Section without cause of failure; control-node-phases 128 This field is not in the field. It cannot be inferred that 1907 or 3173 Specific cause and effect. Next step is to analyze the sequence of Hanclit early publicization loss with Native follow-up input_lost, especially as ard() contains published, copy_frame_on_gt first!armed returns to safety 1 The result is that the publicization classification may be obscured. First, you confirm with a pure client fixture that the status is not relaxed or renewed; no change will be made to repeat the full game example R.4/R 5 Runtime review, bookle, diff and failure logs are available in the corresponding anallysis directory.13 Item, current whole tree reloading, surface/full angle/headprinting, manual delivery is still incomplete.
+
+
+## R 6/R 7 Access to existing logical master reservation, single-wheel check completed and actual hand type failed
+
+The main session found that lancer_grasp:::committee_main_hold only registers exact Lancer. The current root only adds the exact Weap_LocustAssultRifle, reusing the existing TrackingPin, action life, current actor/hold, publicsher/epoch/handtraking,100 ms and 50 The new non-GT reflection short circuit has been restored. Lancer has other socket movements kept for the same period without a rollback of the whole.
+
+25 A logical master.187 Inputs/tracking/100- I'ms. - Runtime.135 scene 1743 Checks pass. Worker adds a new client class 7 Case amends the original after-utilisation of GT; proves that prepare/clar_gt can clear public without changing epoch/disarm reason, and that no real invalid/mistake GT/termination is old or new. The product HandClithead remains unchanged. Worker's initial test was uncompiled and GT was used wrongly, kept the original report and before and did not pass it.
+
+Freezing R 6 PG 957d 0638c 57b 064c 2586fee 62019926766ef 6f 37744e 6a 1dd 31aa 3111a 3a 197 b, Native/XR to R 4 GHC 4 Accompanying products. Official new examplehb-mainhold-1115-r 6/game 2892 Startup_confird true; original extraction/return/real lock.0141099104,hammerburg_inspection_complete inventory 78/78 No change; three downer wrists finger CPU samples passed, summary of pose_gap_holds 2, undentity_lost. This is a single-cycle check that does not prove all missing frames to be stable. Then the old first_fire awaits an analysis of the current root without a copy of DOWN, and the full example fails.0/game abcent/no force.
+
+Test fit-and-size -hammerburg-raw-fire-up, add hb_raw_first_fire.py: actual same as game/publicsher/cohort, Source 1/focused/Eyers Status/Trigger 5 Count/100 Upon reading back by JP and DOWN; fixed total cut-off, a DoWN, real real UP, actual original ray three alignment mark/serial number/source time/quantity check; previously retained by former confird_first_fire.py/hash without product log.4 Group Python synthesis tests were passed, covering error sources/counts/tracking/time, badray, start-up timeout, no baseline not to release DoWN and finally. Only test read and validate, not game evidence. workr did not produce two files with the old namenamed because of the length of Windows command lines, explicitly returning the main address to take over the new named two files with application_pact; none was sent.
+
+R 7 PGd 7f 99b 11ab 14341c 8df 69842567902d 92febcae 6211ec 7660fb 857fc 76239de 4 Compiled from a fixed snapshot, heading to GT logic and R 6 Same, fix only the order of non-GT query mentioned above.1115-r 7/game 9496 Extract to status after start confirmation 4 The real world came 2683/seq 11330/input age 101254300 ns; later, Main_hand withdrew, owner sample CPU 3 position error 9.819 Raw, Wrist.140.674 eg, finger section 65.519 rog, explicitly failed. No seating/locks/backshot, new raw fire helper is not in play.100 ms threshold not relaxed, cover failed without recapturing, automatic cleanup of launcher 0/game abcent/noForce.6 Pass and R 7 Failed to keep separate.
+
+The next step is to check the actual registration/retention of points for Main-hold pin.7 Only the proven old Hand Frame and subsequent fallback cannot determine which of the initial bind failed pin, the current input/publicisher/lifetime rejection or observation range occurred first.6 By claiming that the renovation was completed, there was no change in rerun.7 The Raw Helper Review suggests that all new failures may be reported after six full rounds of normal clean-up; no actual fire evidence exists, without first giving off speculation, and real examples are used to distinguish between the words of count/event. Current tree-wide re-shooting, matching candidate verification for replacement box/silo/interrupted, item by piece surface/full angle and manual/headlight still to be completed, complete,13 No change in the entry. All home-based examples are available for 71/ Fixed manual entrance not replaced; no Git submitted.
+
+
+## R 8 / R 10 Current Source Checkpoint
+
+R 8 Runtme Observatories are out of time for repair.160 cases/2076 checks；game 25008 In open stage 3 First, there was a help-chain inventory unamended, not completed magazine Grant, not recovery and acceptance.10 Add HB only, BD-only master hold record of bind/retain, PG SHA 256 9ad6edc5110c4ad220fe91dc193ec564368855024d20c461249da96c37714643。game 62792 Through existing isolation entrances 0.5 no video, startup_confirmed=true; actual old box status 4 Pull out full, three CPU positions pass data check.7 Waiting for failure, no closure/fire. Master holds only a record of bind/retain success, and the number of people who have been killed is about 50%.192 The following missing-frame hold is not conclusively rejected by independentpin. Runtme entrance current failed to clear the hold path directly. Both rounds are properly cleaned and no mandatory end has been made. analysis/hammerburst-20261115/manual-integration-r10/runtime-62792-review.json。R 9 The draft works are unconnected, failed to pass the test and is not considered completed; the main session is taken over.71 No new Git was submitted and the entity/image/complete chain was not accepted.
+
+
+## R 12 Back to base and backfire.
+
+R 11 The old-fashioned protection at the Runtme entrance has been removed by review to complete baseline, all borders, cohort and back.164 cases/2132 Checks pass; R 9 Actual HoldInput/Native Lifetime/journal old new boxpin 32 Item CPU is adopted. Group R 12 PG SHA, PG SHA 256 6567a4ac4bbd343eefd044bc881aa0093ca9d47543035360217761e75856dbe2;Native/XR to R 4 Matching protocol family.32308 / hb-mag-retention-1115-r 12 Through existing isolation entrances 0.5/ No video, startup_confird=true; old box actually pulled back 7 Close the stage 8→inspection_complete 78/78 No inventory written,3 A sample of CPU owner pone passed; fire returned 6 A true and consistent trajectory, typed load 72/78 Actionexit 0 It's normal, launcher.0/game absent/children 0/ No mandatory end.
+
+Evidence limit: only the Main hold Gap maintained 1 Number of cases: R 11 Branches of the entrance and R 9 The actual pin trigger of the magazinepin was not proven. No pin sound/kept output. The source code review confirmed that UP left released = True, with actual magazine_handoff new quarter pending, leading to an option pin rejecting bind; the main session added released = false at that actual Grant but this line is in R 12 After running, this is not evidence of the product. The next identification build should verify the pin binding and maintenance, and then advance replacement/air storage etc.; cannot declare the whole gun complete, image or physical pass. See also the manual-intention-r 12/runtime-32308-Review.json. Public v.71/ Fixed access is still intact, no Git submitted.
+
+
+R 13 Follow-up: genuine magazines above are released = false compiled/private sealed, PG SHA 256 f1430de72de2ca7c9daa59ddbfc5009c6fda19e4a972fe860557d0e1613cdeb8 Only R 12 More than that, without impersonating a new press or UP.13 No game started, no R inherited 12; the next round should observe the pin base/kept and continue to replace/silo chains. All examples of this session are normal; workr has returned the source code, currently read only review without simultaneous writing.
+
+
+## R 13 Keep branch activated; R 14 Limited replacement cartridge pass
+
+R 13 game 63608 Actual pin base 1/kept 2, then help-chain read 131.9♪ And the real Native Lifetime justice 3 Three CPU hands back, action 1 But it's done normally; no crossing epoch.14 Add HB Boolean SourceProof Spope only to the exact same for the Webpon/holdgenation, with rereading by word, metadata/domain/software lapse and full observer retreat.32 The entry is already scope CPU-checked; the first include sequence compilation failed to be retained, and the package was adopted with a narrow helper correction.256 d03a9feb1a9f128a09f084802a8fb2af80da079c3d3694819a8b04b0107e4d2b Native/XR still R 4 Matching family.
+
+R 14 game 67012 / hb-finite-replacement-1115-r 14 visible/lowest/0.5/ No video, start confirmation; filit env pass the Star process, actualinfinite_reserve=false, first 6 After 72/78 old box unplugged/ shouldered new box/ slot/ after closing 78/72（bonus 0 Again.6 After a real backfire,72/72. Old/new boxes 3 A CPU hand sample passed, pin base 2/kept 0,HB SourceProof validates actual operations;action 0，launcher 0/game absent/children 0/ No end to mandatory. This operation cannot be considered as proof of empty space/perfect/interrupted/image/pronouncement or quantitative performance enhancement.14/runtime-67012 The next new example of the same product actually takes up empty and re-loads.
+
+
+## And R.14 Air-storage bomb failure and the irregular closure of authorization.
+
+hb-empty-reload-1115-r 14 / game 2636 Start confirmation, limited inventory.72/78，core 6+10 complete 12/78; next only 67 Real trajectory. Muzzle ready to step 8/follow 6/frame 1811/age 92 postrelease_subjectedgate 1/nullF/count 1/cancerl already 1, stop not trying again, do not reach the empty warehouse and change the bomb. The current log does not prove that the first revoke or cacercel has failed.5/entry not recovered, launcher 1;Native later native_closed/cleanup_timeout 0, XR exits and no response from the game window. User explicitly authorized to recheck PID with main session 2636/ Creation 134392084940041977/Stand EXE, only to force the end of the game, old workingr 12708 Exits self-cooked. Unusual endings are not normal cleanup or test passed; original wrapper unaware used=false does not cover separate downer-approved-exploration-cleanup and cleanup-final records. Other examples remain unmoved. See also the details of the manual-institution-r 14-empty/runtime-2636-review.json。R 15 Only early revocation/cancellation of failure diagnosis, prohibition on the basis of final cacel=1(c) Guessing the restoration or relaxation of identity/time limits.
+
+
+## R 15 The diagnosis is compiled and the current normal airlock complete chain passes.
+
+R 15 Keeps the first POD revoke idea of a draft of workingr, and amends the namespace/default parameter by the main session 23 The order of action/qualification/reading/clock/original call short circuits remains unchanged.305 Finish the Bridge,121 Cancel the daapter,335 Eventadapter synthetic border check passed; Event failed to match STALE_DEBT_WAIT compilation options for first time, ultimately matching FINITE_BURST 1/STALE_DEBT_WAIT 1 Pass. Package pass, PG SHA 256 f8ed34c0b0c63786b5e79a8185153837a88f1d1a2f250a440cdec3acffd814b6 Native/XR still matches R 4 Family. The static review of the worker did not identify additional determinations/orders/first record coverage issues, and was not a substitute for proof of game.
+
+R 15 game 59160 / hb-burst-cause-1115-r 15 Current access 0.5/ No video, startup_confird=true.6+drain 72 Empty, empty gun.0 Release/inventory 0/78 Maintain and actual CanReload veto consumption; original empty 1/accepted_ms 521863386/game_start 108.075874 Reply. Old box unplugged/shoulder removed new box/back seat/closed 78/0 Six shots and then back to the fire.72/0；84 Track 1..84 Continuous, track/write/source consistent, old/new CPU 3 Hand check passed, pin base 2/kept 0。action 0 And normal launcher.0/game absent/children 0/ No end mandatory.15/runtime-59160-review.json。
+
+R 15 Only additional diagnosis, no behavioural repairs, so R cannot be revoked 14 game 2636 I'm sorry.67 The current round does not trigger a new cacel_wait diagnosis; the next step is targeted interruption/cancellation/normal exit, rather than running through normal space. Perfect/elimination notice, other disruptions, image-by-case alignment, manual candidate/entity headline still pending; public v 71/ Fixed entrance is not updated and no new Git is submitted. All home-separated games and subsequent cleaners are now closed; home-based DeepSeek conversation is idle for subsequent reuse.
+
+
+### R 14 Abnormal exit code subsequent correction
+
+Recheck Actual Log 614 native_lancer_r 2_disabled and sourcenamereturn path: final PlaygroundShutdown 5 It's arena stop_backnowlided waiting for time, not fire.disable.10+code. Following on, GT post continues. Withdrawal of the presumption that “continuous cacernal debt is still outstanding and eventually hangs up”; earlier partial murst refusal and eventual arena/package withdrawal to confirm each other's lack of reservations, which was not proven by any of the reasons for this.14-empty/shutdown-code 5-correction.json。
+
+## Owner normal-play acceptance override (2026-11-15)
+
+Owner accepts existing GrabPose and removes further fitting acceptance and exhaustive boundary test gates. Focus: Snap Volume/passive attachment/Grip/release, normal reload and ammunition numbers, hip/shoulder fire, ordinary weapon switch. Engineering progress estimate 85%, not a test pass rate. Midburst tracking-loss case withdrawn before start; prepared instance remains never started. Existing loaded R14 and empty R15 normal reload evidence remains valid; historical intermittent normal-fire failure remains preserved, not declared fixed. Main owns all files; same DeepSeek worker read-only reuse analysis.
+
+## Current normal play passed: game63852
+
+Official fresh hb-normal-play-1115-r15, visible/lowest/render0.5, startup_confirmed true. Hip6, passive Snap no-drive/follow, Grip steers9.048deg, shoulder6, release restores Snap, leave volume frees left hand, single6, actual COGPistol switch/HB return and6fire. Loaded78/72/66/60/54; reserve78 unchanged;24 sequential source-consistent original rays. Normal launcher0/game+XR+launcher+worker identities absent/no force/no recording. Review: manual-integration-r15/runtime-63852-normal-review.json. Combined with current loaded and empty reload evidence, owner normal-play checks pass. Engineering progress95%; final candidate handoff remains; no fit/headset/boundary test gate reinstated. Earlier R14 normal-fire failure remains recorded, not causally declared fixed.
+
+## Owner-requested perfect and non-perfect R15 check
+
+Broader goal remains paused; only new requested test executed. R15 game35184: actual closure3555ms <=4000ms, result3,72/78->78/72 bonus0->6, six return shots72/72 bonus0.12 sequential source-consistent rays, one completion, normal cleanup/exact owned identities absent. Current non-perfect game59160: closure32409ms>4000 result2,0/78->78/0->72/0,bonus0,normalcleanup. First attempt game38072 failed setup5/6 with continuationgate6 before reload; preserved as unresolved ordinary firing failure. No policy/gameplay change. Comparison: manual-integration-r15/perfect-vs-nonperfect-review.json.
+
+## Owner two-handed movement check: failed game32360
+
+Existing static two-hand fire game63852 remains passed. New normal both-hand x+3cm/y+1cm movement, while left Grip command remains held: actual gun moved2.6229raw, but established9.048deg support direction returned to main-hand direction. No shot attempted. Actual support withdrawal frame2244/sequence12075/token1/reason10 implicit_clear occurred during movement; age99.542ms alone does not prove >100ms cause. Normalcleanup0/exact owned game+launcher+XR+worker absent, no recording/no product code changes. Review manual-integration-r15/runtime-32360-twohand-review.json. Do not call normal mobile two-hand behavior complete or rely on previous95% estimate as full readiness. Broader goal stays paused; only owner requested check executed.
+
+
+## 2026-11-16 R 18 Normal play and final video check
+
+Game 48176(a) Recipe, passive Snap/Grip/release/exit, hand-to-hand movement and firing, one hand back, cut to pistol before retrieving the original HB;24 A continuous and coherent line of actual rays, cartridges 78/72/66/60/54 Get ready to fire!78. Eight actual eye still maps have been examined on a single page, and normal aim positions do not show large previously large pieces of guns/arms blocking the central scene; static samples do not prove all angles/immediate blinking/head comfort. Normal clean-up and final game/starter/worker/XR identity does not exist.15 The actual evidence of perfect and ordinary re-loading is followed, with no subsequent change in the strategy.18 Reservations, Publicv 71/ Fixed entrance is not promoted, history fails. docs/hammerburst-normal-play-delivery-20261116.md;for final factual review, see analysis/hammerburst-20261115/manual-integration-r18/runtime-48176-normal-review.json。
+
+
+## 2026-11-16 Rerun failed.
+
+Users request to play and video them first, confirm that they are available before marking. Target is restored.19 DefaultVIible runtime 's actual right wrist is about the same height as a shoulder 1.70 m, initial UP peer check refused, no Grip; R 20 Use R 18♪ With runtime, hit the actual Down by R ♪2 Baseline/blocked consumption, no projectory. Both are properly cleaned.21 Add a normal reload and use it.6 s UP test rhythm, only hip 6 With twohand 6（12 A single, continuous source of actual rays; release/departing snap single_hand_return_fire without Ray and reload/gun. R cannot be used as repair for extended UP.21 Videos are working. Four pages of every page.3 The s overview and the direct simulator frame have been personally viewed, and the video shows normal input/views after interaction and failure; not whole guns pass. All of the original root game/launcher/worker/XR final identity does not exist.22 Only copy_frame_on_gt has the reason for the failure of FrameReadObservation, which is built by the same DeepSeek workker; a targeted video diagnosis is made after review by Main and not repeated.analysis/instances/hb-record-normal-1116-r21/runtime-review.json。
+
+
+## R 23–R 25 Follow-up: Target continues, shoulder removal is not running.
+
+R 23 Private PG b7d5ad649b303cdb272872f3bab67d42be534228091c080af2ec1fb8c1251e1a: Only current HB based key/hold generation, no-owedpress, real UP and skips excess muzzle preparation when awaiting-release. Other weapons/owedpress/finite conversion/100ms/250 ms is unchanged. Product construction 0 R.2 Test 2095 Pass.23/24/25 Each 18 A consistent line of actual rays was passed; these were not whole guns.
+
+R 23 Old plan metadata stopped before the bullet was changed because of a Main test daapter leakName Error (reformed); R 24 Take the locks directly from the end of the hip without to 2, the original fixed arm/access door is kept closed; R 25 Reload the right hand back to confirmed frontpace and actually complete it.1->2->3->4->5 Old box opened/capture/plug-out/release, but new left shoulder box 8 S-No to 6. Normal replacement visible - Hammerburg-replacement is enabled with the actual old box Handoff. The test target has been changed from the old log that was loaded following to the current actual base_to_world, and the matrix/scale/original physical contact door is disabled; this is just input planning.
+
+R 25 Two fame_unviilable samples do not prove the whole part.8 sNo Frame;supply_frame was only stage 6 Later printing, missing lines cannot prove not doing stage 5 Body_slot. Propose is placed in left_grip_down as false direct return, so the new diagnosis requires a complete UP/DOWN and a real request_ammo layer after body_slot.26 Build a private diagnostic by the same DeepSeek workker, main only shoots directly -- > replaces and does not run repeatedly unchanged support chains. All completed home-grown cases are properly cleaned up, R 23/24/25 The final exact identity of the game/launcher/worker/XR is not available.0, but the game failed; R 21/R 22 The whole way is over, R.25 The process screen is checked and the full flow image is not completed. Public/fixed manual access is not promoted.
+
+
+## 2026-11-16 Current R 26 Final screening of the final video
+
+R 27 Full Normal 30- What?28 Perfect.12- What?29 Empty.84 The post is actually passed.126 The distribution source is consistent, three videos are completed and the frame/span is checked. All clean-up is normal, home-grown 12 The process is finally checked and no ordinary check exists.6 Pages, perfect.2 Pages and 2 Zhang's dense frame, empty barn.4 Pages have been reviewed page by page; close-hand/blackbox short-lived dim retention.25 The lack of shoulder-recovered consent is not explained by cause or effect, and does not claim R.26 The diagnosis has been repaired. Four rounds of reload pass later. Current user normal simulator range completed, and public/shared source/entity is not promoted.docs/hammerburst-normal-play-delivery-20261116.md与current-normal-video-final-review.json；R 18 The conclusions were filed prematurely and not repeated.
+
+---
+
+## 中文
+
 # 兽族步枪检查点（2026-11-15）
 
 工作区为 `J:/codexWorktree/gearsVr`。本次保持完整13项需求，尚未完成全武器验收。默认完美换弹证据来自 `hb-baseline-paced-1115-r4`、game67204；后续收枪/取回来自game67068，左手失追退出及回射来自game46132，换弹中收枪后继续完成及回射来自game43836，切到现有手枪再切回后继续完成及回射来自game65300。所有本方实例已正常停止，DeepSeek worker 空闲；未创建 Git 提交，未替换公开v71或固定手动入口。

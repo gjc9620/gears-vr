@@ -13,6 +13,31 @@ Retail startup and menu submission were checked in a background simulator test. 
 See README.txt for installation and update instructions.
 
 
+CREDIT Chinese
+
+0.0.2 Fix Windows download script intercept, Steam Start Process Handover, Multi-Account Settings File Selection, EXE Automatic Identification and Start Error Details Retention; Explanatory Unit UTF-8, avoids the Chinese path error following Python.
+The logs export additional phases of the last three launches, component fingerprints, Steam subprocess environment, independent thread/play exit codes and easy-to-read startup-sumary.txt that can be recorded in a diagnostic record without entering VR.
+Native Rendering and OpenXR program follows 0.0.1;first person, Playground etc. 0.1.0 The development content is maintained in a separate branch.
+The backstage startup and simulator menu are submitted for validation without adding a real header or subsequent chapter acceptance conclusion. See README.txt for installation and update steps.
+
+--------------------
+中文
+
+GearsVR 0.0.2 — Startup compatibility fixes
+
+- Fix the downloaded Windows startup helper being blocked by script execution policy. The change applies only to the launcher's child process.
+- Supply the correct Steam application context so the selected retail game can remain in the process started by the mod.
+- Select the active Steam account's graphics settings when multiple account files exist.
+- Find the game EXE beside the launcher, beside Binaries_x64, or through one mod subfolder, while preserving a valid saved path.
+- Keep detailed startup-helper output and show the underlying error in the launcher.
+- Keep interpreter probes in UTF-8 so non-English installation paths use the bundled Python correctly.
+- Export the latest three startup attempts with stage timings, component fingerprints, Steam child-process context, separate thread/process exit codes and a readable startup-summary.txt, even when VR has not started.
+
+The native renderer and OpenXR application are unchanged from 0.0.1. This is a startup hotfix; the 0.1.0 first-person and Playground work remains on its own development branch.
+Retail startup and menu submission were checked in a background simulator test. This does not add physical-headset or later-chapter acceptance. Existing limits remain: DLSS/DLAA off, roughly 2-second mounted-gun transitions, later chapters not fully verified.
+See README.txt for installation and update instructions.
+
+
 简体中文
 
 0.0.2 修复 Windows 下载脚本拦截、Steam 启动进程交接、多账号设置文件选择、EXE 自动识别及启动错误详情保留；解释器探测统一UTF-8，避免中文路径误判随包Python不可用。

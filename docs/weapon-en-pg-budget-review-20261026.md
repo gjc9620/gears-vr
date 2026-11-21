@@ -1,3 +1,39 @@
+# EN: PG Source Expires with the next minimum modification border
+
+This time only check the logs that En keeps, three original binary and PG 0ec 1 Existing source code; no change to PG/Native/threshold, no derivative case, no build or run Game. Full demand and original ongoing held/mobile/return acceptance maintained.
+
+## Verified behaviour and coverage
+
+Actual 20148／Native 2447539276000，typed 4424、v 32120 And ARMALP 01 It's...28 The article is linked to each other.552 The original event by field, like Body is strictly reader and no drop.27 The full Local/FK/consumer-end adopted by the four actors 27 The next actualApplied; not just an owner Grant. Anomalous exact is security 5／query 30, four players tokenRejected and not Appleied, remain unpositioned.30 This anomaly cannot be classified as PG Final Source_mismattch.40／6 Second failed, no subsequent move; current cycle freehand continues normal 106 Cleaning through, not covering old Em failed.
+
+## Where did PG refuse to happen?
+
+PG only keep first 32 Total 111 Minor Callback (truncaed)1 The original Native budget is just as good.1–32;Root cross-checks the Scene/publication/cookie/Native examples to match the original sync. The following only describes this prefix and cannot be classified in its entirety 63 Second time:
+
+| Prefix Category | Number of bars | The old sync is at the PG entrance. | PG time-consuming | PG End Age |
+| --- | ---: | --- | --- | --- |
+| unheld |6|I'm gonna take a long walk.|Not executed all of the help path|of which 2 Second Native source_after, not counting for the end of the day.|
+| ♪ and help and ready ♪ |10|36.2374–41.8290ms|6.3443–8.1438ms|42.7718–49.7524ms|
+| ♪ Help finally restonse 12 |16|43.7524–49.1403 ms, medium 46.6176|6.3998–7.3612 ms, medium 6.80845|50.9208–56.1447 ms, medium 53.2709|
+
+16 The failure was the initial context ready, retained complete, independent Game/typed assets/addition/bind checkreading ready and ultimately senter: return to source_mismach.**At the entrance to respone 16 The whole line is over.50ms**, not only crosses the border when you print last.`weapon_main_mount_sender.h::context`Rig is required to be effective and used as a controlr.sync 50 This is sufficient to explain the actual age of the group’s rejection.110／mask 1025/ Old Tracking 53.76 Ms and last_query 111／raw 0 Not with query, not strong match.
+
+That's all.16 PG back in time.50 Within ms, we need to save each other.0.9208–6.1447 ms, medium 3.2709 ms; not yet including subsequent Native current/Kernel review.32 Medium 10 PG ready has 6 A record of the held company, where 5 Article of the Covenant:30 Posture failure;query 10／13／21／27 No help records. The old analytical field Apearts_in_subaccessful_hold_log merely indicates that query is not a pose success in all of his records, and the subsequent view has been changed to held_committee_record_present and is set separately as pose_pass. The original result cannot be kept. Butcht committee_end is the current CSA time when it is successful or accurate.0 Queary.1 New Tick.40 Consumption and former Scene 50 Eligibility must remain separate and the old package cannot be updated with a new Tick timescale.
+
+## Minimum range recommended
+
+Next candidate with a substantial change should move only.**Purely parsing workspace in PG clamed sync Callback**, Re-enact Native 46/PGwire/original action. Keep two real Game Watches, independent final readings, two typed assets, all class/outer/registry, first name paragraph/type, generation/binding/old 50 ms check, does not hold up the Frame/Qualification/Diction values or cross-query certificates.
+
+The current source code can be found at two specific algorithm boundaries:`fresh_name`Read each duplicate FName-by-wchar fresh; three Field walker()`weaponhand::field`、`PawnObserveFields::resolve`、`Reader::pointer`) for the longest 4096 Chain-by-point linear scansseen, worst O(n2), can be done in a fixed and unstacked query area: save only length limits (entry, index), repeat all slot/index characters and NULs when repeated; reject internal advance NUL/length change/non-readable; and replace seen check with an accurate address Hashi, retain all real metada reading and original ccycle/4096/ First synonym. The workspace is only active after the existing entered has been successfully activated, restored and cleared in its original meaning, refusing to re-enter the outer layer without moving; embedded/capacity insufficient was achieved, and other paths are defaulted to remain. Old legacy compont_names solver cannot be enabled.
+
+This is an operational PG internal candidate.**There's no evidence of profit on retail walls.**. Formerly owned fixture 33%／41%It's just that I would prefer to reduce the number of calls from coppy, not convert it to savings.3.27 I can't guarantee it at the latest.49 ms is passed. It is recommended that the two pure decomposition costs be assessed as candidates for the same constituency, avoiding running back and forth after only minor name changes; orientation parity/mixer/boundary and actual wrapper finality check before a complete and rigorous construction of a PG is completed, with the original action measuring real time consumption and held at once. If actual cost is insufficient, go back to Body to assess the time series of real production/consumption; do not continue, delete last observation, do not relax 50 or 40／6 Second door, no additional telemetry platform or parallel old matrix.
+
+The candidate has not been implemented at this stage, as required. `analysis/lancer-native46-review-20261026/`: en-root-review.json, en-pg-source-baseary.json. Six reviews of the PG source code itemizes 0ec 1 Actual build source is consistent; reader results, original log and EN are maintained on site.
+
+---
+
+## 中文
+
 # EN：PG 原来源过期与下一最小修改边界
 
 本次只核对EN保存的日志、三份原binary及PG0ec1现有源码；不改PG／Native／门槛、不派生case、不构建或运行Game。完整需求和原持续held／移动／交还验收保持。

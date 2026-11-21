@@ -1,3 +1,35 @@
+# Single frame double view into original rendering path
+
+2026-10-12 Original single-person level, PID 46052. The first person calls Mod to stay back, without intercepting or requesting a trans-scenes.
+
+This round gives two temporary source views to the rendering function of the normal caller, and continues in queues from the game. 41 Unlike the non-submitted object, consumption, preparation and destruction of that object are recorded in this round.
+
+## Original Results
+
+- `submit_pair_enabled=1 attempted=2`;width check of left and right source view `63`, the reason for rejection `0`。
+- Two renderings have their own view location, matrix, status, grouping, index conformity check; the temporary source view is then released.
+- `consumed=1 prepared=1 destroyed=1`, the two-view structure, consumption, preparation and destruction records of the same object in CSV exist and then a normal single view frame appears.
+- The snapshot of the original assembly and source view remains unchanged. Adding a right state to release through normal Release after destruction; removing observers; thread ID 22340。
+- 12 Seconds 39,523 Article,3,040 The Present, unrecorded Present failed. Game still responds and stops after 11 One entrance is restored.
+
+Local evidence:`analysis/runtime/submit-inset-46052.*`;analysts `tools/native-capture/analyze_submit_pair.py` Pass. Four analysers test to cover missing consumption paths, unreleased status, Precent failure, error PID and refusal not to be miscalculated as successful.
+
+## Revisions in current cycle
+
+First PID 36252 The log does not explain the rejection phase. 38476 Show input range as `(640,360,640,360)`, is rejected as a zero prefix. The wheel release, the object is retained and the entry is restored, which cannot be called a two-view success.
+
+The amended version is split within the original area, with a vertical origin: left `(640,360,320,360)`Right area `(960,360,320,360)`. Continue to require limited, integer, non-negative, even width and boundary areas. Native structure and holding view check passed. Why is the area smaller than desktop resolution not confirmed and cannot be directly equated with the final header size?
+
+## Borders and Next Steps
+
+Whether you use a synthetic positive or negative game unit offset, original projection. Only one frame is not a rice-made/IPD-marked VR eye image, and there is no physical eye pixels, long-term stability or independent historical effects.
+
+The next step is to maintain the process of submitting and receiving the body eye. The new state must be maintained until all submitted objects are destroyed, and the release of those who cannot be released early is suspended or discontinued.
+
+---
+
+## 中文
+
 # 单帧双视图进入原生渲染通路
 
 2026-10-12，原版单人关卡，PID 46052。第一人称 Mod 保持恢复，不截图、不要求转镜头。

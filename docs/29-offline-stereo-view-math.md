@@ -1,3 +1,21 @@
+# Offline check for left- and right-eye view calculations
+
+2026-10-12. Continue Document 28 . This step only deals with stored CSVs, without connecting games, without modifying processes, without starting headlines or emulators.
+
+`check_stereo_view_math.py` Take the lens position, view and projectile from the same scene. The first column of the rotation section of the view gives a right-hand direction to the world space under this layout; shift one composite game unit in that direction, adjusts the horizontal horizontal shifts at the end of the view line separately, generating parallel eye views.
+
+The tool validates two relationships: the eye ' s own world space position should be changed and returned to the same lens original point; the left-level projection at the front synthesis test point should correspond to the lens spacing, distance and projection scaling. The CSV location itself is rounded with error, so that the same baseline margin difference is used for comparison, without recording errors moving as view.
+
+Original Sports PID 43632 It's... 9,868 All samples passed, maximum margin of error. 4.26e-7. Synthetic eye spacing 2 Game units, forward point distance 1,000 Game units. Example: submersible projector with left or right horizontals +0.00119150 / -0.00119201, margin approximately 0.00238351- It's the same as the calculation.
+
+This proves that the offline algorithms used are consistent in recorded lens movements and do not prove that the game has been deciphered. Synthetic space is not a real IPD for human beings; asymmetric cones, unit scaling, original multi-view structures and eye texture submissions of the units and the OpenXRs still need to be verified and realized.
+
+source code save Git;original report `analysis/runtime/renderer-original-motion-43632-stereo-math.json` Saves only on J disk as per the rule. This step is to re-use existing evidence and does not require a user to operate again.
+
+---
+
+## 中文
+
 # 左右眼视图计算的离线核对
 
 2026-10-12。接续文档 28 的 CPU 行向量布局证据。本步只处理已经保存的 CSV，不连接游戏、不修改进程、不启动头显或模拟器。

@@ -1,3 +1,52 @@
+# Main menu window captures Carden fixes
+
+2026-10-20. The main menu uses a separate WGC-wide capture and OpenXR common panel. Old path is used every time 33 ms only try to catch once; no new frame or capture time stamped in the future, waiting for the next round 33 ms. Each update also performs a pixel-integer division on the XR thread, serial by-the-word FNV of the whole image and a colour conversion of the cursor. The problem is an existing Mod source code that does not require new games to be created in their original reverse direction.
+
+## Default fixes
+
+`game_screen.h` Allows startup and menu restoration to read the latest WGC frame available for each XR cycle, retaining mailbox, future-frame delay, menu epoch, HWND/process identity, window subrogation, image freshness and after submission. The old diagnostic panel for non-started uses retains the original 67 ms throttle.
+
+`menu_pixels.h` Cache Zoom Bar Address, line by line with wide image memcpy; output remains consistent with the previous NZZB bytes. Upload is used x 64 Baseline SSE 2, BGRA/RGBA format and alpha=255, handle non-matched addresses, interline padding and tails of less than four pixels. The diagnostic fingerprints are changed to a four-way FNV with all pixels covered, the main menu log clearly marked `source_hash_algorithm=pixel_fnv4`; it is not a cross-calculator identity comparison, nor is it a password-Hashi, unlike the old byte-FNV values.
+
+Output one item per second when existing exits are enabled `menu_capture_performance`, records WGC upload numbers, render calls and success figures, circuit wall clock slots and dimensions. Fields `render_cpu_ms` Include D 3D 11 Map and GPU fence wait, which is the wall clock time observed on the CPU side. This cannot be interpreted as pure CPU execution time or GPU time-consuming. New texture upload rates are measured separately from XR panel submission rates.
+
+Default XR is `tools/openxr-probe/build-menu-smooth1/OpenXRPoseProbe.exe`，SHA 256 `5b7051b756725b84545c96494d7af38deeecb12fab32c24b843a35e4db8cff7d`。`tools/vr-launcher/manifest.json` Only XR path and Hash are updated. Other tasks were updated by integration with default Native as `build-seated-reticle1/GearsCaptureSeatedReticle1.dll`、SHA 256 `adde3b7484fde70dca516c068a108cc7111237389b44da3ce39f77777f228410`, this fixe retains the option; the following is actually compared to another clearly documented version of Native and cannot be written as a new default group that has been jointly run.
+
+## Actual Game Contrast
+
+Use Actual `GOWDE-Steam.exe`、1280×720 Menu,90 Hz private behind-windows emulator, same user settings and render_scale=1 Game EXE SHA 256 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`Two rounds, both of them. `9505245bd8ba18632b6faac1d1c39232be7a069cffbd3164ae0c5e0e9151c07e`. Old contrasts only add the same number of diagnoses, keep old capture and pixel paths, XR SHA 256 `7506f88c939608f52480fb6dc5f2f666e1f2a9a8dd84baf1f3d96cd079708f56`。
+
+Tests only reach through the available restricted navigation. `DeltaMainMenu`Watch. 24 seconds, exclude the first two seconds of a full-time assembly and then cancel the menu waiting, restore the entrance and normally close the game. No level is entered or the archive is confirmed.
+
+| Measure | Old Contrast | Default fixes |
+| --- | ---: | ---: |
+| New menu texture update rate | 22.31 FPS | 41.27 FPS |
+| Panel render success rate corresponding frequency | 90.00 Hz | 89.99 Hz |
+| Total clocks per second for render path wall | 223.80 ms | 73.71 ms |
+
+Increase in the rate of effective new menu updates 85%. Texture updates are from the WGC frame that is uploaded; this is not a Present FPS, original binary frame or head-up. Two rounds of sessions `xrEndFrame` And normally shutdown, where the original scene capture is not active and therefore does not constitute a play performance test.
+
+Valid receipts:
+
+- `analysis/runtime/menu-smooth-baseline-b-1792483752-20261020.json`, Session `continuous-stereo-30980-20261020-160951-e1a84f22`。
+- `analysis/runtime/menu-smooth-candidate-a-1792483823-20261020.json`, Session `continuous-stereo-18196-20261020-161100-1c1b29df`。
+
+Both rounds of the verified bend-windows game build and emulator, settings `GEARSVR_TEST_WINDOWS_BEHIND=1`、`GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`、`GEARSVR_TEST_MUTE_GAME=1`disabled. Every time you observe 200 ms sample front desk PID, which does not find the test game to be a front office; this is an discrete sample and not a full window to block. No user window adjustment has been made. After completion of the game, the user Ini and Coalesced original byte recovery, and the audio guard restoration log is kept in the corresponding index/udio log.
+
+## Other validation and boundaries
+
+10 C++ Related C+ and XR Unreserved Sessions Self-checked; menu monitor 46 Item, consecutive session runner 59 Item Python test passed. Actual startup 22 Item Native precheck passed. Add `MenuPixelsTest` Checks size changes against the old scale results, recent Neighbourly Zoom, two colour formats, padding, non-matching, tail and fingerprint cover. No changes to GPU commands, resource barriers or fence ownership are made.
+
+Independent CPU pixel processing microbe in 4K→1920×1080 and 1280×720 The byte reconciliation of upload results under both input conditions is no difference. It supports a reduction in local processing costs, which cannot replace actual games or GPU tests; see original spaces `analysis/runtime/menu-pixel-bench-4k.jsonl` and `menu-pixel-bench-720p.jsonl`。
+
+16:12:02 The next one. `GoWEDay-Steam.exe` Start and keep load high; subsequent second round duplicate values, candidate window ready over time are not valid. The successor candidates remain only signed `analysis/` and the independent test build does not enter the default source code or the default EXE, without claiming a gain.
+
+This validation is submitted by the actual game menu capture and emulator. Real-employed menu flow and comfort, new default Native+XR combinations and 4 K The actual menu still needs to be measured separately. The default XR is loaded after normal exit and restarting from the starter; the old process that is running will not be hotly updated. Original logs, derivative data, snapshots and experiments are left in signored `analysis/`, do not enter the release package.
+
+---
+
+## 中文
+
 # 主菜单窗口捕获卡顿修复
 
 2026-10-20。主菜单使用独立的 WGC 全客户区捕获和 OpenXR 共同面板。旧路径每 33 ms 才尝试一次捕获；没有新帧或捕获时间戳略在未来时，同样要等待下一轮 33 ms。每次更新还在 XR 线程上执行逐像素整数除法、整幅图像的串行逐字节 FNV，以及标量颜色转换。该问题属于现有 Mod 源码，不需要新增游戏原生逆向。

@@ -1,3 +1,28 @@
+# Camera Authentication Readout Window: Keep checkout offline optimization
+
+2026-10-17. User returned, no game/simulator started, no focus. Current default DLL still VRDof 60, generated 60／61 ZIP both keep original snapshots; this Python source change has not re-entered these packages.
+
+Actual 109 It's...46 The failure occurred in the sampling of anchovies and the construction of UI has not been implemented;110 This is a time-stamp window that does not allow for an occasional start-up problem to be resolved.[Start the diagnosis.](117-continuous-activation-readiness.md)。
+
+This is a close reading of the costs:
+
+- The first Cinematic TargetCertificate reflection is still included in the same guard before it is moved to a strict time stamp window 200 ms budget. Two Target validations and their complete fresh verification continue in the window; no cache of “checked successfully”.
+- Known name layout index=0／text=20 Use once 148 Byte Read; does not match layout, failure or short read back to old independent reading. Object name index rereading, object/name registry slot, entry index with 128 Byte name content check to keep.
+- One time, each by BoolProperty and ArrayDim/ElementSize of WorldInfo Properties 8 Byte reading is obtained, still value-by-value checks and the verification of identity, inheritance, offset/mask, birth bytes Hash etc.
+
+No number/duration of re-tests has been expanded, no end time stamp, end pointer or any target validation is omitted. The moving construction does not guarantee the resolution of all failures under active time stamp; running time effects are still unverified.
+
+Sol 6.1 Medium Implementation 96 Focus on CPU, and 41 The new example of actual authentication structure was rejected before the first time stamp, during construction time, twice with guard fresh, before change layout/name/trainer prior to second certification, and the return of name combined readout. Commands and corresponding source code Hash were stored at signored `analysis/runtime/anchor-window-optimization-cpu-proof.json`。
+
+This follow-up requires the validation of active time stamp and CG without looting the user's front desk.
+
+
+A separate AnchorePrep test package containing the source code has been created since then, old 60／61 ZIP is the same; offline packing and pre-separation check passed, no game started.[New candidate package](119-anchorprep-offline-candidate.md)。
+
+---
+
+## 中文
+
 # 相机认证读取窗口：保留校验的离线优化
 
 2026-10-17。用户已返回，未启动游戏／模拟器，未抢焦点。当前默认原生DLL仍VRDof60，已生成的60／61 ZIP均保留原快照；本次Python源码变化未重新打入这些包。

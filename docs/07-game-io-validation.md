@@ -1,3 +1,46 @@
+# Low-clean mapping and virtual handle validation
+
+2026-10-11,Run game PID 33228;Auxiliary Services Independence Process; no use of computer-use.
+
+Single Window Collection: The actual screenshot is viewed, the full game client area is correct and the titlebar and window border are removed.
+Source Resolution 1920×1080 Output 640×360. Actual picture about 5–28 KB, with the scene;
+A final version of a scene. 16,222 bytes. Interception and JSON metadata are ignored in Git
+`analysis/game-io/frames/`。
+
+First mapping found that Windows DPI virtualization caused 960×540 Crop. Set the capture process to
+Per-monitor DPI aware v 2 After that, complete. 1080 p The source image is correct. Not as a drop sample.
+
+Virtual handle: using VigemBus drive, handle slot 0. Start key opens the pause menu,
+Screenshot shows RESUME GAME; then A key resumes the game. You cannot simply "report to drive success"
+The game was confirmed to be accepted, so the input results were checked with a read-only camera locator.
+
+Controlled transect (user confirms handle and mouse down):
+
+| Phase | Input | Camera yaw RU | Result |
+| --- | --- | --- | --- |
+| Baseline 1 sec | Neutral | 16299 → 16299 | Steady, camera time. 103.9499 → 104.9512 |
+| Turn right. | Right Rocker X =+0.55，0.45 sec | 16299 → 20726 | +4427 RU, about +24.318° |
+| Left. | Right Rocker X =-0.55，0.45 sec | 20726 → 16257 | -4469 RU, ABOUT--24.549° |
+| Follow-up neutrality | No input | Hold on. 16257 | The service is still neutral, and the camera time continues to update. |
+
+The location of the lens is transposed by a third person, which cannot be considered evidence of the movement of persons.
+Early small roller tests do not have a positive camera change, but are not considered successful. The data is stored in the end
+`analysis/game-io/controller-validation.json`。
+
+Three protection tests are passed: neutral reports are sent for inactivity; input is not sent for focus;
+Timeout, NAN axis value, unknown button does not reach the device. The final version of the catch program was compiled successfully and again
+Successfully captured 640×360 Figure; final service stderr no errors.
+
+Adds a new Focus command to activate API using the standard window; Windows explicitly requests users to point out games when rejecting.
+No automatic activation from the Codex front is yet verified. There are no automated customs clearances or complete autostarting of authentication.
+The menu can be handled daily by handle confirmation/direction keys, and the assistant selects input by encapsulation status.
+
+This tool-assisted VR debugging does not mean that you have reached the eye render or 6DoF。
+
+---
+
+## 中文
+
 # 低清采图与虚拟手柄验证
 
 2026-10-11，本机游戏 PID 33228；辅助服务独立进程；没有使用 computer-use。

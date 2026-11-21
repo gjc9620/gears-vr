@@ -1,3 +1,79 @@
+# First edition of Real Backup and Candidate Status
+
+Update:2026-10-17. Release 1 is still incomplete and does not replace real performance with a single normal exit or synthesis test.
+
+Recent Local Default is VRDof 60／Borderless 1 The eye compatibility of the death is restored to four checkpoints, and the opening movie interface and independent ZIP actually works. The trade-off is a deep distance from the authentication field; no real acceptance for this round has been made.47 Retain the package and release it in private.[Current Candidate](116-vrdof60-player-candidate.md)。
+
+Current mainline supplement: double-entry block after opening CG is already in Reticle 47 Fixes; the cause of the break in the new paper was confirmed when the Controller.Pahn died. Independent and unoccupied candidates can continue to produce images of death, but the right eye is still close to black and has not yet been raised to player default.55 Same instrument completed 599 Back and forth pixel pairs: HDR source complete to right, final output right eye 97.46%Approaching black, define the current malfunction range to the source of the HDR copy. See[pixel evidence and boundary with the same instrument](111-death-same-ticket-pixel-boundary.md). The specific reason for the reprocessing/sampling has not been confirmed and the black screen problem is still pending.
+
+Follow-up update: Actual death of VS/PS has been restored and is on paper 832 Single variable contrast: only the deep branch of the view enabled by the right eye is used from 1 Set 0, keep the UV and its remaining parameters unchanged, and right eye restores its full scene.[Deep Branch Contrast](114-death-dof-branch-control.md). The compatible candidate with the same eyes 60 Full start of inspection and recovery at one and three consecutive sites; death eye GPU maps maintained scenes, validation of rejection/capacity spills 0 See.[Deep and compatible return.](115-vr-dof-compatibility-regression.md). The default or head-notation check has not been raised, nor has it been declared that the entire black screen solution is complete.
+
+| User feedback/request | Current evidence and status | Remaining work |
+| --- | --- | --- |
+| Machine guns, loads and real-time cross-sections maintained | Native 37 Further authentication of roles such as Turret/Driver under the same WorldInfo different Lev; complete construction, synthesis of upper/down machine guns and return pass at normal level | Actual machine gun verification; only Turret is currently certified and cannot be extended to all Vehicle or all live-time overplay |
+| CG non-blackscreen | Native 31／XR 23 Covered first round with a checkpoint film and original eye return | More CG and head-to-head returns; presample films with two-dimensional content, without a real geometric stereo |
+| Play, change the bot-off screen. | Rehabilitated middle texture materials for damage double-targeting; Native 37 And get a new perfect round.2 The GPU scene (docs)77） | Perfectly re-load the entire continuum, other black screen triggers and long run; still around this round of checkpoints 0.46 Second World Resets Transition Cards. |
+| FPS Switches Blackscreen | Caption 38 Free package running with display menus on and using FPS, FrameCtr=True; new GPS frame two-eye scenes and 38.87 FPS text, cleanup and settings restored through (docs)82） | Application of instant continuity, repeat switches, other graphics and real machine returns incomplete |
+| Start dual-eye delay, occasionally completely without startup or access to VR | Moved forwards, added empty Pawn transition retry, optimized UI discovery and distinguished between addition to the Crossshair registration form and invalidation; Caption 38 New start-up readiness.4 Seconds, cameras are ready to start with the projection.7 sec, three consecutive check points to get new generation images (docs)78／80） | Start and recovery of the checkpoint is still a matter of seconds; single samples do not represent stable speed enhancement, cross-scenes and real machine return incomplete |
+| The head of Carton, but the desktop is fine. | New medium-age for old machine retention samples 52 milliseconds, logs mixed with menu and frame | Separate active play-time frames, rendering and transmission; not recognized as VD network problem |
+| UI Larger, whole near the FOV Center | Caption 38 Include elements scaling/centre convergence and multiple-session subtitle layouts;46 The problem of repairing the first missing source of the new Canvas batch quadrilateral, with evidence of co-correction of the complete outer circle with the same ticket and additional icons (docs)98） | New star eyes merge, actual subtitles and more UIs still need to be checked; unknown index rejection rules are maintained |
+| Chinese-English starter | 3c 83336／3229b 4 d, GUI build and configure serial test passed | Keep watching when the new candidate is using it. |
+| No focus, no response to the backstage physical handle. | e 810eec／4678d 2 f By default closes the handle on the back of the start chain;4678d 2 f Added failed clean-up for precise new processes not injected | The full-line route of the focus has not been proven to be eliminated; users have now left and are authorized to stand guard against front desk tests, while the rear-office physical handle remains defaulted on closure |
+| Game-resolution, DLSS off,6DoF | Independent Low/High removed; DLSS lock maintained;6 DoF has a real user feedback. | Full return of new candidates; no extension of feedback from old versions to new changes |
+
+## Current Available Version to Test Border
+
+Previously Local Test DefaultReticle 47／Borderless 1 List `manifest-reticle47-borderless-vd.json`。Reticle 46 Pistols and two test points of evidence; Reticle 47 Adds a new opening CG post-capacity blocker, actual eye images for the same chapter and completely new ZIP independently running through.46 The list of names is maintained back.0–0.5 Mee, the user.0.3 The rice settings are not covered, so the package is from 0 Start. The latest evidence and see Pao Hashi.[Reticle47 candidate](102-reticle47-player-candidate.md)。
+
+Native 34 Failed PID before first entry 39900: Physical exchange chain 8×8 The current status file is a temporary issue for the old monitor to be cleared.237a 888 The reading gap has been repaired and a fresh sample is still required for movement.38836 Reliance on loader 12(b) The process of the original start-up chain is not ready by the end of the second;4678d 2 f Complements a positive identity check and normal closure when no injection is made.
+
+Previously running test paused in `analysis/runtime/runtime-test-hold.json`. The user is then explicitly authorized to continue the unmanned repair and testing during sleep, with current recording of active=false; when the front desk is allowed to test, it remains closed. The user returns to a non-focused collaborative constraint.
+
+## Deployment readiness
+
+Update: The independent candidate package has completed the actual start-up, access to bingo and normal clean-up of off-pack games; it has found and repaired two fixed store paths that depend on menu navigation. See the failed boundary for details.[Physical inspection of independent packages](75-v1-portable-runtime-check.md). This is still not a clean player machine/real head show acceptance.
+
+`stage_portable.py --manifest` Can package the test candidates individually without replacing the default list or player configuration. Real Native 34 The first check-out of the candidate passes:693 List of documents,42,652,715 bytes;insourcing Python isolation mode in packages 33 Project modules, check checklists, Hash and PE depend on them, without starting GUI or game. Original reply `analysis/runtime/hud34-portable-preflight.json`,The Catalogue `analysis/release-staging/hud34-offline-20261017`。
+
+This only proves that the offline package of this aircraft is dependent on inspection.`release_ready=false`; not clean player machines, permit reviews, actual installation or header acceptance. The package does not contain games, simulators, reverse databases, pseudocodes or databases.
+
+Supplement: c 61921 e Replaces the bottom Python function/CLI with the default to close backhander handle, only visible parameters can be enabled. The offline candidate is regenerated after update `analysis/release-staging/hud34-offline2-20261017` Pre-inspection through containment in the package (Pre-examining)693 Documentation,42653389 Bytes) `analysis/runtime/hud34-portable-preflight2.json`; not starting GUI/play, not publishing acceptances.
+
+Start preparation supplement:7b 57d 0 e Fixed the same PID/FILETIME/path when creating a reply, only one process handle query dependent module is opened and PowerShell scans are not repeated. The module awaits upper limit 25 sec, and start with command+50 The seconds are closed together and the time limits are checked against the owner/cancellation/process identity once read, after game Hashi review and before and after injection of markers.8 Targeted mock test passed, including beyond old 12 Second-in-second, late result and cancellation; no actual startup validation.2 The directory is still generated before submission and does not contain this Python modification; the package must be regenerated.
+
+Offline supplement:038361 c) Allows the entire use of a single range of evidence for NativeSubtitle subtitles to be scaled/centredled with text spacing; multiple-range debris and unknown groups still retreat. The UiHudLayout/UiCanvasTextBatwatch/UiPayloadReceipts CPU test has not been built into freezing Native 34 The new package process produces a list of documents in the English and Chinese languages, README.txt;13 The package test passed. There's already offline 2 The package remains current and does not include these two subsequent changes.
+
+Freezing Candidate Supplement (Native)35: From submitted source code 7524ea 3 Export native-capture/vr-common, retitle Native 34 Freezing MinHook to rely on and record documents-by-file Hash, completes the full release build. The DLL is`tools/native-capture/build-subtitle35/GearsCaptureSubtitle35.dll`，SHA 256 `c6b40ed4b1f3ab45e5874f2bbf660d7a25c13c30d9d2919b8d96b6215a43511d`It contains the previous machine gun/HD candidate and 038361 c Complete single-scope subtitle layout; excluding unsubmitted side changes to the work area.10 The offline inspection of the items is done by: HUD layout/platform, receipt, Canvas text, indexing, material batches, game materials, FrameLink and DLL continuous/frame-link ABI.`analysis/runtime/subtitle35-source.json`、`subtitle35-selftests.json`and`manifest-subtitle35.json`. No game, simulator or input aids started, no default Native replaced 32 GPU, machine gun, subtitles and headline stability remain unaccepted; maintenance of operational tests suspended and rear handles by default closed.
+
+User-specify trial native 35: Defaultmanifest.json is now temporarily choosing manifest-subtitle 35-vd.json (play/DLL/XRHS Review), formerly Native 32 Keeps the list back; this is a trial choice, not a complete acceptance or release. User configuration is not covered. This round of visible VDXR runs, normal front-stage games are started and the handles remain closed without emulator activated; users play on their own and decide when to finish.`analysis/runtime/subtitle35-user-trial`。
+
+Update on machine gun progress and complete Native 37 See the construction/return border[Fluid Level Authentication](76-mounted-streamed-level-certificates.md)。
+
+The latest independent self-measurement, perfect reloading and newly discovered transition failed.[Return Record](77-active-reload-startup-regression.md)。
+
+UI found optimized process measurements, complete VR and checkpoint regressions and up-to-date independent snapshots[Time to start preparation](78-startup-discovery-cost.md)。
+
+Recent subtitles, double-eye images, multisession layout correction, Caption 38 I'll see you at the remaining border.[Subtitles back](79-subtitle-multirange-layout.md)。
+
+The re-couping of the check points has been removed.78 Test and two rounds of actual resumption pass; time-consuming with boundary[Re-locking is time-consuming.](81-rebind-discovery-latency.md). Default is still Caption 38／Borderless 1。
+
+See the latest independent package actually started and the FPS inside the game.[Caption 38 Independent Package Return](82-portable-caption38-fps-runtime.md)。
+
+The outer circle of the actual pistol open-scope/one shot sample has fallen in its planned position, there is no independent internal and external ring pair and the problem remains open; see further details[Handguns are on the starboard.](83-pistol-reticle-runtime.md)。
+
+Local testing of ZIP has been generated and pre-screened for depressure isolation; new rifle pairs are visible at the border where the sampler stopped earlier[Local deliveries and rifle inspections](85-local-zip-and-rifle-pair-check.md). Still not officially published.
+
+Actual approaching machine guns have not been successful; one turn-on calibration failed, no response was re-introduced against the same failure and the number keys were not re-engineered, and VR yaw was not modified; see further[Machine gun navigation versus handle.](86-mounted-navigation-controller-baseline.md)。
+
+Reticle 39(b) Amending the problem of the choice of different projection for the semi-synthetic segment due to space cutting;19 The item self-measures and two physical check points recovery, new eyes GPU image and normal cleanup pass. The loss of the user ' s outer circle is not proven; old Caption 38 The test ZIP is still a snapshot.[Consistency of the quasi-star cut](87-mounted-approach-and-reticle-clipping.md)。
+
+
+Offline supplement after user returns: Camera authentication first reflection preparation moved out of strict time stamp window, known name/ attribute layout combined read, all dynamic validation,200(c) The ms budget and the cessation of protection of reservations.96 Focus on 41 The joint CPU check passed but the game was not re-engineered and the actual occasional start failure remained open; the existing ZIP was not replaced, as detailed[Read Window Optimization](118-anchor-sampling-window-optimization.md)。
+
+---
+
+## 中文
+
 # 第一版真机反馈与候选状态
 
 更新：2026-10-17。第一版仍未完成，不以单次正常退出或合成测试替代真机表现。

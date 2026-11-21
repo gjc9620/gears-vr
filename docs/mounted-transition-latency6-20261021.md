@@ -1,3 +1,38 @@
+# 0.1.0 Reduction in the time of identity assembly for recovery of machine guns
+
+The objective of this round is to continue to shorten the CPU preparation for recovery of upper and lower machine guns, and to maintain the full acceptance verification of existing native. Users then verify head-to-head experience; this record does not mean zero black screen or no delay in receiving and accepting.
+
+## Modify
+
+- Anchor assembles the same subassemblies for classes and subclass that have been added to this identity list, and at the end all identities and subclass are rereaded individually; full roles/links/timetamps of pre-assembly, post-assembly, final borders are kept.
+- UI assembles using a dictionary for this completed double-read identity, and repeat properties and class searches do not open the same reading chain in turn. Finally, all selected objects, current registrary slots, FName and name content are rechecked using completely unreading the dictionary; category finds independent rechecking between sorting, scripts, attributes, access points and links to verify retention.
+- Crossshair assembles using the same identity hint; for its first double reading, it will also add a certificate check box between precise bytes of each field, slot and name. At the end, uncracked physical reading of the entire table is done, keeping scripts, byte codes, original entrances, properties, aim fields and linked checks of controlled roles.
+- Three tips exist only in one call, not over preparation attempts, processes, readers or the world. Optional for open entrance `reuse_assembly_identities=False` Only for complete old reading policy contrasts, normal path is defaulted.
+
+This time, the machine gun came from CameraCache.POV, the human-shaped Driver eye instead of machine gun points, the authority line was not changed and the world restoration/GPU ownership process was not bypassed.
+
+## Synthetics
+
+`test_assembly_identity_hints.py` The next call for the same searcher does not follow the old hint, and strict Boolean parameters. UI, Anchor, Crossshair, Mounted Integrated Inspection is maintained.
+
+Python Reunify Relevant to Current Workspace 433 All items are passed, and three of the historical menu evidence checks are also performed locally. The verification is then repeated in the fixed operating directory to avoid sharing the actual test attributions for changes in source code.
+
+Under fixed synthesis input, the UI actually reads by 4818 Down to 1171 Number of reports submitted by States parties 75.7%) Crossshair by tick roots and write view 9685 Down to 1445 Number of reports submitted by States parties 85.1%) These are the reading times, not the black screens.
+
+## Actual validation
+
+Fixed Directory `analysis/m7qa1` It's... 433 The item native-capture Python check is completed, three of which skips the directory based on evidence from a local history menu;22 Item search pass. Three changes to SHA modules 256 is consistent with the current normal starter source code.
+
+`mounted-latency7r1-frozen-fast-actual-20261021` Failed before native activates, not restored or alternately prepared.`passed=false`. The round normally closes the game, restores five protection files and ends with no leftover games; failure cannot be recorded as performance validation. The restoration evidence that was previously adopted in the third round is only a previous version, and does not move the cost-of-carriage wheel ' s actual test conclusion.
+
+2026-10-21 About 16:03 The user makes it clear that the task does not need to continue searching for machine guns or arranging internal testing, and is then validated by a user's own self-realization machine. The automatic opening, sampling and queue process of this job has been completed; the new game that the user subsequently started is not part of this task and does not operate it. The total time in the game and headscreen of this round code is still waiting for feedback from users, without reporting on unmeasured millisecond gains or marking no delayed target as being achieved.
+
+See you at front-order measurement and failure response. [Static certificate phase records](mounted-transition-latency5-20261021.md). Original file and private test entry saved in signored `analysis/`, do not enter the release package.
+
+---
+
+## 中文
+
 # 0.1.0：缩短机枪恢复的身份组装时间
 
 本轮目标是继续缩短上下机枪恢复的 CPU 准备耗时，并保留现有 native 的完整接收校验。用户之后统一验证头显体验；本记录不表示零黑屏或无延迟已获验收。

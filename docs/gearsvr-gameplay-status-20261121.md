@@ -24,6 +24,13 @@ Start with the 6DoF hand dropout and shoulder failures because they affect every
 
 [Detailed handoff and local evidence index (Chinese)](gearsvr-handoff-20261121.md) · [Weapon specifications](weapon-specs-20261028/weapon-cards.md)
 
+### Quest hand-pose capture APK
+
+[Download GearsVR Quest Workbench 0.5.3-dev (build 17)](releases/quest-workbench/GearsVR-Quest-Workbench-0.5.3-build17.apk). This is the standalone Quest app for capturing hand poses. It uses Android package `com.gearsvr.workbench`. The APK passed signature and 16 KiB alignment checks. Headset testing of this exact build remains open.
+
+SHA-256: `b5887d27a3c47131a68d00f8ab9cafdb322314a2000a37ece3a9c1f61b4d1e6f`.
+
+
 ---
 
 ## 中文 · 第一人称 6DoF 武器与掩体交接
@@ -51,3 +58,9 @@ Start with the 6DoF hand dropout and shoulder failures because they affect every
 建议先复现影响所有武器交互的 6DoF 丢手和肩部失效，再回归各武器与掩体。处理枪口问题时分别核对可见枪身朝向、实际射击方向和头显手柄姿态。真机验收记录应包含构建、设备、操作步骤、实际结果及日志时间点。
 
 [详细交接与本机证据索引](gearsvr-handoff-20261121.md) · [各武器规格](weapon-specs-20261028/weapon-cards.md)
+
+### Quest 手势采集 APK
+
+[下载 GearsVR Quest Workbench 0.5.3-dev（build 17）](releases/quest-workbench/GearsVR-Quest-Workbench-0.5.3-build17.apk)。这是独立的 Quest 手势采集应用，包名为 `com.gearsvr.workbench`。APK 已通过签名和 16 KiB 对齐检查，build 17 的头显运行验收仍待完成。
+
+SHA-256：`b5887d27a3c47131a68d00f8ab9cafdb322314a2000a37ece3a9c1f61b4d1e6f`。

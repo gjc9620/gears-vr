@@ -1,3 +1,39 @@
+# Death camera empty Pawn to switch with static tipcard
+
+2026-10-17 Keep moving on with the first edition.47 Still local default; this round separates the identified document from the unrecovered black rectangle.
+
+## Static card A ⁇ B ⁇ A actual GPU contrast
+
+Independent probe 85 The original contains the product TransictionCard, two static swapchains of each 120 The time frame of success is changed.8500／creation 134366769365670087，EXE SHA 256 `7be2499fd565090c523d1716fec9ce5c62179aaac93be635baaea10c135f8bad`. Official RenderDoc uploads A for the first time, B uploads for the first time, returns to A for the first catch; three Star/End succeeds and runs 3490 The second time, the eyes were quad, and A/B was uploaded once.40 Request exit in seconds. Destroy all.0、gpu_unsafe=0、result=0。
+
+The new three frames are back on.768×256 GPU textures match CPU source A, B and A by by by bytes;1280×568 The GPU final synthesis output has both eyes with corresponding text. This excludes the assumption that "two static swapchain switching of the same size will necessarily confuse" in this independent sequence; it does not cover actual game projection and quad mix. Original capture, texture-by-speech and composite maps are signed `analysis/transition-card-probe85/run1`. The first replayer only exports fixed 1280×588 Output, not overwrite actual 568 High, leading to the failure of the analytical assertion; re-showing the same three grab frames after a dynamic dimension, without restarting the probe and retaining the old analysis file.
+
+## Identified transit cause chain of death
+
+Reticle 84 Actual record: first achor rejected QPC 638851276737，`stage=pawn field=controller_pawn actual=0 actual_valid=1`;front 16 This is the case for all article-keeping records, total 855 Achor_observer enforces non-emptyController.Pawn, so scene receipt does not come in and renderer does not create new binary instruments. The count is with anchor_submission reprojected 855、scene/family identity_failed 855、renderer no_receipt 856 Unanimously.
+
+Last new note.984_Other Organiser 63885095010700 ns, about before the first Pawn reading.32.7 milliseconds. Old diagram continues to be reused; first_missing 63887096924200 ns, approximately time of origin 2.002 Seconds, then 632.427 msec is not empty until the death menu starts to recover from the startup_panel capture.632 ms is not the entire time for the new chart to stop. No Health Queen found 0 The condition of the lock-down was not confirmed either; the non-empty Pawn door ban could not be removed accordingly.
+
+## Next directed observation.
+
+Adding the default closing of GEARS_PAWNLES_CAMRERA_OBSERVER, only when you actually read Controller.Pahn as spacetime successful collects local player/controler/ Camera/Cyber's certified address, registration form/value identity, available orientation link and camera POV/timestamp reading back and forth. Config does not authenticate local.controller offset, explicitly without speculation/reading the reverse link; stable zero is not an identification match.
+
+Scene and the follow-up to the line, renderer also records a copy of the family/source pointer and matrix, most of which 16 Item, sampling interval 250 ms. No anchovies, no ease of time for the bill, no authorization to draw, and no addition to the game Hook. Helper's independent CPU test is passed, including failure to read zero, change in identity/link/registration form/POV and cross-border rejection. Whether there is still a valid scene view during real empty Pawn, which must be verified by next round of running candidates.
+
+## DeathObs 48 Actual observations
+
+Sourcedee 61c 5 DLL SHA 256 `aa2f9edb02db5aa921c9417faedb3ceefdf75ee4cb68ca3cc2ab355fc28cee4f`The observer, ON/OFFF, has been compiled and translated into two complete DLLs.9 Item Focus Executable Test Pass; Player Default to Keep 47. Actual session `continuous-stereo-3368-20261017-102437-2d618a24`. Game PID 3368／creation 134366774644915963、XR PID 12304. Actual checkpoint restored to world 1→2 New generation.20 Sub-submission; normal cessation and independent clean-up/general closure passed, four files restored and verified.
+
+16 All empty Pawn scene samples are arriving at the same range as the follow-up renderer, original source view 0x 430 Bytes are identical (read_mask=63）。64 All four-player numeric IDs match on the inner layer.0 xf, already aligned with directional links 0x 1 d. Validity of the registration form 3, all existing fields are successfully read and stabilized, POV limited/FOV 80。16 SubovernanceQPC 654106972907 to 654145841610 Camera time 24.7831573 to 26.7992649;it is not an atomic engine snapshot or a re-certification of the name text/class chain.
+
+All of Camera.ViewTarget 0x 207ce 680, with the current UTF 16 AnchoreObserver Configuration ole_pawn=3 The complete start-up certificate is consistent (Pawn_COGMarcus, uuter is certified Lev). This indicates that the camera was not suddenly lost: after PC emptyed Pawn, it continued to create/render view with the same original role as ViewTarget.`Pawn.Controller`This round is not read, it cannot be claimed to have been observed 0. The summary and full original records are available at the signed `deathobs86-summary.json`and session state.
+
+The next minimum achievement is a separate unoccupied view target model: only in the case of the same Pawn certified as ViewTarget, re-completed verification of existing identity and directional links, with an explicit requirement for both Contractors.Pawn and Pawn.Controller 0 The program still needs to be designed for review, negative CPU testing and operational; this round of diagnosis cannot be equated with a repair of the double-eye death camera.
+
+---
+
+## 中文
+
 # 死亡相机空 Pawn 与静态提示卡切换
 
 2026-10-17，继续推进第一版。Reticle47仍为本地默认；本轮先分离已确认的票据中断原因与尚未复现的黑矩形。

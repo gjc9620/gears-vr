@@ -1,3 +1,35 @@
+# Construction verification of original retrofitted objects from two-view view
+
+2026-10-12 Original single-person level, PID 49024. Construct an unsubscribed object without a screenshot and without changing the actual submitted pool.
+
+## What did you do?
+
+Get the canvas and transformation parameters of the current frame in the Real Rendering Constructive Entry, create a deflection view and stand-alone status. Copy the full text. 0x60 bytes to assemble the context, and replace the view array of local copies with " original view + offset view. Use the original rendering function to generate temporary 0x140 object.
+
+Check and then destroy the temporary rendering object, the temporary source view, and release the independent state. Copies of the temporary construction are called to be separated from normal frame logs so that the non-submitted object is not considered a success in normal consumption.
+
+## Result
+
+- `renderer_pair_enabled=1 checks=255 retained=0`Inputs are different, distributed, tectonic returns, two separate arrays, owner/state/serial number relationships, maintenance of both matrices, primary destruction return, original collections remain unchanged and eight were adopted.
+- Render view storage consists of two steps 0xd30; the collection points to each of these two, and the individual is the assembly within the rendering object with a serial number 0 and 1。
+- The original view is in its current state, and the new view is independent. No recreates either state are claimed.
+- (a) The new source view and the existing inspection of independence were passed and released normally;11 Byte recovery after the opening of a portal has stopped.
+- 20 Seconds 89,440 Article, discard. 39 Article;6,882 Subprecent does not record. The construction, life cycle and preparation analysis of the normal single view frame are passed.
+
+Local evidence:`analysis/runtime/renderer-pair-49024.*`;specific analytical tools:`tools/native-capture/analyze_renderer_pair.py`。
+
+## Border
+
+This time it proved that the two views were properly constructed and destroyed in a raw rendering object, that they had been rendered, and that there was no new GPU image or head-high stereo output.
+
+The structure is abnormally designed to keep the object and its dependence on process exits, avoiding destruction of unknown aliases; pure values fail but the ownership structure is identifiable. Self-detection covers normal two copies, cleanup when matrix is not consistent, group names/micronumber separation, distribution failure and shared status rejection.
+
+The next step is to be physically limited, observing consumption, preparation and destruction of both views and then receiving and inspecting the respective image areas.
+
+---
+
+## 中文
+
 # 两视图原生渲染对象的构造验证
 
 2026-10-12，原版单人关卡，PID 49024。构造一个未提交渲染对象，不截图，不改变实际提交的集合。

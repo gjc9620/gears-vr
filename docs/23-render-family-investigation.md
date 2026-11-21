@@ -1,3 +1,62 @@
+# The scene view is assembled for investigation
+
+2026-10-12, first person name Mod installation state, minimum setup / 1080 p. This phase only observes parameters, without adding new views, without modifying points of view and without repeating game updates.
+
+## Static Thread
+
+Original EXE in Ghidra 0x1402c78f4 / 0x14026858c No defined function, static bytes differ from running-time commands. Therefore, protected bytes are not analysed forcibly on the original item. Extending visible access mode along existing run-time reading tools:`--skip-vtables --max-instructions 8000`, to draw functions 0x2c78f4 Direct branch analysis completed 2,106 command, without touching the upper limit. Indirect jumps, abnormal paths and real function boundaries may still be missing.
+
+New candidate RVA 0x3a148c: From the drawing path 0x2c8904, the parameter RDX is the same stack that previously entered the LocalPlayer view build function. Read the assembly internally +0x18- Allocating. 0x140 Byte Object, Call 0x116250 Construct, then execute along different branch arrangements. Use suspense is marked as " View Pool Submission Candidates " , which is not the official symbol for restoration.
+
+Old 0x26858c Candidate for cross-object and input view arrays, and read view +0x370 / +0x374 / +0x378 . It does not receive view pools that are equivalent to rendering the submission portal, which is not appropriate for adding eye render.
+
+Packaging of the collective construction 0x3c42b4 Call 0x115e54;the latter initialize +0 and +8, Write to +0x10 RenderTarget arguments and +0x18 . This supports the candidate layout for the initial group, but also requires dynamic validation of the array capacity and elements.
+
+## Dynamic surveys
+
+Add `--family-diagnostics` The version Hashi, the two camera entrances and the other / GPU diagnostic models are mutually exclusive. 0x3a148c It's... 11 The byte signature is checked and the normal code is installed. The parameter reads up to four view points, CSV works; the callback does not wait for GPUs, does not write files, does not change a collection. The ABI independent test passes, checking for parameters forwarding, re-entry recovery, invalid capacity and non-readable pointer rejection.
+
+PID 40888，25 sec:6,641 strip view,6,643 And the round of candidates,6,637 Precent. Candidates for call are all 0x2c8909, same thread as scene view 46884;Precent at another thread 48772 Failed. Present 0, logs are discarded 20 No, so no one is declared to be unharmed. No point of view rewritten.0 The five entrances are independently read and restored.
+
+First-volume array capacity limit 16 Rejects all group records, so this round does not prove that the array elements match SceneView. The original header is now recorded and the capacity allowed to 1,024, but only count is actually read. 2620 Verify the actual capacity as 17 Number of 1; capacity is allocated surplus, not means there is 17 A view.
+
+New Game PID 28756 Returning MH_ERROR_EMORY_ALLOC at first creation of Hook, not yet enabled any Hook, disabled_status=0 / active=0. Read only VirtualQuery to check the target near approximately  ⁇2 GB cannot find a suitable free distribution area. New survey must leave a close address jumpboard in the early stages of the game, and then start sampling after entering the level to check the object; expand rel 32 The scope does not solve the problem of no free areas.
+
+`launch_reserve.py` Only MH_CreateHook is called during the start-up phase of the new process, leaving three springboards without the use of Hook; the DLL check that the three entry points are still original bytes for each of the DLL processes.`start_capture.py --use-reserved` Repositions the current player object, validate versions and accesses, and allows time-limited sampling. The same DLL does not support a second start and does not automatically repeat injections when it fails.
+
+PID 2620，20 sec:5,413 strip view,5,413 Article 5,413 Precent, drop it. 12 Record, Present failed 0. All arrays readable and count=1 / capacity=17；5,411 Subsubmission of identical pointer found in front sequence view logs of the same thread, same assembly address, medium interval 0.0315 ms. The remaining two are left unmatched and cannot be completed by surmise. The caller is all 0x2c8909 Thread 35416;Precent threads 45116. No point of view rewriting, stop acting=0 All five access points have been independently checked.
+
+This proves that the submission path of the actual observation receives player SceneView. It does not prove the life cycle of the view, add security to the second view, double-eye images or do not damage one-on-one Present.`analyze_family.py` Check capture status, recovery, arrays, callers and over 99% in the light of the provisions of the Convention; `analysis/runtime/family-2620.{csv,json,status.txt}`、`family-2620-restored.json`、`family-2620-correlation.json`。
+
+After the independent directory is recompiled, exit and restart to PID 46736. The new starter independently checks that three pre-set access points remain unchanged, confirming entry through five menus and incremental camera time.20 Second sample again: Gather 5,271 Second, for response 5,269 Number =1 / capacity=17, Middle interval 0.0322 - I'm sorry, drop it. 10 strip, Present failed 0;five entrances restored. Object address and PID 2620 Different, re- retrieved by locator, unreused old stack address. The evidence is `reserve-46736.json` and `family-46736-*`。
+
+## Render View Copy Thread
+
+PID 2620 Read-only command analysis:0x116250 Total 301 Article,0x193d50 Total 361 Article,0x194454 Total 189 None of the analytical ceilings were touched upon, but indirect calls and actual branch coverage remained unverified.
+
+- 0x116250 Call 0x3a4c54, copy the input set to the rendering object+8；0x3a4cd8 Allocating memory to new indicator arrays, copying countx 8 bytes.
+- 0x3d4e28 Press Enter count to render object +0x68 The array is ready space.0x3dd08c Add a step long 0xD30 the elements.
+- 0x193d50 Receive new elements and original SceneView, call 0x194454 Copys the base category field and initializes the additional rendering status.0x116250 Replace the grouping elements with this rendering view and then replace the view with +0 Write your own collective address.
+- 0x194454 Not simple memcpy: it goes through the + except for a copy of the matrix area 0x140 Node, copy multiple containers, and +0x418 Point objects are associated with the atomic reference count. Therefore, no type of cloning can be directly measured as a sceneView.
+
+The above is the operating command infer that it is not an official type or dynamic reproduction validation of recovered. Next steps should be to observe the copy ' s construction, pre-construction and destruction path, and then determine the location of access to the eye distance and the off-symmetric projection.`analysis/native/renderer-constructor-2620.json`、`renderer-view-copy-2620.json`、`scene-view-copy-base-2620.json`。
+
+Destruction path supplement:0x15bda4 Call 0x15c27c The latter ends in. 0x15ca7c,Set +0x418 Related object, release +0x3ec / +0x380 Classes and +0x140 Node.0x1753a0 The atomic reduction is performed on the count and the cleanup function is called down to zero. This corresponds to an increase in the quotes in the reproduction; it still requires dynamic validation of the actual object life, which does not mean that it can be released at any linear distance.`render-view-destruction-2620.json`、`render-view-destructor-base-2620.json`、`view-state-release-46736.json`。
+
+Local evidence:`analysis/native/stereo-render-path-40888.json`、`stereo-submission-candidates-40888.json`、`family-base-constructor-40888.json`、`analysis/runtime/family-40888.{csv,json,status.txt}`、`family-40888-restored.json`。
+
+## Semi-automatic Menu Navigator
+
+`tools/game-io/menu_continue.py` Using the manual check of five pieces 640 × 360 Menushot, file SHA 256 Checks the exact sequence, PID/HWD, and 1080 p and F 8, waits for later time after unknown state, not blindly pressed.
+
+Templates Configure In `analysis/game-io/menu-templates.json`, is created by the machine's check-in screenshot and does not enter Git. 28756 The actual start test automatically passes five menus, followed by a stand-alone screenshot confirming entry. This tool only states that loading is initiated and whether the level is loaded will still require independent verification; this version of the English menu and this machine setting is currently supported.
+
+PID 46736 The game window is minimized at startup, the first round window was clearly not drawn and returned to the car. The navigator now only resumes the validated game HWND and waits again for continuous image matching. The five-step navigation actually passes after repair, without relying on global keyboard input or user switching focus.
+
+---
+
+## 中文
+
 # 场景视图集合提交调查
 
 2026-10-12，第一人称 Mod 安装状态，最低设置 / 1080p。此阶段只观察参数，不新增视图、不修改视点、不重复游戏更新。

@@ -1,3 +1,43 @@
+# Continuous checkpoint return
+
+2026-10-17. Default Caption 38／Borderless 1 Python source code includes ae 29681. The first edition is still not complete.
+
+## Actual
+
+Session `continuous-stereo-39540-20261017-055806-f7c83c97`. Game PID 39540，creation FILETIME 134366614737835457; the exact identity is based on the original session. Normal front desk starts, rear body handles are closed and aquit 2 Simulator, without changing the system XR selection. Tests send a button to the btnCheckpoint of the death menu for three rounds through two existing new menu status checks.
+
+The root of the en route is activated for unmanned testing and closed the confirmed cross-platform networked bullet window/suspend menu. This cannot be called an unattractive or completely unobserved input test. Actions are also checkedpoint 44-current/dismisspopup/dississfocused/resumefocused reply.
+
+Three rounds to the new world generation, from 1 Move in turn to 4;new GPU receipt instruments requested after recovery rounds 2179、3910、4994 Source number 2165、3892、4971. Together with the initial auto-interception 4 Grandpa.3840×2160 Images, both eyes, are non-Black pixel statistics. Image statistics do not themselves prove the correctness of content or the continuity of headlines.
+
+| Wheel | Actual button to Prepare event | Prepare to Commit. | Commit to the new generation. | Key to new generation project | Visible re-knit bridging card |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 6189.21ms | 209.62ms | 270.63ms | 6669.46ms | 254.29ms |
+| 2 | 6729.40ms | 722.01ms | 171.06ms | 7622.48ms | 144.39ms |
+| 3 | 5614.56ms | 618.09ms | 211.84ms | 6444.49ms | 188.31ms |
+
+Dispatch_to_observed_ms in oldhelps are not counted until they return from the input subprocess, and default 1715–1718 ms, cannot mark the full key recovery time. Use action reply send_ns at the right time. Check point script observes at least 10 When submitted within epoch, separate from actual key 7490.82／8551.48／7179.66 ms; it is later than the first generation projection and cannot be used intermingled. The original Helper retains as evidence, using the modified timescale template next time.
+
+After pressing the key 160／186／172 ms has a movie progress. The first two rounds of key pressed are about to end 4239／4135 ms restore new image submission earlier than Prepare, therefore 5.6–6.7 The first half of the second is not fully black screened; it contains loads, observation rounds and build-up percentages. Next steps are now in place to customize the timescale without adding a new Hook or relaxing authentication.
+
+Image_ticket diagnosis is only reserved until 4096 Article, common 5432- The strip. - Throw it.1336 Three rounds of new generation projection tags and GPU receipts are saved separately, without relying on cut-off lines. Post-stop primary cleanup check, exit restoration, normal stop XR, normal closedown of the game is all passed.
+
+The evidence is in signored. analysis/runtime：checkpoint 44-audit.json、checkpoint 44-timeline-audit.json (including source lines and time), checkpoint 44 The three rounds cannot be promoted for all checkpoints, all CGs, machine guns, long-term tours, real-frame rhythms or black screenless.
+
+## Meaning of a long interval in the previous round
+
+Session 3932-20261017-054756-ab 408251 Actual 1560 New Image Submission, Range 40.069 sec, maximum adjacent new image interval 77.5884ms，6 More than 50 ms, no more 100 ms. The complete project also includes a cache of images, which cannot be described as all projection intervals for new images.
+
+Maximum interval of submission 441865.514 These are open ends of the death menu that continue without a projection, not two successful projection lines.442 seconds. Last cache scenario projection to the Death menu panel 543.594 ms; last new images to the menu are still available 2 sec, the initial stopchart is not confirmed.154 The sub-empty object re-linking failed in the death waiting phase of unread checkpoint, which does not mean 154 The check point is loaded with the failed. Parsing script 3932...py/extra.py and original logs retained.
+
+## Independent Snapshot
+
+`analysis/release-staging/caption38-startup4-20261017`Include ae 29681 The government has already started to amend the law.700 Documentation,43,420,297 Bytes, interntory SHA 256 `daa787e19ac2a1e4f41f44da298cddde605ef60346b22a210b08412853036f4d`. Pre-separation check passed, original/XR files followed Caption 38／Borderless 1. The current round is actually running using the repository default candidate, which is not started from this new snapshot; it cannot be called a new package that is actually deployed or clean player machine acceptance. Old snapshots are not covered.
+
+---
+
+## 中文
+
 # 连续检查点恢复回归
 
 2026-10-17。默认Caption38／Borderless1，Python源码含ae29681。第一版仍未完成。

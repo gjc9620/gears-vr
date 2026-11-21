@@ -1,3 +1,33 @@
+# Eye input ready to investigate with three four-point parameters
+
+2026-10-12. Continue independent status and fail to submit full view validation. This step reads the normal code in operation, and performs local input calculation tests, without allowing new games to write or screenshots.
+
+## Do not use unknown quarter blocks as lens coordinates
+
+Player scene call `0x15d989` Parameters for the 17 from fixed global blocks;parameters 18 From the inn. `+e0`,parameters 19 From the inn. `+f0`. They write to the source view separately `+f0/+100/+110`。
+
+Before calling `0x15d620` Clear the vault. `+e0`. A branch bytes to read objects `+24a/+249/+248`, converts the float and multiplyes the same coefficient to write three fractions. `+f0` Another branch to read objects `+380/+384/+388` Three floats and a fourth. Data patterns are more like colour display parameters, but official attribute names and uses remain unverified. They cannot be treated as world space lens positions.
+
+Complete construction to calculate the location-related derivative data from a matrix, e.g. writing `+370` Then do a symbol change `+2a0`, group the original view matrix generation `+160` . The specific semantic requires a dynamic value comparison; this step does not consider guess naming as an confirmed interface.
+
+Only read-only evidence is in `analysis/native/scene-eye-inputs-47956.json`（547 (As of 1 January 2000, the amount of the contract was not exceeded by the applicable amount) and `full-constructor-eye-fields-47956.json`（633 The limit is not touched.
+
+## Locally restricted input calculation
+
+`source_eye_args.h` Under a verified line vector, positive-simulation view layout, the squared line at the end of the space level minus the composite eye offset is used to indicate movement in the right direction of the lens. Only the snapshot is modified `+a0` . The following must be the complete original structure to recalculate the derivative matrix and cropping data, which cannot be used as a view for input snapshots.
+
+Tools reject deviations of non-limited, over two games units, non-impressive matrices and non-propane; also reject float accuracy to swallow eye space or cause error to exceed offsets 1% . Enter the same number when you fail. Use a composite game unit here, which does not represent real IPD, rice or official VR scaling.
+
+`SourceEyeArgsTest.exe` Yeah. 24 The flat rotation, non-zero world position and positive/negative lens check point relationship to check that the bytes are unchanged outside view and check that the illegal value does not modify input. Build and test pass. Currently helper is not connected to diagnostic DLL,`build-eye-args` And no game.
+
+The same C++ helper which goes back to the original CSV 9,868 A sample of the scenes, calculated for each sample with a positive or negative eye position in one game unit. All pass, maximum origin difference is about 0.00196685 Game units. This contains C++ float storage and world position calculations rounded, not with documents 29 . Replaying is a fluid reading machine CSV, which does not connect the game.
+
+The next step requires checking the changed matrix, counter-format and location-related fields on the original unsubmitted offset view. It is no longer a condition for passing the deflection test and must use new geometrical relation criteria.
+
+---
+
+## 中文
+
 # 眼位输入准备与三个四分量参数调查
 
 2026-10-12。接续独立状态与未提交完整视图验证。本步读取运行中普通代码，并做本地输入计算测试，没有启用新的游戏写入或截图。

@@ -1,3 +1,33 @@
+# No original authentication submitted for eye offset
+
+2026-10-12 Original single-person level, PID 20420. Only one temporary view construction is run, without transposing, without modifying the original view and without participating in rendering.
+
+## Result
+
+The new view uses a separate primary state, which shifts the unit of a game synthesized in the right direction of the lens to preserve the original projection and unknown parameters. The resulting data is recalculated by the full native tectonic function.
+
+- `shifted=1`, the main view and projection is copied to a new object as required.
+- Seven groups have checked the derivative matrix only; the largest difference to original view is 1.19140625. The deviation experiment should be changed and the requirement cannot continue to be zero.
+- `+2b0` Grouping matrix is consistent with the Independent Input View x Input Projection, with maximum integration error `3.4776244e-08`less than `1e-5` threshold.
+- Checking two geometric coefficient packagings for non-empty content is limited, quantitatively matched and independently stored. The other two known arrays are still in contrast to the content.
+- `attempted=2 stage=6 checks=255`; the original view bytes and the original collection remain unchanged, temporary views are destroyed first, and independent states are then released and removed normally.
+- 20 Seconds 85,131 - The strip. Drop it. 31 Article;6,549 The first record failed.
+- The analysis of the structure, life cycle and preparation stage is passed. `active=0`，11 bytes of the enabled entry are restored.
+
+Special analysis:`tools/native-capture/analyze_constructor_eye.py`Original evidence:`analysis/runtime/constructor-eye-20420.*`, saves the machine only. Self-measurement increases the deviation input comparison, allows limited geometric coefficient changes, rejects non-limit factors and normally cleans up when it fails.
+
+## What can you prove?
+
+The game can construct a full source view with different eye spots, independent states, correct master input and checked combination matrices on the current static mono-paths and release them normally.
+
+It is not rendered. Seven sets of derivative data are limited to a total mathematical relationship that has been validated; this step is checked by a group of matrixes. There is no proof that the two views can normally coexist in the rendering unit, uncorrected millimetre/play unit, real IPD or OpenXR eye asymmetric projection.
+
+Next acceptance target is two views to the original renderinger and each image to be found in the document. 39. Repeated proof that the non-submission of a construction is not a substitute for this acceptance.
+
+---
+
+## 中文
+
 # 未提交偏移眼位的原生验证
 
 2026-10-12，原版单人关卡，PID 20420。只运行一次临时视图构造，不截图、不修改原视图、不参与渲染。

@@ -1,3 +1,47 @@
+# PG Tick／C 0 Equipment to observe and verify borders
+
+The weapon side has achieved independent query-bund equipment observation and typed programr/sender.47. Old f 85/EO stays frozen, old V 1 Check and act keep.
+
+Follow-up build state: Native 47 Once the exact product is in place, source code.`f611000`Signed/linked at one time as PG `5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`,Fu 85 The production of defines adds only new Body Main Mount flag;778 Source and vendor remain unchanged. EP has been sealed to Bobby, pins `fc3c560f3d6cebe6305347154fc1cd8d70fe2a09ffb52f6cbb024d8b26e08885`;Root does not run Game. The following source/host records keep the original authentication range, and the joint link is not equal to the original 40／6 Second action through. BMSCOM 01 New Record is 8616 Bytes, Body has separate readers, which are not applicable to old Tick readers;v 3／alpha／106 The original action remains unchanged. Full follow-up delivery is in the EP records of PROGRESS.
+
+Shared header from the only stored by Body`tools/vr-common/body_main_mount_provider.h`Copying SHA word for word 256 `6ad0a08fb3633bb0cc3d39841634a69c2a65771ed29886e7c32ceeb9c03b4b3d`. New namespace is`gears_body_main_mount_provider`, the new export is`GearsVrAttachBodyMainMountProviderV1`, the old wirre will not change. The new PG switch`GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL`Default OFF, which requires a main-mount program; old and new children share the original parent cookie/image pin/callback count/ended/stop and drain, and new attch failed to separate processes from the previous one, unable to unload or create registrar.
+
+## Specific division of observations and sources
+
+`HandClient::observe_equipment_on_gt`The old Frame is used only for historical connections, not updating time, not outputing Frame, and not changing the public/participant/held. The old Frame structure and existing registration qualifications are still checked but current tracking eligibility is provided by independent new Raw`fresh`、`copy_frame_on_gt`or`source_game_on_gt`The old tracker is still new. The SEH finally failed to output and release Gate; after the trans-line change epoch, even the recovery of the state cannot be followed.
+
+Sets the order of metadata continuation to complete Game-before, ast-first, sole right hand attchment, ast-final, full Game-after and`same_game`, then check the actual holdGeneral/hold_binding/domain/Clit epoch. Each metadata reader has a copy of the last reading from the original self-observer, object, schema, policy, Link, flag and table.`EquipmentIdentity`, without adjoining Hand Frame. Real metadata begin takes from Clarent clock before first reading and end after all reading and closing;50 ms are counted from begin and reject future/reverse/overtime, not renewable in-end.
+
+Sender repeated checks at entrance, current fences in metadata and eventual reponse: former Scene operation/publication 50 ms, new Raw action/stereo/controller report/sync 40ms、C 0 capture 40 ms, current right-right Grip usable/focus, source/session/profile/input/space/producer relationship, Native reference stable shape and homogeneity, and fixed Lancer profile geometry/scale/units/basis. Old Tracking can be used to maintain original values for VV 1 expired; typed path does not renew it to new data.
+
+Two reference fields are distinct:`Tracking.reference_revision`Native private reference snapshot seqlock/config review, PG only check non-0 even-number shapes and replicates;`original_scene.reference_generation`The publicization/binding/ticket/cache/Native actionGeneralation is also certified by Native, and the PG cannot claim to observe itself. SourceKey is a echo collection that cannot replace the verification of the complete immutable source, current access/conformity/basis and by-products of the Barrier.
+
+Return values include only the real query equipment time frame, holdGeneration, complete comment/asset identity and fixed profile metadata; internal and external query numbers are identical, untouch.key remains Scene. PG does not return to world posture or write permission for equipment/shooting/bones. Native must independently verify same query, father registration and current source/basis, convert new raw and re-establish a fixed calibration before each actual writing 40／50／50 With the former CAS/Kernel condition.
+
+## Inspections carried out during current cycle
+
+The following are locally owned data or host seams, which are not accepted for retail games. The assertion is made separately from the scene and does not combine into a " function completion number".
+
+| Inspection | Results and actual coverage |
+|---|---|
+| New sinder | 272 checks；old tracking>50／Scene<50/New Raw and Capture<40 New path is available, original V 1 Still denied; time/focus/right Grip/epochs/reference emptied |
+| Actual HandClint new operation | 80 Checks; real Gate/epoch,150 The old Frame approach, full identity/reference, GT, revoke/reentry, time boundary and SETH post-Gate release and next call |
+| Actual typed Game/asset reading | 24 Checks; owned manual reflection memory, original repetition and denial of status; not qualified as tracker in the metadata reader itself |
+| Actual typed attachment | 9 Cases; owned Attachments array and metadata resolveseams, sole right bone/visibility/structure/NAN/end reading changes; does not represent engine or Clint qualification |
+| Actual new provider/sender/equipment | 271 Checks; actual call sequence with two Game/doubleset/attachment, refusal/domain/same_game refused, shared entered re-entry, SEH/TLS/scratch clean-up, attch receipts and missing; Game/asset/attachment/Clitt itself clearly owned seams |
+| Former HandClint returns. | 15 existing＋30 Frame-copy＋17 Time-current and 8 Game-state outputcases pass; old path maintenance, used source/same_game |
+| Actual PG complete TU | and f 85 Production of defines/flags, plus only new flag, MSVC `/Zs /O2 /W4 /WX /EHsc /MT`pass; syntax check no obj/DLL/link/run results |
+
+Accurate differences before and after the achievement prove additional confirmation: delete this purely new operation, and replace the original Client file verbatim; remove the new flag fence, and then reverse the original start/playground source word by word; new typeed three readers match the original function word by word except for entry signature/entry carrier; share head, f 85 DLL and EO input is maintained. All comparisons are read in normal text by line, not falsely stating that Git-line processing byte equals the original binary.
+
+No P-specific results from the Astra read-only incremental review round 1/P 2; review unrun tests, DLL or Game and do not audit Native as a whole, relying on the agreed NATIV Fullsource/actual GT/barrier before/after/write. Failed translation attempts are retained with the amended version by letter, only running change-affected checks, without repeated retesting of the unchanged metadata/attachment/Clitent path.
+
+Evidence is in signored. `analysis/body-mount-pg-candidate-20261026/`：`source-delta-proof.json`、`helper-tests-receipt.json`I'm sorry.`owned-*`Table of contents, by step`syntax-1792991366200026300/receipt.json`. Early-downrecapt may be the whole exit 1 But it contains individual results that have been adopted and subsequently relied on, which cannot be written in their entirety; eventually the collection is linked by item and its actual source. Uncompleted joint DLL links, retail moves, GPU/eyes and headline acceptance clearly maintainping, overall 36%／W 2 40%No change.
+
+---
+
+## 中文
+
 # PG Tick／C0装备观察实现与验证边界
 
 武器侧已经实现独立的query-bound装备观察及typed provider／sender。该实现等待Body的Native Source47后进行一次联合构建和原动作验证，尚未生成新的PG DLL、建立新case或运行Game／XR。旧f85／EO保持冻结，旧V1检查与行为保持。

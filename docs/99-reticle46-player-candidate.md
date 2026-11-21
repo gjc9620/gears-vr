@@ -1,3 +1,39 @@
+# Reticle 46 Player Candidate and Actual Return
+
+2026-10-17. Local defaults to reticle 46／Borderless 1,Retain Reticle 39; player config not covered. Source freezes from e 70ee 90,The Catalogue analysis/native-source-reticle46，DLL SHA 256 `35852ca9c02a94bdffc9c16de27457bd87185d7531dd39fa008f6f874b3c5f26`。
+
+This construction closes the GARS_UI_CALL_Boundary_OBSERVER without installation of diagnostic call border Hook; actual state compiled=0. Include new batch restorations.10 The game starts with the same self-measures as necessary. Build the evidence file using the script name Callrace 46-Bueld-proof.json, the content of which is source/dll is retial 46 Identity, which cannot be miscalculated as a diagnostic version by prefixation of the document.
+
+## Pistols and checkpoints
+
+pose 75 Session 6904-20261017-085738-0638da 5 a: Digital downward switch, image confirmation pistol, LT opener, RT=0, the simulator is actually neutralized after confirmation of attitude.2937 Batch attempts/publishing, phase rejection 0；144 Subsonic consideration/plan/application,finite 144、fallback 0；HUD unknown_or_mixed 0. Imageticket 455／461 This is only proof that the pistol scene is normal, and does not prove all icon identity, aim for impact or physical integration.
+
+reticle 76 Scripts meet Permission Error during startup, and no original activation is completed; it cannot be counted as re-entry. The owner and XR exit create an identity by a full game, empty, undeclared, original restoration is successful.77 Only a limited retry is added for the script status JSON read-only sampling, and the previous identity and menu check is kept.
+
+reticle 77 Session 5800-20261017-090201-61cff 8d 5: double death menu reading checkpoint, world selection 1→2→3, re-observe the new generation at least 10 Submit a second time. Enter to resume observation protocol 8246／5367 milliseconds, which contains load and script observations, do not equal the duration of black screen. Restore graphticket 910／1816 Both eyes are non-black. Normal stop, primary cleanup, independent entrance restoration and regular game closure pass.
+
+## Local portable pack
+
+ZIP：analysis/release-zips/GearsVR-V1-development-Reticle46-20261017.zip，SHA 256 `90ddca508b5ec149554b2c02d618ceeaf4c3d40d02f83b966d9ab05b5e665fc0`。701 Members,13,636,739 bytes;700 A Payload file.43,426,854 bytes. Pack strictly with inventory and do not attach to analysis log, a contrilator, game file or simulator.
+
+Pre-inspection of new stage and new ZIP depressurator catalogue, interntory SHA 256 `cc0f4b9e2fd56d0e319bd0aaaca17baeaf4b04e0f5ea9b3caff5f0ba201fd670`。portable 78 The outside game is actually started with Python ' s --I/-B, package launcher, package DLL and XR programs. The OpenXR registration form was not changed when the extrapack tested the specified game and visible emulator.
+
+Actual Session Continuous-stereo-18232-20261017-090601-c 2116435: confirm actual first projection, release and epoch deposit 3840×2160 scene map;normal stop, primary cleanup and ordinary game close pass. After running 700 The list document Hashi has not changed. The new ZIP is not publicly available, release_ready=false; clean player machines, the actual deployment of GUI, real appearance and residual scenery are still incomplete.
+
+## Remaining gap for Release 1
+
+- The actual occupancy of machine guns/carrying equipment is shown in both directions.
+- More CG, long tours and intermittent black screen/Carton re-emergence.
+- The real head is a star-sync, UI position and subtitle display; long subtitles, multilingual cases.
+- There are seconds of recovery delays at the start-up and cut-off points.
+- Clean machine installation and acceptance of the GUI in the package.
+
+The source code, CPU testing, simulator images and real header recognition were recorded separately and could not be considered as complete for the first edition of this source gap repair.
+
+---
+
+## 中文
+
 # Reticle46玩家候选版与实际回归
 
 2026-10-17。本地默认采用Reticle46／Borderless1，保留Reticle39及更早命名清单回退；玩家config未覆盖。源码冻结自e70ee90，目录analysis/native-source-reticle46，DLL SHA256 `35852ca9c02a94bdffc9c16de27457bd87185d7531dd39fa008f6f874b3c5f26`。

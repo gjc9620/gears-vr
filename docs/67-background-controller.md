@@ -1,3 +1,67 @@
+# Backstage Xbox Input and Launch Entry
+
+2026-10-15. The user's real handle watch: the role does not move after the game loses focus and returns to the front desk. This round returns to SQLite, Cache Compilation and Hypothetical Code, the focus limit for positioning controller processing, and achieves independent, recoverable running time modification. No new IDA sessions, full-base analysis or tool installation have been added.
+
+## Current Results
+
+Common game and VR `tools/debug-launch/Start-DebugGame.ps1` Default Start `background_input.py enable`. It checks the version and complete input functions after the game has been initially coded, and changes two control branches. `-NoPauseUnfocus`, the game window uses `SW_SHOWNOACTIVATE` Initial display method, where the helper hides running.
+
+This default covers only the project start-up portal (including VR GUI, SimulatorVR, Start-DebugGame) and direct double-clicks the original game EXE without this logic. No changes were made to the disk EXE or global resident service. The game exits with a natural change disappearing, and VR stops with the back-office controller capability that is consistent with the user 's option of "A normal game also defaulted on."
+
+The initial display does not guarantee that the game will not be activated. The first startup observation did occur at the front stage, and this round did not add to the activation of API Hook because the user subsequently indicated that he might know why and asked for a suspension of the part of the survey. Window minimization, multi-person mode, real header show is still unaccepted.
+
+## Source and scope of modifications
+
+- Disk EXE SHA 256：`bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。
+- Knowledge base 1 With PID 16812 history running time code sections; section SHA 256：`911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`;historic module base `0x140000000`。
+- Enter function RVA `0x19ab10`length `0x147d`full byte SHA 256 `acab8014abe6fe624b697c25bda4ddcdf2d9ac4be1b90a50a67f950e1a851adb`. Current PID 17996 ; the same presumption version is not used as RVA.
+- Cache evidence:`analysis/ida/input-routing-20261014/0x14019ab10.asm.json`、`analysis/re-kb/full-native/pseudocode/14019ab10.c`. The cache code is subject to a problem of raw-loader address/parameter extrapolation, so the specific branch is based on compilation and full byte verification.
+- `0x19afc6` Check View `+0x4ec` and the glient fiction;`0x19afe9` Compare activity HWND with view `+0x90`. Failure will skip `0x19aff6..0x19bd12` Control handles.
+- Modify RVA `0x19afcd` . The condition jumps to the control block and removes RVA `0x19aff0` . Keep the actual HWND, the path to the front mouse, the key at the back, and the videotick.
+- Current process IAT read-check confirmation only: enter to start with call on condition `GetForegroundWindow` or `GetFocus`, end of the `GetActiveWindow`. Recorded as `analysis/runtime/background-iat-17996.json`;no changes to these IAT items.
+
+Modify the tool to bind PID/create FILETIME, EXE Hashi, main module path and full function numeric sections. Suspend and confirm process threads stable during writing, rejecting instances where the pointer is falling within patch; then restore memory protection, refresh command caches, read-validate and resume lines. Unusually execute rollback without automatically rewriting. Disables only from patches with matching title logs. Original/enabled/unknown status differentiates between them and unknown code is not written.
+
+## Actual Game Contrast
+
+PID 17996, create FILETIME `134365480324417239`, module base `0x140000000`...play to `-NoPauseUnfocus` Run, backstage memory menu navigator entry level. Tests are performed on short-term ViGEm Xbox 360 Device, authentic handles remain connected; independent XInput read confirmation actual virtual device in slot 1. driver report 0 Inaccuracy, the first two tests therefore suspended and recorded; subsequent reading of the device confirmed by the slot differentials and axes before and after connection.
+
+| Operation | Patch Enable | Restore Original Code | Enabled again |
+| --- | --- | --- | --- |
+| Right swing. 0.65 sec | yaw +29.421° | yaw 0° | Reverse-28.987° |
+| The left swinger. 0.65 sec | Move Role Forward 67.028 Units | Offset 0 | Back 51.168 Units |
+
+Each sample confirms that the game has no front-stage focus, OS does receive a roller input, camera time continues to advance and movement back through the handle. The person moves from the reflection Pawn.Location, without using the third person's alleged lens as a role move.
+
+Evidence:`analysis/runtime/background-controller-17996-attempt3.json`Counterpart `.summary.json`、`background-movement-17996.json`、`background-input-17996-134365480324417239.json`. Backstage restores the original code to render input invalid, and then backstops the response. The focus filter supporting this block is the entry stop point of the current round backstage.
+
+Real handle passive sampling 90 seconds,2,696 The bars are in the backstage, without a rocker operation that exceeds the threshold and therefore does not constitute real handle operations acceptance. User then replies " Still Not Respond" and read-only reviews confirm that the same PID patch is still enabled, real XInput slot 0 Connected and allocated to player 0, mobile/overlooking count 0; game is still in the back; evidence is `analysis/runtime/background-real-failure-17996.json` and `background-real-failure-menu-17996.json`. Users then clearly report " Yes, it is possible" to record the real handle backstage response as confirmed by the user. Between feedbacks there was no further modification of the code or game status and no reason for failure; this user confirms that the full numerical trajectory of the true rock pole and role movement has been synchronized. The handles used for first-time entry into the level may still require a normal button input to the identification player, which is two things to do with focus filtering.
+
+## Use and Restore
+
+Play normal:
+
+```powershell
+powershell -NoProfile -File J:\gearsVr\tools\debug-launch\Start-DebugGame.ps1
+```
+
+Next launch does not apply backhand patch: add `-DisableBackgroundInput`. Restore the original initial window display policy: add `-Foreground`- It's independent of the handle switch.`-PauseOnUnfocus` The game itself is suspended from the backstage, so background input does not guarantee a role.
+
+Current process check/restore (in exchange for cost PID):
+
+```powershell
+py -3 J:\gearsVr\tools\game-io\background_input.py status --pid 17996
+py -3 J:\gearsVr\tools\game-io\background_input.py disable --pid 17996
+```
+
+Log saved in signed `analysis/runtime/background-launch-<pid>.json`、`background-input-<pid>.stdout.log` / `.stderr.log`, the patchbook that contains the creation time. Helper exits with success or waiting for the upper limit to end without continuously squeezing focus or sending input. The starter does not kill a game because the patch refuses; must look at the stdout `state=enabled`, “help has been activated” cannot be considered as “compensation in effect”.
+
+Offline authentication: patches 7 Items (full byte rejection, duplicate start-up, recovery, partial failure rollback, identity change, PID reuse, no ownership denial, thread suspension failed clean-up); backstage start 5 entries;original installation authentication 6 Item, VR launcher 40 Item passed. Actual game validation includes camera and Pawn moves; this round does not restart VR or GPU/headline behaviour. Starting the helpper automatic new process whole must still start the next regular check log.
+
+---
+
+## 中文
+
 # 后台 Xbox 输入与启动入口
 
 2026-10-15。用户真实手柄观察：游戏失焦后角色不移动，回到前台才移动。本轮复用 SQLite、缓存汇编和伪代码，定位控制器处理的焦点门限，并实现独立、可恢复的运行时修改。没有新增 IDA 会话、全库分析或工具安装。

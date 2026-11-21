@@ -1,3 +1,44 @@
+# Shelter offline implementation package
+
+2026-10-28 The goal is to follow up work directly on identified interactions, modular boundaries, original entrances and acceptance conditions. This round will only investigate, prepare implementation materials and run an independent Python specification reference model; no changes have been made to the running code, modules have been opened, games/XR/simulator compiled, played or run, nor are main line packages or other messages sent.
+
+The authoritative source is... `C:/Users/11/.codex/worktrees/6dof-single/gearsVr`, the base of the investigation `e62e2cee7eb74cafd17407544707893d4f7ada20`. The main line is still advancing the approved M 4 Base Lancer; this package is offline to do no modification of the job. The separate branch of the early document and the old double-writing arrangement have been replaced by the current single writer rule.
+
+Used in conjunction with the entry, drop-in benchmark, firing and submission of books[Common rules](../offline-tech-prep-20261028/shared-contracts.md)See the complete offline material.[Total handover](../offline-tech-prep-20261028/README.md)。
+
+## Conclusions identified
+
+The existing grab edge calculation, shared left-hand arbitration and partial point/body target can be reused but not yet formed as a production bunker function. Production lines remain empty edges and zero ranges; current C 0 Body strategy rejects bunkers; old preview relies on old body modules; collisions, original action replacement, exposure shock and continuous transition need to be completed. Delivery cannot take place by opening an old switch.
+
+Registration of this package 19 The main risks are: automatic retrospection by trigger, forced re-entry of the bunker, repetition of pull and actual migration, walk-in queries leading to hand-off or use of outdated geometry, unrechecked position keeping loose hands, and exposure but still eating original shelter/blind shot.19 The pursuit of continuous search leads to the original version of a specific functional chain that continues to wait for firing.
+
+| Materials | Purpose |
+| --- | --- |
+| [Interacting contracts](interaction-contract.md) | Retain user confirmed behaviour; determine coordinates, grab sides, hold, collisions, exit and default parameters |
+| [Problems and repair schedules](findings.md) | 19 Discovery, evidence, specific repair directions, corresponding acceptances |
+| [Original access.](original-entry-map.md) | Two bunker states, action submission, adsorption/exit, injury and Actor. Trade call conditions |
+| [Implementation of handover](implementation-handoff.md) | Order of changes, existing/proposed new files, interface fields, time series, failed processing and enable conditions |
+| [Receiving and Inspection and Residual Certification](acceptance.md) | Targeted validation scenes and pending operational evidence; not implemented in current cycle |
+| [Source Index](code-locations.md) / [Machine Readable Index](code-locations.json) | 23 Documentation,63 Symbol/wire position and SHA 256 |
+| [Second round of replenishment](research-followup-v2.md) / [Supplementary Source Index](revision2-code-locations.json) | T-test historical evidence revision, original delayed firing chain, current main shot consumer, submission/dismissal sequence |
+| [Specification vector](contract-vectors.json) / [Reference Inspector](offline-contract-checker.py) / [Result](contract-check-results.json) | 28 Synthetic Time series cases,78 A claim and 3 place transfer synthesis example; specification reference model only validated |
+| [List](manifest.json) | Functional switches, phases, issues-achievement-acceptance linkages |
+
+## Evidence boundary
+
+- **S**: The source code or original script that is read in this cycle can prove structure and branch, but cannot prove running effects. The script exports undefunct token, some of the parameters are misstated as local variables; it cannot be considered C++ ABI.
+- **H**: The test described in the historical records of the warehouse. This round has not been repeated.17 only give a top height range;candidate 4 The latest record is that the compilation was not completed and not implemented.
+- **D**: Project decisions for the current freeze, for subsequent implementation.
+- **U**: Operating conditions that have not yet been certified must be resolved by the established inspection, and cannot be filled in or protected.
+
+Private data is located in `analysis/cover-prep-20261028/`KB query, source snapshot, original script to extract files and Hash index. Scripts, derivative code bytes, running snapshots do not enter the document distribution package or release packages.17／candidate 2–4 The original private directory is not available for this round, so only the historical reports that have been checked are cited here and no re-testing of the original records is claimed.
+
+Interaction and orientation have been defined; the current process ABI, Query-to-Performance still needs to be certified upon approval. They are written as implementation items without needing to reopen interactive design or be expressed as “all operational issues have been repaired”.
+
+---
+
+## 中文
+
 # 掩体离线实施包
 
 2026-10-28，已补充第二轮离线准备。目标是让后续实现直接按已确定的交互、模块边界、原版入口和验收条件开工。本轮仅调查、编制实施材料并运行独立Python规格参考模型；没有修改运行代码、开启模块、编译、运行游戏／XR／模拟器，也没有修改主线包或派发其他会话。

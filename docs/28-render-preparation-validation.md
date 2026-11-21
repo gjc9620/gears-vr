@@ -1,3 +1,55 @@
+# Verifier before and after rendering
+
+2026-10-12 Restore original single-person PID 12624，20 Second static baseline. No screenshot, no camera.
+
+## Observation mechanisms
+
+Watch in the local context of the consumer Hook 0x1fc060 Back and forth,kind=12 Only accept the same rendering object, other calls are routinely forwarded without recording. Save the first view matrix before calling to source_matrix 0..31, save to matrix after call 0..31；renderer_source 0 / 1 Save View Separated in this Category +8 , without reading historical objects along the pointer and not identifying their type.
+
+valid 256 / 512 The first step is to make sure that the first/second matrix reads successfully.8192 / 16384 Shows the link pointer before/after read success. Pooling, storing and owner follows the existing position; complete combination 30592。
+
+`--prepare` Autometrically transmits, pastes and forwards, does not record outside the range, stops and restores. The original simulation function actually changes two elements and associated points. The other five self-measures are also passed. `build-prepare/GearsCapturePrepare.dll`, the starter defaults to reserve eight primary jumpers for activation after entering the level and observes two DXGI entrances.
+
+## Outcomes in Game
+
+| Item | Result |
+| --- | --- |
+| Prepare pre- and post-records. | 6,883 Article |
+| Return Address / Thread | All 0x11918a / 48752 |
+| Consumption to Preparation Link | 6,879 Yeah, the front matrix is all the same. |
+| Prepare for release. | 6,877 Yeah, the rear matrix is all in line. |
+| Change Elements | 24 Change 6,787 I'm not sure.25 Change 6,883 No change in the number of times |
+| Link Pointer | All Back and Back 0x8bf52900, reboot cannot be used |
+| Construct / Consumption / Release | 6,881 / 6,880 / 6,882 |
+| Present/ Failed / Discard | 6,882 / 0 / 38 |
+| Stop / Independent Entry Verify | active=0 All 10 recovery sites |
+
+The complete construction, life cycle and preparation correlation analysis are all passed. The record is a damaged sample that is not matched to call or not completed. 0, construct a matrix group, which is the static baseline only. Calling addresses confirm that the preparatory function is called by default to draw a path.
+
+The two elements change in the preparation stage: before preparation corresponds to consumption and after preparation to release. There is still no dynamic positioning specific to the instructions.
+
+## Writing candidate for further reduction
+
+Preparatory function 0x1fc376 Call Distributor 0x3d8564, local parameter structure to save view and association pointer positions. The distributor enters as set 0x15de10、0xbe6b18 or 0xda44c4 . All three regular code paths use RDX as a view, write to +0xD0 / +0xD4: Horizontal old value divided by twice the offset by +0x50;vertical offset of old values divided by two times +0x54. No specific branch selected for this round has been determined dynamically.
+
+Continue SIMD calculation after writing, write view +0x2B0、+0x1A0 . The specific matrix name, multiplication order and the paraphrase are not to be identified as complete binary.
+
+Next, check the specific branch relationship with the derivative matrix and re-design the right eye update. No second view or output stereoid image has been added; limited real head start results are in place.
+
+## Offline Matrix Layout Check
+
+Add `analyze_matrix_layout.py` Test View with Line Vector 0x70 Before 16 Number of floating points: The three-dimensional foundation in the first three lines should be handed over to one; the end line squared shall equal the negative lens position multiplied by the rotational part. Use the reverse position, then compare it with the location recorded in the same scene, and do not use a stack address with different frames.
+
+Previously Original PID 43632 It's... 9,868 Samples,3,531 Before Group 16 elements pass;maximum positive-transaction/simulation error 4.26e-7 Maximum error in inverse position 0.0156 Game unit. Current static PID 12624 It's... 6,881 One sample passed, with the greatest error in position. 0.0061. The two-scaling factor ratio of the last array is about 1.777778, inverse FOV level by common perceived scaling formula 80 degrees.
+
+These offline results support the current CPU view matrix layout assumptions; do not prove a constant GPU layout, projection depth map, all lens mode or stereo output. Save evidence `-layout.json`, no new Hook is enabled for this or a user re-testing is requested.
+
+Evidence:`analysis/runtime/renderer-prepare-12624.*`Counterpart `-restored.json`、`-correlation.json`、`-lifecycle.json`、`-construction.json`；`analysis/native/render-prepare-indirect-12624.json`、`render-projection-write-candidates-12624.json`. Original data only leave a J drive, not submit Git.
+
+---
+
+## 中文
+
 # 渲染准备阶段前后验证
 
 2026-10-12，恢复原版的单人关卡 PID 12624，20 秒静止基线。不截图、不改镜头。

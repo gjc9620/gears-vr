@@ -1,3 +1,39 @@
+# Steam Online, Offline and Multiple Installed Configuration Compatible
+
+2026-10-23 Two manual startups exit before the game is created. Steam Login shows that offline start has been successful, but registration form `ActiveProcess/ActiveUser` is zero; the old starter therefore cannot select the correct file from multiple game settings, and the error hints that unrecognized configuration is required to log in.
+
+## Current behaviour
+
+Online Steam Non-Zero DWORD ActiveUser continues to prioritize and accurately match account settings. Read Steam Installer directory only when the field is zero `config/loginusers.vdf` Middle account selection and offline tag. Current client uses AutoLogin; MostRecent compatible with old metadata. Only selects and clearly defines WantsOfficeMode=1; both selection marks must be consistent when they exist. They are not guessed by configuration modification time, account name or directory order.
+
+Back off the line and check the actual step.exe path of the PID to which the registration form corresponds, and check the client process identity, the status of the register and the content of the file before and after reading. Read with a maximum size; repeat fields, cut-off, abnormal nesting, multiple choices and read-time account/client exchange are rejected. This recognition selects only local settings without changing Steam login status or game authorization processes.
+
+It is known that the old installation still follows the same EXE/Coalesced.ini Hash check. The original behavior of the single set file is maintained. When more sets are used, you can use different local configurations. `tools/vr-launcher/config.json` Add `game_settings_paths` Object: Key is the full absolute path of the selected game EXE, and the value is the complete absolute path for EngineeringUsersSettings.ini. Save other configuration items.
+
+Icon format (must be replaced by the actual path of the machine, not paste as it is):
+
+```json
+{
+  "game_settings_paths": {
+    "D:/Games/Reloaded/Binaries_x64/GOWDE-Steam.exe": "C:/Users/PLAYER/AppData/Local/Coalition/WarGame/Config/ACCOUNT_IDEngineUserSettings.ini"
+  }
+}
+```
+
+The binding will only take effect on the EXE path and will not be followed for installation; only accept the current local Config setup file, rejecting other files/directors and repeating bindings. The quarantine test example ignores shared bindings. The above-mentioned online/de-link rules are not applied when tied; configuration selection is given when it is still unclear, without any direct assertion that the user has not been login. This entry is used for different local configurations, without decomposition or modification of third party authorized components.
+
+The normal starter loads these Python/PowerShell scripts every time you start. This time, there is no need to replace GUI EXE or freeze the list of native/XR. The temporary storage contains new identification modules, recreates a blank user configuration and does not carry this machine binding, account selection metadata or archive.
+
+## Verify Border
+
+This pre-reader has confirmed that the current offline selection matches the configuration file, DLSS=False, set bytes. Steam Library proper and historical copies are verified through the existing EXE/ Install Configuration; this is built access, not started, does not constitute offline/online games, GPU or head-to-head acceptance. Precheck checkbacks ignore directories. `analysis/startup-platform-compatibility-20261023/`。
+
+Windows Store/Xbox is not installed, nor does it have evidence of original EXE, configuration or startup. This time no additional access to the platform can be obtained by using Steam's Hash, address, or start-up as a Store certificate. The subsequent verification of the executable identity, version, configuration location, start/process retention and parent/XR relationship from the platform's actual installation will then determine the independent profile and authentication required. Uncertified EXE continues to refuse; no switch will be provided to bypass an unknown build check.
+
+---
+
+## 中文
+
 # Steam 在线、离线与多安装配置兼容
 
 2026-10-23 的两次手动启动在游戏创建前退出。Steam 登录日志显示离线启动已成功，但注册表 `ActiveProcess/ActiveUser` 为零；旧启动器因此无法在多份游戏设置间选出正确文件，错误提示把无法识别配置说成需要登录。

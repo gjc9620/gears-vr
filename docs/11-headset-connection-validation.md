@@ -1,3 +1,68 @@
+# Headline connection and position validation log
+
+2026-10-11 22:45–22:48, KRVR XR Runtime, Apple Vision Pro.
+User reports connected and conducts a turn-over peace transfer test as hint; no game is started or modified during this round.
+
+| Test | Total frame | Complete VALID/TRACKED | Frames for non-default and complete tracking | The only position. |
+| --- | ---: | ---: | ---: | ---: |
+| 3 Second connection check | 254 | 254 | Not separate | 11 |
+| 30 Second head motion | 2681 | 304 | 48 | 9 |
+| 20 Second-Eye Test Map | 1796 | 1796 | 0 | 1 |
+
+30 The first non-default position appears in the second test. 2.839 Second, last position changes.
+3.072 sec.3.560 Only VALID sign after seconds, TRACKED disappears; maximum continuous untraceed
+About 26.428 sec. The appointment is still received while running 90 Hz shows feedback, but the number of position samples stops 37。
+Therefore, a small amount of non-default data cannot be considered as continuous head-to-head validation.
+
+20 Second test diagram submitted 1796 A program player, GPU back-reading and checking consistent with previous tests.
+Head data is all default zero position/four-digit, and feedback is shown on run-time 0/s, headline cadence is 0Hz。
+Users then clearly responded “sleeping out”. No confirmation of head-over visible test maps was received.
+TRACKED signs remain intact on this wheel, indicating that the default attitude report will be fully tracked when it is running;
+Producer access must be accompanied by a separate recognition of the true connection and cannot rely solely on these markers.
+
+Original evidence is in Git ignored analysis/openxr：
+
+- pose-20261011-224557-063389...csv and corresponding logs;
+- pose-20261011-224624-591855...csv and corresponding logs;
+- pose-20261011-224755-535444...csv, left-eye GPU back and corresponding log.
+
+Add non-default and tracked frames to the packaging, with maximum untraceed time periods; no automatic physical head validation will be claimed.
+User then chooses to change to Quest 3; revalidation when using a combination of the connection and readiness.
+Found VDXR and J:/Steam Next.
+The subsequent test subprocess -runtime parameter selection does not require modification of the global OpenXR registration form.
+
+## Quest 3 / Virgin Desktop: validated
+
+2026-10-11 22:59–23:03, with the test subprocess XR_RUNTIME_JSON
+VirtualDesktopXR 1.0.10. The system is still running at KRVR, without changing the registration form.
+Query returns XR_ERRO_FORM_FACTOR_UNAVAILABLE before connection; user connects in headline
+System query successful after Virtual Desktop, name Meta Quest 3。
+I recommend every eye. 3072×3264, rotation/location tracking support is true; testing remains only 512×512。
+
+First round 30 sec:3547 Frame, all tracked and all positions different but should Render only 971 Frame,
+FOCUSED 970 frame. User requests to retest, not using this round as a display of acceptance and inspection.
+
+Second round 30 sec:3585 Frames, all positions limited, complete VALID/TRACKED, non-default and different;
+3585 The frame should be Render,3584 The FOCUSED framework,3585 Submits a project player.
+Pressed predicted DisplayTime 30.021 seconds,119.38 Subposition sample/sec.
+This is not a real head start showing frame rate measurements, nor is it an original sensor sampling rate.
+
+Head coordinates range (m): X [-]0.07862,0.07314]、Y [-0.12833,0.05069]、
+Z [-0.05759,0.13615. The maximum rotation relative to the front frame 69.36°The distance between the eyes and the right 66.61mm。
+GPU, read back and check left and right images as the test described above.
+
+User confirmed " See, finish, picture continuous" and added "no problem".
+Therefore, acceptance is shown by entering and head-higher test maps for independent head rotation/diversion.
+No axle-by-axis symbols, game scales or virtual scene depths strictly verified; positional access to games, first person location,
+The real eye viewing remains to be realized.
+
+Second round of original evidence:analysis/openxr/pose-20261011-230207-719422.csv The blog, and its corresponding logs,
+Left-and-right eye GPU back reading; confirming statistics as Quest 3-confird-validation.json. Both keep their machines, Git ignores them.
+
+---
+
+## 中文
+
 # 头显连接与位姿验证记录
 
 2026-10-11 22:45–22:48，默认运行时 KRVR XR Runtime，Apple Vision Pro。

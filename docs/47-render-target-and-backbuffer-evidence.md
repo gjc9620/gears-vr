@@ -1,3 +1,57 @@
+# Correlation of left- and-right intermediate targets to window back buffers
+
+2026-10-12. DLSS remains closed. Two views still do not reach the correct eye pixel acceptance.
+
+## Add observation
+
+Enable three Ds before creating level target 3D 12 Descriptor view entrance: CreateRender TargetView, CopyDescriptions, CopyDescriptionsSimple. Original parameters are forwarded as usual, description metadata with fixed capacity are kept without resource references. 180 The entry is restored over time; official sampling can take over the access.
+
+The official sample tracks the first colour target of OMSetRenderTargets and its dimensions, format, mip. Only the first RTV is covered, with no coverage of all MRT, depth objective, ExecuteIndirect or GPU content. The command list slots are bound to histogram capacity, spilling clear reports and not being considered a complete GPU audit.
+
+## Effective field testing
+
+PID 5296: Loading of the record 363 Creates a RTV, describing sign copy and evict zero.10 Double-Sec View Submit 1,576 Consumption, preparation and destruction 1,576; state of release, empty pool,21 The window is still left-relevant cards, right-hand black and then returns to normal single view.
+
+| First Colour Resource | Size/Format Number | Left View Draw | Right View Draw |
+| --- | --- | ---: | ---: |
+| `0x161d9c6650` | 1920×1080／28 | 5,807 | 5,817 |
+| `0x3db1ae1b0`When you tie four targets | 1920×1080／26 | 41,851 | 40,866 |
+| The same resources. When you set a target, | 1920×1080／26 | 59,387 | 61,407 |
+
+The main colours captured above are bound to the full range of targets, and do not support the assumption that "these goals have a half-screen width so they are cut off on the right."0 Records indicate that no colour-colored target is bound and may contain depth drawings, which cannot be evidence of an error in size.
+
+Yeah. 147,132 CSV records read in a strip-to-stream fashion, will make Present/Prosent 1 The GetBuffer resource identity corresponds to the RTV histogram:
+
+| Actual window back buffer | Size/Format Number | Present Records | Draw within the Test Range |
+| --- | --- | ---: | ---: |
+| `0xb066c000` | 1920×1080／24 | 2,130 | 992 Fullscreen view |
+| `0xb06656d0` | 1920×1080／24 | 2,130 | 994 Fullscreen view |
+
+Both belong to the same game window `0x951bd8`. So you can determine these formats 24 The target is the window's actual back-up buffer, not just a formal guess. Identity is used only for this capture and cannot be reused over the process. Full screen output may be normal composite; it has not been proven to be the cause of the right black screen or correct pixels in the middle target.
+
+Command List Overload 653,020 No, no direct drawing followed 2,674,405 - It's a lot of time.1 Still refers only to the test consumer function's wiring range, and other route paths may not be covered.
+
+## Invalid or prepare rotations
+
+- PID 32036 In focus, double view is submitted zero times; target creation observation starts too late, CreateRTV is zero and cannot be used as evidence for the dual view.
+- PID 41192 The early status file is unique and not ready for reading; no two-views are enabled. Three earlier access points are restored by stop signal and independent verification, and subsequent changes to the file sharing method are made.
+
+## Validation and evidence
+
+- Fixed-capacity metadata testing covers copying, unknown source removal, cover, Reset, volume expulsion and over-repeated rejection.
+- Real D 3D 12 Offline self-detected RTV creation/two reproductions, early observation stop, formal takeover and portal recovery, without actual mapping.
+- Eight analytical tests were submitted for approval.
+- Local original evidence:`analysis/runtime/target-prime-5296.*`;reciprocal reports `target-prime-5296-backbuffers.json`. Original evidence ignored by Git.
+- Fluid matching tools:`tools/native-capture/correlate_backbuffer_targets.py`, the required stop state is confirmed and no count is accepted or accepted as pixels.
+
+## Next
+
+The collection output reaches a small number of call anchors that are identified as backup buffers, locate the original final output path and check its input texture and regional parameters. It cannot be forced to cut or output ranges simply because of full-screen viewing. Correct binary pixels, independent OpenXR eye texture, projection/unit/IPD calibration and interaction remain to be completed.
+
+---
+
+## 中文
+
 # 左右中间目标与窗口后备缓冲的对应关系
 
 2026-10-12，继续排查原版关卡中的右侧黑屏。DLSS 保持关闭。双视图仍未达到正确双眼像素验收。

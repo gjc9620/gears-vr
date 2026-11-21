@@ -1,3 +1,57 @@
+# Original Continuous GPU Image Sharing
+
+2026-10-12. First person name Mod to keep installation, image settings 1920 × 1080; this is a road-access study, not a two-eye stereo.
+
+## Mechanisms
+
+`gpu_share.h` Use one shared DEFAULT texture and two shared Ds on proven create queue/ exchange chain binding 3D 12 Set. The side of the game is copied before matching Present, and then recovered with Present, shared texture COMMON, and Signal ready set. Receiver uses the same independent D card.3D 12 DIVIce, open shared texture and fence, Wait ready, copy, restore COMMON, Signal done.
+
+Sendend only writes the next frame when previous serial number is done and allocator commands are reusable; otherwise skipping does not block the game waiting for the receiving end. Current copy interval at least 16 ms, single-cell design is the correct prototype and final ingestion/ delay has not been assessed. Create resource, Map metadata and shut down resource is on the workspace; Present does not wait for GPU, does not write disks. The workspace is buffered after release of the reservation after GPU completion.
+
+The shared object name contains the producer PID; metadata check the mass / version / size / PDID / acceptance LUID/ texture description. Only one recipient-end identification is allowed, and no heat replacement is allowed after the receiving end exits to avoid having to go with the old GPU command. New testing uses a new game process. Size / format change report failed, recreated automatically after Resize Buffers is not supported.
+
+Cancel Hook and confirm the activity's callback exit when you stop sending, then mark the shared channel to stop, pending the final submission of your own GPU to release the resource. If this fails, keep the COM object that may be in use in the GPU to the process exit.
+
+## Authenticated
+
+- Two separate processes, each format 12 Frame,19 × 13 (a) Non-regular width;8-bit RGBA and game 10-bit RGB format is passed. Each frame colour changes, the receiving end-by-end pixels compares to the expected value, checking all frames and line fills.
+- The first frame of the receiving end is deliberately delayed. 150 ms, a strip occurs at the end of the sending; the duplicate receiver is rejected. Both formats return the recipient 0 And the release of resources is successful.
+- Practical Game PID 32616: Observation 180 Seconds, take them in when you enter the level. 20 sec. Game release 324 Frame, receive. 323 Frame, content changes 322 Last received serial number 323. The extra frame sent is that there is still one release after the acceptance test, which is not considered to be a lost frame.
+- 1920 × 1080，R 10G 10B 10A 2_UNORM. Receiving port header save 640 × 360 Diagnosis maps, manual checks identified as actual stone pillars, corridors, candlelight scenes, consistent with the cut-off of independent game windows.
+- Game Record 55,074 Second Present, failed 0 Logs are abandoned 0;sharing status ready, HRESULT=0、busy_skips=10,812. This figure includes a single slot waiting after the receipt is slower than the dispatch and exit of the receiving procedure, which cannot be converted to a separate loss of performance.
+- After Stop 0 The release of resources was successful and the external access points were independently read bytes restored.
+
+The diagnostic receiver is still read back to CPU by the texture of the GPU it receives for verification and retention of the frame; the game  ⁇  recipient transfer itself does not have CPU image transit. The diagnosis receiver cannot be read 323 / 20 The government has been able to provide a complete picture of the situation.
+
+Local evidence:`analysis/runtime/gpu-share-32616.{json,jsonl,ppm,png}`、`gpu-share-consumer-32616.txt`。
+
+## OpenXR receiver
+
+Add `game_gpu_screen.h` / `run_pose.py --gpu-game`, copy the received GPU texture directly to the same format OpenXR swapchain; convert to available GPS shadow if the original format is not supported 8-bit SDR format, then submit two-dimensional Quad with eyes visible. No WGC, CPU image rereading or scaling. SRGB target uses decoded RTV encoding to keep coded SDR input; no HDR is available. Processed through Meta XR Simulator 30 Second test,1,112 Sub-GPU copy,2,130 Subquad submission, normal exit; details [Emulator records](22-openxr-simulator.md). The current round of connections is not visible and this new route has not yet been validated in Quest 3 .
+
+Cross-process 10-bit  ⁇  sRGB shadow also passed 12 The frame is known to be colour-by-pixel verification, and the tolerance is different. 1; slow and repeat receiver ends refuse to pass. The machine does not provide D 3D 12 debug layer。`--gpu-snapshot` For an optional receiving-end return, do not change the normal GPU transfer per frame.
+
+The game does not have a completion line for sight nodes, retrospects, real delay and comfort.
+
+## Rewind
+
+```powershell
+& tools/native-capture/build.bat build-share GearsCaptureShareUnused
+& tools/native-capture/build-share/GpuShareTest.exe
+& $pythonExe tools/native-capture/launch_binding.py --seconds 180 --gpu-share --build-dir tools/native-capture/build-share
+# 在关卡中运行诊断接收端（与 OpenXR 接收端二选一）：
+& tools/native-capture/build-share/GpuShareTest.exe --consume 当前PID 0 analysis/runtime/gpu-share-当前PID.ppm
+& $pythonExe tools/native-capture/collect_binding.py --pid 当前PID --build-dir tools/native-capture/build-share --output analysis/runtime/gpu-share-当前PID.json
+```
+
+OpenXR receiverend running on the new game-sharing channel `run_pose.py --seconds 30 --gpu-game --runtime 运行时清单路径`. A channel can only be claimed by one receiving end, running the diagnostic receiver and not reconnecting to OpenXR; normal exit is required and the game is restarted.
+
+References [CreateSharedHandle](https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createsharedhandle) and [OpenSharedHandle](https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-opensharedhandle)。
+
+---
+
+## 中文
+
 # 原生连续 GPU 画面共享
 
 2026-10-12。第一人称 Mod 保持安装，画面设置 1920 × 1080；这是显示通路研究，不是双眼立体。

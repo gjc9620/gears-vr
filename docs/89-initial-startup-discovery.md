@@ -1,3 +1,29 @@
+# Initial Start Parsing Merge
+
+2026-10-17, Source Submission `7b5420d`. This round is only for Python startup, DLL maintains Reticle 39, do not re-build original Hook.
+
+## Changes and boundaries
+
+The original start_capture.main first uses a complete analysis camera for resolve_camera_once and closes the Resolver, then goes into anacquire_observer_preparation to create a new Resolver and to analyse it completely once. The previous result provides only local_player_adress/module_base comparison; Anchor has received prepared_case without any additional hidden resolve.
+
+The benchmark is now initially started with the first complete full analysis of the certificate obtained, and locks in any certificate before it is constructed. It retrys over the internal register and wait_camera_preparation, and attempts to create a new Resolver, complete resolution, rebuilding all certificates, checking access and final reading. Other callers who bring the graphic into the camera dictionary keep their current comparison; no UI certificates are taken instead of the Crossshair certificates, nor have they skip the global unique scan.
+
+This change removes a separate first-time observation, starting with the original second resolution. The time series for rejection is therefore not exactly the same and cannot be called the same as the old version. Module/preserve DLL/priming/active-event check before new first-time resolution; they do not write or activate games. All configuration writing and remote activation are successful after fresh certificates have been successfully completed.
+
+Adds tests to cover the first unlocked benchmark, three internal registration form failures and external re-testing, hard rejection of player/module changes, cancellation/cutoff/late denial success, every Researchover close, Main without preset resolve and Capture Ini using actual new fields.189 The preparation/certification/start of self-detection/re-coupling test passed, and 8 Linesample_player_archor passes; coordinaters run independently 33 The focus test passed, record the startup 56-focused-tests.log。
+
+## Actual
+
+Session `continuous-stereo-39424-20261017-072454-bca850b9`New game PID 39424, create full identity to startup 56 First round of fresh preparations 3279 milliseconds, camera ready to actual first projection.6282 milliseconds;normal stop, primary cleanup, XR exit, game normal closing, and two binary GPU images saved. Auditstartup 56-Audit.json is no mistake.
+
+Previously on Reticle 39 Normal startup readiness.3795 milliseconds, independent package activated 3816 milliseconds, the corresponding camera is ready to begin with the projection.6771／6770 milliseconds. New samples are about as little as possible 0.5 Seconds, but with different process/load conditions and only a round, you cannot claim stable returns or extend them proportionately to the whole startup. The checkpoint re-locking does not call the initial startup path and this change cannot be used as a checkpoint to restore speed.
+
+Existing Reticle 39 The test of ZIP is still a pre-change Python snapshot; the default warehouse startup has used new codes. New packages are updated, independent deployment validation and broader scenarios will have to be handled separately.
+
+---
+
+## 中文
+
 # 初始启动解析合并
 
 2026-10-17，源码提交 `7b5420d`。本轮只改Python启动准备，DLL保持Reticle39，不重新构建原生Hook。

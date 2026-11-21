@@ -1,3 +1,40 @@
+# UI Knowledge base first search and unfinished route
+
+2026-10-15. This round only organizes the saved files without calling IDA, re-compile, start games or modify Mod. The machine can retrieve results as shown in `analysis/re-kb/ui-findings.json`. The subsequent development should first look for these evidences and then direct the missing function.
+
+## Sources and credibility
+
+`analysis/ui-v1-script-audit/manifest.json` It's a list of two depressed script packages:1705 + 1004 = 2709 (a) Export files;1093 The blog is a very popular one.1010 I'm not sure what you're talking about.888 The output success rate cannot be considered either a primary back-to-text success rate or functional understanding coverage, nor can the index of the package object be used as RVA. All derivatives continue to be left locally only.
+
+The original static evidence is separated from the script statement.256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`, not disk EXE identity. This round does not independently verify the snapshot file or determine the capture process; versions not given by other evidence, snapshot paths and PID are left unknown. RVA can only be used after matching binary identities. The current record indicates that part of IDA RIP symbol is low 0x1000, the original command shift conclusion should be used and not repositioned to display sign mechanically.
+
+Credibility is judged by the conclusion that static routes can be highly credible, but operational callers, precise target resources, actual ticket connections and visual correctness are independent evidence. The results of this operation are a summary of existing reports and the current round has not rerun.3/4 It's... 44 Byte long conclusion has been made 48 Byte amendments replace the prohibition on upgrading old bytes matching to actual vertex evidence.
+
+## Order of implementation
+
+| Priority | Public route / gap | Existence | Next Minimum Acceptance |
+| --- | --- | --- | --- |
+| P 0 | Screen HUD and World Marker Classification | `WarHUD.UpdateHUDLocators` Read cameras clearly and update local/ visible; PostRender father scope is not a screen fixation certificate | explicitly authenticate screen layouts scope, excluding unknown and world branches; binding subproject / anchor / scene tick |
+| P 1 | Tile/ Icon and whole Text consumption | `1d52b4 → 1bc05c → 19e64c → 172741`；`2482b8 → 1bd880 → 19e64c`。UiObserver 7 Report 2650 Consumers/index sequences/overlay, with text 1112 Paragraph | Reuse certified receipt and freeze matrix; fetch normal scale or original GPU pixels to check HUD visibility, location and long text. HUD plane application count is not visual acceptance |
+| P 1 | Material Independent Consumption and GPU Route | `3a4d3c → 3a5548 → 3a514c → 15a420 → 159fcc`(b) Independence 112 Bytes Payload / 36 Byte Record / 32 byte GPU vertex;GPU returns point `1af345` or `177c4a` | Only certify the count =1, pure screens 0 Consumer calls only once, and does not allow post-release reading |
+| P 1 | Real to White Subtitles | `2a4370 → 2470ac → 246c58 → 1bd880` Independently from PostRender DrawText | Get non-empty glyphs, GPU/ticket and binary pixels in real white scenes. 14497 / 55393 The sub-entry is empty. Delta, no subtitles are complete. |
+| P 2 | Pause / Setup UIScene | (c) the existing type and status, and `2c9481` & The vertual+238 Call Thread | Authenticate the object/vtable/real render function, target and synthesis order first. Undefined callnamed RenderUI cannot be started. WGC cannot directly overwrite a two-eyed after-effect menu |
+| P 2 | Target for a limited depth of the star. | `execLet 1d7ad0`、StructMember `1d6750` Script+359..37 f Existing contracts. | Authenticate the flash GNATIES / own / armed writer branch, actual PlayerTick overwrite and one-time writerscene ⁇ ticket pass. Cache changes, same time stamp or latex do not prove the frame 's freshness |
+
+The old Material route. `ui-coverage-audit.json` Speculation `159fcc` GPU route not re-compiled; later `material-ui-gpu-route-contract.json` The old unktown should be partially replaced because the original window has been supplemented by static routes. There is still a lack of actual Material call and source projection, resources and ticket evidence; no eye fixes have been completed as a result.
+
+## Shared Layer Borders
+
+`19e64c` And precise `172741` Recallable Tile/Text/ Subtitle batch; it is not a full UI channel. Materal uses another payload and draw route, which cannot be pressed by Tile float 4 or Indexing Layout Explanation. Bottom D 3 D drew also serves the world grid and requires evidence of upper semantics and actual resources to be admitted. World Human Rights, acoustics, whole screen post-harmonic treatment cannot be moved to display plane by being in parent HUD scope.
+
+Script already exists `Engine.Canvas.DrawMaterialTile` The file is a native declaration on which no native address can be made.`WarHUD.DrawHUDMessages` The Canvas call in supports continued orientation classification, but contains undecomposition operators and does not constitute visual authentication for all message branches.`WarHUD.UpdateHUDLocators` The camera relies on supporting conservative exclusions without independently proving the origin of Canvas.Project at a time.
+
+The verification covers at least open-scope/script, ammunition and active reloading, interactive tips, world targets/teammates, pause/set, death/injury, real-to-white text and long text. Each time it is recorded: path-cut, member cover, resource subrogation/ticket, correct pixels, exit recovery; simulator does not replace true headshot acceptance. There is no new RenderDoc capture or run acceptance. This round of AI analyses only existing materials and adds a number of inverted functions to the original version. 0, Token consumption is measured by the Platform and estimates cannot be filled out without billing data.
+
+---
+
+## 中文
+
 # UI 知识库首批检索与未完成路线
 
 2026-10-15。本轮仅整理已保留文件，没有调用 IDA、重新反编译、启动游戏或修改 Mod。机器可检索结果见 `analysis/re-kb/ui-findings.json`。后续开发应先查询这些证据，再对确实缺失的函数做定向调查。

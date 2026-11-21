@@ -1,3 +1,79 @@
+# IK, hand-to-hand, four-way continuum, cross-exposure to the original animation.
+
+2026-10-23 Independent branch `codex/weapon-6dof`. Default closed `GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL` Five rounds of the acquisition of the own version have been completed at the test site 32 Sub-hand position/rotation driven,32 The secondary and immediate close-to-war interface, with three rounds of three position axes and three rotation axes. Enter a synthetic bone world posture for identification and fresh testing; it is not yet the actual handle, full level or head count, nor changes public `ownership_proved=0`。
+
+## Writing scope and running order
+
+Reuse the original eight hand controllers. Right-end chain end index 2／3 World position/rotation, left end of chain 6／7 Same route; the remaining four `IKBone*` Head controller maintains the original value. Animation tree chains, grids of components, coordinates, mix configuration, rendering switches and bone arrays are not modified and no forced animation is requested.
+
+`hand_ik_stream_lease.h` # I'm gonna be a little bit more than a million years old #
+
+1. The four original sets of objectives and three-strength snapshots must be completed before writing, the strength of which must be equal to a positive three-dimensional group. All journal is created before the first possible change.
+2. Each target is preserved as it is. 12 bytes. Positions use three floats; rotation first convert radians to three integers, and check the field type, size and reflection structure 0／4／8 Offset. SingleBone tail also requires `bApplyTranslation=false`。
+3. Target writing and original `SetSkelControlStrength(1,0)` Then, read four groups and strength. All matches are recorded for private use. `trial_apply_mask=3`。
+4. Next time. `PlayerTick` Compare the fields that are still in possession by group, calling the original Setter to zero and verifying them before distribution of the bridge requests is done. `PlayerTick` Run after recovery; new targets are written on return.
+5. Reverts independent of the activities, log duration and capacity of the read-only observer, check the game thread before accessing the non-atomic test state.
+
+Restores the current object, fixed configuration and active field that depends on the journal. New operational status or current weapon changes can prevent writing from continuing, but do not prevent recovery of the end of the chain which is still in this test. Unknown value, external rewrite, partial strength or unverifiable recovery remains dirty; does not cover the old value, state 8 Refuses to unload, and closes its own game by an outside owner. Helper returns failed but can clean when rereading confirms all recovery, but still stops testing.
+
+## When this frame is allowed to write
+
+After the first and immediate end of the war, we need at least eight different grids. 250 Checks the purchase of a version of the test site identity, person survival, current weapon Active, known fixed action marking, switch/filling/near-war request/transformation status, eight controller identification and original strength pattern.
+
+All body slot elements must be read successfully. Authenticated empty pointers can skip; reading failure cannot be used as a slot. Effective slot requires the current grid match, parent time is zero, and no playtime is played at custom, target returns base. The actual weight, total weight and goal weight of each cursom child must be strictly zero and read in full to subnode status; non-zero minimum float value is similarly rejected without an epsilon relaxing. Weight/ residual mixed zero check is followed by binary 32 Bit mode allows positive/negative zeros, avoiding the MTZ-XCSR DAZ/FTZ that takes non-zero regular numbers to zero; offline testing is active, reading volatile regular number validation is denied and then retrying test process pattern. Candidates do not change game float mode.
+
+The second round found the actual exit feature of Lancer:`Slot_Std_Idle_Lower` Already `playing=0,target_index=0,blend=0`，`AR_Melee_Saw_Idle` All three weights of a child are zero, but no. `bPlaying=1` Keep To 30 Second timeout. Exiting from mixed period `Weight=TotalWeight=0.134134` Still rejected. Save script loops `BS_MeleeIdle` and `StopBodyStance → StopCustomAnim` The path is consistent with this phenomenon; Engineering exported without the StopCustomAnim text, it cannot be required to clear the sign.
+
+So, this candidate is a general. `bPlaying` Keeps as known telemetry, judging by the parent slot and three zero weights, there is no current custom at work. Do not call the TopAnim clean field. The reserved playmark does not represent a proven advance of time; neither does the zero attitude weight alone prove that all original notify/root logic has stopped. The frame-by-frame restoration and synchronized action interface still have to be executed.
+
+## Limited tests and evidence
+
+Eight times each. The first two rounds are right/ left world X respectively +1／−1,reverse;use right/ left yaw after the recent war +0.03／−0.03 radians, reverse. The current source code and the next three rounds are expanded to a combination of three axes: right position `(1,0.5,0.75)`Left `(-0.75,1,0.5)` original units, then reverse; rotation pitch/yaw/roll right `(0.02,0.03,-0.025)`Left `(-0.03,-0.02,0.015)` radians, then reverse. The targets of both hands are calculated separately. The attitude is now available `FreeHandControl` The same identity, freshness and integrity 6 DoF data validation; public awareness/apply remains zero, with limited private permission.
+
+I'm sorry. 16 Call the original immediately after writing, in the same post-Tick `StartMeleeAttack`. The data must be recorded as a physical observation `bDoingMeleeAttack=true` Related `PlayCustomAnim*`，1.4 Call the original stop in seconds and wait until all parent slots, child weights, status and stabilization windows are met before execution 16 The transfer is first completed by the Bridge entrance; it does not pretend to be a "outside VM parameter before consumption" reality measure for restoring Setter.
+
+| Purchase process | Private Reply | Result |
+| --- | --- | --- |
+| 29424 | `analysis/hand-ik-stream-runtime-1023a.json` | 16 Sub-drive/16 Success in the resumption and immediate handover; old-shut conditions resulting 30 The seconds are clean and time out. It's not a complete test. |
+| 51004 | `analysis/hand-ik-stream-runtime-1023b.json` | Same clean timeout; detailed fields positioned to zero weight Saw_Idle retention sign; original animation field not changed |
+| 15952 | `analysis/hand-ik-stream-runtime-1023c.json` | 32 Sub-drive/32 Rehabilitation,96 A complete matrix sample.256 Setter,256 Sub-targets written/restored, actual close fighting and re-take-over; zero for ditty/faault |
+| 20624 | `analysis/hand-ik-stream-runtime-1023d.json` | Repeat X/yaw test after adjusting the thread filter before non-atomic access, all 32 Reconstruction and handover passages |
+| 56972 | `analysis/hand-ik-stream-runtime-1023e.json` | Three position axes and three rotation axis combination targets/reverse targets, all 32 Reconstruction and handover passages |
+| 37196 | `analysis/hand-ik-stream-runtime-1023f.json` | After the zero-weight check is changed to a bitmap independent of DAZ/FTZ, repeat the three axes test.96 Sample,32 Recovery and actual close fighting/retakeover of all adopted |
+| 43348 | `analysis/hand-ik-stream-runtime-1023g.json` | The final state no longer authorizes new targets, partial failure does not miss the full apply mask, and the three-axis test and all recovery protocols are passed again. |
+
+15952 Candidate DLL SHA 256 Yes `db3477fdcb0a750b900107092ec0f87a30471c6b48e7bf097adb14974ef488f4`, log SHA 256 Yes `fa8f11912a4beee28bf368af4b85029864c0733f4af38b975444a203082d1f8e`Stop and return. 0;separately read CallFunction 32／ProcessEvent 64 Same as the original certificate before loading. The game has been withdrawn and nine silent sessions have been restored. The previous two tables also completed field, entrance and nine audio sessions and failed to confirm.
+
+Private bone response recovery output in `analysis/hand-ik-stream-bone-response-15952/`。31 Of the samples with grids, Tick pushes, two-hand target positions are about right. `2.67e-5`Left `2.57e-5` Original unit. The rotation is first positive and the actual right/ left yaw changes approximately `+0.02977／−0.03027` radians;reverse bands `−0.05983／+0.06021`. Full angle difference after first rotation is about right `0.01299°`Left `0.02686°`Invert the appointment. `0.00831°／0.02328°`No. 16 The next time the frame is restored immediately, there is no net, Tick, and impact statistics are excluded.
+
+These data indicate that the position and direction of the handsbone of the current example changes with the test target. There is no natural karma acceptance for sham, nor does it lead to the drawing or head-to-face image inspection; the collector and the operator `effect_proved`Global `ownership_proved` Continue with false.
+
+Three-axis combination. 56972／37196 - Yeah, I'm all in. 31 Cross Tick Sample, every grid Tick average +1 The difference in the target position is less than the one with both hands. `6.16e-5`／`3.25e-5` in units, the full target angle difference for each of the two rotation segments is less than `0.020°`／`0.022°`。37196 First actual position to right `(1,0.5,0.75)`Left. `(-0.75,1.000006,0.5)`About right in reverse `(-2,-0.999994,-1.5)`Left `(1.5,-2.000008,-1)`;the full angle difference for the first rotation is right `2.4045°→0.01790°`Left `2.3042°→0.01105°`, invert by right `4.7782°→0.02087°`Left `4.6120°→0.01308°`. Recalculate in the corresponding `analysis/hand-ik-stream-bone-response-<PID>/`。
+
+37196 Round DLL SHA 256 Yes `29069e7215a44450a6448e2babe6a71974ae12b53c97b69e981e98159bc96f21`, log SHA 256 `942cecc70715332c53a84cf6143bdf731856273929d1ed8250aad84488697849`；56972 Log SHA 256 `7c2ff3ed8c1b275ddb0c30bb1c8181e8f29054159cf29e739526c1865d4bd147`. Both additional games complete two entry-independent returns, nine silent sessions and the playout of their own. Candidate binary, relevant source code and Hash list are only left in the ignored `analysis/hand-ik-stream-candidates/`; the original failure response was not changed to success.
+
+43348 Final Source Candidate DLL SHA 256 Yes `87308482f6e60502361f81032e96b28f9b2d2971b02b9f2962d1046643090563`, log SHA 256 `1ec630c750a0a30f58c40e53152cfc40c686a5cf74338b9dc9eec477050253f9`; the Bureau has the greatest gap in its full-time location `6.248e-5` Unit, full angle difference for the rotation segment `0.01669°`。32 The restoration, two entrances independently, nine silent conversations and game exits are passed. Final private apply is zero to stop authorizing new targets; any uncleaned journal reported by independent dirty/fault/safe fields cannot be considered as successful.
+
+## Build and autocheck
+
+```powershell
+cmake -S tools/playground -B analysis/build-hand-ik-stream-trial -G "Visual Studio 18 2026" -A x64 -DGEARS_PLAYGROUND_HAND_ANIMATION_PROBE=ON -DGEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE=ON -DGEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL=ON -DGEARS_PLAYGROUND_OUTPUT_NAME=GearsPlaygroundHandIkStreamTrial
+cmake --build analysis/build-hand-ik-stream-trial --config Release --target GearsPlayground HandIkStreamLeaseTest --parallel
+py -3 -m unittest discover -s tools/playground -p test_hand_ik_stream_trial_run.py -v
+```
+
+Macons require two original animations of the viewing portal and refuse to write a candidate combination with old single pulse/six windows, free hand probes and other inputs/bones. The CallFunction original bytes will reject superimpose when the entrance is installed in another Native owner.
+
+New Runner Strictly Check 32 Sub-phase/ phase 96 A limited complete matrix/32 Orderly recovery/sole 16 The action is then handed over/end-line all count and mark. 32 bytes, read two entrances independently after the stoppage; logs claim that restoration cannot replace live byte comparisons.30 Python check covers success, clean failure, partial life cycle, stop failure, byte mismatch and forgery log; four channels C++ test covers each part of the writing point, is written after failure, foreign value does not cover and accurately restores. Oldly controlled IK and Hook offline check, private-default shut-down build passes.
+
+The default build still closes all hand test macros, and the export table does not contain HandIk/HandAnimation testing portal. No freeze/XR, default starter or release package has been replaced.
+
+The next step is to separate the hands of the grip into the bones, the same instrument posture as that of the current Native and the integration of a single CallFunction owner, more cross-sections of pick-up/take-over guns/injury/execution, and final rendering and head-notation.
+
+---
+
+## 中文
+
 # 双手四通道连续 IK 与原动画交接试验
 
 2026-10-23，独立分支 `codex/weapon-6dof`。默认关闭的 `GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL` 已在购买版自有测试场完成五轮各 32 次双手位置／旋转驱动、32 次还原及一次立即近战交接，其中三轮覆盖三个位置轴和三个旋转轴。输入为有身份和新鲜度校验的合成骨世界姿态；这还不是实际手柄、全关卡或头显验收，也不改变公开的 `ownership_proved=0`。

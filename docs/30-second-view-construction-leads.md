@@ -1,3 +1,38 @@
+# Object boundary before second view construction
+
+2026-10-12, Current Process PID 12624 . There is no call to construct functions, assign objects or modify the set.
+
+## New discoveries
+
+Player scene function 0x15cf08 The blogger adds:0x15d830 E.C.X=0x430、EDX=8，0x15d83a Call 0x1c03c8 Distribute the candidate source view. The result is passed through RCX 0x15e428, return value then in 0x15d9ae Pass. 0xca360 Adds the input set.0xca360 is the additional candidate for the needle array, which is processed at a specific capacity 0xca394。
+
+It's in the rendering machine. 0xD30 The step-long consecutive copy is two types of objects of different sizes. The source view structure is not directly related 0xD30 Byte distribution followed by copying: The original structure calls also prepares a large number of stack parameters, including multiple points of reference, four float-point parameters, etc. All parameter synonyms and pairing contour are not confirmed and it is inappropriate to call the complete source view directly following the entry for copies of both known parameters.
+
+Before 0x194454 The basic reproduction assistant also calls the container and quotes the assistant. 0x15cb7c、0x19483c、0x1948d8;All members cannot be considered to be normal values that can be copied independently. Rendering copy resolution 0x15c27c Dealing with large numbers of extended members, which are beyond the scope 0x430, not to use directly to clean the candidate view.
+
+## Source View Clear Path
+
+Keep chasing Draw's normal code and find it. 0x15ca0c: Press the group count through every non-empty pointer, call 0x15ca7c, and then EDX=0x430 Here. 0x53ea50 Release the object. Then count zero, by 0xdd200 Clears the pointer array. It appears at the same time at the end of normal Draw and at another submission branch. This is static evidence that the source pool owns and cleans up these views, without adding dynamic cleanup to Hook.
+
+0x15ca7c Process Source View +0x418 the shared object (by -0x13C Call Later 0x1753a0) Cleanup +0x400、+0x3EC、+0x380 / +0x390 and +0x140 . Base copy 0x194454 Send Source +0x418 Copy to target and add references; the last value field observed includes +0x420. The reproduction and resolution are resource management syntax, not only the value of the value or the concoction of the rendering extension object.
+
+Additional local evidence:`input-view-family-lifetime-12624.json`、`input-family-cleanup-12624.json`、`source-view-cleanup-12624.json`. The above is still only read-only evidence, no dynamic creation of additional source views and no proof that ownership can be safely transferred to the new view.
+
+## Relationships that must be confirmed afterward
+
+1. Source view complete construction parameters, or a controlled dynamic validation of base copying and pairing clean-up.
+2. The dynamic time series of the cluster clean-up, if added to cover all normal/unusual exit branches.
+3. Each eye needs an independent historical state, and a normal creation and release interface.
+4. The actual support of multiple view view view, output target and chart path.
+
+Only the normal way to construct a secondary view, copy a source view or submit it in two stages is to be selected after these relationships have been completed. Currently only the tectonic threads are confirmed and no secure second view interface is claimed.
+
+Local evidence:`analysis/native/view-construction-ownership-12624.json`、`source-view-constructor-12624.json`. The preceding CPU left-and-right eye calculation has been validated by means of object management.
+
+---
+
+## 中文
+
 # 第二视图构造前的对象边界
 
 2026-10-12，当前进程 PID 12624 的只读普通代码调查。没有调用构造函数、分配游戏对象或修改集合。

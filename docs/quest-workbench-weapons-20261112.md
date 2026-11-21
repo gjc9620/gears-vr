@@ -1,3 +1,78 @@
+# Quest Workstation 0.4.0：12 Weapons and original parts
+
+The delivery extends the independent Quest application without modification
+Game Mod, do not schedule other sessions and do not start the game/XR emulator. New request covers the former Lancer-only range of the workspace.
+
+## Weapons depot
+
+| Weapons | Numerical bones | Current Edit Slot Bits |
+| --- | ---: | ---: |
+| Lancer | 9 | 5 An existing interactive part. |
+| Hammerburst | 3 | 5 |
+| Gnasher | 3 | 5 |
+| Snub | 5 | 7 |
+| Boltok | 12 | 14 |
+| Longshot | 4 | 6 |
+| Boomshot | 3 | 5 |
+| Torque Bow | 9 | 11 |
+| Hammer of Dawn | 2 | 4 |
+| Troika fixed machine gun | 13 | 15 |
+| Fragmented grenade. | 12 | 14 |
+| Smoke grenade. | 12 | 14 |
+
+The primary/supportal area is derived from the model range.
+Troika keeps the bottom seat, leans over/to institutions, turns to the left and right, ends to the left.
+Left and right hand/shelter, shell mouth and player reference point. The reference joint is maintained even without a separate surface.
+The original of the Boltok part is only a subject number, which is kept in the interface and not named for its mechanical functions.
+
+Every page of the arsenal.6 Item, widgets per page 5 item. Select the card/area for the dot widget, select the right hand collection, edit the finger, and then select the finger(s) to be taken by the left hand.
+The different weapons are stored independently by the model name and content of Hashi, to switch up the old items.
+Area to Left allows the regional centre to be placed at the current real naked hand/left handle, with a right-hand click.
+The original rigid text can be moved/rotated, converted to compound along the original parent-child hierarchy and saved to the center_preview.
+Captured part_delta_in_object keeps the widget reference and previews the position following the current change of the widget.
+
+## Model integrity and boundary
+
+Prepare_catalog.py only uses the items that are recorded in the core/map mesh-source and bone-audit records and checked through Hash
+Retail original export, do not run a new solver or game. Original LoD 0 The whole, the bone name, the bone level and every surface are retained.
+A rigid triangle is split by the sole original bone; a complete static reference is maintained on the transbone/mixed weight surface and never posing as an entropy.
+When the mixed joints do not have a rigid stand-alone surface, the interface clearly shows “monk joints: static references” and does not provide for pseudo-conformity.
+This is not a complete original animation/skin calculation, nor does it refer to the preview slider as an original mechanical process.
+
+Each model is mapd by the original long axis +X or +Y to UAE forward-Z, unit.01 m/ Original unit; this is available resources
+The size/fingerprint of all weapons is not certified.
+The Lancer model/five-part identity and old project compatibility are avoided.
+
+This time, we're done.12 Resources, components/reference joints, areas and position editors. Specialized handle change/loading/shooting tests
+Still only Lancer. Other weapons “touch” pages clearly indicate non-access and lead back to parts/weapons selection; no
+All weapons are exported from JSON and collection; there is Mod
+The finger channel is still only converted to Lancer, and the remaining markers are kept on the original item without an unapplicable conversion.
+
+## Authentication and Status
+
+- 12 Full spectrosity/pretobular cover, Troika 13 Bones and left handshake/barrel check passed.
+- After independently reading GLB, merge the whole piece with the mixed static surface by triangulation and complete model
+  The triangles are identical, containing a sequence, repetition and each float 32 Toppoint position.
+- Lancer complete GLB Hashi still 8fa 26e 2b…baec 6;all Chinese weapons/parts characters are in the actual repository.
+- New 3 Project entry/surface/tronography test,5 Export test (including non-Lancer collection reservations) passed; already available
+  The practice CPU process is passed. Android compiles, signs, and 16 K Alignment and Windows Manager compiled.
+- Offline 12 The model check diagram is viewed personally.12 The shape is legible; the chart is not a Quest screenshot or run-in and acceptance.
+- Queens Not yet 3 connection;no/no new live machine started, switched, durable or UI point accepted. Last actual code 10。
+
+Candidates 0.4.0-dev/code 13 Steady the entrance.J:/gearsVr/candidates/quest-workbench-20261111。
+Build analysis/quest-workbench-20261112/apk-build-v13-catalog-final。
+APK SHA25630889caab2f8d7c947cb6448e8df30f4589ebe08cbd1346ca06e03cec98cff2e。
+Model list/source and each component in the tools/quest-workbench/assets/weapon-catalog.json及各parts.json。
+This package contains 0.3.1- The chainsaws are back in position.0.3.2 Touch Aim's direction,0.3.3 Continuously unplugged repairs; those actual machines repaired
+Acceptance is still pending confirmation by the user. No changes have been made to the public Mod version, game score or other weapons game acceptance status.
+
+
+Installation follow-up: user clearly requested installation; Quest 2G 0YC 1ZF 9H 0 MWD Overwrite Install 0.4.0/code 13 Success. After installation, APMK pulls back SHA and 30889caa…cff 2 e Total agreement.13 An original application file has been backed up to analysis/quest-workbench-20261112/pre-v13-device-backup. No application or validation of new interfaces/twirls/fingerprints is initiated for this round.
+
+---
+
+## 中文
+
 # Quest 工作台0.4.0：12种武器与原始部件
 
 用户要求将所有武器（包括机枪）及部件放进工作台。此交付扩展独立Quest应用，不修改

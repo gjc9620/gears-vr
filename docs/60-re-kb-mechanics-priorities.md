@@ -1,3 +1,41 @@
+# Game mechanism knowledge base: available evidence and minimum follow-up
+
+2026-10-15. This round only retrieves reports, IDA exports and historical running records; no IDA connection, no re-decompilation, no changes to database or game. See structured entries `analysis/re-kb/mechanics-findings.json`. This is a combo that does not represent the full coverage of the game; currently UI public drawing links and VR mainlines are preferred.
+
+## The source must be separated.
+
+Disk EXE SHA 256：`bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`Camera IDA evidence from PID 16812 Here `2026-10-12T17:09:44.809609Z` RUN-TIMER CODES, CATEGORY SHA 256 Yes `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`,File Offset 0 Map EA `0x140001000`, module base `0x140000000`. The disk Hash identification file cannot replace the running time-period Hash. Source multidisc/ run-time bytes are inconsistent; two functions cannot be combined unconditionally with RVA.
+
+History `analysis/ghidra/` Path is the source of evidence and this wheel tool remains IDA + REA, without migration. UnrealScript object index, structure field offset, function RVA, process object pointer separate fields; native declaration in package is not considered as native.
+
+## Directly reusable conclusion
+
+| Entry | Evidence and credible scope | Current gap |
+| --- | --- | --- |
+| Camera Count | `camera-110878-20261014/README.md`and address-based compilations and `byte-verification.json`Packaging RVA `0x3b3af4` Call `0x110878`;CurrentCamMode in camera+0x558;calculating contains Pawn, mode, rotation and plug-in values. Static layout evidence is highly credible | Hex-Rays prototype and AVX pseudocode are unreliable;`0x3d4fbc` The assignment target is unknown and cannot be named GetPawnViewLocation |
+| Native View | `docs/04-native-capture-validation.md`、`analysis/runtime/native-capture-1.*`：PID 32532 Medium RVA `0x15cf08` It's... 4115 Sub-calls match local players, matrix readable; historical dynamic validation | Logs are lost. 1 bar, view does not match Present; no full state is established on this basis |
+| First person anchor | `player-anchor-21208-dynamic.audit.json`：481 in sample 437 Accept,290 The Pawn/Controller Pitch is different.23 A Controller/POV rotated differently | Small angle static position test; Pawn.Location+World ZxEyeHeight remains hypothetical and not a lens or full lens formula |
+| Cross-render threads | `anchor-scene-family-20261014/association-review.md`：`0x2c78f4 → 0x15cf08 → 0x3a148c → 0x116250` Same family data stream; recent history homogeneity join has 1/1740 Not Match | Old CSV No Pawn/SceneInvolvimentID; global lateest, address and proximity cannot authenticate association |
+| Weapons/animations | `docs/19-first-person-motion-and-recoil.md`、`motion-recoil-audit.json`Add bIgnoreControllers, four recoil-based animations and 21 Number of name-based filters remains unchanged | The fact that the package properties do not prove a primary branch, ballistics, final mixing weight or recoil cancellation while running |
+| Player Status and Star-Signature | `docs/57-ui-position-and-subtitle-route.md`: UpdateHDactions cache may be obsolete due to early return of HUD, ActiveAction, smoke etc. | LastCrosshairHitLocation+0x136c Not function RVA; not final impact point or universal player status sign |
+
+The above path does not contain the list relative to `analysis/ida/`、`analysis/runtime/` or `analysis/first-person/`;JSON saves the complete repository relative path.
+
+## Minimum Follow-up Queue
+
+1. P 1 Camera/first person: First re-export with an existing function to complete the CurrentCamMode assigned object and actual return vector source. Follow-up runs only read links Controller, Pawn, Camera, LocalPlayer and single Scene token; records non-atom reading, refusal reasons, render ticket and crossline transfer. Pawn is not shown as a headward or body roll.
+2. P 1 Aim at weapons: Reuse the scene script survey to determine the real grant branch and the current scene ticket. Do not call GetAdjustedaim, which could change random dispersal status, to “validate” caches. Hands must aim for a different source of the gun's mouth, weapon bones and actual direction of launch, and no RVA has been certified.
+3. P 2 Animated: Dismantling package data, lens vibrations, bone control and ballistics. For bIgnoreControllers, find a physical primary consumer branch, then compare the single variable with the gun/FOV/shock; complete animated curve is uncoded without first examining all sequences in bulk.
+4. P 2 State: Establish a common, aim-oriented, bunker-sprinting, roll-over, cross-field, paused state evidence form. Current camera mode and HUD ActiveAction can only be evidence of their own subsystems without impersonating a general status machine; each one identifies the reflector identity and consumption function, then arranges for a state conversion sample.
+
+Reversing the temporary variable after changing the original view does not equal the withdrawal of all effects:`position-consumers-note.md` Recorded `0x2718c8` The LocalPlayer status is updated by location. The geometry of the freeze view only preserves the relevant settings selected from the old point of view, which must be kept at this experimental boundary.
+
+Current round AI in-depth back-translation 0;reuses 6 Type of evidence, structured registration 7 Item. Real Token measures are currently not available, without file size or estimate of counterfeit billing data.
+
+---
+
+## 中文
+
 # 游戏机制知识库：已有证据与最小后续任务
 
 2026-10-15。本轮只检索已有报告、IDA 导出和历史运行记录；未连接 IDA、未重新反编译、未修改数据库或运行游戏。结构化条目见 `analysis/re-kb/mechanics-findings.json`。这是有界梳理，不代表游戏机制全覆盖；当前 UI 公共绘制链路和 VR 主线优先。

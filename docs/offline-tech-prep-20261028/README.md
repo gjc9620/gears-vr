@@ -1,3 +1,47 @@
+# Total transfer of previous technical programmes
+
+2026-10-28. Scope includes 12 The physical interaction of weapons, model handling/compensation, original behavioral portals, and bunker interactions, collisions, body, attack and weapon co-location. Currently only technical programs and offline assets are prepared, without modification to the production of C++, game configuration, construction or candidate packages, without starting games/XR/simulators and without increasing the number of operators.
+
+| Access | Contents |
+| --- | --- |
+| [Weapons programme](../weapon-specs-20261028/README.md) | 12 A specification card, original/new model, original function, gun-by-gun modification of task |
+| [Shelter programme](../cover-specs-20261028/README.md) | 19 Item, call/submission order,20 A receiving scene. |
+| [Common rules for the two sets of programmes](shared-contracts.md) | Same input attribution, active cancellation, bunker and drop speed, life cycle and door-to-door control |
+| [Technical border at the asset back end](asset-backend.md) | Positioned original creation/surveillance/release chain, input protocol and access certification responsibilities |
+| [Mark the handover form.](calibration-plan.json) | 12 Targeted objects, data fields, coordinates and failed processing of weapons; undesired data do not fill false values |
+| [Complete request check](requirements-audit.md) | Current evidence, completion level and access phase limits for each original requirement |
+
+Use current unified checkout:`C:/Users/11/.codex/worktrees/6dof-single/gearsVr`. Mainline M 4 Still advance independently, the line numbers in the old index are only survey snapshots. Future work begins by comparing changes in main lines with symbols; no old workktree is restored, no old module switches are restored and no Python-specific reference model of this package is connected to the game.
+
+## Fixed order of implementation
+
+1. Re-use the main line body/input/replace ownership; implement public keys, action cancellations and cross-modular door controls of this package, expanding already purely logical.
+2. Completion of the life cycle of original inventory services and original components; initial validation of original asset resource creation capacity, separately, not matched 12 Weapons of all kinds are developed separately for loaders.
+3. Physical exchange of ammunition, original inventory and mechanical endorsement along the existing Lancer chain, followed by weapon package P 3–P 6 Access to other guns and throwing.
+4. The bunkers follow their I.1–I 6 Implements context, collisions, input submission, C 0, action/hit and gun-student; public interface reuse 1 Step. The prototype can be developed in modules, but the shared implementation end is integrated by the same achiever sequence.
+5. Only the modified checks are performed at each stage and the short basic operations that were approved at that time; source code, compilation, game action, eyes and entity header feedback are recorded separately.
+
+This order does not require the selection of keys, mechanical steps or model lists. The conditions that involve the internal memory/call of the current process, collision assurance, original resource creation and actual hit are required to obtain a genuine certificate in the code; no previously declared function is available. Specific technical limitations are found on topics without documentation completing numerical replacements for running evidence.
+
+## Offline Packet & Recapture
+
+Delivery to ZIP: Workspace `analysis/technical-prep-20261028/gearsvr-offline-tech-prep-20261028.zip`. Keep in the package docs/assets/tools目录结构, document by SHA 256 List (numbers are given in boxage-manifest.json). Original game extract, original script/native evidence, analytical database and production of C++ are not in ZIP; the link to these evidence in the document still points to the workspace and cannot be mistook as a complete independent game source package.
+
+The following four pure asset commands can be run from the decomposition base directory; only the Python Standard Library is used, no game/XR starts and no main line changes are made:
+
+```powershell
+py -3 -X utf8 tools/weapon-models/offline-v2/build_offline_assets.py --check
+py -3 -X utf8 tools/weapon-models/offline-v2/validate_offline_assets.py
+py -3 -X utf8 tools/weapon-models/offline-v2/build_engine_inputs.py
+py -3 -X utf8 tools/weapon-models/offline-v2/validate_engine_inputs.py
+```
+
+The first check is that the duplicated files are consistent with the author's source; the second rereads the actual GLB and examines the pouncer, LoD, Six-Hongway and ballistic co-operation. The last two reconstructed and checked primary vertex inputs, containing four new models, and three parts of the starter. All results do not prove that the engine actually loaded or the physical appearance.01 The static technology route has been closed; this package does not automatically access the main line.
+
+---
+
+## 中文
+
 # 前期技术方案总交接
 
 2026-10-28。范围包括12种武器的物理交互、模型处理／补件、原版行为接入口，以及掩体的交互、碰撞、身体、受击和武器合流。当前只准备技术方案和离线资产，不修改生产C++、游戏配置、构建或候选包，不启动游戏／XR／模拟器，不增加运行者。

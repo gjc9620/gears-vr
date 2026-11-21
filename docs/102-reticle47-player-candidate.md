@@ -1,3 +1,27 @@
+# Reticle 47 Image release after repairing opening CG
+
+2026-10-17. Local default 47／Borderless 1, Named List `manifest-reticle47-borderless-vd.json`;retain 46 . The source code freezes `9e2f073`，DLL SHA 256 `a1e65907970fc2b8fd626bc8c8fef0383d4bac5dbfd0fa89ab34e6417b2f3e1d`. Diagnosis calls border monitors off. Continue 46 . The fixed-star source is repaired, the unified command list tracking capacity contains a start-up retest that will allow the controlled character link to be finally verified for change.
+
+## Actual return
+
+Prison 81 Keep your eyes ready after the opening.5535 It's always published.0 Frames, bind the table.256 Item and Link Table 512 Inconsistent item.82 Table of actual high water levels in comparison with the same chapter 378 Spills.0, launch successfully 2180 Frame, both eyes. Full evidence, first black transition snapshot and conclusion border.[Release of interruption diagnosis](101-prison-post-cinematic-publication.md). This proves that the release block has been repaired and cannot be extended to all intermittent black screens.
+
+11 The focus is tested to pass.21078 Check; start another necessary self-measurement.59 The Python test was passed, but the actual preparation did not trigger the new branch and cannot be said to have been overwritten at the time of its operation.
+
+## Free-standing bag
+
+ZIP：`analysis/release-zips/GearsVR-V1-development-Reticle47-20261017.zip`，SHA 256 `fd083cfda47bf618baef6a48f31f24a2e0206c1afdc185f78db16e3af1ea6567`。701 Members,13,638,160 bytes;700 Payload files, total 43,432,675 bytes. Inventory SHA 256 `34c6c646f202835a62c09b17eefacb399dfb6515889db02f30c714199d4546fd`. Pack strictly with the permitted list and do not contain games, simulators or reverse information.
+
+The full new depressur directory contains Python-I/-B quarantines, which are activated by independent pretesting and then the outside game is actually started.83 Session `continuous-stereo-8908-20261017-095543-3906443f`♪ The real first projection and two 3840×2160 GPU snapshots pass, with both eyes non-black; after stop, phaase=stopped, passed=true, native_cleanup_verified=true, independently restored and ordinary closed game passes.700 None of the list documents have been changed. The OpenXR registration form was not changed when using a visible test simulator.
+
+This is the machine development package, which has not been publicly released. Clean player machines, GUI installation, real-earth integration/subtitles, real machine guns/carrying equipment, more CG and long-term continuity are still pending. Start and check points may still be delayed at second grade.
+
+Follow-up warehouse measurements: 3 sites restored and their continuous boundaries observed[Recovery and transition gaps](103-reticle47-checkpoint-continuity.md);see transition tipcard independent GPU upload and eye synthesis check[GPU quarantine experiment](104-transition-card-gpu-isolation.md). No DLLs were replaced or rewritten on this basis, no ZIPs were generated and no black screen solution was declared.
+
+---
+
+## 中文
+
 # Reticle47：修复开场 CG 后的图像发布
 
 2026-10-17。本地默认 Reticle47／Borderless1，命名清单 `manifest-reticle47-borderless-vd.json`；保留 Reticle46 及更早版本回退，用户 config 不覆盖。源码冻结 `9e2f073`，DLL SHA256 `a1e65907970fc2b8fd626bc8c8fef0383d4bac5dbfd0fa89ab34e6417b2f3e1d`。诊断调用边界观察器关闭。延续 Reticle46 的准星来源修复，统一命令列表跟踪容量，包含受控角色链接最终校验变化的启动重试。

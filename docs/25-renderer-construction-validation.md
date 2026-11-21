@@ -1,3 +1,73 @@
+# Full rendering object construction: Mod versus original
+
+2026-10-12. Sees the attribution of a copy of the player view after complete rendering of object construction, does not add new views, changes lenses and does not prove that you are reproducing eyes.
+
+## Observation position
+
+Add 0x116250 Four arguments, return pointer Hook, retain original terminologies. 0x3a148c . Read the collection and first view matrix before entering; read after the original structure:
+
+- Render Object +8 . The assembly, the maximum four view fingers in the pool.
+- Object +0x68 . The continuous rendering view storage array header.
+- The array area of the first view and its associated grouping pointers.
+
+kind=9 New tape renderer_input_family, renderer_sources, renderer_storage/count/capacity. 2048= Input group reading success.4096= storage array header meets the restricted verification;128 / 256 / 512 / 1024 Reads output pools, source matrices, output matrix, output homeer. The matrix still covers only +0x70 Started. 128 bytes.
+
+`--renderer` Self-measures the transmission of four parameters through real MinHook trackoline, return values, still call out the original function without recording, construct results sampling, stop and restore the original entry. Cameras, pools and copies are self-measured simultaneously. Build product is in the `tools/native-capture/build-renderer/GearsCaptureRenderer.dll`; five primary entrances are reserved early in start-up and are subject to stop verification with two DXGI portals.
+
+`analyze_renderer.py` Kind= QPC grid, thread, input view and output address 8 Copys the record, and cannot be faked as a single configuration with the same address at different times. The current analysis accepts only observed single view paths; multiple views have not yet been validated.
+
+## Current Results
+
+| Environment | First person, Mod, PID 42888 | Restore original, PID 46420 |
+| --- | --- | --- |
+| Length | 20 sec | 20 sec |
+| Full tectonic records | 5,659 | 4,934 |
+| Correlated with embedded copy | 5,658 | 4,932 |
+| Construct Caller | All 0x3a1595 | All 0x3a1595 |
+| Output Collective Position | All Objects +8 | All Objects +8 |
+| Copy owner update to output set | All | All |
+| View pointer to a continuous storage of its own | All | All |
+| Number of group views / storage capacity | 1 / 1 | 1 / 1 |
+| Inputs are consistent with output matrix regions | All | All |
+| Different Matrix Groups | 1 | 1 |
+| Failed to discard record / Present | 15 / 0 | 13 / 0 |
+| Stop active / 7 entrances | 0 / All | 0 / All |
+
+Both rounds are verified through a limited number of records that are not matched and are not expected to be completed. The two rounds consist of only one array, which is therefore the static lens baseline and cannot be covered by the lens movement.
+
+Before the original comparison starts, Engineering.u and WarfareGame.u restores and validates the original SHA from registered backup 256;backup and Mod originals are not deleted. Users enter the level manually, without following a game window or desktop mapping. Restore login in `analysis/runtime/original-packages-46420.json`, the restoration mechanism is available in the document 18。
+
+Evidence:`analysis/runtime/renderer-42888.*`、`renderer-original-46420.*`Counterpart `-restored.json`、`-correlation.json`and the original version `-copy.json`. The source code and this file are saved in Git, the original running data is left on J-disc by rules.
+
+## Start log issue in re-measurement
+
+PID 41076 The last PID was read briefly by the starter when requesting a test again 46420 Completed logs, early return confirmed; new samples actually implemented 30 Seconds are stopped without timely action alert, not as movement validation. Original data is saved `renderer-original-41076.*`, do not mix in the above table.
+
+Starter now prioritizes checking current PID name sampling events; reading the log requires a change in file update time and consistency between Capturing PID. Collector adds `--pid`, ignores the status of completion of the old process; add `--summary` Only output counts, and the complete report is still written in local files. 43632 . The actual start-up back confirms the correct PID sampling event, without misreading the previous round of logs.
+
+## Original campaign coverage
+
+PID 43632，60 Second, the user manually enters a level. First confirm that the current PID sample is enabled and then hints to stationary, left-right lenses, up-to-down view, and finally stop. The whole process has no window or desktop screenshot. User feedback " Normal, no visible anomalies " .
+
+- Complete Construct 9,868 Bar, Embedded Copy 9,866 bars; copying copies together 9,869 Article.
+- Recorded 3,534 Groups of different arrays, source view 525 Different address, target. 184 Address statistics do not represent the number of persons who survive at the same time.
+- The sum of all constructed results is located in the object +8; the first view points to the renderer 's own continuous storage, and the homer is updated by input collection into output pool. The source/ output matrix area of all records is consistent and limited.
+- All Build Callers As 0x3a1595 Thread 41732;observation range remains a view, storage capacity 1。
+- scene view 9,868* The present document was not edited before being sent to the United Nations translation services. 9,869、Present 9,868;discarding 31 Notes, Present failed 0. A small number of unconnected records is not completed.
+- Stop act=0, seven external independent checks of the Hook entrance are restored. Copies and complete structural analysis programs are passed.
+
+Evidence:`analysis/runtime/renderer-original-motion-43632.{csv,json,status.txt}`Counterpart `-restored.json`、`-correlation.json`、`-copy.json`. The round covers the original view in the movement, without relying on a third party's first name, Mod; no new eyes or rewriting lenses.
+
+## Proved versus remaining work
+
+It has been observed that under original and Mod, SceneView enters the renderer ' s own collection and storage through an independent copy, and owner changes from input to output collection, with a record matrix consistent.
+
+This does not prove the actual retrofit consumption, the time of destruction of objects, the state required for the second eye, the matrix coordinates agreed or the dual-eye effect. The next step should be to track consumption that is assembled on the subsequent rendering path and then decide how the second eye will be constructed and exported; no two identical points will be inserted directly into arrays.
+
+---
+
+## 中文
+
 # 完整渲染对象构造：Mod 与原版对照
 
 2026-10-12。观察玩家视图副本在完整渲染对象构造结束后的归属，不新增视图、不修改镜头，不证明双眼渲染。

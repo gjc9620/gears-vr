@@ -1,3 +1,45 @@
+# A quasi-star cross-blank grouping and sub-call boundaries
+
+2026-10-17. Targeted source/existing information and current code verification; no new or changed Hotfile is added to this round 39。
+
+## Why not just expand the group?
+
+Group_extents currently combine only the certified pure star fragments in the same Payload. Four quadrants spread to different payloads, which may be out of range and thus refuse correction; this is a static coverage gap, with actual samples of pistols/rifles that are retained as available 0, it has not been proved to be the root cause of user feedback.
+
+HOOK_ui_vm only generates tokens at shared VM entrance. Most current actual samples are only found in the kend 3 PostRender root enters the portal, and DrawWeapon Crossshair is called by the DrawWeapon Colsshair. The same token may therefore contain multiple sub-calls, and simply cross-payload consolidation cannot prove to be the same protostar. Onlykind is supported 1 The VM root collector does not cover the actual path currently observed.
+
+Subtitle TextGroupGeometry has a life cycle that can be used, but it has a full incremental boundary to be used in sync and deliberately limits the NativeSubtitle source; it cannot be relaxed directly to the Canvas. The subsequent collection must be an independent non-variable group of stars, with members maintained precise metadata, copy location, matrix consistency, capacity, and imprescriptible door.
+
+## Information available and compiled
+
+Search first.sqlite, get antefact 1 RVA 0x 1d 6f 30／VA 0x 1401d 6f 30- It's a fake SHA.256 `dfa7dc7c48a75a4a25dab71d6b6f0d557cb01ac2fb357df6c14daeb2b42b7bb6` The verification was approved, but its parameters such as “six double” were not in a position to make the Hook statement directly.
+
+Copy only `analysis/re-kb/pilot-1000/snapshot.i64` Present. `analysis/ida/reticle-inline59` . The function defines the command and a short window for six direct callers.256 Hold on. `4b64bd2156a9fe8173be0e65a1e47384131089766a628bfd3c03d680f00d1268`, the IDA case owned by the coordinator is closed. Other Agent only reads to save evidence.
+
+Save RCX QR at entry 13、RDX→RBX、R 8→R 12、R 9→RDI；R 9 Participation +F 8／+F 4／+114 Allotments. The caller shows four generic memory parameters, with four entry paths to tail jamp.0x1401d7017–7032 Build a separate sub-FFrame: +18 To be deformed, +20+ for receiver 28 As script, +30 for locals,+38(a) Old carler Frame;0x1401d7230–7277 This strongly supports the callFunction syntax of “self, CallerFrame, result, calleeFunaction” with true symbols and meaningful returns still unproven.
+
+Key limitations:0x 1401d 7045 The entry RDX is a carler instead of built CalleeFrame; it cannot directly fit the existing three parameters, but_scope, or label all Canvas operations in the compartment.
+
+## Check current process machine code
+
+Session 40216-20261017-074217-fbfba 245，PID 40216, create full identity to inline 60-current-code-retry.json. Original diagnostic script does not call Resolver.prepare to read base fields, record AttributeError; failed to confirm retention. Only prepare is read first and the module ' s base is checked 0x 140000000, supported disk EXE SHA and complete creation of identity, then article by article 711 The rule has been defined (with the end block listed in the IDA) and is all matched. It is not an atomic snapshot, nor does it prove that unknown fill/no bytes or operational parameters are called.
+
+Game ready.2928 milliseconds, cameras ready to first projection 5940 ms, normal stop/nature clean/XR exit/normal shut-off passes. The return of the regular level cannot replace a new entry to run tracking or quasi-acceleration.
+
+## Next round of bounded experiments.
+
+1. Only observe, and do not allow for cross-payload syntax integration. Independent four pointer ABI detour; retain original three arguments VM ABI; return values without false code.
+2. Under the current module/overriding command verification and normal reservation, closing, entry recovery system, track values of entry/exit ID, thread/depth, parent token, four parameters and carler node/code from limited white list.
+3. Canvas object must actually contain the selected Callee Node/object and return to that entry callerFrame for inclusion in its body; exclude parameter valuing and prevent the sharing of VMs from being duplicated with this entry.
+4. The sibling call ID must be different; the embedded and rejected paths restore TLS; no stockings are saved to delayed consumers; the father ' s binding token is still waiting for original authentication.
+5. The new target must include evidence of recovery of machine code after retention/prime/cleanup/termination.
+
+The above experiment has not been realized and does not claim to have been repaired.
+
+---
+
+## 中文
+
 # 准星跨批次分组与子调用边界
 
 2026-10-17。定向源码／已有资料与当前代码核验；本轮没有增加Hook或改变默认Reticle39。

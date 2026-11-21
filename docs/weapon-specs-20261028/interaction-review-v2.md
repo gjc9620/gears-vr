@@ -1,3 +1,101 @@
+# Interactive review and offline preparation v 2
+
+2026-10-28 Conclusion: Delete "All weapons first press R"3 The default prefix for changing a bullet. Physical interaction starts with the player's clear action on this piece of gun; the code can still be called to create timing and inventory services by the original ForceReload, but this does not require that there is a match on the controller.3 Retains as optional support/compatible maps, with only revisions to the design during this cycle.
+
+## Mainstream VR interactive reference
+
+| First-hand source | The facts that support it. | Judgements used under this item |
+| --- | --- | --- |
+| [HL2VR Official Manual](https://halflife2vr.com/manual/#reloading)and[Functional description](https://halflife2vr.com/features/) | Manual mode of release by button cartridge, shoulder recovery, physical insertion; additional loading in empty storage for some guns; explicit reference to project Alyx; and simplified reloading | Button releases itself reasonably, but it cannot be used as a single start for all machines. Keep the auxiliary solution and the gesture path is available independently |
+| [Pavlov Developer Update](https://store.steampowered.com/news/posts/?appgroupname=Pavlov+VR&appids=555160&enddate=1643058578&feed=steam_community_announcements) | Official presentation of undismantled shotguns for loading; update to amend the area where cartridge holding holds a release buffer, machine grab and different guns interact | Retain the gun-by-gun difference; insert appropriate adsorbing and completion of feedback, not require submillimetre alignment or waiting by fixed animation |
+| [Description of the H3VR Developer Control Program](https://steamcommunity.com/app/450540/discussions/4/3002172678253269313/)and[Developer Update](https://store.steampowered.com/news/posts/?appids=450540&enddate=1617414216&feed=steam_community_announcements) | The original simulation controls coexist with simplified controls, with the simplified model clearly functionally selective; and the weapons-by-gun still handles actions such as the release/showing of a bomb nest and machine guns separately | The less you understand the "physical operation" as a button, the more real it is. You need clear intent, proper tolerance and optional support for this gun. |
+
+These sources are not evidence that “all VR games allow direct extraction”. Lancer defaults on the direct extraction, which is a design choice for the project's combat rhythm, established hand operation and original associated structure; implicit lock release follows capture/release completion, rather than assuming that the original gun does not have locking.
+
+## Lancer New Process
+
+1. Left hand leaves the support point and re-presses Grip in the magazine/release area. Only contact, sweep through or track jumps do not start changing bullets.
+2. The left hand moves clearly and continuously along the exit direction, triggering a “lock-and-take” once after exceeding the threshold for debarment of this gun. The lock/box is open with the original movement; when the original bullet is accepted, the perfect period starts. Player does not need to press R first 3。
+3. The old box is left-handed. Release the display and remaining bullet according to the established rules; take a new one on the left shoulder, and then insert it and submit the current round quota.
+4. When the new box is in place, you will default on locking the necessary card clips/boxes as a natural entry/cover operation. If the original structure requires clear independent capture points, then you will be prompted to close it again; the player will not be required to operate two synchronized motion pieces separately.
+5. The contents of the gun are closed in separate rooms with “filling loads” and cannot be fired on because the original number of rounds is still available.
+
+R 3 Auxiliary paths can trigger the same "release cartridge" event without additional incentives, no repetition of time count, no skipping loads and lock-outs; not to take one grab and one R at the same time 3 Counts two rounds. The final secondary button follows the main line input scheme, instead of a new button in this round.
+
+## Full weapons review results
+
+| Weapons | Default Start Action | Remaining requests after review |
+| --- | --- | --- |
+| Lancer | Grab the box and pull it out clearly. Link the locks to release them. | Merge Synchronization, retain leftovers and original box plug-in cancelled |
+| Hammerburst | Grab the locks and open them. | Keeps the real lock-down step, cannot cross lock for unity |
+| Gnasher | Remove one left shoulder when you have a bullet or restore uncompleted filling | Single-wheel ceiling 3 retaining;permissible 1／2 The lock is closed early, the quantity is kept and the target for this round is not awarded a perfect reward |
+| Longshot | The airlock grabs the bolt and opens it. | One shot, one lock, one shot. No repeat requests for post-shooting. |
+| Snub | Ripbox out, grab implied release; also use buttons to release the help | Air silos with slider and half a barn free; no requirement to grab two pieces of side wing |
+| Boltok | Grab the side load and load the support frame and open it. | The frame is spun out with a bullet nest; reloading is carried out to allow partial recharge and closure. |
+| Boomshot | The gun pipe is loaded and open. | Use original stand-alone fill, one round at a time, and retain the necessary closure steps |
+| Torque Bow | Grab arrows on left shoulder when arrows are missing | Set arrows along the slot, keep the original trigger holding. Cancel separating from the pine button launch |
+| Hammer of Dawn | Original target pointed/breeder | No normal reload, complete stop target and beam. |
+| Troika | The original gun position is receiving double handles. | No normal box exchange, automatic recovery of reservations and Loader differences |
+| Frag / Smoke | Take the trigger and prepare to throw it off. | Hand tracks determine the first speed; prepare to add "tweet reading seconds" and trigger rules for two bullets are independent |
+
+Left shoulder ammunition is sourced and body slots are designed to be unmodified. Left Grip must be released before recapturing the facility when it has a support point, so that no transfer can be made. Old boxes cannot be folded with new ones; skilled operations in dual-cargo magazines need to be designed separately and not included in this round.
+
+The perfect switch still retains the established "rewardable completion before the original window finish" rule, with only starting point from R 3 Enter the first effective switch to the original game. The original window may be too short, especially six rounds of detonating and single-shot; this is still a clear comfort risk, with no automatic extension or automatic award of time in the current round. The normal completion of Gnasher/Boltok early locking is this new design, where the existing fixed step plan needs small adaptations for the future, and the source code has not been changed.
+
+## Boltok Agency Check
+
+Based on the original bone level, each bone has a vertex and the original assembly position.`Object03` It's a side loader.`Object02` It's a pillar bomb nest.`Object08` It's a shelf piece; both of them are Object 03 The rib.`Object01` It's a fixed end plate behind the vermin, and the father's bones are the body of guns;`Object09` Under the barrel, not on the bullet nest axis, cannot be used as a shell-release pole.[Package](../../analysis/weapon-specs-20261028/review-v2/boltok-assembly-private.png)and[Reference bone/design joint data](../../analysis/weapon-specs-20261028/review-v2/boltok-rig-authoring.json)Retain the results of the check.
+
+Shake out the scheme by a stretcher 02/08 Sports,Object 01 Stay in the gun. Reference attitude supports the rotation of the frame along the frame, but the original animation is not proven: preservation of default objects is bound `COG_Pistol.COG_Pistol` AnimSet, with a bone name of b_HG series for Snub; this time in two specified packages 21 AnimSet does not find an orbit matching the Object bone. **80° Only offline visualization of the initial value, not known as original angle or certified live machine**; the difference is retained in subsequent bindings.
+
+OriginalObject 02 The two-end closure does not allow the direct expression of six perforation holes. The original Six-Five-Access Substitute has been completed, with six entry points named independently and a full Boltok live ammunition can be delineated to match the examination. No reworking of the gun is required. New pieces replace closed parts and cannot be superseded on the original cover; the original slab, axis and unit conversion remain in the assembly adaptor layer.
+
+## Torque Bow Unlink Check
+
+We've located the smallest non-launch group, still static semantic design, not already online API:
+
+```text
+仅在当前武器仍处于 Charge、该输入属于本地 VR 时：
+    停止继续注入开火，并消费本次取消输入
+    ClearPendingFire(0)，以及本事务拥有的其他 pending fire mode
+    清理本轮 bPendingEndFire
+    ChargeEnded()：清 TensionIntroEnded，停止蓄力音
+    正常状态转移到 Active；切枪则沿正常 PutDownWeapon 转到 WeaponPuttingDown
+        -> Charge.EndState 自动执行：清 PlayMaxCharge，StopSimulation，
+           退蓄力音、关 ToggleCharging、清震动／扳机反馈、恢复 fire mode
+    读回非 Charge/Fire、无 pending input、原弹药未被消费
+    等待扳机实际松开后再接受下一次按下
+```
+
+The only thing that can be called is Charles Ended, which handles only a portion of the sound/timer. It cannot call either Chuck. EndFire: The former enters CheckFireShot, and the latter calls the current state EndFire. It cannot jump directly into Action and keep PendingFir, WarWeapon.Active.Beginstate will go through the ending and reset BeginFire. It cannot roll back after Fire/Archive has been generated to "Unlaunched".
+
+Amend the previous version of the description: CanReleaseFire examined the delayed firing conditions for Pawn, which cannot be written as “not fulfilling minimum capacity.” Charles. Beginstate started counting from MinChargeTime; the breakout key may immediately enter Fire or leave bPendingEndFire waiting for animation permission. The upper limit of the fatigue for Charge.Tick is MaxChargeTime+HoldTimeUntilTird and the perfect replacement reward branch will be used to provide a good price for the bomb. 2 Double TimeCount, so it's not always true. 6.5 sec.
+
+## Frag and Smoke fusing/trigger checks
+
+| scene | Frag Frag | Smoke Smoke |
+| --- | --- | --- |
+| Prepare/ rotate in hand | Started Blast Count No. Started by StarGrenadeSpin/PreparedNotify/StartGranadeThrow; no additional cookies added | And don't count the triggers as smoke. |
+| Regularly cast. | Spawn/Init Creates atomic bomb and motion, does not start DoExpletion timer in these saving functions | Same Left |
+| Normal Bounce Stop | Proj_Grenade. StopBounce: Stop sports, playBeepSund, and BeginExprosionSequence | **Overwrite StopBounce: bBounce=false, SetPhysics()0 Direct DoExpletion** |
+| Time after default stop | Default Time BeforeBeep=.1 s、TimeAfterBeep=1 s, which is the normal path approximation 1.1 s; if Base is Pawn will change 1.5+1 s | The average stopbook doesn't have to be that way.1+1 s Delay, directly into smoke effect |
+| Paste Targets | Proj_Grende. AttachInit Direct Arrangements 2.5 DoExpletion of s, and preservation of the original logic of the victim's bones | Special AttachInit directly generates Emit_SmokeGrenade and attaches it to the target bone; not from Frag 2.5 s |
+| Special stuck/overlapping walls | HitWall's specific conditions call BeginExpletionSequence 0, TimeAfterBeep) must be retained | Nor can the inherited special collision paths be removed; nor can the normal stop or smoke be exaggerated as all pathways are instantaneous |
+
+StopBounce may be triggered by below the stop speed threshold or meeting a rebound count condition, not “at once” but “falls.” BeginExpletionSequence returns directly to simulated bodies and has a duplication-proof treatment of existing DoExprosion timer; DoExposion has bHasExploded door control.10 The next gesture changes only the initial position/direction/velocity and retains these events.
+
+The two trigger branches have been identified above to save script control streams; the current process ABI, physical time series and physical head start acceptance are still not being performed. Do not circumvent original network rights, repeat call effects or recounting times accordingly. 44 bar evidence,3 A Bow Status Export, Default and Source `analysis/weapon-specs-20261028/review-v2/`。
+
+## Models and delivery status
+
+Completed[Offline original asset pack](../../assets/weapon-6dof/offline-v2/README.md): 3 full live ammunition, 6-hole nests and reused original Lancer starter, in total 5 GLB. New geometry has two levels of LOD, UV, PBR material and reference nodes; closed edges, legal line direction, degradation surface, positive volume and certainty generation check have been performed. 314 The triangle has been removed from the private anallysis, and the original UV/mode/material index is maintained, not copied to the released asset.
+
+This time, no changes have been made to the Native, Playground, Gun-by-Gun Operation Status Machine, Global CMake, Launcher or Candidate Package, and no game/simulator has been started or IDA database occupied. The final scale, running load, real hand position and original animation take over for authorized access; this model delivery does not pretend to be an accessed game.
+
+---
+
+## 中文
+
 # 交互复核与离线准备 v2
 
 2026-10-28。结论：取消“全武器先按 R3 才能换弹”的默认前置条件。物理交互从玩家对本枪部件的明确动作开始；代码仍可调用原 ForceReload 建立计时与库存事务，但这不要求控制器上存在对应按键。R3 保留为可选辅助／兼容映射，本轮只修订设计。

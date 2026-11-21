@@ -1,3 +1,156 @@
+# Original semantic access and connection contract
+
+2026-10-28 Offline survey and design v 2. Counterpart[Weapons-specific cards](weapon-cards.md)and[Current cycle of review](interaction-review-v2.md). The function names here are from the saved UnrealScript export, resource default object and existing source/historical test. They are determined**Where to pick up, what to keep.**; export with unsolved natural token cannot be used to guess the layout of C++ parameters or to call directly to an address.
+
+## E 0 - Level of evidence and call
+
+| Level | Meaning | Use of this set of documents |
+| --- | --- | --- |
+| S | Save script/resource static evidence | Specific class, function relationship, original model reference, constant default; not the result of this operation |
+| H | Historical running or byte evidence with corresponding version of identity | Reusable existing access surveys, still requiring current case identification and ownership; not to be called the current machine inspection |
+| D | Design requirements for freezing this item | Gears, quota filling, branching and interruption; not disguised as original mechanism |
+| U | Uncertified binding details | native ABI, false cells, state actual functions, coordinates/timer controls; unbound |
+
+core package:`J:/gearsVr/analysis/packages/decompressed/WarfareGame.u`，SHA 256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`。
+
+Map package:`J:/gearsVr/analysis/weapon-models-20261021/maps/MP_WarMachine.war`，SHA 256 `55f40ca44051413fe6db19816f97b09849c5e104319d93e9d5d159cbe6fb2840`This is a recheck of the full Hashi; not retail EXE Hashi.
+
+core saving function:`J:/gearsVr/analysis/re-kb/scripts/WarfareGame/Function_WarfareGame.<类.函数>_.uc`. Map new export: This checkout `analysis/weapon-specs-20261028/map-script/Function_<完整类.函数>_.uc`and `Class_*.uc`。`map-script-provenance.json` Link object path, sequenced offset/size, original object SHA 256 Export text SHA 256 Reconcile warning.
+
+## C 1 - All conventional reload chains.
+
+The semantic chain to save the code is: `ForceReload`/ Status Transfer  ⁇  State `Reloading.BeginState` → `PlayWeaponReloading` Arrange for original animations and `EndOfReloadTimer` Zoom in `EndOfReloadTimer` → `PerformReload` Transfer inventory returns to serviceable status. Specific sub-categories can overwrite these functions, and must be analyzed by current object and state, and cannot be called in a uniform manner.
+
+| Get the gate. | Original role | VR Fitness Responsibility and Readback |
+| --- | --- | --- |
+| `WarWeapon.GetMagazineSize/GetMaxSpareAmmoSize` and current inventory reading | Acquisition of capacity, reserve ceiling and real count | Each instance bind/service starts reading; default object is only used for checking, not for writing capacity |
+| `ForceReload`、`Reloading.BeginState` | Accept original reload, record ReloadStartTime, process status/reward | The first clear physical action of this gun is triggered once; the original acceptance is only timed. Option R 3 Sharing of business with gestures; confirmation of status and automatic termination of ownership |
+| `PlayWeaponReloading`Status `EndOfReloadTimer` | Artifacts/weapons animation and automatic bookkeeping | Keep the necessary original action and sound; current local example is replaced by a sign-to-be, without fixed 8 Seconds automatically complete |
+| `PerformReload` | Transfer of stocks, usually to the target of this round | No reassignments afterward; no distinction must be made between unrecorded and imprest submissions |
+| `SetAmmoUsedCount/SetSpareAmmoCount` | Update real count and include side effects such as copying, bullet mark/tip | If a quota is required, read and read back through a check-up original or original inventory interface; not writing two fields |
+| `SetWeaponAmmoBoneDisplay` | Use `AmmoControl` The hidden control of the | The handheld component is dislodged during the takeover. |
+| `SetPawnAmmoAttachment` | Former MagazineMesh hangs to Pawn left hand, setting shadow parent/light environment; cleaning on unloaded | VR and hand parts can only be owned by one person, so that the original animation is not notified to take it back. |
+| Guns! `Notify_Ammo*` | Subcategory is attached/hidden, and part of the base class notification is empty | One hand over against a valid action; no refilling guess by name |
+| `AbortWeaponReload`、`Reloading.EndState` | Cleans up timers and animations;Abort specific fire mode 10/11 Call PerformReload; Endstate may call Abort | Interruption must also be in the same non-duplicate bookkeeping; Abort cannot be simply cancelled |
+
+**The quota must be completed first and shared.** The service identity contains at least session, weapon example/generation agent, original reloading serial number, input serial number, plan version; each object has its own IID, and every inventory is submitted token and prior to submission. Only the bullet is retained, the insertion request q is executed only if the current instance/version/number still matches. The reply gives at least a realistic count-up and status of the original; failure does not play the completed feedback, unknown execution results are read back first, and no blind attempt can be made to drop the bullet.
+
+The original two issues are not natural atoms. The executive end is submitted in a series of lines along the same game; if only one update succeeds, read back and compensates for its definitive status, prohibiting “success” before repairing inventory. The online authority does not declare support without authentication, and the first line is the Playground/warm of native authorities.
+
+The original fit-out should be maintained for timers, fire mode, feedback, animation and subcategory exit clearances while preventing the second transfer of inventory from this service.**Select the PerformReload inhibition or independent exit entry for this instance to be certified first, and not directly to the global hull.** If ownership cannot be obtained, physical alternation is not activated, the behaviour is maintained and reasons for non-support are recorded.
+
+v 2 Three additional adaptive constraints: old box plug-in is cancelled and cannot be called to fill; full/no backup physical check does not force the call for ForceReload; Gnasher/Boltok partially filled has been closed early to submit a normal quantity exit without giving an perfect reward. All three must go through their own inventory/timer and not again with the exit chain. The existing fixed step seter will need to add early locking paths in the future, and this wheel has not changed its source code.
+
+## C 2 - Perfectly swapped.
+
+`GetActiveReloadValues` Provides a window for current examples. The specification uses the original perfect zone endpoint as the last necessary gesture, not the `ReloadDuration` Or uncovered-1 Replace the member. Call the original `LocalActiveReloadSuccess/ActiveReloadSuccess` The synonyms and specific state of the parameters must be checked before waiting;`PlayActiveReloadSuperSuccess` Once the end timer is reset, the reward must also enter C.1 (c) The scope of ownership.
+
+The end-point time of gestures is recorded separately from the time of inventory confirmation: a valid action sample determines whether to be timely and the original inventory/mechanical backfill is awarded once. The normal completion without certification period cannot be defaulted as perfect. If the old general ReloadModel imposes a valid term, it needs to fit with clear ordinary results instead of filling in a large number.
+
+History 2026-10-22 The retail evidence of the exec sha.256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`：
+
+| Saved Entry | History RVA | Saved bytes comparison range | Use and limitations |
+| --- | --- | --- | --- |
+| GetActive ReloadValues Script Entry | 0x3e7ffc | 256 Bytes | Entry location H;not a specified parameter layout |
+| DetermineActiveReloadScruise OrFairure script entry | 0x39bfcc | 256 Bytes | Results of original survey H; cannot replace process with time for original buttons |
+| GetActive ReloadValues Fake | 0x3e81b0 | 4096 Bytes | History running matching history snapshots; current process not read this time |
+| DetermineActiveReloadSeccess OrFaiIure Fiction | 0x3e7d28 | 4096 Bytes | Idem;does not equate RVA with byte or ABI |
+
+Original file is `J:/gearsVr/analysis/weapon-reload-probe-20261022/native-entry-byte-check.json` and `native-virtual-byte-check.json`. The current integration still requires the authentication of modular identities, precise parameter layouts, game threads to call boundaries and actual return values; no copying of historical PID/base site.
+
+## W - Gun-by-gun entrance watch
+
+W in Table 01–08 Reuse C 1/C 2；W 09–12 The base category is the WarfareGame package by default.
+
+| Item | The original entry and the behaviour that must be retained. | Difference between log module and fit-out already in place |
+| --- | --- | --- |
+| W 01 Lancer | Weap_AssaultRifle.Reloating.Beginstate; Notify_AmmoGrab/Release/Reload; original launch/saw chain extension mainline | `weapon_reload_model.h`, Lancer feed_archor/insulation/magazine_pose; change test timers to service control, drive real card buttons/boxes |
+| W 02 Hammerburst | Weap_LocustAssaultRifle.Notify_AmmoGrab/Release/Reload/Throw；FireAmmunition | `weapon_hammerburst_reload.h`;lock buttons tack box locks, keeping the original firing rhythm and notifying resource handover |
+| W 03 Gnasher | Weap_Shotgun.CustomFire/FireAllPellets；ShotgunCocking.BeginState/FinishedCockingShotgun；PlayShotgunCocking | `weapon_gnasher_mechanics.h`; both reload and finish after firing; individual back-to-back call for each round of inventory and leverage |
+| W 04 Longshot | Weap_SniperRifle.PlayWeaponReloading；Reloading.EndState/ForceReload/TargetingModeChanged；ShouldAutoReload | `weapon_longshot_reload.h`; retaining retrospect and targeting clearance, not automatically replacing a second time after the single live ammunition is submitted |
+| W 05 Snub | Weap_COGPistol.PlayWeaponReloading/StartFire；CockOpen/CockClose/CockCloseFinish/EjectClip/InsertClip | `weapon_snub_reload.h`;cock/Clip function is sound only, not an API; the Silo/Silo plan is selected by D rule |
+| W 06 Boltok | Lock/Clip audio notification for Weap_LocustPistol, inventory and status from C 1 | `weapon_boltok_reload.h`；Object 03 DriveObject 02/08，Object 01 Stay in root; original animations are still not found and offline design angles are inappropriately running endpoints; sound effects cannot open the bullet nest |
+| W 07 Boomshot | Weap_Boomer_base.Notify_AmmoGrab/Release/Reload；GetProjectileClass/GetProjectileFirePosition/ProjectileFire | `weapon_boomshot_interaction.h`;filling selections of original MagazineMesh 0, the treatment of incentive properties continues to be maintained by the former ProjectFire |
+| W 08 Torque Bow | Weap_Bow_base.PlayWeaponReloading/Notify_AmmoGrab/Notify_AmmoReload；Charge.BeginState/EndFire/Tick/EndState；CheckFireShot；ChargeEnded；Engine.Weapon.ClearPendingFire/PutDownWeapon；WarWeapon.Active.BeginState | `weapon_torque_bow_interaction.h`;for the order of cancellation for non-launch, see C 3;CanReleaseFire is not a minimum level of retention. Static combinations are clear and ABI/Practical Status Readback Uncertified |
+| W 09 Hammer of Dawn | warfaregamecontentweapons.WEAP_HammerOfDawn.BeginFire/EndFire/GetTraceImpact/Tick/UpdateFX；BeamManager.NotifyValidTarget/NotifyInvalidTarget/NotifyStopFire/BeginBeamWarmup | `weapon_hammer_of_dawn_interaction.h`; actual target track is the same as the original BeamManager state, stopping chain final AbortFire; not just display beams |
+| W 10 Troika | Turret_TroikaCabal_base.ClaimTurret/UnclaimTurret/DriverEnter/DriverLeave/UpdateTurret/GetPhysicalFireStartLoc；Weap_Troika_base.Active.BeginFire/WarmingUp.EndFire/InstantFire/WeaponFired/GetReloadDuration/Reloading.BeginState/EndState | `weapon_troika_interaction.h`;situation of position occupancy, fixed axis and double-gun target to read; retention Loader associated automatic recovery |
+| W 11 Frag | Weap_Grende.StartGrenadeSpin/StopGrenadeSpin/StartGranedThrow/AnimNotifyThrow/ThrowGrande/GrenadeThrownNotification; Proj_Grende.StopBounce/AttachInit/BeginExelosionSequence/Hitwall/Bounce/DoExprosion; Proj_FragGrende | `weapon_bolo_grenade_interaction.h`、`grenade_throw.h`; press T-T 1 Replace birthplace and initial speed; ordinary stop...1+1 s, attached 2.5 s Both implemented under the original conditions |
+| W 12 Smoke | Same Weap_Grenade chain; Proj_SmokeGrende. StopBounce/AttachInit/GrandeExplose, Emit_SmokeGrende effects/cleanup | `weapon_smoke_grenade_interaction.h`、`grenade_throw.h`; general stop direct DoExprosion, adhesive create direct smoke; no fung timer; inherit special Hitwall still |
+
+## C 3 – Torque Bow off-launch group
+
+Only when the current instance is Charles and local VRs own the request: stop putting the trigger in the poach `Engine.Weapon.ClearPendingFire` The launch mode of the clean-up business. `bPendingEndFire` → `Weap_Bow_base.ChargeEnded` • Normality is transferred to Active; the actual cut is called normal PutDownWeapon into WebPuttingDown. The transition to normal status is automatically implemented by Charles.Endstate, clears PlayMaxCharge, simulation, sound, holding switch, vibrating and trigger feedback, fire mode. Do not hand-write EndStat and then re-turn.
+
+The only thing that Charles Endeded did was set up is the TensionIntroEnded and some of its sound effects, which were not enough alone;StopFire will call the current EndFire, Charles. EndFire again in CheckFireShot, not to be used for cancellation.Active. Beginstate will restart the PendingFire that remains, so you have to clear it first.WeaponPuttingDown.Beginstate left for ForceEndFire when he was cutting his gun, and still needs to certify dynamic assignments.Last read, non-Charge/Fire, no pending, still running out of bullets, and then de-blue the trigger.If a fire has entered, it cannot be falsely cancelled or the arrows that have been sent back.
+
+This is the minimum combination design to save script support; current native parameters, state call and unsorted co-serial sequence are not yet valid. Former CharlestimeCount starts with MinChargeTime and rewards branch can be used 2 Multiply; MaxChargeTime+HoldTimeUntilTired=6.5 is the default count threshold, not a fixed reality holding time.
+
+## T 1 - The original boundary of hand gestures.
+
+Original `AnimNotifyThrow` ThrowGrende, then GreeneThrawown Notification. Throw Grende takes GetPhysicalFirStartLoc, Spawn Original projectile class under original authority; and ConsumeAmmo, after success, calls IniteDir, writes Velocity from GetGrendeTossVelacy and saves InternalVX/VY/VZ. There are also AI-specific correction branches where local VR replacements do not override AI.
+
+So the node is fixed to three semantics:**The position of the player before Spawn, the initial direction required for Init, the first speed before the first physical step/velocity copy cache.** Priority is given to the current ThrowGrende domain covering the return value and direction input of Getter, so that the original logic is written naturally. Do not create it in camera before moving to your hand; then birth collisions and echoes may have occurred.
+
+| Time | Input/Action | The original reply that must be made |
+| --- | --- | --- |
+| Ready. | Example of current grenade, original readiness, active handing sample | No call generation without a gesture release token; original fuses activated and separate records are initiated |
+| Untie the trigger. | A release event with a rise in serial numbers, alignment of attitude time, fixed body spatial generational and type | Release token only once; failure to track does not create a loose key |
+| Before Generating | Legitimate hand position, release reference point, direction, speed; short distance volume check | Start without a wall, old Spawn uses that point; collision failure is consistent and does not push behind the barrier |
+| Old Spawn/Init | Call the original class and inject it into the same plan position/direction/first speed | Effective atomic body identity, initial Location/Velacy and cache; failure to produce a shell or blind re-capture stock |
+| Handover. | Former ConsumeAmmo and GlenadeThrowNotification | One bullet-consuming, original sound/vibration/DetachWeapon; no more fieldings after animation |
+| After flight | gravitational force, collisions, rebounds, fuses and effects | Release exit, VR. Keep the parabolic line as desired without a frame-by-frame puller. |
+
+`StartGrenadeThrow` It is about preparation tips/flash, etc., and not the actual Spawn point. Replaces it or hides only the original trajectory preview without changing the actual drop.`GrenadeThrownNotification` It also contains original aerodynamics, Detach Weapon, audio, etc. so it is not possible to call Spawn and skip the post-investment process.
+
+Speed uses the history of release reference points in the same tracking space:
+
+```text
+p_item(t) = p_grip(t) + R_grip(t) * r_item
+v_item    = 对有效短窗口的 p_item(t) 拟合
+p_world   = release_body_basis * p_item(release_time)
+v_world   = units_and_axes(v_item) + base_translation_velocity_once
+```
+
+Existing `grenade_throw.h` Provide maximum 140 ms is ready to be used as a basis for preparing, etc.; end-weighting or device speed can be compared at subsequent hand sense stages. The wrist rotation is already reflected in p_item history and cannot be added once. If the device line/angle velocity is changed, it will be synthesized with the base v_grip+ ⁇ xr and the valid position checked. See OpenXR for reference.[Description of the original programme](../all-weapons-interaction-plan-20261028.md)。
+
+The proposed completion in the joint tracking space is only one release: head-to-head, Snap shift, session/reference generational change, time leap to clean history and recollect valid samples; original bAddBaseVelacy/InitialFrameOfReVelacy and VR role speeds are selected as a composite point. Roles/carryers can be moved continuously at a level that cannot be repeated by world historical differences with swinging poles.
+
+Low-speed release is a design support item that needs to be minimally prototyped 0.5 m/s／4 cm The movement threshold is separated from the tracking effectiveness; effective static discharge should be at near zero hand speed plus a base speed.2026-11-08 User changed the Frag to a continuous right Grip hold, and a pine Grip cast 2 kg Virtual weight target, see[Current rules and actual evidence](../frag-grip-release-20261108.md). The measured speed is not reduced by mass or applied to the same amount after writing the speed.
+
+Proj_Grenade Static GravityScale=2、Speed=1500、MaxSpeed=0、LifeSpan=10; these are engine data that cannot be directly the gravity of SI-world.10 Second-sec fuse or speed cap 0. If the visual preview shows that active gravity/units are used in the current atomic body; physical motion is always driven by the original physics and no simple parabolic lines continue after the first collision.
+
+Fuse activation has been detected to save scripts: preparation/ rotation and Spawn/Init did not schedule explosions timer; no new cookies are added. Frag inherits Proj_Grende. StopBounce, after movement is stopped, and BeginExpletionSequence; default.1+1 S, Base is Pawn 1.5+1 s, AttachInit direct arrangement 2.5 s. Smoke overstuffs StopBounce, directly DoExplesion; its AttachInit directly generates attached smoke. Stopping can be triggered by speed/backball counts and is not equivalent to the first landing.
+
+Both categories also retain the special duplicate location branch of HitWall, BeginExplesionSequence.0, TimeAfterBeep). BeginExplesionSequence returns directly to simulated bodies and is heavily protected against DoExprosion timer; DoExposion has bHasExploded door control. It cannot be unified as “free start countdown” or “Smoke collisions of any kind are immediately effective”. See full branch.[Review form](interaction-review-v2.md). The actual call to ABI/Routing Time Order is not verified; once the original fuse is activated, it does not result in a failure or re-capturing of the brush. StopGrendeSpin clears for animation and does not equal the defuse of an existing bullet.
+
+## I 0 - Achieving the organizational and non-renewal components
+
+Keep existing `weapon_hand_client.h`、`weapon_action_boundary.h` and the main line only Native/playline execution end. The gun-by-gun module generates action requests, executes end-string verification and calls to original functions, returning to actual status. It is not possible for each weapons head file to call upon Procesevent, write bones or start a game.
+
+Suggested additional thin matching file to remain as `tools/playground/weapon_reload_adapter.inl` and `weapon_throw_adapter.inl`；**No source files created this time**. Publicly fit to carry identity/original timer/stock/reciprocate; gun-by-gun program is kept within the specific type available. Model attitude is given to the existing only component/bones writing end, without creating a second bone replacement.
+
+The configuration fields should be divided into three groups: static sources (class, resources, Hash), design steps (actions and quotas), case calibration (real object/bones table, axes, pivotal axis, itinerary, original window, status entrance). `current_instance_verified=false`. The offline specification index cannot be automatically loaded into the production cycle or generate a "enabling all weapons" switch.
+
+## I 1 - A narrow list of tasks before access.
+
+| Item | Specific to be certified | Unlock after completion |
+| --- | --- | --- |
+| B 01 Public swap. | Current state function parsing; timer cancel/ restore; PerformReload and Abort avoid duplication of same business; setter parameters and backback; reward for resetting timer | W 01–08 Real inventory is secure. |
+| B 02 Activity | Recovery of bone, father-child benchmark, original animation for the same weapon example; fixed fillings; Snub handheld original box components | Mechanical action and handheld ammunition display |
+| B 03 Gnasher | The original timer of ShotgunCocking was closed only once with the gesture; the exit status and launch interval were kept together | Each hand lever |
+| B 04 Boltok | Static staft/blaster relationships and new six-holes delivered; real case scale/end, original animation or alternative driver restoration, 6 slots and partial filling account still required | Round-up of original parts and supplements |
+| B 05 Torque Bow | C 3 Unassembly static positioning; still required parameters, actual status assignments, serialization of game threads and reading back to unconsumpted ammunition | Resuscitation of untraceable/gun-cutting disposal |
+| B 06 Hammer of Dawn | GetTraceImpact weapons starting point/ aim parameter; BeamManager identity, enabler/target condition, EndFire call complete | Finger to the original and stop. |
+| B 07 Troika | Gun position collect/exit parameters, original axis limit, double-gun rule, Loader state | Fixed machine gun double-handle operation |
+| B 08 Two grenades. | Two static circuits of fuses are separated; still need to be replaced by a pre-return value from Spawn, Init parameters, initial speed/cache sequence, animation notify to weight and actual branch cleanup | Real gesture trajectory. |
+| B 09 Original asset loaded | Models produced; one Gnasher engine load, component, material, depth, GC/destruction still required | Three full live ammunition and a nest to load the pipe. |
+
+These are limited binding gaps, not re-reverse the whole game. Each subsequent primary survey continues to look at existing knowledge bases and preserve evidence; minimum IDA/operational observations are made only when required for corresponding gaps. The current wheel completes static and design without triggering the actual task.
+
+---
+
+## 中文
+
 # 原版语义入口与接线合同
 
 2026-10-28，离线调查与设计 v2。对应[武器规格卡](weapon-cards.md)和[本轮复核](interaction-review-v2.md)。这里的函数名来自保存的 UnrealScript 导出、资源默认对象和已有源码／历史试验。它们确定**在哪里接、必须保留什么行为**；带 unresolved native token 的导出不能用于猜 C++ 参数布局或直接调用地址。

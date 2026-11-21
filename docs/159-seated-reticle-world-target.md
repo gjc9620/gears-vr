@@ -1,3 +1,38 @@
+# The star-limited target is back and back when the position is off.
+
+2026-10-20 User feedback is sometimes inconsistent with the bullet position and suspects a sit-in bias. This round fixes an indication defect that has been identified by code and can be recreated mathematically: when a limited world target exceeds any eye view, the protometric projection is rejected, then retraces in endless directions, loss of head liding and close to target vision. It cannot be assumed that all deviations from user feedback are caused by this branch.
+
+## Modify
+
+`ui_reticle_direction_plan.h` Allows the active, immediate target to project beyond sight and continues to be mapped peacefully at a limited world point by cutting each eye through a scissor. One-eye crossing does not change another eye to different aim benchmarks. Target is behind eyes, values are invalid or above D.3 The Dview range is a new one.`display_plan` Draws two empty scissor for this parastar, keeps the drawing and status recovery process and avoids displaying an infinity replacement of a protostar that is unrelated to the limited target.
+
+`ui_payload_observer.inl` Use this display policy to empty after removing failed `finite_aim` Re-scan branch. Logs keep compatible fields `direction_fallback=0`, other `finite_suppressed`. The original direction strategy is followed when no limited target exists; this round does not claim to resolve all time-series problems between the missing HUD query or cache and the current camera.
+
+The change only handles astrometric mapping, without modifying the gun, shooting, collision, injury, dispersal or auxiliary targeting. The limit point is still from a certified HUD query, not the final Impact of a real fire. [Weapons are on the line.](weapon-aim-hit-chain.md)。
+
+## Authentication
+
+Add independent world point projection, using `project_ui_anchor` Calculates the expected pixels per eye, and compares the actual star viewing map of the source centre:
+
+- 729 group position, rotation and target distance combination;horizontal ±0.4 m, vertical ±0.15 m, front and back ±0.25m，yaw ±0.5rad、roll ±0.35 Rad, target depth. 60/200/800 Game units.
+- Asymmetrical Eyes FOV,64mm IPD、20 (a) Close the game unit;192 The second one-eyed target is still on the right map of the world.18 The group targets are hidden behind your eyes, avoiding a retreat.
+- Single-eyes are passed across the edge, limited input anomalies, old direction patterns and invalid mapping; former scissor, sub-star, world origin and wide-highby-turn continue to pass.
+- 22 Self-testing is initiated as necessary; there are also limited inquiries, camera binding, D 3 Focus tests for D ABI, world rebind/epoch, owned scene peteline, Mounted are passed. 26,608 Check.
+
+The test results are CPU/Mathematics and Hometop DLL self-measured without proof of real bullet drop, GPU edge pixels or physical header experience. Backstage games return to the PID that already exists before startup 10784, exit with the protection already in place; no changes to the game, no restarts, no input sent, no test settings written.`actual_game_regression=false`、`headset_verified=false`、`release_ready=false`。
+
+## This institution is built and the portal
+
+Independent Build `build-seated-reticle1/GearsCaptureSeatedReticle1.dll`，SHA 256 `adde3b7484fde70dca516c068a108cc7111237389b44da3ce39f77777f228410`. From default MountedFps 1 . Compiling records to confirm the DLL use of modified files.
+
+`tools/vr-launcher/manifest.json` & With Named List `manifest-seated-reticle1.json` It's pointing to the new edition, XR. Continue with the old PauseStereo 1;from repository root directory after normal closing of current game `GearsVR Launcher.exe` Reactivate game with VR. Current loaded DLLs keep running. Old MountedFps 1 Build and name the list to be maintained.
+
+The logs for build, freeze source code, test and early failure checkback, original list and unexecuted game return are all in signed `analysis/`：`seated-reticle1-source/`、`native-build-seated-reticle1/`、`runtime/seated-reticle1-tests.json`、`seated-reticle1-stage.json`、`seated-reticle1-previous-manifest.json`、`fps-resolution-4k-seated-reticle1-20261020.json`. No original translation added, no IDA opened, no ZIP published.
+
+---
+
+## 中文
+
 # 坐姿偏移时的准星有限目标回退修复
 
 2026-10-20。用户反馈准星有时与子弹位置不一致，并怀疑坐姿偏斜。本轮修复一个已从代码确认、可由数学回归复现的显示缺陷：有限世界目标超出任一眼的视野时，准星投影被拒绝，随后重试无穷远方向，丢失头部平移及近目标双眼视差。不能据此认定用户反馈的全部偏差均由这一分支造成。

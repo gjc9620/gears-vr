@@ -1,3 +1,39 @@
+# Playground menu and VR start fix
+
+2026-10-22. User reports that the main menu of the game does not have a test field, and VR cannot be started when it is developed. This round has been restored to 0.1.0 Default list, actual real game is `J:\gearsVr\Gears of War Reloaded`。
+
+## Observations and causes
+
+Initial PID 41780 Start from the public package of the subdirectories, with a stand-alone list using AdsAnchor 2, no Playground field or DLL. Then root directory development PID 52544 Report `Playground initialization failed: 5`;component logs further record MinHook `create_hook_failed=9`. This initialization error occurs before the menu is added and results in the original startup process being withdrawn earlier.
+
+Only expand the candidate for adjacent distribution window in the positive PID 43508 Still failed, the new diagnosis limits position to trampoline distribution and excludes MinHook hook-table distribution branch. Error tag 8 The failure of the candidate to separate branches cannot be considered a real window distribution failure. The candidate's failure to isolate the original entry and continue to start the process, but does not generate testing grounds that can be recorded as pass-through. The subsequent address-only window records contain available areas, which do not allow for an assertion that the entire window was depleted when it failed; the exact floor allocation limit has not yet been attributed.
+
+## Modify
+
+- Start loading early-loading locked Playground DLL, using `PlaygroundReserve` Creates but does not enable Hook. Full 64 Byte-entry authentication and original entry check remain in place.
+- The engine registration form is ready.`PlaygroundInitialize` Re-use the same DLL preset springboard and enable event distribution; add `playground_early_reserve` List field controls the path. MinHook and native/XR binary of the renderings are not recompiled with the changes.
+- Expand rel for current Playground construction only 32 Distribution window, keep 64 KiB excess and check complete before commissioning 64 Byte jumpability for trampoline slot. Current authentication entrance 6 bytes are push commands, and this range conclusion is not extended to other functions.
+- Resource/enabled failure only to read independently confirming original 64 The byte is restored to the test site. Identity, certificate, unknown state or failure path cannot be confirmed.
+- Records the TRampoline/book-table allocation, distribution attempts and actual Windows errors; enable failed recovery of created Hook. Releases the preset resource before normal stoppage and cancellation; cleanup mode only attachments already loaded DLL without injection or reinitiation.
+
+## Validation and Borders
+
+Independence `PlaygroundHookTest` I'm just trying to get old.1.5 GiB window, actual Hook/Preliminary call from new window 64 Byte is restored; the intended distribution error returns when the full accessible window is filled, and the entrance remains unchanged.
+
+PID 49328 Use the latest CoverAim 2 native and backstage emulator: early pre-allocation success, relay delta `-1998365`; the component was successfully enabled. Selecting precise text through the actual main menu Down/Enter `happyotaku playground` And get into the map.11 A pick-up/6 Targets/Troika, failed 0 Actual shooting, normal ammunition exchange and spare ammunition are not reduced, target passes again; XR actually submits 14,031 The second game of projection,13,150 The test script is once encountered with a blank record of the history, corrects the private script and then passes.
+
+Round Playground Stop/Opport 64 Byte back through, native self-cleaning through, XR exit 0. But independent master check 79- Of the items.7 One. `dxgi.dll` The entry is not compatible with disk and there is no pre-installation evidence, and the overall report is maintained `incomplete/passed=false`, cannot be said to have been fully recovered; this time the verification has not been relaxed or attributed to other components. `analysis/runtime/continuous-stereo-49328-20261022-021413-040e69f6.json`。
+
+PID 49544 Cancel before preset completion and component enabled: Playground `reservation_only=true` Cleaning and 64 The byte was restored, the native prime cancelled/entry cancelled; the independent validation test process was properly withdrawn. The pre-cancellation competition for private oversight scripts was also amended and no killing process was carried out.
+
+Eventually.213 The item trigger is checked through,722 Documentation,41,961,304 The byte isolation is subject to inspection.8 In the old pre-encumbrance life cycle check 2 Error reporting entry folders, all mock returns values missing stdout/stderr; replaying unmodified HEAD source code duplicates the same 2 Errors, record-keeping, do not count as the current pass item.
+
+The current default menu component is: `build-playground4/Release/GearsPlayground.dll`，SHA 256 `b6c32ebfd84cbaa068c6943bfc2a178caaea3bb9009c3a709d6288fbc096608a`. Only changes based on the latest default 3 Playground field, retain CoverAim 2 native SHA 256 `04ff9ff8c1465c2019c78b8b0309275a18c4e7208117fa65e8e00396041b71e0`, XR and user configuration. Current development portal is the repository root directory `GearsVR Launcher.exe`. This is not a public release or entity header acceptance; analytical, original error and validation checkout left behind `analysis/playground-entry-20261022/`。
+
+---
+
+## 中文
+
 # Playground 菜单与 VR 启动修复
 
 2026-10-22。用户报告游戏主菜单没有测试场，改用开发版后 VR 也无法启动。本轮修复已集成到0.1.0默认清单，实际正版游戏为 `J:\gearsVr\Gears of War Reloaded`。

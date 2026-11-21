@@ -1,3 +1,35 @@
+# Sub-call observers to achieve and first actual operation
+
+2026-10-17. Submitted b 8178b 5, capacity correction 4b 092e 4. DefaultReticle 39; Experimental compilation switch GEAS_UI_CALL_Boundary_OBSERVER default OF FF.
+
+The independent four-point dectour only observes selectedkind 1 UFunaction, keep original parameters and return Rax bits without explanation for the return value. Father UI calls/no change; uses a stand-alone sub-call ID, TLS nesting, maximum 12 Layer Match,64 The Canvas attribution must be based on the original authentication path, then confirm that the actual Callee Frame's PreviousFrame is equivalent to this current entry caller Frame; parameter speculation cannot be placed in the Callee body by TLS. No geometric publication or correction has been added.
+
+The new entrance is also incorporated into pre-set, installed, mandatory Manifest certification and independent machine code verification after stop. The functionality ON and OFF are built through the UiCallBundaryTest/UiObserverTest rerun. Freezing source code excludes ui_execute_bypass experiment in the working area.40 Full Build and 20 The test was passed, but the actual integration revealed a capacity problem below; self-measurement could not be used to replace actual operation.
+
+## Failed and modified
+
+CallTrace 40 Actual Session Continuous-stereo-36436-20261017-075128-1e 8 bbded, installed in count=43／capacity=43 Rejects, without entering the binary. The original array is added to the existing functional capacity and no new optional entry is calculated. The amendments are made by adding only one volume item at the experiment switch ON, with OFF capacity unchanged.
+
+Failed session native_cleanup_verified=fails, no proof of recovery from independent entrance. XR exits with normal closure based on the exact creation of identity, without killing/retest injection, and retains calltrace 61-failure-close.json and original state. Two subsequent attempts to streamline the building directory lacked FrameLinkTest and GrampicsMenuLockTest at self-testing, all rejected at self-measurement stage, no_bird_receipt, no game created; complete and precheck 9 A mandatory test program. Failure to return 62／63-prelaunch-failed.json and reversion-failed.log, not rewritten as adopted.
+
+CallTrace 41 From 4b 092e 4 Freezing Source Code, DLL SHA 256 `8a11a755aaff6d92a4776cb1c6e3b947d0259f1c3f55af089889f7b83b6a427a`re-engineering of original DLLs, ABI and necessary testing procedures;5 The focus test was passed and the actual start-up was still complete with the same start-up self-measurement, without using the old pass cache.
+
+## Actual tracking
+
+Session 39292-20261017-075843-3761f 664. Game PID 39292, create full identity to callrace 64-entry-proof.json/session. After entering the binary, digitally typed pistol, LT/RT request 3 The scripterror=nul; the successful input is submitted only, not for the ammunition status check.
+
+Statistics: General CallFunction Request 1,098,480 Candidates 1260- No, no.105 Accept 1155♪ Done 1155 Depth rejected.0. The body belongs to Tile 105、Material 0、Text 0 Canvas's belong to the rejected.0；kind 1 Parastar consideration/planning/application 104,center/geometry/projection denied 0. This results support the actual quasi-Star callability of the portal and allows for textual observations without proof of geometry or cause of outer circle failure.
+
+64 The details are all exhausted before the next opening, Drapped 1091. Record keeping is mainly scope 1 GOW 3 Call, parent_child=0, the next call for a single parent_token, Tile=0. Can not get folder: %s: %s 105 The attribution of these empty records does not prove that there are multiple siblings in the same PostRender. The next round must have a limited number of drawing/undrawn records, and should cover the outer circle and additional icons with rifles instead of continuing to expand the log ceiling.
+
+During run-time, open HookEntryAttestation independently with a trusted DLHS on the build list and verify again:44 A portal, new target 0x 1401d 6f 30 and its relay/detour/original 32 Byte certificates are passed. After cessation, native_cleanup_verified, independent entry_restore_verified and ordinary games are closed; two are saved 3840×2160 Image. Callrace 64-udit.json/entry-proof.json/normal-close.json and his counterpart, native-status, were kept at ignored anallysis.
+
+The cross-payload group is still not operational and no acoustic repair or full ABI/segregated path acceptance can be declared. Actual machine guns, more CG, long-term black screens and real headline display remain open.
+
+---
+
+## 中文
+
 # 子调用观察器实现与首次实际运行
 
 2026-10-17。实现提交b8178b5，容量修正4b092e4。默认Reticle39和玩家ZIP未替换；实验编译开关GEARS_UI_CALL_BOUNDARY_OBSERVER默认OFF。

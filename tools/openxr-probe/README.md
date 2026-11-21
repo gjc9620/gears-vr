@@ -1,3 +1,88 @@
+# OpenXR Independent diagnostic and submission tests
+
+No changes to the game or system OpenXR registration form. Use your own machine OpenXR 1.1.63 x 64 loader，
+Source code relies only on official header files and import library. Compressor packages are unpressed to Git ignored
+`tools/third-party/openxr-loader`。
+
+```powershell
+cmd /c J:\gearsVr\tools\openxr-probe\build.bat
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $py J:\gearsVr\tools\openxr-probe\run_probe.py
+```
+
+Basic probe count extensions, creation of instance, query HMD system and recommend left-and-right eye parameters.
+Do not create a session or submit a screen. Default to run the system;`--runtime <manifest.json>`
+Sets the sub-process only XR_RUMTME_JSON without changing the registration form.
+Python Packer in 25 Ends its own subprocesses when the second is timed out and saves diagnosis JSON to `analysis/openxr/`。
+
+Bit Session Test (release directory created before call):
+
+```powershell
+& J:\gearsVr\tools\openxr-probe\build\OpenXRPoseProbe.exe 12 J:\gearsVr\analysis\openxr\pose.csv
+```
+
+Program Call D 3D 12 Graphics updates, create devices and queues based on GPU LuID supplied at running time.
+Creates a session, LOCAL and VIEW reference spaces. Copy READY for BeginSsession.
+WaitFrame  ⁇ BeginFrame  ⁇  LocateViews / LocateSpace  ⁇  EndFrame, recording head and eye position
+Four-digit, visual field, VALID / TRACKED bits. Pure position mode submits zero layer.
+Regular exit request ExitSsession, consumption STOPPING and EndSearch, destruction of resources.
+Original calls may be blocked by the effects of running; unattended packages are always overtimed as run_probe.py.
+
+It is recommended that the existing total time-out packaging should be used to auto-set and save CSV, complete logs and brief analyses:
+
+```powershell
+& $py J:\gearsVr\tools\openxr-probe\run_pose.py --seconds 12
+& $py J:\gearsVr\tools\openxr-probe\run_pose.py --seconds 5 --render
+```
+
+The timeout is for test seconds plus 20 sec; timeout only terminates its own diagnostic subprocess.
+`--runtime` Also valid for the sub-process only; the result is not automatically a claim to true tracking success based on TRACKED or position changes.
+
+Independent video submission test:
+
+```powershell
+& J:\gearsVr\tools\openxr-probe\build\OpenXRPoseProbe.exe 5 J:\gearsVr\analysis\openxr\pattern.csv --render
+```
+
+Every eye 512×512; Dark red left eye, dark blue right eye, white central cross.
+Clear D after Acquisition / Wait 3D 12 Release after GPU fence is finished.
+First reading back every eye image, saving `pattern.csv-left.ppm` / `pattern.csv-right.ppm` With different checksums.
+Converts RENDER_TARGET  ⁇ COPY_SOURCE  ⁇ RENDER_TARGET during return reading to comply with the XR image status protocol.
+EndFrame submits a two-eyed program player. This test validates the resource and the submission link, which is a tool for monitoring the process.
+Not a game with real vision.
+
+Math tests:
+
+```powershell
+& J:\gearsVr\tools\openxr-probe\build\PoseMathTest.exe
+```
+
+`tools/vr-common/pose_math.h` Define OpenXR ⁇ UE coordinates transformation, relative backsizing, four-digit synthesis,
+Position unit conversion and UE Rotator unit output. Default 100 Units/metres are only preset to be calibrated within the game.
+It is a public code that has not yet been accessed and does not represent current real-time head start tracking.
+
+`PoseGateTest.exe` Test pose_gate.h: Default not enabled, confirmation of real head after streaming arm;
+100 ms Freshness, complete VALID/TRACKED, focus on games and sessions, sequence regression/false inspection.
+Allows multiple frames to repeat the same fresh sample. Return clean view and clear back the positive benchmark when it is invalid.
+The time stamp must come from a single clock shared by the producer/consumer.
+OpenXR prediced Displaytime; new producer session has to be created.
+This is not yet a shared memory transfer or real-time input interface in the game.
+
+References:[OpenXR D3D12 Image Status Specification](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XR_KHR_D3D12_enable-swapchain-image-state.html)、
+[Khronos Official SDK Example](https://github.com/KhronosGroup/OpenXR-SDK-Source/tree/main/src/tests/hello_xr)。
+# Show mode for game windows
+
+`run_pose.py --seconds 30 --game-screen --runtime <VDXR manifest>` In the independence process
+Continuously collect path-checked games HWD to 960×540 Target date 15 Hz Update to OpenXR
+2D panel. Only the game window, not the entire desktop; this wheel does not drive the game view point, not the stereo scene rendering.
+First frame saves the collection of PPM and swapchain GPU to read back to PPM and check pixels.
+This model is reticent with --render/-bridge-pid, and by default retains the original diagnostic behaviour.
+Validation and restrictions are available docs/15-game-screen-display.md。
+
+---
+
+## 中文
+
 # OpenXR 独立诊断与提交测试
 
 无需修改游戏或系统 OpenXR 注册表。使用本机 OpenXR 1.1.63 x64 loader，
@@ -78,4 +163,3 @@ EndFrame 提交一个含两眼的 projection layer。这个测试验证资源和
 首帧保存采集 PPM 和 swapchain GPU 回读 PPM，并逐像素核验。
 此模式与 --render / --bridge-pid 互斥，默认仍保留原有位姿诊断行为。
 验证及限制见 docs/15-game-screen-display.md。
-

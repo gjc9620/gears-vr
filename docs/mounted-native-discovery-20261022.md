@@ -1,3 +1,37 @@
+# Machine gun recovery: primary-reading only found
+
+This round continues to advance the "no delay up machine gun". As arranged by the user, only source code, synthetic memory and offscreen component checks are performed, no game, connection process sampling or user-operated windows are initiated. Current evidence indicates that a search has been reduced without any delay in the replacement of the complete machine gun.
+
+## Changes
+
+UI restore certificate to the required class from the object registration table. The original path has been read and merged into 64 KiB block and bounds 4 KiB page, but still execute Python loops by object. This round sorts, filters and selects objects `Class` The name judgement moves to the original cycle and returns the candidate address. Python then performs a real-time check of the complete certificate structure and all selected identities, slots, names, inheritance, attributes, scripts, codes and links.
+
+New Export `GearsCaptureDiscoveryClasses` is a simultaneous discovery auxiliary function, not called in game rendering hooks. External to an ongoing session owns the trusted DLL SHA 256 Check and load local modules; normal idle observations complete preheat first. Read the original readbacks of the current Resolver, writing to a temporary local result buffer for an owner. New path does not open extra game processes, do not call game functions, do not write game memory, do not operate windows or XR life cycles.
+
+The auxiliary function press ABI version 1, Current validated field layout and less than 400 Ten thousand input boundaries, each time you call to create a cache independently. Keep empty pointer skipping, sorting and repeating address behavior, block/page/precision range retreat after reading failed, UTF 16 Validity, indexing of name entries and checking of bilateral registers for new slots outside the old name. `DiscoveryRegistryChanged`;cancelled or otherwise checked abnormally cross-trip returns and rejected whole sampling.
+
+The old build is not exported, the module is not available or the field layout is not supported. The path can still be found using the original Python. DLL Hash does not match the code; restoring candidates themselves are protected by the existing HookEntryAttestation and List Trust Chains. Static modules are loaded without any current game identity or image proof.
+
+## Offline evidence
+
+Use the same DLL, yes 100,003 Registered,3 The eight-part staggered composite buffer performance for each category. The full list is the same. The middle of the Python calendar is **19.87415 ms**♪ All the time ♪ **3.1421 ms**. The folder contains Python/Native cycle and back-up expenses, without Real Game ReadProcessMemory, Full Certificate Preparation, GPU Outline or Headlight Blackscreen Time. The raw path is read in this folder 253 Secondly, Python path is 246 Number of times; improved from object-by-subject recycling costs, instead of less readings of this package.
+
+**39 Check passed before original/start**Includes the same API test for independent identification and loading of actual DL candidates, covering candidate and sorting, duplicate address, unreadable block/page retreat, name/name index changes, capacity/version boundaries and back-to-back. World doorbars, StereoGate, first person, aim, UI, resource life cycle, and three Ds are in place.3D 12 Two-eye pixel components in resource state are checked. Off screen D 3D 12 Debug player not enabled; these checks are not part of the game or entity header recognition.
+
+**481 Item Python Check Passes**：339 The field check enabled the actual DLL candidate without skipping the original example;142 The item starter passes through the package check. New checks cover complete UI configuration/INI bytes of person and machine gun, matching candidate lists and duplicate entries, valid new slots and changes rejected outside the old name snapshot, cancellation/registration forms abnormally not hidden, error DLL Hash unloaded code, unknown layout and missing capability back.338 In the first round of inspections 4 Initiation examples of unspecified DLLs were highlighted; eventually 339 The check has been submitted and is fully implemented.
+
+## Default Integration
+
+From the latest SniperFirstPerson 1 Freezing of source production, only modifying the auxiliary export of five original files: Capture.cpp contains, CMake test targets, discovers headline documents, exports realization and independent tests. Keep up-to-date first person snipers, sniper mirrors, bunker sightings, machine gun recovery, renderer, Playground and world-wide interface files.488 The actual compilation of the items relies on a check to freeze the source ' s construction before and after Hash.
+
+Normal starter is now in use `tools/native-capture/build-class-discovery1/GearsCaptureClassDiscovery1.dll`，SHA 256 `df7a5873185df14a6e7497758f433bdee3569aaaf86c387f8d1b67529a9849ad`. The default list only updates three native fields, naming candidates `manifest-class-discovery1.json`. Add the blank list `native_class_discovery.py`，83 The file existential check for entries is passed. XR, Playground and user configuration are maintained. New game sessions load new logic, and the current user session is not hot to replace.
+
+Build, protometric, synthesizing, Python snapshot, integration and regression evidence in signed `analysis/class-discovery1-20261022/`;freezing sources and constructions, respectively `analysis/class-discovery1-source/`、`analysis/native-build-class-discovery1/`. No new releases, no changes 0.0.1／0.0.2 Label or version package. The complete delay of the real first-time machine gun still lacks evidence of acceptance and acceptance currently constructed, and the target continues.
+
+---
+
+## 中文
+
 # 机枪恢复：只读原生类发现
 
 本轮继续推进“无延迟上机枪”。按用户安排，仅进行源码、合成内存和离屏组件检查，没有启动游戏、连接游戏进程采样或操作用户窗口。当前证据证明一段查找工作减少，不证明完整机枪切换已经无延迟。

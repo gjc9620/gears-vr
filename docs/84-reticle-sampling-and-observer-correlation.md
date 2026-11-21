@@ -1,3 +1,32 @@
+# The quasi-star sampling selection is associated with the frame spacing of the observation mission
+
+2026-10-17. This round uses caches and saved running evidence, without starting games, adding Hooks, opening IDAs or expanding databases.
+
+## Choose the weapon status of which two parts are actually drawn.
+
+Query kb.py to locate artifact 2 Export, recheck the file Hashi. WarHD. DrawWeawonCrosshairGOW 3（SHA 256 082c66d6ce62a562f645929c9f09e6e2cff0c5914362bd3a13afdc7b3fa5e4d0) In the primary quasi-stellar branch, four DrawIcons are used for proliferation and then call Weap. DrawAdditional Crossshair. WarWeapon Foundation Plus is empty in cache; Weap_AssaultRifle, Weap_LocustAssartRifle Additional Functions draw textures in the house, which rely on GetPlayer NormalizedAccuracy for transparency.
+
+This explains why the "Passgun Visible Outer Circle" is not sufficient to test "Independent Insider/Outer Circle Alignment". The Orientation Index does not find a separate icon for the pistol, but does not consider it as proof that it did not exist when running. Export contains undefunct native token and type location, without declaring full semantic reversion or identical disk/current operating code.
+
+Reuse Native 36 Session 33008 GPU charts 3（ticket 2113) Discrepancies the same frame-eye center area and preserve retial 49-rifle-crop.png: The scene is marked with rifle fire, white proliferation outer circle and near central red mark. Both parts are close to the same point of view but cannot be identified as DrawAdditional Crossshair by colour alone, nor do they have complete source/colour data with ticket, so they do not write "The inner and out ring has been accepted."16 Top Point/4 vertex payload map is consistent only for those records that are kept, not with ticket 2113 Composed into a frame.
+
+The next minimum sample should use the identified rifles, at least in the actual new maps and 10 The ADS is not started until the epoch is in place; first, stabilize the open mirrors are captured and early fire is captured.analysis/runtime/reticle49-script-evidence.json The original pistol issue remains open.
+
+## Periodic observation and long frames cannot be equal to time-consuming only
+
+savedcheckpoint 45／46 The world is watching the world.0.9–1.3 sec. This means that it has a CPU workload, which is not sufficient to justify the leading character of Carden.1–3, interval 0–150 ms, no overlap of prepara; borders are excluded from other zones. The new graph is completely enclosed within a successful observe and does not overlap with the observe's external group.
+
+| Session | Number of internal/outside samples | Middle-Inner/Outside ms | Internal/outside 95 Divisions | Internal/outside over 50ms |
+| --- | --- | --- | --- | --- |
+| checkpoint45 | 917／2470 | 22.681／22.333 | 34.207／33.636 | 4／3 |
+| checkpoint46 | 1132／2894 | 22.562／22.308 | 33.879／33.583 | 3／6 |
+
+The result is not enough to support a concentration of the visible frames during observation, which cannot be called the main cartongens, and thus eliminate world change tests. Nor does it prove that observations are neutral: they are less random, game state/load mixed, filter conditions do not certify pure play, and subsequent records are cut; new graphic submissions are not all projection or GPU time-consuming, let alone Quest/VDXR measurements.analysis/runtime/observe49-frame-association.json, including maximum values, exclusions and limits. The true head start is still to be verified separately.
+
+---
+
+## 中文
+
 # 准星采样选择与观察任务的帧间隔关联
 
 2026-10-17。本轮复用缓存与已保存运行证据，没有启动游戏、增加Hook、打开IDA或扩大资料库。

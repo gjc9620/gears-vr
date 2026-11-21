@@ -1,3 +1,71 @@
+# IDA Reverse Knowledge Bank and First Test
+
+2026-10-15. This round completes the basic structure and 1,000 Function to run on a test, and then expand to comply with VR Mod mainline and Token budgets without automatically scanning the full game.
+
+## 2026-10-15: Extension after user-authorized full database
+
+The follow-up goal has been clearly expanded to full index, batch cache code and is still understood only for VR-related systems. No new sub-agents, either Agent or AI, are available at this stage. `tools/re-kb/ida_corpus.py`In the new `analysis/re-kb/full-native/snapshot.i64` executes in copy; initial index backup is as `full-native/index-before-expansion.sqlite`。
+
+Fully indexed in the current IDA code section 113,924 function, all functions conform to historical source blib verification; deposit 1,512,528 IDA xref records and 342,569 bar directly calls records. xref contains the in- and out-sides saved by function, which may be repeated, not the only number calling the side of the map. Indirect calls to target, unrecognized code, and snapshot external modules are still incomplete.
+
+Also recheck all six sections of the original section with SHA 256,extract 359,642 ASCII/UTF-16 LE ASCII subset string candidate. `snapshot_literals` Independent Table, Save Section SHA 256、manifest SHA 256, VA/RVA, code and capture source. Bytes scan candidate may be misidentified, not an IDA type definition, much less a running use; other codes are not yet covered.256 Yes `cae9aa5ca275e0094dc6c0944a643101fea7226235cb1a28f65df0cfcdecc76f`。
+
+The pseudocode cache continues to be strung up in real time. `kb.py stats`、`full-native/status.json` and `runs.jsonl` Yes.`function_coverage=1` Only means that the name/ address count of this section is complete; it must be read simultaneously `pseudocode_coverage` and `reference_index_progress`- I'm sorry. 999 A successful result continues to be reused. The reason for failure is persistent and does not automatically retrace.
+
+Retrieval examples:`py -3 tools/re-kb/kb.py --db analysis/re-kb/knowledge.sqlite search Camera --limit 5`;known target RVA is used after conversion to VA `refs 0x140110878 --artifact-id 1 --limit 10` Checks the logs of the side and function. First check the database, then read the corresponding pseudocode by actually developing a suspect.
+
+This is a full historical code section of mechanical index, not complete game database. The generation of pseudocodes, the incorporation of existing orientation exports, refinement of string/reference links and data sections analysis, and deepening structure by render/UI/ Camera/Input demand; actual games and RenderDoc validation are not replaced by static coverage.
+
+## Verified environment
+
+- Independent IDA MCP available: IDA 9.4、Hex-Rays 9.4.0.260915、IDAPython Python 3.12.15, the dalib backstage runs without having to open the GUI manually.
+- REA 6.4.0 Connected, but IDA report `not_configured`- No, I don't. `REA_IDA_MCP_CONFIG`. This round does not install, migrate or change the global configuration. Existing MCP is `open_database/execute_python` interface;upstream of REA local fit documentation requirements `idb_open/idb_list/idb_close`The ULA is still an incomplete integration item.
+- The list of examples before opening the IDA is empty. Copy `analysis/ida/camera-110878-20261014/section_1000.bin.i64` Present. `analysis/re-kb/pilot-1000/snapshot.i64`, only on copy; closing case successfully. Back and forth of the library SHA 256 Both. `66d17edbf21bf81f0fe5cf740111e738a0308ac9228f7576fe39f460baad1813`。
+
+## Data identity and boundaries
+
+This is PID.16812 Runtime code section, SHA 256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`. Source EXE 's SHA 256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`. The module base is `0x140000000`,blob offset zero `0x140001000`, no Zero image base of IDA Raw loader can be used to calculate RVA.
+
+Just one. 64 BitCode `0x140001000..0x14131a94f`, the library is defined. 113,919 function, export follow-up run as 113,924 individual, indicating that the status of the copy analysis changes with the Hex-Rays job; these numbers do not represent the true total full game function. The final index denominator is used 113,924,selected 1,000 Address list remains unchanged. The snapshot is read in the historical section, not the current process atomic snapshot. All known chunks of each export function are checked against source blob bytes; pseudocodes are not semanticly correct.
+
+Existing 2,709 The UI candidate is UnrealScript Export,1,093 The article only states that the token and type are undefended. They enter a separate script table without increasing the native coverage.
+
+## Achievement and piloting results
+
+`tools/re-kb/ida_export.py` Batch Call in IDAAPython `ida_hexrays.decompile_many()`, read function-by-function results and the reason for failure. Hypothetical code and JSON record independent drops, MCP returns only summary. The first round of samples by address space certainty excludes those identified in export from existing names 100 An address; this is not a full historical exercise, but an index and historical evidence will be examined in the future before expanding.
+
+| Indicators | Measure |
+| --- | --- |
+| Selected/Record Functions | 1,000 / 1,000 |
+| Hypocrite success/failure | 999 / 1 |
+| Success rate | 99.9%(this sample only) |
+| Recorded/IDA definition function coverage | About 0.878% |
+| Four batches of cumulative wall clock time | 39.094 sec, does not open database |
+| Where native bat calls cumulative | 22.936 sec |
+| xref records / direct call records | 12,220 / 3,192(Salve by function, repeat side) |
+| String Record | 0; missing data sections that cannot be interpreted as playing with no strings |
+| Rerun | 0 A new export, Jo. 0.281 sec |
+| Add AI In-depth Analysis Functions to this batch | 0 |
+| AI Token Consumption | unknown; interface is not task-by-task measure, not filled 0 or estimate |
+
+Failed function RVA `0x11a2bd4`Hex-Rays `1411a2c17: call analysis failed`. The failure has been prolonged and the default run-back does not repeat; the correction analysis is retried with a new program/output to preserve old evidence.
+
+See SQLite CLI [Tool Description](../tools/re-kb/README.md). Key is artifact SHA 256 + Source type + source base, original VA saves at the same time as RVA; script, native is separated from cross-source discovery. Import submitted by a function service and can be re-exported; pseudocode file validates Hashi. Exporter's monopolistic lock, profile Hash and atomic records support recovery; type/analysis of environmental changes requires new output directories that cannot follow the old check point falsely updated results. 1,000 Native function,2,709 Script entries,17 The article is well established; the number of repeated imports does not increase,5 Tests for identity isolation, failure recovery, Hash authentication, declaration separation and cut-off input are passed. The additional depth analysis is still as follows: 0；17 Article is organized in accordance with the conclusions and cannot be considered a function for new analysis.
+
+## Follow-up rules for collaboration
+
+The main Agent holds the sole IDA writing responsibility; subAgent searchs for local indexes and saved evidence without contesting databases. Mechanical export does not occupy AI analysis; light classification prioritizes individual low strength items Agent, only critical call chains or risk review upgrades. Up to three do not require three permanent residences. No full analysis is added after the end of the current three subtasks.
+
+New Development First Search `analysis/re-kb/knowledge.sqlite`, recheck the original and version of evidence before you can finally perform a minimal new reverse. No matching does not represent that function does not exist. The conclusion must include functions/declarations of identity, artifact or clear unknown, evidence, credible level, static/dynamic distinction and to be verified.
+
+UI, I'll see you next time. [UI Priority](59-re-kb-ui-priorities.md)See Mechanism [Mechanism priorities](60-re-kb-mechanics-priorities.md). RenderDoc, actual game and real head start validation are not yet replaced by static indexing. This round does not start games, install tools, modify Hook or execute release.
+
+Local evidence:`analysis/re-kb/capabilities.json`、`pilot-1000/config.json`、`profile.json`、`selection.json`、`runs.jsonl`、`functions.jsonl`、`records/`、`pseudocode/`. Original derivative data continues to be ignored by Git, not entering the Mod release package.
+
+---
+
+## 中文
+
 # IDA 逆向知识库与首轮试运行
 
 2026-10-15。本轮完成基础架构与 1,000 函数试运行，后续扩展服从 VR Mod 主线和 Token 预算，不自动扫描全游戏。

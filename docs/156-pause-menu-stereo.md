@@ -1,3 +1,50 @@
+# Pause menu to keep original eye output
+
+2026-10-19. User feedback pauses the menu to flat screen.
+
+## Causes and rehabilitation
+
+Former XR Pause Branch `GameGpuScreen::render_eye_menu` Select only from completed eye images `eyes[0]`, as `XR_EYE_VISIBILITY_BOTH` . The menu and game background go to common plane, where the original right-eye image and scene view are discarded. This is the current Mod source code that defines the display path without adding a new original reverse.
+
+User further confirms that text/ icon ratio is flat. Current native `capture.cpp` The owned Canvas branch has drawn the glyph menu to a lock on HUD plane for the same document. Old Quad `menu_eye_panel.h` Still restores the projection to 'normal Canvas semi-widescale' source as a second ratio of the projected menu. In the parsing example of square eye texture, symmetric FOV, the original equal UI X/Y was turned into 2:1; the problem is the same as loss of right eye as the old suspended branch.
+
+The branch should be suspended as follows: `render_pause_menu`, through existing `render_projection` Two separate eyees, matching pose, FOV and tailor rectangulars using the same eligible instrument. No re-composed eyes or use the latest attitude to replace positions in the image document. Backstage original releases, world subrogation, resource subrogation, access-space, image prescription and GPS foes continue to be verified by the original path.
+
+Enter the pause with a new image that is still required later than the menu epoch; GPU copying to read again the menu lease, and all late, changed or changed status refused to submit. Suspends the successful display of only log menu Wits, without calling the gameplay handoff; it will still be later than restore the border. The main menu and death menu continue to follow their existing display strategies.
+
+Add `pause_menu_first_frame` ♪ Backwards only `xrEndFrame` Successfully and actually submitted two-view Projection post-record.`pause_menu_evidence.projection_layers` counting separately;outage log tags this branch as `pause_menu_projection`, avoid confusion between the common panel and the original eye.
+
+## Authentication
+
+Independent Build `tools/openxr-probe/build-pause-stereo1/OpenXRPoseProbe.exe`，SHA 256 `afcde6794e004852de0f2965c54cd0a6522136e28a2db3d979d636b783238e1e`。
+
+- 8 C++ Passed: menu status, pause/restoration policy, window fallback, access-space epoch, world interface display and identity, left-and-right eye tailoring strategy and actual D 3D 12 Cut fixure. GPU fixture in 2048/4096 No pixels match each eye size, three formats; it does not represent actual game pixel acceptance.
+- 43 Item `test_menu_display_monitor.py` Check through.
+- XR brought it with you. `--projection-receiver-self-test` and `--continuous-control-self-test` Pass, XR session not opened.
+- Pause strategy add new checks: Successfully suspend projection does not remove entry to menu boundary; failure projection also keeps the border; shown pause menus must wait for a new restore image when entering gameplay.
+- Add `PauseMenuGeometryTest`：72 Group size/source ratio, symmetric/asymmetric FOV,40/64/80 mm pupils, calibrated with an independent reverse cone for glyphs of length and a limited distance paired to the eyes; and clearly asserted that old common Quad arose in the analysis of examples 2 Double horizontal stretch.
+
+Both games are active Native `e6d598f6b90f0eeb9c9b82bc5d10233f2cb4b999b355d6f815104f3bdf92ca5a`XR, above 1920×1080 Startup Settings, Ender_scale=0.7、Quest 3 Asymmetric FOV. Actual primary output is 1792×980♪ Every eye ♪ 896×980。
+
+| Session | Actual results |
+| --- | --- |
+| `continuous-stereo-40340-20261019-195842-eb0b8c2a` | Two times, a pause to Resume.1454 The projection is suspended once, and both menus epoch have a new document submitted for the first time and returned to you. |
+| `continuous-stereo-36164-20261019-200725-1f1ebe71` | Two times, a pause to Resume.1492 The projection was suspended; original eyeshots after the GPS fence were obtained at each of the two suspension stages. |
+
+Both rounds include pause yaw 12°/pitch 4°/roll 3°X-place shift 35 mm and Y changes 100 mm, restore neutral postures. Original cleanup, independent entrance restoration and XR exit 0 Both passed, no-killing game. Process exit is delayed after normal closure of the message; setup and four profile recovery byte for first round before next round and after second round release game 256 Validation is granted. Second round audio guard log confirms mud=1、restore_attempted=1、restored=1、restore_pending=0。
+
+Two original GPU images for the second round 1792×980，snapshot 1/ticket 560 and snapshot 2/ticket 1181;with backslides, image paths and SHA 256 Yes. `pause-stereo1-verify5-20261019.json`. The red gear icon from the original image looks like quality heart, actual every eye FOV and 64 UI of both samples, approximately.1.992 m, with original 2 m plane is the same. The measure is affected by a rasterization/low resolution mass error, not determined at precision distance. A negative image of the configuration UI plane is generated and the near circle icon is no longer present 2 Multi-horizontal stretch; check maps are derivatives, not headshots.
+
+Verify the hidden-windows game starter for requesting visible authentication with Simulator Runtime, and set up `GEARSVR_TEST_WINDOWS_BEHIND=1`、`GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`、`GEARSVR_TEST_MUTE_GAME=1`. No user windows activated, moved, scaled or re-set, no entity handle backstage input enabled. Two rounds 40 The first round of windows block the sample.0;second round 40 Each sample reported a rectangle cover of its own window and TaskManager Windows, so the second round was not evidence of adoption of behind-windows OS and did not hide it by adjusting/reordering the user window. The window policy gap is maintained separately from this pause image recovery.
+
+Default `tools/vr-launcher/manifest.json` XR Path and SHA 256 Update to this build, existing Native update from other jobs to MountedBlack 2（`30bb2d31c31ea4b5d193cd55e847bf7e704235824205a0d686d594861a423e7f`) This fix retains the field. Defaults all documents for Hashi verification; the text of the two sets of actual Native is clearly identified as StereoFPS 1 It can't be written as Mounted Black 2 Joint operation validation.
+
+Local evidence is being kept in the neglected `analysis/runtime/pause-stereo1-*`including changes to source code and SHA 256 Game-derived images and running data do not enter the release package. Real headline visions and comforts still need to be independently measured.
+
+---
+
+## 中文
+
 # 暂停菜单保留原生双眼输出
 
 2026-10-19。用户反馈暂停菜单呈现为扁平画面。

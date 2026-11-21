@@ -1,3 +1,47 @@
+# Original request item-by-item check
+
+2026-10-28. This table distinguishes between the pre-existing programme/assets and those that are not valid until they have been completed or accessed. The weapons/shelter extension is not currently achieved, constructed or operated; the pre-execution study, interactive decision, transfer of assets to implementation has been completed; and the actual functionality remains unaccessed.
+
+| Original Requirements | Current authoritative delivery and evidence | Check results/remaining conditions |
+| --- | --- | --- |
+| 12 All weapons have interactive specifications. | [W01-W12 Specifier](../weapon-specs-20261028/weapon-cards.md)、authoring-manifest.json 12 A unique ID. | Start, process, completion, interruption, inventory and special conduct defined by weapon; HOD/Troika/hand grenade explicitly does not apply to conventional reloading |
+| review R 3 Backbox, refer to mainstream VR | [Review v2](../weapon-specs-20261028/interaction-review-v2.md)List official manuals/designer information and scope of application | Completed. Lancer default is free, without any requirement for R to be removed after explicitly removing the box.3;different mechanical retention differences |
+| Identification of Boltok institutions | Specification W 06 Review v 2, original bone/spore geometry and private assembly, six-hole replacement | Portable evidence of support/blast/fixed-end relationship;Object 09(b) Not recognized as a shell-recovered pole;80°It's the design start. The original animation angle is not confirmed. |
+| Check the sprain bow off. | Original Sarge/Active/Fire/Endstate Save Script,[Common rules](shared-contracts.md) | Orders of pinding and normal withdrawal are clear; active R 3 Cancel, normal de-breeding of retrenching; actual call to ABI still requires access to authentication |
+| Check out two types of grenade fuses. | Original StapBounce, AttachInit, Hitwall, BeginExplesionSequence | Trailed for Frag and Smoke; not using LifeSpan as a fuse, not adding to handcooking; actual running time is not yet verified |
+| The grenade tracks the player's hand. | Original Generation Chain T 1, existing contract of common rules coordinates | Rraw XR reference point alignment, low-speed active release, space change re-mining, only once combined; minimum velocity/place transfer threshold margin for current core needs to be achieved |
+| Full weapons separation/supplier plan | [Model worksheet](../weapon-specs-20261028/model-work-orders.md)、12 A source grid of ghashi and bone. | Distinguished from original stand-alone, protobular, Snub private dismantling and original; not remade whole guns |
+| I'm actually making a model of the patch. | [5 GLBs and preview](../../assets/weapon-6dof/offline-v2/README.md), generator, independent certifier | 3 Full live ammunition + six-hole nests produced, starter re-used; original Snub cartridges are privately extracted. Offline LOD/pore/cooperative check passed; material perception, final size and engine display not accepted |
+| We've got a corresponding change of code location. | [Weapons Index](../weapon-specs-20261028/code-locations.md)：33 Documentation 78 Location;[Shelter Index](../cover-specs-20261028/code-locations.md)：23 Documentation 63 positions;second round 10 Documentation 19 Location (overlapping) | Symbols, source-coded Hashi, original semantic entry and additional module boundaries provided; line numbers are not permanent addresses, starting with main lines aligned by symbol |
+| Check the bunkers and deliver the kits. | [19 found](../cover-specs-20261028/findings.md)、[I1-I6 handover](../cover-specs-20261028/implementation-handoff.md)、[Second round](../cover-specs-20261028/research-followup-v2.md) | Production inputs, old path conflicts, turn/place shift, walk-in, collisions, original movements, exposure and continued delay in firing chain detected; not open to use by the old switch |
+| The bunker program is open to inspection | [20 acceptances](../cover-specs-20261028/acceptance.md)、28 Python reference/78 Claims/3 Group Example | Time series of offline specifications checked; reference model did not call for C++ production and could not prove actual physical collision or shooting injury |
+| Start without re-selecting interactive | [Weapons are being handed over.](../weapon-specs-20261028/implementation-handoff.md)The bunker I.1–I 6 Common rules,[Mark Table](calibration-plan.json) | Default input, mechanical process, request/reciprocation, shared ownership, location and certification responsibilities; residual technical risk is listed below and not abetted to skip |
+| Not on the main line. | Write only on the topic docs, offline original assets/tools, signed energy; production source code independently advanced | No C++/construction configuration/starter, Git index/submission, candidate package or game asset; no game, XR, simulator or chat started |
+
+## Actual verification
+
+Private `analysis/technical-prep-20261028/joint-evidence-audit.json` Save:12 The package of the original grids is re-heathed bytes;108 The blogger says that the government is not a party to the law.5 A GLB re-Hashi;12 Cards and checklist coverage;3 Current HUS comparison of a code index. Original/original/original asset check matches. Main line drifts only, not back-source and does not relabel the old line number as current.
+
+Source Index contains overlapping files, cannot 33+23+10 The current source code is not an atomic freeze snapshot; investigative evidence and subsequent start-up baselines are kept separately. GLB test files do not test the actual geometry and assembly data for game loading/eye depths. The bunker reference model test contract reverses, but does not test a national ABI, thread or engine collision.
+
+## Prior technology gap N 01 Closed
+
+The static implementation chain of the original geometric entry engine has been identified: original UObject, independent interim Mesh, initialization of LOD/vertemarks, material and indexation, initialization of original resources, root reference lease and original release fence. Precise access and byte evidence is kept in private machine tables, as detailed below.[Asset backend](asset-backend.md)。39 The code block of a selected function matches the same historical snapshot item by item with the command, and the original analysis library remains unchanged.
+
+Created consistent with input layout 11 Grid input (for four new models) 8 LOD+ Starter 3 Parts) independent inspection 9,872 triangles,29,616 A top point, location, UV, material grouping and quantitative method matching source. Original RawTriangles reconstruction may change the method line, with a clear introduction of direct primary vertex initialization, leaving no further two routes to choose from.
+
+"Close" means that the pre-encodeabled route and input has been determined, which does not mean that new resources were shown in the game. This is achieved by checking the actual version with ABI and performing the following validations; no re-choice of player interaction or resource architecture is required.
+
+## Certification liability for the access phase
+
+The following are the achievement certificates of the established scheme and are not implemented under the current ban on access: original process identity/bytes to call ABI check; inventory/state function readback; physical physical query, line and final submission consistency;12 The gun is physically marked; new material/deepness/eyes and GC; real exposure and head comfort. Each has been entered into a thematic interface or acceptance form, untested data are not available 0, unit matrix or static capacity composting.
+
+There is no conclusion that “all problems have been eliminated in the game”. This package has reached its target for a prior handover, and the next step is to prepare and validate the operational code directly on the freeze task.
+
+---
+
+## 中文
+
 # 原始要求逐项核对
 
 2026-10-28。本表区分前期方案／资产完成与接入后才能成立的行为。当前没有实现、构建或运行武器／掩体扩展；前期研究、交互决定、资产与实施交接已完成；实际功能仍未接入。

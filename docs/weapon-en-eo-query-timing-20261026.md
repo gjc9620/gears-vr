@@ -1,3 +1,43 @@
+# EN/EO time-consuming and source age review
+
+EO's pure resolution candidate has a shorter time in the stored gun-handle query, but was originally used to use a weapon.40／6 Seconds fail, no subsequent move. Hold the candidacy.40／50 ms rules, the next step is to check the time series from body sessions for production to consumption without continuing to superimpose the same small optimization or create a new runcase.
+
+This time, only the originals of the EN/EO PG query log and Native budget are read independently. Check that PG starts and ends with the corresponding Native Qury by query, Scene, Publicisation, Cookie, Nature incarnation. No reruns, constructs, tests or changes to the storage case.256 In the ignored `analysis/weapon-parser-candidate-20261026/compare_en_eo.py`and`en-eo-saved-query-comparison.json`。
+
+## Actual observations
+
+PG only keeps the original 32 You can ask me again.111 Once, EO General 115 Once, averaged; the below “gun-holding query” refers only to a sample of PG status non-unheld and does not mean that it was eventually successfully submitted.26 The article, the EO has 27 bar. The difference between two running samples does not constitute a match-to-in or full scene performance guarantee.
+
+| Indicator/sec | EN Minimum/Middle/Maximity | EO Minimum/medium/maximum |
+|---|---|---|
+| PG grabs the gun, and it'll take time. | 6.3443／6.5356／8.1438 | 3.6503／3.7464／4.4699 |
+| Contact observation complete to retained | 6.3430／6.53395／8.1422 | 3.6423／3.7375／4.4583 |
+| PG entered at sync age | 36.2374／44.87425／49.1403 | 38.7161／47.0972／49.2830 |
+| The end is the sync age when respone enters. | 42.7707／51.78135／56.1443 | 42.3955／50.7641／53.4922 |
+| PG was old sync when it was finished | 42.7718／51.7818／56.1447 | 42.3966／50.7644／53.4926 |
+
+Reduction in the number of callback medians for saved samples 2.7892 ms, mainly reflected in the observation segment of retained; actual time support for the observation that candidates are running to shorten the paragraph cannot be extrapolated from algorithmic comparisons. The median number of sync age at EO enters the query is higher than EN 2.22295 ms, so the callback reduction does not translate into an equal amount of age.41／held 19 With En ready 43／held 28 Directly interpreted as optimizing degradation or improvement.
+
+En prefix to 6 unheld、10 ready、16 Final represse 12;EO prefixes 5 unheld、11 ready、16 Final represse 12 And then, on both sides, eventually...12 After the initial context, retained, full Game/type assets/bind, the final restone was over.50- I'm sorry.16 The age of sync is as follows:
+
+- PG in.46.6415–49.2830 ms, medium 47.5599ms。
+- PG callback time 3.6503–4.4699 ms, medium 3.7389ms。
+- Finally respone in.50.3525–53.4922 ms, medium 51.2579 ms; each article has expired, not only after the log has been closed.
+
+EN budget prefix can relate to all 32 PG; EO budget prefix with a query 0, so only the PG is involved 1–31，PG 32 There's no budget line for Native. Another query 0 is the original no-query-age log, not mismatched by line number. Relevant in the failed EO sample 15 The rule was in the copose when it was sync already.45.6674–48.0854 ms, medium 46.5109;compose enters into query only 0.9455–1.2952 ms, medium 0.9830. The specific old source, which has reached the age of copose, is still physically checked against the production and consumption chain and cannot claim that a linear or productive function has been diagnosed by this age observation.
+
+The original commit_end is returned to observation, not the first successful or accurate CAS moment.32 The rule doesn't explain the entire course of EN.63 Second, EO 65 Substale_broker; the rest of the query details are not saved and do not replace classification. The PG ready, held member relationships, final application of four roles, post pass and continuous movement thresholds continue to be recorded separately.
+
+## Play and clear the border
+
+Body side current round report: Game 1500／Native 2480512716131，19 All of the hell passed, four players.15／count 4 And actuallyApplied.19，380 Event nodrop;old 40／6 seconds failed, unsettled. HandStop 5/quiescent, freehand continues, inputs resume, Bridgeclos and 106／Native／entry／XR 0／PG 0/ Ten documents/udio 10/Accurate PID resumes pass, host stays instantaneously. This review does not recalculate the readout cleanup and freehand fields.19 Local/FK; attitude and practical application conclusions quote body side`eo-pose1`／`eo-alpha1`／`eo-runtime1`It will not be a double self-portrait.
+
+Candidate PG `f85a00dda92f09c0c7548151b676c7cb37dc5ec0879472201855ad0248615650`retaining;Native 46 No change from the original EO pins. There is no continuous gun holding/follow-up action/physical acceptance, overall 36%、W 2 40%Maintain. This time has created a time-consuming boundary for physical inquiries, which have not yet been resolved.
+
+---
+
+## 中文
+
 # EN／EO查询耗时与原来源年龄复核
 
 EO的纯解析候选在已保存的握枪查询样本中耗时较短，但原firstheld40／6秒仍失败，未进入后续移手。保持候选与原40／50ms规则，下一步由身体会话回查生产到消费时序，不继续叠加同类小优化或新建运行case。

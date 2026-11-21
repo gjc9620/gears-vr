@@ -1,3 +1,31 @@
+# Real machine feedback: machine guns, forkwig interface and English default
+
+2026-10-17. User has completed one short time 3 / Virtual Desktop Test: Black screen upper machine gun and lower machine gun restored; turn-off interface location too high to be uptight; wish to keep the first version complete 6 DLSS compatibility does not block version 1 and the current disablement policy is suspended.
+
+Users now play other games using computers. This round is only offline analysis, modification and testing, does not start a game or simulator, does not focus, does not change the handle policy of the back-office entity.
+
+## Machine gun: evidence and investigation boundary
+
+Script information available `Engine.Vehicle.DriverEnter`、`WarfareGame.Turret.DriverEnter` and `Turret_TroikaCabal_base.DriverEnter` Displays the entry process to switch control roles via UnOffice / Postness; these are exported script information that contains undefunct native token and position of parameters, which is not considered complete original realization or current operating certificate. `LiveRegistryAnchorSampler.validate_controlled` Turret has been allowed, and cannot simply be attributed to WarPawn only.
+
+User Session `analysis/runtime/continuous-stereo-24696-20261017-150718-1be1dbc1` Use VRDof 60. The saved world.jsonl contains four changes in registration forms and two failed sampling deadlines, but the lack of time for the machine gun incident and the exact reason for the internal rejection cannot be considered to be the reasons for the black screen of the machine gun. The session report is incomplete, which did not verify after the game was withdrawn, and does not claim that this round has passed normally.
+
+The offline review focuses on the authentication and re-linking of common mechanisms after a role switch: Mounted collects duplicate resolution reflector information, which contains a large number of duplicate identities and parent readings in strict time windows; Mounted Timetamp changes are also classified differently from normal cameras. Any optimization must be kept as complete time stamp, POV, identity, reflection field and cross-repeated relationship verification without using old images or older authentication to cover up failure.
+
+## Fork of road, UI
+
+Scripts already in place `WarPC.OnDisplayPathChoice` OpenScene by UIController. `UIScene_PathChoice`, and save `OpenedUISceneChoosePath`；`WarPC.IsPathChoiceOpen` Query this object. It is not a fully recognized interface that can be identified by DrawWeaponSlots or the quasi-star scope alone. The current HUD element zoom only over the drawing of an existing source, and there are no mapping attitudinal, layout boundary and eye validation for this forklift image. Next step is to position along UIScene public drawing and cropping processes to avoid moving the entire HUD down the board to affect subtitles, parastars and menus.
+
+## 6 DoF and release default
+
+`tools/vr-common/stereo_frame.h::stereo_matrices` The three axes of the relative tracking reference point per eye have been written to the view matrix at a world unit ratio, and rotated independently; this indicates that inclusion of location tracking is achieved, not new 3 DoF tags can be solved. Users have previously 6 DIF positive feedback, but this time no distinction is made between rotation and lateral experience, so it retains the current achievement, continues to check the validity of post-repeated reference points and tracking, and does not claim that the current round has been reaccepted.
+
+GUI Default and missing configuration retreat has been changed to English, new packages are visible `launcher_language=en`;insignive saving `zh-CN` Still.84 The Python check, C# compile and hide self-detection pass. New EXE is located in `analysis/vr-launcher-ui/GearsVrLauncher.exe`; root directory starter is being occupied by process, the process is not closed or forcibly replaced and old ZIP has not been rewritten. This is not yet an enforceable document currently in use by users.
+
+---
+
+## 中文
+
 # 真机反馈：机枪、岔路界面与英文默认
 
 2026-10-17。用户已结束一次短时间 Quest 3 / Virtual Desktop 测试：上机枪黑屏，下机枪恢复；岔路选择界面位置过高，需要抬头；希望第一版保留完整 6DoF。短测没有建立长时间稳定性结论。发布渠道计划为 Discord，启动器首次默认英文，保留中文选择。DLSS 兼容不阻塞第一版，现有禁用策略暂不解除。

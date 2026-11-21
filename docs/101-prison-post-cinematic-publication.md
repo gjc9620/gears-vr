@@ -1,3 +1,39 @@
+# Opening CG post-eye image release interrupted
+
+2026-10-17，Reticle 46／Borderless 1, actual game session `continuous-stereo-24660-20261017-092744-7bfc80e7`This is a problem with... docs/100 . This round is ready to start 1.992 in seconds, without triggering a new controlled role link to retry branch.
+
+## Practical evidence
+
+Select from the actual menu 1（sp_prison_p，LoadChapter=0. MovieProgressReader observed 89 Frame Snippet and 1674 frame opening session; matching XR PID 20568 The time-diagnosing and simulator screens confirm that the film content and subtitles are on shared plane. This is not geometrical evidence of a three-dimensional rendering.
+
+After the film, world scenes built with eyes, paper consumption and preparation accumulated 5535 ♪ Once, mismatch ♪0♪ But publiced ♪0、capture_attempts=0..with eyes and ears 5532 Once a year, fine fair reason 128 Means that no OM rendering target is tracked. 3 ♪ The world is so full of shit ♪0。
+
+Round `frame_link_capacity` ♪ I'm not sure what you're doing ♪296、list_limit=512、list_overflow=0、event_overflow=0、descriptor_evictions=0;other floor `frame_target_stats` ..the fixed table is only available 256 item, actual taget_binding_overflow=408510. Present cleanup detected that the spill will call FrameLink.invalidate(). Inconsistency in the volume contract and the failure of the connection after the spill is established; each missing target cannot be attributed to the same spill list.
+
+`frame_target_stats` It's not a story tracker,`owned_target_stats` This is the state. Non-stract can be created by a new OM bind. Present pre- and post-binding clearing registry may also constitute an independent cross-border issue; no evidence exists to support retaining old binding bypasses.
+
+## Repair and validation requirements
+
+Harmonize the two-layer fixed list capacity to keep excess rejections and Precent disabled doors; add a field diagnosis for active numbers, high water levels and first rejected lists. The CPU test covers more than old 256 The ceiling remains bound by the lists, the new ceiling is rejected, retirre/clar is restored and the diagnostic history is not erased.
+
+Physical re-diagnosis must be simultaneously checked: the capacity pressure actually exceeds 256♪ All right, all right, all right, all right, all right, all right, all right, all right.128 The growth of the linked  ⁇ capture_attempts ⁇ publiced  ⁇ OpenXR program is no longer connected. Only spill-over to zero is not a successful fix.
+
+This round ends with a phase=incomplete, passed=false, but independent_cleanup_verified=true has independently stopped evidence; owner/XR has withdrawn and normally closed the actual game. Four files after testing save copies before restoring baseline and checking all Hashes. The evidence is in signed `analysis/runtime/prison81-*` . The progress of the original player chapter is not covered by this test.
+
+## Reticle 47 Physical re-entry along the same route
+
+Submit `9e2f073` Unified Capacity is 512, and keep all impregnable doors closed. Freeze DLL SHA 256 `a1e65907970fc2b8fd626bc8c8fef0383d4bac5dbfd0fa89ab34e6417b2f3e1d`, diagnostic call border monitor is closed.11 The focus is tested to pass, FrameLinkTestest 21,078 check; game startup also uses the necessary self-measurement.
+
+Prison 82 Session `continuous-stereo-36120-20261017-095029-913ef384`, Game PID 36120／creation 134366754162410887，XR PID 40296. Adopt with Prison 81 The same authentication menu route, the same chapter and simulator run. When you observe the opening session, you return to the scene normally, finally linked =2181、capture_attempts=2181、published=2180、ticket_retains/duplicates=2185/2185，ticket/rect rejection=0。FrameLink list_highwater=308, binding form list_highwater=378 It's more than old. 256 ceiling;target_binding_overflow=0、first_failed_list=0、descriptor_evictions=0. No ticked final-eye reason 128;only retaining 5 No note Quad refused. Metadata_lost/unktown_list 5 It cannot be claimed that there was no refusal throughout the commencement period.
+
+Actual OpenXR log to submit left and right eyes 1920×2160 Projection, follow-up. 3840×2160 GPU snapshots are both relevant to the card scene. The earliest automatic GPU snapshot is black, and the specific step in the transition has not yet been further defined; this does not mean that all brief black frames can be declared eliminated. Starting sequences include manual menu navigation and an entire start-up waiting period, with no total first projection time being delayed for pure rendering.
+
+After stopping, please=stopped, passed=true, native_cleanup_verified=true, independently cleaned and ordinary closed game passes, all four files are recovered and verified. `analysis/runtime/prison82-*` This does not promote common root causes for all historical black screens against the conclusion that “the old binding table is insufficient to block post-CG release”.
+
+---
+
+## 中文
+
 # 开场 CG 后双眼图像发布中断
 
 2026-10-17，Reticle46／Borderless1，实际游戏会话 `continuous-stereo-24660-20261017-092744-7bfc80e7`。此问题与 docs/100 的启动证书变化不同。本轮准备在 1.992 秒内完成，未触发新的受控角色链接重试分支。

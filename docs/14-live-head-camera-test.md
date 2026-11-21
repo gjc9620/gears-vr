@@ -1,3 +1,72 @@
+# Real-time head-to-head access prototype
+
+2026-10-12 Code compilation, independent self-measurement and restricted real time head start testing at the current level.
+
+OpenXRPoseProbe shows left-and-right eye test maps from independent VDXR sessions and passes
+Local\GearsVR.Pose. < GamePID> Share memory to publish the latest head position.
+The name-based mutually exclusive lock protects the fixed structure; game backshows are only done zero for reading and when you lock up, return to your clean view point.
+Creation of a second producer is rejected; mapping is verified by target PID, version, size and QPC frequency.
+Timetamps are QPC nanoseconds when they are published, not OpenXR prediced Displaytimetime.
+
+New --live-head mode and --sweep/ --webble reveal. Only local verified players
+SceneView Returns the address of the event in view 0x15d0ca Up.
+Builds a clean view point from the original function and then applies a change in the head attitude relative to the first active.
+No changes to CameraCache, no changes in position of the person, no first-person anchor or eye view.
+
+Validity check follows PoseGate: Effective and tracked, OpenXR session focus, game focus,
+100 ms data within which, single-modified sample serial numbers and limited values; failure returns the clean view point and resumes it again.
+Ratio is used temporarily 100 Game units/m, uncorrected; actual test limits per axis ±5° Length of the & Bits 2 Units.
+Limiting the magnitude of the impact test should not be considered a complete head-on experience of natural ratios.
+F 8 Abort the wheel (no longer resumed), hold down F 9 Returning. The capture timeout is still cancelled by the mechanism already in place.
+DLL and map holders remain in the game until the process exits, so the next round uses a new game process.
+
+Independent self-measurement of real Hook/trapleline path check: sharing memory producers/consumers, refusing to duplicate producers,
+The first frame is centered, small head moves into temporary output, rotates and moves the cap, and expired data returns to original output.
+ABI/Cessation of Self-Suspection and PoseMathTest/PoseGatetest have also passed.
+These results are not a substitute for in-playing validation or user visibility.
+
+Test order: Current version of camera identification  ⁇  Start verified Quest 3 Position producer
+(-render --bridge-pid PID) ♪ GearsCaptureLive.dll
+(-live-head)  ⁇  Users are subject to controlled head move  ⁇  Stop and check CSV/entry for recovery.
+CSV Adds pose_status /pose_security, please=8 is the actual application head start.
+PoseStatus numeric value is unarmed=0、inactive=1、untracked=2、stale=3、replayed=4、
+invalid=5、recentered=6、applied=7。
+
+The current round of headlight shows dark red/dark blue test maps, not game images. Image submission and eye rendering is a follow-up.
+
+## Current level results
+
+Play PID 28720，Quest 3 / VirtualDesktopXR 1.0.10。
+Bit-producer Run 120 Seconds, in the game Hook 55 seconds;tool activation is rejected by Windows,
+Users give focus to the game by hint and move flat. Users confirm action is completed, test maps are continuous and no apparent anomalies are visible.
+
+- OpenXR 14,383 All samples are limited, effective and tracked;14,382 A different gesture.
+- SceneView 16,129 bars;matching event status:inactive 5,990、recentered 1、applied 10,141。
+- 10,141 The events of the strip,10,140 A header is applied to the bar view log, which involves 4,136 A different position number.
+  Each application can be matched to the original OpenXR CSV valid, tracked and FOCUSED position.
+- 3x3x rotations change;pitch/yaw maximum  ⁇910 Rotator units (approximately  ⁇ )5°,roll range-619..910。
+  Maximum length of horizontal 2.000244838 in units, the trace above the mathematical limit is rounded by fload position.
+- The original event location and rotations have only one value each; the CameraCache yaw in the modified view has only one value.
+  The projection matrix always has only a set of values, and the view matrix changes head-on; all the views arrays recorded are limited.
+- Change the caller for other events to 0,Defence change to 0,Procent failed as 0。
+- stopped disable_status=0、active=0;rowing 9 Article : Records are not without damage.
+  After stopping, read the two game entrances independently, which correspond to the original signature bytes.
+- The lost focus view has 5,988 The Camera Cache time stamp, which demonstrates that it is updated during the inactivity of this round, is not available.
+
+All nine cross log analyses are passed. Analysis tools:tools/native-capture/analyze_live_head.py。
+Local evidence:analysis/runtime/live-head-28720.{csv,json,status.txt}、
+live-head-28720-Videation.json.
+live-head-28720- Cross-validation.json, and
+analysis/openxr/pose-20261012-001141-498918.{csv,json,stdout.txt,stderr.txt}。
+
+This round proves that real head-to-head can enter the original retrofit point of the current level and cannot declare that there are already playable VRs.
+Unpredicted active disconnection, recovery of expired data or F 9 (a) Returning (these are self-measured only);
+The first person, anchor, game unit scale, game image submission, eye view rendering still pending.
+
+---
+
+## 中文
+
 # 实时头动接入原型
 
 2026-10-12：代码编译、独立自测及当前关卡内受限实时头动测试通过。

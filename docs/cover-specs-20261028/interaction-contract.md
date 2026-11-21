@@ -1,3 +1,62 @@
+# Shelter interactive contract
+
+This contract continues [Confirmed bunker design](../6dof-cover-interaction-design-20261024.md), only the engineering boundary is filled. This is achieved on the basis of the current unified body/hand main line and does not restore the old independent operating package.
+
+## Player Behaviour
+
+| Operation | Fixed behaviour |
+| --- | --- |
+| Original entry, adsorbing, moving along the wall, side/back exit | Keep original legitimacy and status chain; grab the edges cannot lock exit |
+| Real stand, crouch, right, left, right, right. | HMD actual homogenization continues to take effect without LGrip; pure rotation does not generate additional homogeneity |
+| Left edge: Left hand to right | Body moves to the local left side of the bunker; reverse indentation |
+| Right edge: Left hand to left | Body moves to the local right side of the bunker; reverse indentation |
+| Top: Left hand down | Body rises; moving up lower |
+| Untie me, LGrip. | The reservation has been submitted to virtual offsets, with immediate access of the left hand to other interactions; real head is still free to move |
+| Catch it again. | Current hand position, currently submitted body deviation as a new starting point; locking one side and one axis at a time |
+| LT／RT | Keep sighting, open-scopes, shooting; remove them from the side probe/uptick and camera deflection that automatically occurs in this VR mode |
+| Hold your gun in the right hand, hold your side with your left hand. | Legal single-handed shooting is allowed; the gun remains under cover and HMD cannot be an authoritative target source |
+| Original flipping, CoverSlip, SwatTurn, running into bunkers. | Original special action takeover; stop scratching, return posture ownership and re-establish context after completion |
+
+Left-hand leases have been given priority, including armed aids, ammunition/brackets and mechanical parts. In the absence of a lease, existing single arbitrations are to be followed: only requests made through the edge of real proximity/accessible inspection; currently eligible cover requests are to be prioritized with no additional second arbitrator. One can only be used by one consumer if the lease is lost or tracked down, but must be effectively unloaded again without automatic retrieving.
+
+## Three sets of coordinates must be separated.
+
+1. `CoverBasis`The body coordinates for the wall, with the right axis derived from current legal surfaces and gravitational forces to the world; do not rotate with real-time head. Not only Pawn yaw+thirium is used. Curve/neighbor changes create new base formation.
+2. `ViewBasis`: Main Line Current C 0/ First person refers to the point of view benchmark, continuing the observation direction before entering. Body cannot force head-over towards wall; suppress original cover `BeginTurn` Automatic camera alignment on this instance.
+3. `TrackingSpace`Original OpenXR position and valid reference. Hand-held projection to frozen bunker axis, virtual shift in millimeters; world conversion is based on current unit ratio and does not have hard coded historical slot size.
+
+One-axis pull as `candidate = grab_offset - gain * dot(hand_now - hand_at_grab, locked_axis)`. The calculation uses the original real hand position, and cannot use a rendering position that has been accompanied by virtual body deviations. HMD horizontally and virtual deflection is added once each, with the same submission for the left eye. The point of contact for the left hand visual is fixed to the edge; the non-arranged right hand uses the same body transformation as the gun. Turning head, edge brightness, animation weight cannot reverse this calculation.
+
+## Default value and edge determination
+
+The following is the D-level default, non-original constant, non-receipt hand: pull gain 1.0;point of hand-held contact to edge capture distance 0.10 m; two candidates with a distance less than 0.02 m Refusal of new capture when no clear surface attribution is available; collision safety margin 0.02 m. Maintain status. No longer forced disconnects with capture distance, otherwise normal hand-to-hand exercises will throw them away. 100 ms Tracking caps and stricter source limits for main lines;100 ms freshness cannot replace current collision occupancy certificates.
+
+Marginal evidence must include: original Link/slot/authorities, actual Actor/Component identity, collision shape/change version, local surface, grab-band/curve zone, orientation, approach side, accessible path and sample.`bLeanLeft/bLeanRight/bCanPopUp` The top of the wall is not automatically allowed to go up, even if it is visible. No ordinary walls, backs, wall stretches, or ambiguous corners are asked for any kind of grab.
+
+The search is narrowed by the original slot and method, then the surface of the surface is located by a limited range of real collisions.17 It's... 96–112 The units height range is used as a precise top line, and it is not possible to set the altitude on all maps. The circle bunker uses a local cut-off and maintains a single grab axis; cross/directional changes require new capture.
+
+## Collision and retention
+
+Discards the interpretation "scattered rays to prove that the whole rectangle is mobile". `CoverRange` Only for cases where the whole rectangle is actually certified; formal extension**Current shift to candidate body size sweep**, and check the endpoints. The two axes must accumulate in a manner that will also destroy the whole posture of the combination. `collision_verified`。
+
+The maximum proven position on the same axis is submitted when virtual movement is blocked; reset the hand/discretion starting point of the axis after exposure to avoid sudden jumps as the blocked position shifts. Unprovenly, candidate positions cannot be simply clamp declared secure. Waiting for queries is an independent result: keep this lease and recently prove available to handle real releases; `complete(false)`。
+
+Physical HMD moves cannot be cut off by virtual clap. Real head penetration leads to a tracking, shielding/simply blocking the view of the wall; no head can be blown back. Body, head-hit area and gunman use the same attitude and collision results separately; arm cannot stretch indefinitely. Real front moves lead to head-to-head piercing, and no authoritative gun should automatically reach outside the walls.
+
+The old position that is kept loose must be re-proven every time before it is released. Barriers move, damage, world offload, slot/baseline change cannot permanently slow down the old “safe” result. The original location is restored when occupied: stop new pull and release of new bodies, keep track of real and untrustworthy views, restore from the original moving/exit chain with a certified short path. Exit this extension without legal restoration; do not move to uncertified zero deviations.
+
+## Transition, exposure and resources
+
+The old grab is terminated by changing the slots, recenter, snap turn, space/reference/control object changes. Normal shift/exit will be submitted to the main line transitioner and cannot jump back in the frame of zero logical deviation. Default transition time 0.15 s, only manual benchmarking of plug-in values; real tracking always folds in time and path collisions take precedence over plug-ins. World/Pawn is replaced without interpolating world-wide data.
+
+The attack cannot be judged solely by whether the eye is passing. It requires a distinction between protected bodies, exposed head/toms/arms and actual hits; it does not allow for single-person blinding fire to protect an extended body. Amending the original protection branch while retaining the type of injury, explosion exception, armour, difficulty and normal course of harm, prohibiting direct withholding of blood. Fire consumption of the same body posture, weapon examples and gun-point evidence, with the bullet still hitting the wall as originally prescribed, without having to swallow the trigger.
+
+The bunker itself is re-used with the original scene collision and model, and this package does not require a “capture model” for the entire map. The resources that need to be prepared are hand contact markers for the existing role skeleton, left-hand contact positions, body neutral calibration, local coordinates of the gun mouth and hand model, and visualized markings used by the editor. 115 Bones signatures can only be used to match the role; other skeletons require their own mapping, and cannot be enabled on the same number as a bone. [Weapons implementation package](../weapon-specs-20261028/implementation-handoff.md)Common contact points and gun contracts, with no repetition of the second set of hands or guns.
+
+---
+
+## 中文
+
 # 掩体交互合同
 
 本合同延续 [已确认的掩体设计](../6dof-cover-interaction-design-20261024.md)，只补工程边界。实现时以当前统一身体／手部主线为基础，不恢复旧独立运行包。

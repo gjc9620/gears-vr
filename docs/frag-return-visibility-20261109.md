@@ -1,3 +1,59 @@
+# Frag Refilling shows:53616 Passed by CD, independent preview updated
+
+2026-11-09，`codex/6dof-single`This time, I'll take it.28120 The actual picture problem is handled by re-enacting the next display of the original refilled mine into hand.53616 One original drop, one original Mode 5 The items during this period are hidden, the original refills completed and the same components are restored to Grip; the limited display process of this round is passed and complete alignment/physical headcount remains unaccepted.5d 32 Preview delivered, old preview and publicv 71 Reservations.
+
+## Status and borders identified
+
+28120 ♪ The whole once ♪1 Inventory 4→3, the original StopBounce call returned and the explosion was recorded. The original map came-01149／simulator-01294 Nearer visible hand-opening and hand-lined laser shape, game-01155／simulator-01301 The shape is still visible; complete models are overtaking unaccepted.
+
+Original script `ThrowingGrenade.FinishedThrow` Perform Reload and enter EquipNextGrende when there is a backup.`PlayGrenadeReEquip` Keep the original EquipTime, in 0.15 Second-time call Attach NewGrende, original function is reattach WeaponTohand; GlenadeReEquipped finally restores Mode 0/Active. Existing Frag code releases old logic hold until the original Active, original preparation and attachment release, hidden model by idle-unheld adapter.28120 The log also records the order of the original submission, return and subsequent visitability.
+
+This indicates that there is currently a window waiting for the original refill to be completed, which corresponds to actual short-term model displays; it is not yet sufficient to confirm the identity of the component in shape by pixel and will still have to check the actual HiddenGame, the original Mode, the component identification and the eye image next time.
+
+## Private realization
+
+New PG `5d324ef39b111d70b2c22bb6fc32fcae1566c876bab4b868d244b3b27e043c4c` Based on exact production PG 4 Bea, only three compilation input changes:
+
+- `playground.cpp`: The existing Frag namespace function prefixes the empty statement and closes the configuration.
+- `weapon_frag_runtime.inl`: return attachment of the same actual original drop saves released Grip count and original authentication time; at former EquipNextGrende/mode 5 The normal Active judgement is still validated along the original metadata.
+- `weapon_equipment_stow_native.inl`: Reuse the existing HiddenGame path/SetHidden to hide the next display model that was re-enclosed.
+
+Application must remain the same original successful delivery of lifetime, hold, paternity, Native/world/reference base, not exceeding current source and original validation 50 ms; Grip must remain in the original release count and the released strength. New Grip, missing/stopping, expired origin or different identities cannot be used to obtain new hidden permission. Starting to hide exact Frag class/assets, sole attachment of the original hand, nine current object identities and four storage slots. Ordinary assets continue to refuse to hide components.
+
+Only for reading exceptions at the end of a patch**The same unfailed HiddenGame record**. It checks the nine identities, four storage tanks, exact components/assets and original hand only attached, does not treat other hidden models as current weapons, does not clear foreign matter or covers debts. This way, instead of normal release of old logic hold, then remains held, restored or cancelled by the original idle-unheld/new pantspane path.
+
+No mechanical holster, bone/advancewriter or Hook; original Spawn, button, fuse, rebound, refill, attachment and timer. Native continues to be documented. 5e 51..throwing speed with 2 The private collision watch is not in this version of the PG.
+
+## Authentication already exists
+
+Production of PG compiled successfully, original 93 selected item 58 Item GEAS options are kept;187 The actual owned compiler input is only three different. The actual source and product envelope exists `analysis/frag-grip-20261108/20261109-130619-return-visibility/`。
+
+86 Check for compilation and execution of exact production `same_parent`、`return_visibility_current`、`released_frag_attached`, using real Frame and WebtonStowLase, identity/time/metadata is provided by controlling Host. Checks new Grip, time of expiry, different parent status, change of original pattern, foreign matter, different hidden components, log revocation and normal recovery.
+
+Other 27 Check to execute exact production `pre_equipment`, confirm "old"5 Hides the original Active coming  ⁇  Control Process that allows the original refill to be completed with the same hidden record; neither revocation/different components/new Grip can be impersonated as validly hidden reading. Engineering, source and modem connection are provided by Host under control, which is not a physical Game or Native service certificate. The original WeaponStowLease check is also passed.
+
+New Run-Drive 20 The item check to perform actual driver and actual objectory generator, using a composite read-only result/back and clock to verify that the release is exactly one time, no unexpected reshuffle, rejection of late hiding/failing/ failure to complete the patchwork/restoration, and non-entry after the owner has lapsed. The first independent C+fixture triggers the production local name now/mode `/WX` Failed to compile, original log kept; only rename the fixture global variable passed and produced PG without change.
+
+## 53616 Scope of the survey and source of the freeze
+
+Freeze `equipment-controls-prepared-20261109-131651-frag-return-visibility`：prepared SHA 256 `cead6c2e18c95b17fcceec873003f3afc2c5a3fd9d12d1d20c05719d38c665d2`；plan SHA 256 `c0a6e1e9fbaffbdb3ffc76ed3df136e20e5817fbf3f607c2a75d4da017e7d711`。1076 Declaration source,6 products,18 Reliance,23 Freezing AST, PG 187／Native 381 Zero-nuclear, no drift; new Snub received 131050 The only final transfer and independent verification of the idle/all SHA has been made/run.
+
+Actual 53616 Only one dropped on a central platform, inventory.4→3& Call Allonce 1 Exactly.14a 1340c 0/component 124f 00e 30 In original Mode 5 period hidden; after execution of throwing 0.1849546 The second first read to hide,11 Article Mode 5- Hidden sample, visibility frame 973 Pre-return 979. Then the new panty-pants pocket resumes with the same component, Hiddenfalse/pingtrue, and the entire PG log is only one original drop; stage at normal stop 7/fault 0/preparation_owed 0 No additional secondary throwing or special touching wall/depletion/other weapons inspection.124 Line, line up.120 More than I'd say.4 strips; script not available 120 Hard limit, true-to-sense deviation, not falsely strict 120 The ceiling was adopted.
+
+Operation maintenance 0.3, backstage observe-only, silent, physical controller rear station isolation and full original protection.3 Page Full Paired Timelines 12 The original map is hand-to-hand: hand-held, moving down the bracelet and new Grip-held; the presence of a real projection in the picture cannot be considered as the next weapon component that remains undiscovered or hidden from the actual shell for screen-cleaning purposes. Short-term movement blurry/repeated, third person / waiting card/HD and complete alignment are still pending. Native/entry/pad/XR/launcher/game is normally closed, config/settlings were previously SHA/head missing, runner/head was not accurately restored,59090/operator 33544/encode 73338/ Unique 45665 All 0 Media delete 1543 Documentation/254008639 bytes, error 0,Reserve 53616/46592/64316. Complete.53616-Review.json records the boundary.133536 It's...1592 Source/6 Products/18 Driver+1 Last and only window has been turned over since late, but this window case is not added.
+
+## Source Code Merger and Delivery
+
+Three documents 13 Snippets have been taken into the shared tree, with existing source code for other sessions and new SupportBox interface; accurate relevant production functions and real Leease are compiled using current share headers 86＋27 Check also passed. No current PG/Native tree is widely catalogued, no Git index/committee changed; the package is not variable from the local record 5d 32 PG and 5e 51 Native. Backup, Shared-merge-receipt.json, Shared-merge-checks.json is in the current source archive.
+
+New entrance:`J:/gearsVr/candidates/frag-grip-2kg-20261109-5d32-preview/GearsVR Launcher.exe`ZIP is the same name.16,053,446 Bytes, SHA 256 `94b91101b8352543e44a6c7811485053de61ba393d7902e6635e56bb85c9d31d`。752 Load File/52,076,730 bytes;segregation dependent on pre-screening with PE, ZIP 753 The package does not start the GUI/Game/XR.5e 51／4bea／d 510 Preview and Public v 71 Reservations.
+
+2 The special Hitwall still lacks a record of implementation.19332 The reasons for the occasional refusal remain undetermined, complete matching/headprint/actual tip not accepted; this package is not completed or publicly released.
+
+---
+
+## 中文
+
 # Frag 投后补雷显示：53616实录通过，独立预览已更新
 
 2026-11-09，`codex/6dof-single`。本次沿用28120的实际画面问题，处理投出后原补雷重新附到手上的下一枚显示。53616已完成一次原投掷、原mode5期间的组件隐藏、原补雷完成和新裤兜Grip恢复同组件的实录；本轮有限显示流程通过，完整贴合／实体头显仍未验收。独立5d32预览已交付，旧预览和公开v71保留。

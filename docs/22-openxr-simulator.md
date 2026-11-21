@@ -1,3 +1,77 @@
+# Undeclared OpenXR auto-certification
+
+2026-10-12. The user's break is marked with the Meta XR Simulator; tools are saved on J disk. The simulator cannot replace Quest 3 Delays, comforts, real tracking, colour and final compatibility tests.
+
+## Local Tool
+
+- Meta CLI `1.8.0.17.10`：`J:\gearsVr\tools\third-party\metavr\bin\metavr.exe`。
+- Meta XR Simulator `v207.0`：`J:\gearsVr\tools\third-party\meta-xr-simulator\PFiles\MetaXRSimulator\v207.0`。
+- Validation of Authenticode as Valid, signed by the main body Meta Platforms, Inc.; depression to J disk using MSI advanced export without global installation, registration system OpenXR runtime or modification of PATH.
+- The same MSI that used to be downloaded by CLI default to C disc, check with a copy of the J drive SHA 256 Deleted after consistency. Subsequent CLI use `METAVR_CONFIG_DIR=J:\gearsVr\tools\third-party\metavr\state`, the temporary directory is also located on J-disk.
+- Software packages, third-party programs, configuration generation and source evidence by `.gitignore` Exclude, don't enter our source-code warehouse.
+
+## Mechanisms and recurrence
+
+`run_simulator.py` Read original configuration, generate in the same directory `gears_automation.json`, start a watch mode, keep the original relative resource path; setting only for test subprocesses `META_XRSIM_CONFIG_JSON` and `XR_RUNTIME_JSON`. The system is running as it is when defaulting.
+
+```powershell
+$pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $pythonExe tools/openxr-probe/run_simulator.py --seconds 12
+# 先正常退出旧游戏，启动新共享通道并进入关卡；一个通道仅允许一个接收端：
+& $pythonExe tools/native-capture/launch_binding.py --seconds 180 --gpu-share --build-dir tools/native-capture/build-share-verify
+& $pythonExe tools/openxr-probe/run_simulator.py --seconds 30 --gpu-game --gpu-snapshot
+```
+
+The menu operates on the existing semi-automatic scheme and reads a low-resolution screenshot of the game window before confirming it.`--gpu-snapshot` Run at least one of the OpenXR receivers 10 Read back in seconds the actual XR swapchain image, save 640 PPM; does not pass WGC or desktop, and normally shows no readback of each frame CPU image. This snapshot supports the texture content that is submitted, which is not equal to the final image of the company.
+
+## Completed records
+
+The actual number of entries for the emulator is as `[29,91,10,34,26,40,55,45,20]`, no game R 10G 10B 10A 2_UNORM（24. Therefore, add GPU shadow to R 8G 8B 8A 8_UNORM_SRGB（29. Under the coded SDR RGB scenario, shadow decode sRGB, RRTV and encode to maintain input of RGB; no HDR tone moving. 12 Frame-by-pixel verification. One more. 8-bit value. This machine does not have D 3D 12 Debug player, cannot claim to have been certified on that level.
+
+8 Right-and-right eye test:565 The blog is a good place to record.564 Second double eye layer submission; program exit 0. Save GPU image check to left red, right blue and white cross. Default simulation position remains static (unique positions=)1) does not act as evidence of a real-time head start.
+
+First round of GPU  ⁇  OpenXR: Game PID 34508，30 The second sample,2,130 Subquad Submission,1,112 Subtexture Copy, Exit 0, no frame CPU image read back. Game logs 43,236 Second Present, failed 0;publication 1,113 Frame, after stop 0 The game has been successfully released and readout outside the Hook portal.1920 × 1080 / Minimum settings. The wheel includes the loading phase of a level, without saving the final copositor image and without declaring each frame to be a level.
+
+Evidence:`analysis/openxr/pose-20261012-030424-060822.*`、`pose-20261012-031249-996766.*`、`analysis/runtime/gpu-share-34508.{json,jsonl}`。
+
+Second round of independent games PID 17584 After entering the level, 30 sec:2,157 Subquad Submission,1,200 The next GPU copy, exit normal. One XR swapchain return successfully saved with a manual check of stone pillars, corridors, candlelights and normal direction. 1,201 Frame,43,877 Second Present, Failed 0, the entrances recover and resources release successfully. The snapshot is not a final image of the company without any visible observation.`pose-20261012-031640-107823.*`、`native-gpu-xr-17584.png`、`analysis/runtime/gpu-share-17584.{json,jsonl}`。
+
+Cover the entrance. `run_simulator.py --seconds 8` Run independently by:574 Place record, exit. 0。
+
+## Autoposition interface with composite map
+
+Meta XR Operator v 207 Loaded through official CLI `tools/third-party/metavr/state/tools/meta-xr-operator`Just... `run_simulator.py --operator` OpenXR API player; not registered to Codex Global MCP. Test script via localhost:8720 MCP Initializes, sends initiated notifications and confirms that the interface is called after application named GearsVR Pose Probe. The operation of other XR services already available is denied.
+
+`simulator_motion_test.py` Run 30 sec, set in  ⁇10 cm Left/ Left, Right, Right, Right, Right, Right.5 cm Up and Down & nick 10° yaw, back in the middle of saving the final copositor diagram for the left and right eye to check the three-axis horizontal shifts and range of yaws for CSV. All are artificially set simulators; XR Operator returns Valid=true, tracked = false, which is not considered a real tracker by PoseGate and does not move around the head of the game to test.
+
+The first automatic test captures the service before the session is ready and the initial setting is rejected; the simulator cleanup also exceptionally exits, so the test fails and is not counted as passed. Scripts are now waiting for valid sessions to recognize top level and content block errors and close MCP sessions after correction. `sim-motion-20261012-032340.json` Test passed:220 Different gestures, full range of targets, left-eye composite image preservation success, program exit 0. This time is not considered successful as having repaired all runtime cleanups abnormal.
+
+Game Panel Group Test `sim-motion-20261012-032640.json`（PID 40888 Also adopted:1,194 Sub-GPU copy,2,149 Subquad surrender, position range check, exit 0. Manually check the final eye and left copositor chart, a 2-dimensional panel at the bottom of the black do indeed have stone columns, corridors and candlelights. The panel is small and currently has diagnostic layout without VR vision or comfort evaluation. The head change in this test remains simulation input, without control over game lenses.
+
+```powershell
+& $pythonExe tools/openxr-probe/simulator_motion_test.py
+# 新游戏 GPU 通道进入关卡后，同样检查游戏二维面板：
+& $pythonExe tools/openxr-probe/simulator_motion_test.py --gpu-game
+```
+
+## Simulator backstage resource accumulation and cleanup
+
+2026-10-12 User report is full. Check to confirm MetaXRSimulator.exe (PID) under current installer directory 47112) and its subprocesses synth_env_server.exe(PID) 45512 From the... 03:00:49 You can always stay there. 42.97 GiB, Job package 6.14 GiB, handle. 79,007 systems; 31.81 GiB, the physical memory is only about to be agreed. 0.9 GiB is available. Private memory contains submission and page change sections, which cannot be used 42.97 GiB as all in RAM.
+
+No active OpenXRPoseProbe test process. After checking the PID and complete J drive path of both processes, try to properly close the frontend of the emulator before stopping these two exact processes that remain; no games or other software are closed. Physical memory can be recovered to an approximate after cleanup. 17.41 GiB, the system submission balance also recovered. Evidence supports the accumulation of accumulator backstage abnormality resources and no specific leak code has been located.
+
+The subsequent automatic watch test should not keep the front end of a full screen emulator and the permanent presence of a synthetic environment server. Each round ends with checking and cleaning up the ancillary processes that are started in this cycle; other sessions already exist cannot be terminated by name batch. Previous single tests exit 0 This does not mean that back-office environmental services have been automatically withdrawn or that resources are used normally for long periods of time.
+
+## Not proven
+
+The current is the same two-dimensional panel with eyes visible, and the complete stereo scene has not been rendered; real time head moves and displaying paths are still separate prototypes. Simulator MP for CLI 4 Recording attempts to return the current runtime is not supported, no video output. Early unmapped tests have been abnormally withdrawn during runtime cleanup and then the screen configured layer test has been completed normally; configuration changes are not separately identified as proven root causes.
+
+References:[Meta XR Simulator Document](https://developers.meta.com/vr/documentation/native/xrsim-intro/)、[Meta CLI XR Environment Command](https://developers.meta.com/vr/essentials/metavr-environment/)、[Official Windows Downloads](https://developers.meta.com/vr/downloads/package/meta-xr-simulator-windows/)。
+
+---
+
+## 中文
+
 # 不戴头显的 OpenXR 自动验证
 
 2026-10-12。用户休息期间使用 Meta XR Simulator 验证显示通路；工具保存在 J 盘。模拟器不能替代 Quest 3 的延迟、舒适度、真实跟踪、颜色和最终兼容性测试。

@@ -1,3 +1,1783 @@
+## 2026-11-06 13:39 67624 Group review and game continued: C rules passed, double-check failed
+
+Fixed entrancev 71 No change: hold on to the head and keep running, one turn after first actual release 3 seconds, then pull off. Normal closed-quantity private 125544 The first execution was passed, but the second C grip failed (token)12 Ambiguous. No false timing defects or repair.
+
+Do not restart the game, same 67624 Keep holding on token.13/14 Two different versions of the original enemy execution, restoration of authority shooting and suspension/B return pass. Read-and-read observation has not failed to eliminate it; it does not relax protection from handouts, prescriptions, identity and monographers.19 Double-Stamp Full Page Range and 8 Zhang action view; start engagement 3 The third person in seconds claims exposure, complete alignment/hands/walking/HUD is still incomplete. Game/Native/Input/entry/XR exit normal; two video segments of the code, media retention mission completed. Passive reader failed at last reading on normal unloading (exit).1) Separate records, non-play failures.
+
+The latest three sessions.67624/47468/67428 and 48 Hourly media strategy implemented. All Lancer and entity header acceptances are still incomplete and fixed 11/64 Mature 36.47%，+0.00; no new deliveries were made during this cycle.[solo-lancer-combined-67624-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-combined-67624-20261106.json)。
+
+## 2026-11-06 12:49 47468 Private matching: correcting the loss of master attitude
+
+Fixed candidatev 71 C holding hands/one-time release 3 Keep the second. This round is privately compiled only for C 0 The master hands closed to the real right Grip.0→1→0 The same control position, weapon identity,36 Bones observation and 28 The CPU constant observation was then opened/closed/open after the Queue/Primary upload.44.55/49.48/54.35 The actual mirror of the second also allows for change.3 Double-Stamp and Full Page Range 9 The Zhang phase has been examined.
+
+The final five-part alignment, natural wrists and all angles are still unaccepted; CPU constant is not hardware-by-draw. Next check model/monster mirroring and actual contact geometry, with an open view, without repeating samples for the unchanged transfer chain. Private observation scripts have been changed to default closing off red debug volume in the hand cover, with a visible scope review still available and user debug function retained.
+
+Diagnosis switch successfully re-compiled OFF, regular Native and internal running directory restored 114342,Purposev 71 Document Hash maintains. Game/XR/record/code is properly completed; media only keep the latest three sessions 47468/67428/71560 and not exceeding 48 Hours. Full Lancer/real machine acceptance is still incomplete, maturity 36.47%，+0.00 Evidence:[solo-lancer-main-grip-ab-47468-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-main-grip-ab-47468-20261106.json)。
+
+## 2026-11-06 12:18 Master's Posture: Visible coupling failed, correcting the lost postage assumption
+
+Fixed entrances stillv 71: Push to the front end and hold on to continuous running, once after first release 3 Seconds later, pull off. No new candidate is announced this time.
+
+49384 It's...24 The main player, CPU,71560 It's...19 A CPU/Corporate Monpe observation and 67428 It's...18 The CPU constants after the upload of a CPU/Queue/PRIMARY match the closed-handing posture.67428 Maximum deviation of matrix 1.65344e-5；71560/67428- Yeah, I do.1460/1432♪ I'm gonna pass the old certified ♪0 The video still shows that the master hand does not fit the handle, so it can no longer be used as a reason for “disclosed postures lost in these passages” or to equate the source of CPU constants with hardware buffers or actual drawings at each time.5 Double-Stamp Full Page Range,6 The Zhang action profile was checked; the reloading/reactivation of fire/stopping of return passage and non-adoption of hand positions.
+
+Next check the actual GripPoint, wrist and model reference geometry without adding second boneswriters, not guessing corner or repeating unchanged observations. All games/XR/recording/codes are normal end; old generated media are now following the last three sessions and 48 Hourly strategy clean-up. All Lancer and real machine confirmation is still not fixed.11/64 Growing up.36.47%，+0.00。
+
+Evidence:[solo-lancer-private-main-grip-67428-20261106.json](J:/gearsVr/analysis/6dof-progress/solo-lancer-private-main-grip-67428-20261106.json)。
+
+## 2026-11-06 11:02 Internal portfolio review 39172: Move passed, full hand still missing
+
+Fixed start-up entrance still stands **v 71**, retain "C push continues to hold on to running and first actual release and then one after the next"3. No candidate is replaced this time.
+
+Internal freeze 104020 COMPILated: Consumer of original input/publishing person retained by Native for the same Scene, original time stamp and 100 ms limit unchanged; unknown cartridge observation in place 100 The millisecond window allows the previously undelivered pressure to finish the grab when it is deconstructed into a unique log contact.280 And the owner of the Line,25/16 Entry,23 Group Support and 611 The binding check passed.39172 Actual original copy 60 FL R 2 Observation; the line of wood is known to have been physically travelled to the delayed branch of the log and cannot be reproduced as a part of the branch ' s actual running through.
+
+39172 The same game completes the Grip/Finger grab, actual gun turn, each.4 Two-shot, release.4/3 Reactivate single-handed fire; original cartridge index finger and replacement box Grip is fully inserted, the empty warehouse E is real pull/spill/back and resume firing, pause/B back through.9 Double-way timeline and 8 The physical phase of the scenery has been examined;155.02 One second for the VR frame card, and keep it as defective.
+
+**The government has been unable to pass the law by hand:**125.08/205.62 The main hand opens up when the second is changed. E and support stages are in place.36 A primary bone observation matches the gun-shaping posture and is not a substitute for real pixels at the magazine stage; the next step is to check that actual master-care gestures are written into/consumer chains.53016 Action Undo Accurate Source, Old 2572, walk flash/HUD/start third person is still retained. Native/entry/XR/play exit normally; acceptance is not visible for all Lancer and entity heads. **36.47%，+0.00**，11/64 The denominator remains unchanged.
+
+Evidence:[39172 internal portfolio records](J:/gearsVr/analysis/6dof-progress/solo-lancer-private-hand-fit-39172-20261106.json). No more games for unchanged C behaviour, no other guns/conferences/assistants.
+
+## 2026-11-06 v 71: Chainsaw holding and loose-knit
+
+Current Fixed Candidate **6dof-unified-20261106-71**. Push back to the front end and hold on; first real release and then continue again one time 3 seconds; then pull off voluntarily and push again before holding the same hold.
+
+68424 I'm sorry.828 Frame is positioned to specific return: the handle remains valid and held, but the C-C grips are missing from the branch where the cartridge is to be observed. Only the original holding of the handshake has been restored and removed before it is expanded 250 milliseconds of wrong handshake; new contact, actual schedule, completed action 250 msec interface, tracking/identity/release protection maintained.
+
+52548 Same game 11 Division C is cleared:20 Keep the second and turn around, pull it off, shake it up and push it loose.0.43 Seconds still spinning/3.52 The seconds have been stopped, the handle has been seized and actual firing resumed.5 Full page span double-way timeline and 6(a) A physical action view;12 A C-finger observation now matches the exclusive attitude. Compiled, packaged, properly exited, Native/entry/XR restored and configured bytes maintained.
+
+**Not completed:**All five parts fit and natural.69160 The finger's hand entered the exact source of the revocation, old 2572 Accurate source, walk flash, HUD and start third person; no claim that Lancer is completed or physical pass.11/64 Delivery maturity maintained **36.47%（+0.00）**. Next, the current Lancer posture is of high quality and no other guns/conferences/assistants are fired.
+
+Records:`J:\gearsVr\analysis\6dof-progress\solo-lancer-C-incumbent-52548-20261106.json`;starting entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。
+
+## 2026-11-06 v 70: narrow-separated frame of the cartridge, keeping chainsaws holding and loose rules
+
+Fixed access is updatedv 70,Purpose, scale 1 and 4 Second reload configuration maintains original bytes, v 69 Roll back. PG clearly delivers the observation status when current pressure is not ready/ still old; only re-use existing 100 msec is intended to wait. No contact, timeout and identity/tracking/release protection is known.4 And synchronized the production of Native/PG, actual controller GVC 4 No change.
+
+53800 The same game completes the original cartridge index finger and is not unbroken, new clip Grip does not untie, first empty box grabs, actual air silo bolt/disturbing/return; C pushes to hold more than his head 3 Seconds do not stop, then pull off/and shake hard, first release one time 3 Seconds continue/take/reactivate firing.9 Double-Stamp Full Page Range and 12 A fixed action view has been checked, video encoding completed and the Native/entry/XR/play is duly exited. The first script was missing PIL before input, failed and continued in the same game; this round does not re-certify to start the transition completely.
+
+The first silo capture of this run is currently in contact and has not entered the observational branch; it is checked through CPU's old pressure-renewal and negative. Unrecovered cases cannot be considered as proof 2572 The old C hold period is still pending.212.68 The second C finger/surface alignment still needs to be modified; the full attitude of five parts, scintillation by walking, HUD/start third person is retained with waiting cards, physical header receipt and acceptance. Next delivery point: first fix this round 212.68 The actual finger/surface of the sec handle and re-entry of unproven holding period with a first invalid line position is cancelled;2572 The exact source of the missing first airbase frame contact is open. The source code is built into a COHERENTbatch and then centralized, without running C for change.
+
+Growing up.36.47%，+0.00(b) Percentage points;11/64 The denominator and weights remain unchanged, no new count of molecules.`J:/gearsVr/analysis/6dof-progress/solo-lancer-mag-cohort-53800-20261106.json`。
+
+## 2026-11-06 v 69: wood-shaping rotational adjustments, hand-to-hand and saw review
+
+Fixed entrance `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe` Updatedv 69,Purpose/scale 1/4 Second reload configuration bytes, v 68 Returnable. The logs remain the same contact point/hand sign and fixed bone length, with only a fixed wrist around the axis of the gun being turned around.45 Decline to 20 Degrees;real controller tracks, capture range/attribution and firing authority remain unchanged.1016 Adopted.
+
+8368 The Grip/FoP both handheld, moving the gun, each in the actual game 4 The rest of the group will keep their hands open and recover.24 Sub-bone observation against wood preforming, with the average joint most likely to be wrong 0.0000068 degrees; this only proves that the bone shape has actually been accessed, not full-angle surface/comfort acceptance.7 Double-way timeline and 6 The frame view of the log has been checked and the full video coded; the wood is attached to the selected perspective without any previous addition 90 Keep up the wrist axis. C-hold on.20 Second, head move, back pull off/same grab-and-shock push, first one break 3 Seconds continue/take/return to firing, Native/entry/XR/play is duly completed.
+
+Adds a new frozen field to the current stoppage that is not valid for the first service, saves it and then finishes it in its original form, avoiding subsequent uncovering.8368 Record normal renewal period is stop_reasons 256、lifetime_failure 0; last-disarmm may come from earlier events and cannot be considered as the cause of this normal expiry.2572 The continued holding of the early stop and the first airbag box, Neds_release, were not located for repair and the failure to re-establish this round is not a solution.
+
+The next point is to find out why the first airbag box was asked to try again. Source C records leave it for a specific batch; continue Lancer five-point alignment, walk flash, HUD/start short third person and waiting card. No assistant/other gun extension.36.47%current round+0.00(b) Percentage points;11/64 The denominator, weight and weight are unchanged.`J:/gearsVr/analysis/6dof-progress/solo-lancer-foreend20-8368-20261106.json`。
+
+## 2026-11-03 11:07：v 45 Bug-in frame correction with first person shoulder armor
+
+## 2026-11-03 12:48：v 46 Original hint correction delivered
+
+v 46 Development candidate delivered: original Drawaactions & DrawActionInfo suggests using the current object identity context without misrecording the render-only record as an action, Frame;599 Sub-draw/recovery, debt 0。60576(b) Short-checking to retain the gun, cancellation of magazines, opening of fire and suspension;18124 Complete 326.83 Second waist/shoulder,4 The second round of reloading/storage/air storage is passed through the original launch handle.11 Pages Time Axes and 6 Details are available. Hand-type precision, physical cover, start-up hand-to-hand and real machine still not accepted.
+
+Fixed entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。9 V Change files left 45 Back off.751 Distribution document reconciliation, configuration/4 Second reload INI. No new timers, assistants, second-writers or other guns are added.
+
+- 18124: Complete 326.83 Second double-track recording; waist/shoulder firing, turn-gun/turn-over authorization separation, cancellation/insert/stocking/4 The second reward/silo is actually dialed and the original saw is activated.11 Pages 3 Time axis of the second 6 Chang.1280 Px details; not frame-by-frame or real-time.45440 Values/text evidence, the old media has been cut in line with the last three policies.
+- 60576: amended for HUD 99 Short check around seconds, physical position adjustment/restoration 599 Debt liquidation 0; gun pick-up, cartridge cancellation, resumption of fire, pause/B return to hold.4* The full pages of the page are available for consultation.2 Zoom details; text moved above the magazine/crash area, but the gun could overlap when raised and the complete HUD layout was not completed.
+- Could not close temporary folder: %s 24500 Raw locator DrawText Call 0 No image improved; withdrawn.18124 The actual HUDLocators array is empty, while the DrawActions & Drawaction Info does call. New realization only retains a HUD/role/arms/holder status, which Canvas reads when drawing; no longer uses render carrier without action clock as a fresh hand handle sample or synthmic time stamp.
+- HUD original call nesting, partial writing/failure recovery, abnormal exit, external writer protection and existing recall protocols 4 scene and offline 6 The scene is passed. The command error to call the protocol program without parameters for the first time was identified and then used 4 A clear model; failure as a product or evidence.
+- Growing up.36.47%,incident+0.00pp；11 Father/64 Molecular items/192 The operational point remains unchanged. No additional points are obtained from the number of repairs or re-checks.
+- Next: continue with the same Lancer: batch correction of lower neck/forearms shield and scratch point/finger alignment; first retainer 18124/60576 Video, original skin-skin/contact location position specific defects, recoded and compiled for centralized recording review. HUD tips have been moved up but may still overlap with them; no other guns are parallel or re-routing to cover the deficiencies.
+
+Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-60576-review-receipt.json`;complete process:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-18124-review-receipt.json`。
+
+
+Delivery v 45 Development candidate, fixed entrance still `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`; retaining replaced v 44 Total 10 The blog is a very popular one.751 Review of distribution documents, original configuration/4 Second reload INI as it is.
+
+- 45440 Same 166.7 Second recording: withdrawal of original cartridges to cancel reloading stocks and resume firing; original bone 4 The actual pull-out is ready to engage a saw gun/head exercise with the same real original enemy. One of these shows a genuine posture deficit, independently certified arms are retained and the power is not stopped by mistake.100 The input of ms, identity, life cycle and gun exchange protection remain the same, inventory entry is still suspended and old pressure pressure is discarded.
+- - Oh, Marcus.1 A lod; bone 7/31 Each 562 A hard vertex.814 A triangle, with no mixed weight or cross-arms. Only the local GPU hides two separate shoulder armors;2327 Subreal palette application, writing failed 0...head/eye, arm, bone length, physical and genuine interactive determination of retention.2878 Relevant CPU inspections and 102 Example/1367 The item is checked while running and cannot replace play/real machine acceptance.
+- Full read 6 Pages 3 Double window time axis and 8 Chang.1280 Px Key Capture Frame. Original execution video 137.76–140.89 seconds;started with 1.82 Second game capture slot, emulator maximum 100 ms; catch slots are not directly frozen. Full tactical/air storage 4 Second reload and back/shoulder evidence to follow.34208/v 44 There's no rerun set in this round.
+- Could not close temporary folder: %s 52368、5264 Layout Experiments and 54304 The parameter was written successfully without removing the actual weapon position text, and the DrawActionInfo experiment was withdrawn from production call/frame-by-frame path. Text covers, neck/front arm lows, finger accurate contact and physical head opening are still incomplete; no complete Lancer is declared available/completed.
+- This round resets the old test video/image around with existing media retention tools 8.12 GB, only three last completed sessions; source code, value/text log, archive/audio and back. Early media paths are already cut against the receipt mark, which does not mean that images can still be viewed.
+- Growing up.36.47%, this event+0.00pp；11 Father/64 Sub-item/192 The operational points and fractions remain unchanged.`analysis/solo-m1-20261028/paired-output-45440-review-receipt.json`。
+- Next: Continue with the same Lancer: verify the actual DrawLocator/DrawText mapping of consumer-based relationships to OwningHD; amend the text covers; then process a close frontal shield based on original skins and actual video. Keep this real attitude frame independently of sawing restoration, same eyepoint/C 0 The handle is determined. No change, no repetition of the actual running, and no parallel guns.
+
+
+
+## 2026-11-03 09:33：v 44 Hand fixes and complete Lancer check
+
+v 44 Development candidate delivered: adjust chainsaw grips to the original Marcus skin, synchronize fingers with wrists, and first hint of real empty space.34208 Same 349 Second batch actually completed waist/shoulder firing, complete reloading/cancellation/retest/stocking/4(b) Second prize/air silos for actual mobilization and release, original saw execution and resumption of fire;12 Pages full time axis and 11 Chang.1280 Px capture frame is viewed. There are still close body masks, native text-covered; not complete visual or real machine acceptances.
+
+- Fixed entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`；v 44 ZIP generated, saved replaced v 43 Total 10 One file for return.751 Distribution document review, user configuration and reloading of INI as it is.
+- The actual video of the execution was in its original form:320.37–323.24 sec. Game capture has 1.97 Second-starting the switch slot, which does not allow for a game freeze; simulator captures the maximum slot 150 milliseconds.
+- Separate records of code, compilation, simulation actions, video review and development candidate delivery; complete visual/physical header recognition incomplete. 36.47%,This Event +0.00pp，11/64/192 The scope and denominator remain unchanged.
+- Evidence:`analysis/solo-m1-20261028/paired-output-34208-review-receipt.json`;Next: continue the same Lancer close appearance: amend the original text grab cover using a verified source of raw material/skin-positioning. Make up the next set of modifications based on evidence. Keep a single eye point/C 0 The real controller determined that the other guns were not covered by a remodeling position.
+
+
+## 2026-11-03 08:43：v 43 Development candidate delivered
+
+Delivery v 43 Development candidate: object circulator/container, original bone 4 The saws were activated, the flecked and locked guns repaired, the saws were used with their hands in contact with real blades/a first person in the original version was executed and resumed firing.70472 Actions and videos, normal clean-up passage; accurate hand-styles, close cover and real experience incomplete.
+
+Fixed entrance:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。ZIP：`J:/gearsVr/candidates/6dof-unified-20261103-43.zip`. Roll back:`J:\gearsVr\candidates\6dof-unified-20261103-43-rollback`,Reserve v 42 It's...17 Replaced files.751 The distribution file is reviewed by list, and the configuration and reloading of INI is maintained. Packing has not started the game/ XR.
+
+The code is completed, compiled and developed for candidate delivery; complete visual acceptance of accurate hand/shields and physical header recognition is not completed. 36.47%,This Event +0.00pp；11/64/192 No change. Actual video recording of executions 109.02–112.28- Seconds. See you at the evidence. `analysis/solo-m1-20261028/paired-output-70472-review-receipt.json`。
+
+Next: continue the same Lancer: interactive presentation based on existing video closes, combined natural drawback and existing reload/taw; retained v 43 The development candidate can be withdrawn from the model, not through physical headship inspection and not parallel weapons.
+
+
+## 2026-11-03 08:35:Lancer fixes
+
+70472 First actual completion of the original saw handle, start-up blade contact with the same enemy and request a copy of the original SM 34/35 The execution and the death of the enemy resumed gun-held/gun exchange and authority fire; normal clean-up passed. The first person to execute said that video footage had been viewed, and the full vision and physical appearance of Lancer was still incomplete.
+
+Complete 138.7 Two-Side Time Axis and 5 The original execution/restoration frame was examined: the original execution took place in the first person ' s claim, ending with a return to the same gun and firing; the watchwork was repaired. Close shoulder armour/foreararms and parts/labels mask still exists. The empty wrist stop after the demonstration was released was too long and turned back after the actual exit point, but the script was rerecorded. The image was sampled, non-full frame/real machine check.
+
+Public v 42 unchanged;maturity 36.47%,This Event +0.00pp，11/64/192 The denominator is unchanged. Next: as validated 082150 Freezing the construction of new development candidates and rollbacks, retaining visual limitations; continuing to adapt close appearances based on existing video, with the next combined recording incorporating natural retreats without restarting or shifting from assistants to other weapons.
+
+Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-70472-review-receipt.json`。
+
+
+## 2026-11-03 08:21:Lancer fixes
+
+65768 First time, walk through the practice target and actually start the original saw; confirm that the sawing phase is early back past the gun and blade contact movements. The restoration of the same gunholder/original contact adapter has been compiled and returned with permission only to fresh co-source SM 33，SM 34 Other animations are still being returned to the original version; operational review is pending.
+
+Full Viewed 120.9 Two-second video.5 The line of time: stand-by target position, return route to the central steps, actual handles moved and secured, electric power activated visible; sawing positions were not consistent with input, close-to-war interruptions to players did not occur. Close shoulder armour/front arm mask was still unaccepted.
+
+Public v 42 unchanged;maturity 36.47%,This Event +0.00pp，11/64/192 The denominator is unchanged. Next steps: use the same frozen batch to check sawn-gun movements, actual blade contact, original execution/freedom head movement and resumption of gun fire after completion; reuse existing operational windows for diagnosis when entering path problems arise without easing access or identity protection.
+
+Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-65768-review-receipt.json`。
+
+
+## 2026-11-03 08:03:Lancer fixes
+
+Refixed original AddDecal wrongly revokes the gun permission:41864 The actual originals, the left shoulder Lancer, authoritative fire and normal clean-up pass. It was subsequently confirmed that the practice target was static and that old routes were blocked by sandbags; the ready switch and rectification of available locations had been compiled and the execution had not yet been verified.
+
+Full Viewed 71 Second recorded 3 The time axis of the page: the gun and fire is visible, game corresponds to the simulator eye map; the initial third person claims that a hand-over, shoulder/forearms mask still exists. Practiceing enemy movements and firing cannot be called standby targets; navigation is blocked by sandbags without opening up chainsaw contact and execution.
+
+Public v 42 unchanged;maturity 36.47%,This Event +0.00pp，11/64/192 The denominator is unchanged. Next step: verify the compiled practice target/accessible correction, complete original chainsaw contact, animated and resumed fire; retain contact/wall/identity/a trigger protection without reruning unvariable bullets.
+
+Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-41864-review-receipt.json`。
+
+
+## 2026-11-03 06:38：11124 Merge video doubledisk, actual high resolution output confirmed
+
+Full body/shoulder shot authority, head gun independence, reloading/discarding/stockkeeping,4 Seconds perfect, late for normal reloading, space box block, partial dial-up block, full-body set-off release back to fire and original bone 4 The number of the chainsaw handles activated/dismissed/renewal of firing passes.0 Submitted: Box 300 Fill 84 Start the handle.15。
+
+Check yourself.11 Full Time Axes Pages and 12 The original size action frame (non-frame-by-frame) has been improved: the new path is moving towards a better direction, filling and starting handles are no longer forced to the same side; the transition to containment/release is visible. Small parts are covered by hands, with too many images of close shoulder armour and forearm, and prototyping label folding still need to be repaired. The initial third person claims that there is still transient contact with XR waiting, and the real enemy is executed undetected. Values are not seen through visual or head-over.
+
+scale 1 Actual GPU Read Back to 7320×3200(PPM Head and 70272017 bytes) XR actually assigned two 3660×3200 Eye image chain; this is the simulator size evidence, which is not modified for AVP real machine acceptance. Native cleanup/entry back through and XR exit with starter 0, the video code is finished.42 Unreplaced, mature 36.47%, this event+0.00pp，11/64/192 The denominator is unchanged. The next step is to narrow the close shouldernail/forearms shield and carry a gun label based on current eye/bones data saved, without any new round of guessaring hand-types or automatic matrices being pre-delivered and running without changes.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-11124-review-receipt.json`。
+
+
+## 2026-11-03 06:14：43524 Merge video doubledisk, actual high resolution output confirmed
+
+Full body/shoulder shot authority, head gun independence, reloading/discarding/stockkeeping,4 Seconds perfect, late for normal reloading, space box block, partial dial-up block, full-body set-off release back to fire and original bone 4 The number of the chainsaw handles activated/dismissed/renewal of firing passes.0 Submitted: Box 297 Fill 82 Start the handle.16。
+
+Check yourself.11 Full Time Axes Pages and 9 The original size action frame (non-scene-by-frame) is clearer than the previous one; clearly folded wrists, parts are covered by hands, and too many images of close forearms and chest armour remain to be repaired. Initially, a third person claimed that there was still transient contact with XR waiting times, and real enemies were executed undetected. Values do not represent visual or head-to-head approval.
+
+scale 1 Actual GPU Read Back to 7320×3200(PPM Head and 70272017 bytes) XR actually assigned two 3660×3200 Eye image chain; this is the simulator size evidence, which is not modified for AVP real machine acceptance. Native cleanup/entry back through and XR exit with starter 0, the video code is finished.42 Unreplaced, mature 36.47%, this event+0.00pp，11/64/192 The denominator is unchanged. Next step is to fix the same Lancer object alignment, wrists and mask without repeating a change in operation.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-43524-review-receipt.json`。
+
+
+## 2026-11-03 05:26：16328 Full digital link passes, hand-caring and guide appearance still need repair
+
+This round actually runs through the waist/guns, turns/stand alone, cancels the box, reloads new boxes and discards, late to normal rounds,4 Perfect re-loading of the second, continued firing into real empty space, unlocked plugins, half release un unlocked, full body dialling/release/restoration of fire and prebone 4 The chainsaw handles the arc, the turn-off, the break-in and the resumption of fire. Three new positions are actually entering C.0:Box 310 Loads, times 83 It's the original handle.15 Once again, the amended access is no longer a mere request.
+
+Full contract 325.5 Two-second video is coded;11 Full Time Axes Pages (Pages)3 sill sampling) and 9 The original handle is visible and open to institutional action, but the hand/finger alignment of the object is not credible; hand-held hands cover the institution with a thicker forearm/brain, yellow frame thin and masked, original Playground tag folding. Initial third person names/waits on video contact, and 39 The second desktop waits and the simulator retains a momentous image of the game. Numerical processes pass, the whole vision is out, and real enemy execution/head-to-head feeling has not yet been accepted.
+
+Next batch of hand fingers that are only fixed to the same Lancer, shielding the yellow box of current steps, retaining a complete machine/ammunition/cancellation recovery process that has been moved, and not running again without change or firing multiple rounds. Native clean-up, exit restoration, XR exit with starter 0; running/coding residue without own. Open v 42 Unreplaced, mature 36.47%, this event+0.00pp，11/64/192 No change. Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-16328-review-receipt.json`。
+
+
+## 2026-11-03 05:13: physical handle static geometry ready; capture interface re-engineered and compiled
+
+57196 Recorded and reset all images in the same cycle 4 Time axis page (per 3 Scanning in seconds, not frame by frame.8 Number of value results adopted, original block 4 The static physical matrix is ready for the first time; but failed before we grabbed the cartridge, new gesture C 0 Submission still in progress 0. The close-covered, original label superimposed and initial third person interlocking is retained without the whole batch passing.
+
+Determines that the read-hand-only search calls current when the cross-arbitration holds the Clenent door, triggers re-entry protection and cancels publication. The embedded query has been removed, maintains current source protection for double-reading matrix/object identity and common actions; does not relax time limits or exposure thresholds. W flips after the original decode has also been amended, with the original handle CPU 190/0, Native/PG compiled successfully, frozen`equipment-controls-prepared-20261103-051151`. The latest source code is yet to be reviewed in a complete and purposeful joint, public v 42 Not replaced, entity not accepted.36.47%, Event+0.00pp，11/64/192 No change. Normal exit/Native clean-up/entry recovery/XR exit 0 All confirmed. Media is reserved for the latest three rounds, and the old generation media are now engaged in this cleanup 0.87 GB, source document/log/assets unamended.
+
+
+## 2026-11-03 05:00：17552 Double-photo reset, actual functional failure has been transferred to fix
+
+Steam has recovered from the outside and this round has successfully entered the game. Actual waist, gun-shot, rerouting, fixed-directional, original cartridge cancellation and resumption of fire obtained numerical evidence; no new magazines were removed after a second round 3→4, complete process failed and has not reached the new loading point and original chainsaw handle.5 Full Time Axis Page (Page)3 The focus frames are checked and not received by frame.0 Commit as 0 Not valid for handband adhesion; the original handle is always the same as 0。
+
+Source code has been identified and modified: error ratio of two coordinate version fields, unnecessary decode writing of the static handle, failure to read temporary frames triggers resource release. Follow-up is still required to check the original decoded path and remove new magazines, with only one purposely combined review done after full batch compilation. Close cover, yellow box overlap and label are listed as visible defects. Native normal clean-up, exit restoration, XR exit.0; these do not amount to playing by the game. Open v 42 Not replaced, entity does not appear to have received or accepted.36.47%, this event+0.00 pp, fixed 11/64/192 Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-17552-review-receipt.json`。
+
+## 2026-11-03 04:34: cuddle-tip patches compiled; Steam waiting to change
+
+The previous target wheel is effective: original driver/triple grab integration, compilation and CPU geometry, and positioning to the pre-injection birth of Steam hint. This round rereads real Steam processes and registration information, which are still inconsistent; no new restart permission, no restarting games. Independent source review found that a bulletbox grip may have been tied in advance of the creation of old parts long enough to lead to subsequent attachments.7 cm border continues to be rejected. The component has been changed to actually save the deviation at hand and completes the binding of registration/life cycle/world/reference space/input/hand-held/left-tracking sources; uncut manual failure clearance; filling gestures only use actual loading leases. PG compiles successfully, Native remains unchanged; no new tests or reruns have been added.`equipment-controls-prepared-20261103-043444`. Videos or real machines in the game have not been confirmed, open packages are unchanged and maturity is obtained 36.47%current round+0.00 pp. The current user is still authorized to restart the original Steam or the client is able to restore the client itself, and then do the same complete Lancer batch recording.
+
+## 2026-11-03 04:26: Code compiled; video blocked by original game starter Steam
+
+The original model interactive map has been updated to `docs/diagrams/lancer-interaction-map-20261103.png`, identify the original Receiver, the original saw handle and the location of the withdrawn temporary zip. Three visible hand types, wrists, most of them 3 Cm position correction with 120 The ms transition is already C-C.0 Boneswriter; independent physical hand palms for original arc-shaped actions, unmodified. Native/PG compiled, original handle CPU 186/0 Pixel/arc passed, original bone geometry 4228/0; the game's internal and external appearance and headlight acceptance are still pending.
+
+This round first fixes the visible selection of multiple files for private cases, without moving the real user settings. Also fixes pre-screening query error reading public simulator configuration: latest pre-check confirmed as scale 1♪ Every eye ♪3660×3200 Eyes.7320×3200;not a validated GPU output. Actual game 4188/46540 None loadedd 3d 12/dxgi，46540 The original text of the reminder, “Neative to execute Steam for play”, is not activated and normal WM_CLOSE has been completed without any trace. The actual discrepancy between the Steam process and registration path/PID is a observed thread that has not yet been repaired or declared as the only reason. There are no changes to the STetam registration information or restarting the client; according to the borders where the user had previously operated only on the simulation handle, a request has been made to reopen the client's permission once, or again after the user wakes up.
+
+No new video currently available for claimable adoption; public v 42 Not replaced. Total maturity 36.47%, this event+0.00 pp, fixed 11/64/192. Next step is to record the same consolidated recording only after the client has recovered and no change is repeated; the original first person claims to be handing over/low-out/shield risk retention.
+
+# History:6 DIF 1237 Detailed Implementation Table v 2
+
+## 2026-11-03 04:08: The whole series of codes for the original saw handle and objects to match hand gestures have been compiled and are awaiting video recording on the same round
+
+The user indicates that the grab cannot be a general fistshake, and then authorize to continue during sleep. Add visible hand/ wrist patches: box hold, filling agency grip, original horizontal chainsaw handle ring; selection is only made after the actual current object Grip lease has been established.3 Cm, over.7♪ And don't suck, about ♪120 ms enter/release transition. It connects to the original single C 0 Bones writer, do not modify controller input; V 4 Read both visible hands and independent unsorted physical palms, which are read by the saw to avoid visual adsorption of a false pull. Fixed bone length, LOD, identity/time limits/stocking/restoration protection reservation.
+
+Old b-r-r-r-r-r-r-r-r-r-r-l-d-r-n-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-h-r-r-r-r-r-r-r-r-e-m-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-r-d-r-r-d-d-d-d-d-d-d.4 The original handles are to be arc-drived by the real axis; the hand arc and actual original bones must be in place before applying for the original chainsaw action.10836 The actual dialling/release/institutional return is required in the airlock and the completed tips continue to be withdrawn.
+
+Native and PG compiled successfully, frozen`equipment-controls-prepared-20261103-040722`;original handles CPU 186/0, adhesive/restoration and arc action check passed, original model C 0 Geometry 4228/0. An old Core device ABI failed to read 49 The following failed, the original record is kept and cannot be traced back or currently passed; the new geometry check clearly uses only real reference bones and synthetic hand targets. The current batch has not yet been physically run or visualized, open v 42 Load not replaced. Progress caliber 36.47%, this event+0.00pp，11/64/192 No change. Next: One standard price 1/3660x 3200 paired recording: tactical/empty original receiver charge plus contextual hands, original bone 4 chainsaw lever, release/recovery and authoritative return fire; inspect actual game and simulator output before promotion. Repair the concrete first failure, no per-helper game launches.
+
+
+## 2026-11-03 00:02: Correct the original widget identity by user image; interactive diagram and AVP size configuration
+
+Users request to see all Lancer interface points, question the yellow box and indicate a horizontal chainsaw handle. Original export Hash df 356ff 3...vespect independentb_AR_Chainsaw_Handle has 685 Top Point 2230–2914;Receiver/Receiver_Spin is a separate bone group. The small end cap next to the old loading point 18 The top point is ROOT, which cannot be independently loaded by proximity or name. The extra pull handle is currently designed as a temporary VR and not an original evidence.0 Geometrical mapping and review of interactive maps:`docs/diagrams/lancer-interaction-map-20261102.png`; follow-up corrections to grab points/actions are still pending and running, not declared completed.
+
+67404 Successful patrilineal binding, actual submission/consumption 2 Morph, but regular blades are split.0; the user is out of the game because of the original blade material.0x 13a 3c 0 In the vtable method equals 0x 35b 9a 0 The inside branch, the entrance detour, will be bypassed. No re-routing continues.000102 Public v 42 No change; not a finished rip.67404 Full-time line 7 Page 3 The second interval) has been observed, without frame by frame, close cover, start third person / waiting card and left eye display are kept separately, run unsuccessfully and Native ends unverified.
+
+New user instruction overwrites old 0.4 Dimensions: private starter scale 0.4→1, the simulator every eye 1280×1400→3660×3200(AVP panel size simulation; expected eyes)7320×3200; only old private startup resolution keys are restored without touching the real archive/user desktop. The official manual candidate is already scale 1;entity OpenXR continues to use its own recommended size. XR/play is not started, and does not claim actual output validation. Backup and reply`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\owner-avp-resolution.json`. The maturity 36.47%, this event+0.00pp，11/64/192 No change.Next step: reacting the original Lancer part happening: moving on origami heated Receiver, chainsaw action on an original Chainsaw_handle instead of an assessed extra cod; fully empty empty egypty/release/retruing and custom withdrawal./animation correspondence before implementation, then one coherent combined scale 1/3660x 3200 check. No small-cap Morph activation or unchanged run.
+
+
+## 2026-11-02 23:17: side handle partition drawings are connected; original dynamic material patrilineal correction has been compiled and no new transformations have yet been implemented
+
+Original data identification 18 Side handle vertex with 8756 The main material supports Morph, independent.192 The surface saw blades are not supported. A copy of the only read-in canal has been accessed for two original examples, allowing the blades to remain in regular factories and guns using Morph; no changes are made to shared models, actual GPS loads or materials.286 The detached inspection does not represent physical movement.
+
+62556 and 65004 All set 4 Seconds incentive/empty/airbox lock fire/part and full original release/backfire, but module stopped for binding inspection without being submitted to the new Morph.65004 Read-only physical inspection confirmed that both tanks were packaged in original dynamic MIC and Parent returned to the correct source; strict direct guidance was equally rejected by error.231330 The new source code is not running.
+
+62556(b) Independent reversion of inspections is denied because they are not included in the new entrance and cannot be traced back;65004 Complete function/tail branch fixed Hash to verify all returns and Native/Virtual Handel/XR exits normally.62556 Full-time line 8 The page is visible and close cover is still in place;65004 Encoding Process 32900/exec 62584 Confirms that this round is owned and will be completed and reviewed before new parental corrections are tested. No game is currently available.42 No change, maturity.36.47%, this event+0.00pp，11/64/192 No change. Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\lancer-handle-factory-state.json`。
+
+
+## 2026-11-02 21:59: The experiment was disabled by the side handle Morph, which ran off without raw material Shader;42 Guide to remove reservations
+
+Completed 18 Private Morph input at the original vertex, actual object creation/coupling, actual Recever relative angle and origin FIFO retreat into access;269 Macro/Step,2277 block and 3 The item extraction check is only offline.67012 Unarmed/life cycle before second unplugging 7→8 And protect the hang up. Restore.2.5 seconds;before 4 The sept UI is in effect and cannot be recorded as configuration not connected. This round exits normally/Native/entry/virtual handle resumes, does not reach the loaded, does not pass through the complete process.
+
+67112 The airlock is loaded.4 The second perfect reward/empty/box still locks the fire, and the actual Reciver just moved.0.00101114836 Game exits when playing. The error text of the dump engine is clearly identified as FDeptthOnlyPixelShader, VF=FGPUSkinMurphVertexFactory, VF ShouldCache=0. System 0xc 000000 d and PlayFab, which were from the end of the retreat, are not sufficient to attribute it alone; there is no guess about stack/CFG problems. The original material and shared model has not been replaced. Native did not obtain normal clean-up confirmation and video exit 1, the process has disappeared; XR destruction completed and Game_exited's reply cannot be written as normal recovery.
+
+Two complete video time lines, one each.6/7 Pages 3 Seconds reviewed (non-framework/intensity) and TPS/waiting and close arm/gun mask still in place. No side handle visible movement or physical appearance accepted. Morph path disabled twice before PG construction and Native bound entry, compiled and frozen 215657;no running or delivering. Next step is to check the original example of GPU/division/vertical path only, choosing to retain the raw material and only affect 18 Compatibility of toppoints, save 67012 Enter the hangup gap.
+
+Open entrance remains v 42 Loaded and reset box frame, actual dialing/dismissed/return position completed, all guided 48472 Evidence maintained. Public documents reviewed consistently and matured.36.47%, this event+0.00pp，11/64/192 No change. No running games/XR/recording/compilation; retaining 67112/67012/48472 Media, the rest cleaned and marked as old media by original Helper, source/log/value/archive/roll-back.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\lancer-handle-morph-crash-67112-receipt.json`。
+
+
+## 2026-11-02 20:39：v 42 Delivery. Reloading complete and de-direction removed.
+
+The unified entrance remains as `J:\gearsVr\candidates\6dof-unified\GearsVR Launcher.exe`Version `6dof-unified-20261102-42`. This installation 193737 Freezed building matching Native/Playground/PhysicalXR to fill in original weapon components from existing white lists; does not pack original game extraction models, private simulators or test media. Original user game path/photoset/altering configuration is maintained by bytes.34 V for change 41 Backtracking. Packs are separated from Python pre-check, full inventory of Hashi and ZIP round-trip verification pass, and packs do not start the game.
+
+Direct removal of the following 48472 Practical video evidence: the box is packed and only a body alert is kept in the empty space; all of it is hidden when the actual dialling, hand release and agency return to position. The remaining cartridges are also uninhabited after completion. Not a new playout was passed, the entity head was not checked.12.9/s Actual Game Flow and Historical Perspectives do not synchronize to continue as gaps.36.47%, this event+0.00pp，11/64/192 No change.
+
+The side handle research is only active.51304 Quitped, not injected into Native/not entered level/unbuilt object; launcher exited 0, virtual handle recovery, no residue game, XR exits when initiating cancellation 1 Read the original version.12 Byte Active Morph and 20 Byte LED array evidence; incremental format, consumer end and life cycle are not certified and do not include guess layouts or shared models. Next step is to continue with the same Lancer side handle and mask without repeating unchanged full-chain tests.
+
+Delivery letter:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\candidate-delivery-v42.json`；v 41 Back:`J:\gearsVr\candidates\6dof-unified-20261102-42-rollback`。
+
+
+## 2026-11-02 19:57: Auto-disable bullet guide after completion, actual video confirmation
+
+Modify to the user's latest request: no longer reside in the alarm box. The new actual outlet shows the current steps; only the empty container/closure removes the cartridge boxes and keeps the institution box/direction when the empty warehouse is actually loaded; all drawings are stopped after the actual pull, release and return position has been completed. Still a non-permanent line does not add any action or inventory permission.
+
+193737 The blog is a video of the event.48472 The whole process is through,101 The actual gun tracks were sourced in the same way; Native/entry/virtual handle restoration, XR and video exits were normal.328 The full time line of the second double circuit 11 Pages, institutions 8 Pages and two differences 20 For Viewed (not frame-by-frame): approximately 3:30(a) Unboxed after re-barrel;4:30–4:48(b) The removal of cartridge boxes from the empty box and their conversion to institutional tips;5:18–5:22 When the load is completed and the shot resumed, there are no yellow boxes/arrows. The wrist moves with the same body axis and runs live, avoiding a slide of the original script in position and direction.
+
+Side handle 18 Original vertex/16 The face has been extracted separately, not with the next gun.0/UV/colour/repeated data are kept in private; originals have not been hidden or accessed by example, and preparation data or existing Receiver flipping cannot be completed into side-hand animation. Arms/capture masks remain. No new certified Morph is found to write to ABI without adding guess layout/global resource modification.
+
+Public v 41 Unreplaced, entity unaccepted, maturity 36.47%, this event+0.00 pp, fixed 11/64/192. Start a third person/waiting, first person on the two tracks of history claiming inconsistency and low actual yield rate to remain in place.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-48472-review-receipt.json`. Next step continues to be visible movement/arms contact with the same Lancer agency, without starting a gun-by-gun parallel.
+
+
+## 2026-11-02 19:06: The cross-checking of the handle and yellow hint chain is completed, and the visual gap continues to be maintained
+
+40340 Use 184215 Freezing version, cancelled/stocked/released, left cartridges unstuck,4 Seconds can be configured with incentives, space case boxes remain locked, side handles are still locked, full original flip/back-fired, and saw start/cancellation, equipment switching and pause return.97 The actual authoritative firing point is the actual shot, with a consistent source field; normal Native/entry/virtual handle restoration and XR/video exit check has been made. Code/value flow passes without representation of visual or physical acceptance.
+
+Actual pairing of videos 328 Seconds, full time line 11 Pages, institutional intensity 8 Pages, sports differences and overall differences 20 Read; not frame-by-frame. The yellow box, the lifting arrow and the side handle box/directional tip are actually visible and with the gun;4:48–4:54 Visible sidehand tips,4:54–5:12 The arm shield is still visible. The original model has a small side handle.16 The face is tied to ROOT, the current right side handle surface grab drive the original Receiver flip; the independent movement of the handler has not been achieved and cannot be written as a true gun embolism.
+
+185514 Repositioning only the next private demonstration of the rifle surface towards a physical side handle + X, passing off-line trajectory and not yet running; producing binary 184215 Same.60–300 Middle of the actual stereo outlet for seconds 12.85 Group/second, last round 12.87, no confirmed speed boost; XR 90 Hz does not replace the actual presentation. The question of initiating a third person ' s id/waiting and first person ' s image from different histories is still pending.41 Unreplaced, mature 36.47%, this event+0.00pp，11/64/192 Fixed.
+
+The last three rounds.40340/5656/10316 The media has been retained, the old media cleaned up as an existing assistant; the original model location audit JPG has been cleared with a retention strategy and its JSON/source code is still in place and no longer claims that the picture is available.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-40340-review-receipt.json`. Next step is to supplement the side handle/institutional visible action and mask, and a whole batch of reviews is recorded; no other guns are extended or user games are operated.
+
+
+## 2026-11-02 18:44: Yellow interactive frame and handle correction compiled, whole video reconciliation
+
+User Supplement TF 2 The yellow box and loading position guide of the cartridge; then provide side-train/handle reference, require self-checking and no longer hand over this realization to the user. The original model Hash validates and triangulation reviews reveal small handles 16 Face bound ROOT; previously the original Receiver's upper-side grab point was not a standalone handle. Exposure/private demonstration has been moved to the actual side handle external 5.066,32.50145,9.42102. Keep the original flip-filling body ' s real action/show/back check; independent handler animation is not confirmed and cannot claim that the true bolt movement has been completed.156 The original surface boundary is generated with the yellow frame of the actual gun and the pull/insert arrow; the space storage unit shows the box and dial direction, suggesting that access/stocking/fire-fire permits are not granted.
+
+10316 and 5656 Two rounds of old scratch points passed through the full process.93/98 The actual gun tracks were sourced in the same way; full time line 12 The differences between the pages and the campaign have been reviewed.5656 Alternative 8 The text is also available on the web page of the Working Group.60–300 Middle of the actual stereo outlet for the second window 11.85/12.87 Group, fluid per second; XR 90 Hz is not a separate game output. Continuous inter-entry access and double check check is done; this query local identity is closed before all originals are finished.8590 Checks for metadata and other data 42 A client case passed.
+
+184215 Freeze 985 Start of file and current compilation 40340 The whole video, which has not yet been announced.41 Unreplaced, mature 36.47%, this event+0.00 pp, fixed 11/64/192 No change. There are still side-skin appearances/motion, masking, low-out maps, mid-history TPS/different first person and actual PP SM 34/heads up to check and check.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\side-handle-guide-batch-progress.json`。
+
+
+## 2026-11-02 17:19: Starting the handle/transaction and “Fixer-See-System” has been achieved in batches, but it is not possible to get a better picture of the body.11872 Full chain passed, showing appearance unaccepted
+
+42608 First subdivision later sample clearly starts with the handle.28.5057 The blogger says that the government is not a good idea.19 And actually pull it out, but get 15 Refusal to enter continuity before dispatch of original power; different from 68088 Stop after startup. The static starting handle then combines three original transformations that are fully identical to the transformation into a rigid one (in which case, the original conversion is not a single conversion).2112 Retains the vertex by word, index/material partitioning, border outsourcing) with three actual pull/reverses remaining independent; retains original components, physical matrix reading back, contact/owner/cleanup. The first hand-over completed by a ripping point and updated shows that it is not relaxed 100ms/50ms/250 Ms rule.44580 The chains passed, but the first token was caught.2/decision 12 lease 0/sample 2 Failure, so the whole round passed.1:46.732 The reason for the co-capture of QPC is not confirmed.
+
+As the user requests, simulation moves first turn around the barrel side and keep the gun mouth in direction, then look to the actual body, then move/release; pull a bolt no longer resets the cartridge positions, and then reread the actual contact position. Real play is still controlled by player handles without forcing automatic turn-off. Keep all physical geometry and ease check until the same authorized load/stamp input is shown on empty starter.
+
+165036 Freezing source 11872 Full controlled process passes: menu/first person called takeover, backshot/shoulder/head move without changing gun authority, trigger handle/SM 33 Maintenance/cancellation/returner, cancellation of original cartridges, discard/release retrieving, regular/4(b) Perfect change of second, continuous emptying, still flame retardation in the empty warehouse box, partial pull-in locks and full body pull back fire after release;92 The value is recorded separately from the image/headlight.3 Second total time line,20 Group movements,8 Page 0.75 The sept action chart has been reviewed and not received on a frame-by-frame basis;1:48–2:01 and 5:32–6:03 The first-hand gun/watching body/cracker is available, but general finger contact, partial institutional cover and close cover/tips remain unchanged.4:09.747 Desktop waiting card while XR retains first person 's name (recent catch difference)16.6663 ms); start TPS/SBS, low-out, historical TPS and actual PP SM 34 Not resolved.60–300 Middle of the actual 2 seconds game independent stereo 11.83/ sec, cannot be recycled with XR 90 Hz is fluent.
+
+Normal exit, Native/entry/virtual handle restoration, XR/video exit 0;detected externally 62248 Manual process, only offline source/compilation, without stopping or controlling it. Media retain 11872/44580/42608 Three most recent; old 48508 Open V.41 Unreplaced, maturity 36.47%, Event+0.00 pp, fixed 11/64/192 No change. One by not closing 50708/44580 Capture lost 68088 The next step is to reduce the physical display/performance and exposure to visual defects, without adding new guns or reruning the process. The overall objective remains incomplete.
+
+Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\human-presentation-11872-receipt.json`;full double-track video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-11872-165432\dual-output\paired-output.mp4`。
+
+
+## 2026-11-02 15:53：48508 Full process passed but not synchronized; SPU sampling is unavailable and equipment phases are compiled and broken down
+
+48508（152800 Data check of the fully controlled firing/replacement/starter -- original power -- release/return chain passed, actual gun tracks 93 All sources are consistent; not covered 50708 Second unloaded cartridge failed or 68088 The power kept failing.308.13 Two-second video.11 Pages 3 Second full time line,20 The group movement differences and anomalies were reviewed and not accepted on a frame-by-frame basis.2:01.665 Same capture of QPC, desktop waiting card, emulator to retain first person;ticket 1483 Source age 108.5923 ms, confirm again the display difference, not a third person. Start TPS/SBS, low-out map, close cover/tip/cap, and FP SM 34 And the head-on experience is still not complete.
+
+For prepositioning PG 14.9 ms, equipment 40.3 ms, try using the example of a separate name WPR 12 scrutinized CPU sampling;starting is returning 0xc 5585011(No systematic sampling strategy enabled), no sample was obtained, no system strategy changed or the game interfered. Normal operations continue to close and it is confirmed that the name WPR is not in records, Native/entry/virtual handle recovery, XR/video exit 0. The function address Map has been saved and the texture of the mative/PG machine code fields around the re-linking is consistent; this preparation cannot be considered a performance repair.
+
+154020 Compiled, further broken down by the largest amount of existing 16 The equipment is retrofitted: draw/saw condition/starter/reload/observers, without changing the order of operation, source/geometric/invalidity authorization and cleanup protection; the current breakdown has not yet run. Next step is to use this subdivision only for specific time-consuming and batch repair, instead of repeating WPR under unchanged strategic conditions, no more testing for micro-optimization of undetected gains.36.47%, Event+0.00 pp, public v 41 No change.11/64/192 The scope remains unchanged.48508/50708/67484 The last three media, old 29292, and the media reference mark is cleared, text/value/source code/archive/roll-back retention.
+
+Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\wpr-unavailable-and-stage-detail-48508-receipt.json`; double-track video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-48508-152932\dual-output\paired-output.mp4`。
+
+
+## 2026-11-02 15:18 Time-consuming prepositioning PG processing/equipment; no profit from page reading of name withdrawn 50708 Second unloaded cartridge failed to remain
+
+The source code changes retained in this round are broken down only by the stages of a time-consuming exercise with limited quantities,4 Early and maximum 12 A later sample.67484 Full chain of control through,89 A true shot/source consistent trajectory, all clean-up normal; intermediate front processing of later samples 14.899 ms, original PlayerTick 1.339 ms, equipment 40.296 ms, total 57.516 ms. The evidence is located in our processing path and has not yet proven that specific internal functions or the rest of Native is time-consuming.
+
+145053 The test is to change the common name reading to continuous copying in a page.8456 The entry contains a page of protection for border checks to pass; actual 50708 No apparent frame rate gain. Before the second tactical outlet.0→1 Not reached, token 3 decision 12（lease_lost）、sample_failure 2. The old contact or lost authorization cannot be replaced by a success. Production code has been restored verbatim due to lack of revenue 143610 Version and compiled 151144, test source/test/fail video is in 145053 Keep; failure and the optimised causal link are not established. Actual shooting 25 The entire source was identical, sent from the gun and the complete subsequent re-barrel failed.
+
+67484 Double 303.88 seconds,11 Pages 3 Second full time line and 20 The movement is different.50708 Double 165.73 seconds,6 Pages and 20 The group movement differences have been reviewed; they are not passed manually by frame. Two rounds of full-scale candidates for a new stabilization period are missing, and TPS/SBS is activated, close cover/tip/cap 29292 Unsynchronised is confirmed to remain. Native/entry/virtual handle resumes and XR/video exits normally. Next step, using WPR as a proxy CPU function sample, stop guessing for generic name optimization; WPR has been checked for no other current records and no sampling has yet been started.34 And head-over acceptances are not reduced.
+
+Mature 36.47%, this event+0.00 pp; publicv 41 No change. Recently, the media retained 50708/67484/29292, the rest of the old generated media icons are cleared, source code, text, value and rollback.`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\tick-cost-and-name-rejection-50708-receipt.json`。
+
+
+## 2026-11-02 14:30：29292 Full controlled process passed; synchronized video confirmation that the old first person on the desktop/XR is not synchronized and the low-output chart is still unrepaired
+
+135604 Freezing Source/PG 76a 667...has completed the current round of operational operations,89 The whole source of the shooting is consistent and from the point of departure of the real gun.68088 The current cycle of the occasional generator ' s source is not repeated, and all successful paths to add original limited-status fields 0; this does not close the old failure or prove that the failure branch has been repaired. Group identity reads no credible overall frame rate gain.
+
+About 303.55 Second game + actual window video of simulator, QPC alignment; full time line 11 Pages 3 seconds,20 The group movement differences and specific anomalies were reviewed and not manually accepted on a frame-by-frame basis.4:38.747 The same capture QPC: Desktop “WAITING FOR VR FRAME”, XR still shows that there is a first person called Eye. It is waiting card, not a third person. Original limited mirror rejects line ticket 2989 Show source age 106.3011 ms, while caught 15.1348 ms, capture to Precent 91.1663 ms;desktops 100 ms and continuous XR new maps 1 sec/retention 2 The second rule is different, explaining that there is no synchronization here and that specific CPU bottlenecks are not proven. The classification is originally reserved and manually determined without forging a third person's approval; the TPS/SBS is activated and history is not supported.59520 The question remains.
+
+30–295.58 Centered by the actual new eye view of the second window 9.930 Second/second, XR approximation 90 Hz duplicate submission does not amount to a game 90 fps. The image is similar to a high level of time, correctness or head-over. Close arms/breath cover, undocumented reasons on the brown surface, tip-scrap, left hand grab and actual first person SM 34 Still to be completed. Next steps are based on the existing 91 Physical display/output problems for meslink and linear cost evidence; no time limits for moving to Tibetan Cardon, no no change cycle initiated.
+
+Run, XR, video exit normal and Native/entry/virtual handle restored.v 41 Unupdated, maturity 36.47%, this event+0.00pp，11/64/192 The scope and denominator remain unchanged.29292/68088/39316 The last three times,52292 Once the old generation media is cleared with the available assistants, this round cleans up.1419334761 bytes; old reference markers have been cleared and source code, text, values, archive and rollback are maintained.
+
+Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\display-parity-and-full-flow-29292-receipt.json`;full double-track video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-29292-140149\dual-output\paired-output.mp4`。
+
+
+## 2026-11-02 13:57：68088 Actual 322 Msra handles open bridges passing through; normal turn-gun/turned chainsaw source protected shut down, complete chain not passed
+
+Newly adopted evidence in this round: actual geometric space 322 ms is connected by the existing input continuity to witness bridge, input_bridged_samples 1 The ripper is actually done.19cm，SM 33/ Original power confirmed active; no longer running offline results.33 All of you!0, the original limited number returns stop_reasons 2, previously accepted input age 61.9033 ms. This is a multi-source/life cycle/50 ms affairs/100 ms input and verification, etc., is less than 100 These are not proof of which failure is specific, let alone a direct relaxation of the time limit. The complete reloading does not follow and does not use the previous round to cover the current round.
+
+Compiled 135604 The only act is to give the highest amount of action.32 Line status back to refine source phase, read failure code and established transaction time; control order,50ms/100 ms/identity/epoch/stop/restoration remains unchanged, no new collector/action privileges are available and currently not running.134617 The site ran, but no credible frame rate returns were yet concluded.87.77 Seconds, two windows actually aligned to QPC;3 Pages 3 Second full time line and 20 The movement is not the same as the other side of the world.24.08–30.40 The second is still waiting for the desktop TPS/XR, no new TPS candidate in the Stable Area, history 59520 Do not close. Motion difference/near-covering/tip/caption with first person name SM 34 Keep it going.
+
+This round is normal and has been re-established as a Native/entry/virtual handle, XR and video exit 0. The maturity 36.47%,incident+0.00 pp; the original limited control is retained without declaring stability/vision/headprint completion.41 No change.11/64/192 The scope remains unchanged.68088/39316/52292, clean up older generated media 421640314 Byte tags the old references are cleared, source code/text/value/archive/roll back. Next steps will be to check only the actual first source maintained by this generator and restore the full chain and the established road map.
+
+Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\motor-source-68088-receipt.json`;failure video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-68088-134905\dual-output\paired-output.mp4`。
+
+
+## 2026-11-02 13:48：39316 Full process re-adoption; reading unimprovised actual exit maps by cold name has been retreated and narrows down to GT body/equipment path
+
+This round is progress: a complete controlled joint inspection with specific performance assumptions,302.81 Two-second video,11 Pages 3 Second timelines and 20 The group movement differences are reviewed; they are not accepted by frame or head.4 The second average/perfect and the airlock actually pulls release through,88 The actual ballistics source was consistent and started with the real shot.30–295.58 Medium bits of second new stereo release 9.93/s, and 52292 It's...9.95/s approach; head 8 Sub-unit position 22.651ms/22.837 ms does not show any tangible gain. The cold-name block reading has been accurately retraced against the baseline and is not retained as a Carden repair.
+
+Read only OS snapshots when active, actual PG log GT 62292 Cumulative CPU 224484 ms, Native consumption thread 38284 Cumulative 29828 ms; this gives priority to GT work, but cannot be attributed to a specific function. Identity-type body is read in conjunction with the existing Controller/Weapon group scan, retaining the original final identity/structure/relationship/mark/table; compile and reread 30 Border passes, current 134617 Build unrun, can't put 39316 The video is assigned to it. Name border check.8423 Repeats unchanged results by not running a new game.
+
+Start treaty.21.58–28.20 The second is still visible on the desktop, where third person /SBS and XR wait; waiting card does not mean a third person. Stabilization is no new TPS candidate, history 59520 Still not closed. Close cover, overlap of white-word tips, capture alignment/motion differences still exist; the actual first person is SM 34 Without coverage, the existing range targets are not Controller, while victims read it and require that they be supplemented by supported original behaviour and must not bypass contact certification.
+
+Normal exit and Native/entry/hand handle restoration; open v 41 No change, maturity.36.47%, this event+0.00pp，11/64/192 No change. The latest media 39316/52292/59276 Keep, clean older generated media 701049311 bytes, old reference marker cleanup, source/text/value/archive/rollback. Next step is frozen only 134617 The new group is read for a joint check with the process; it continues to be repaired on the basis of real GT expenses and visual failure, retaining the complete sequence road map.
+
+Reply:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\mainthread-performance-39316-receipt.json`;video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-39316-133027\dual-output\paired-output.mp4`。
+
+
+## 2026-11-02 13:05：52292 Full Lancer numerical process passed; two-way video confirmed that the start-up perspective interface and low new image output remained to be repaired
+
+Recorded 302.21 Second complete game window + simulator eyes, physically collecting QPC alignment by WCC; unactivated, moving or adjusting user windows.11 Pages 3♪ The second full time line,3 Page Action Details and 20 Group movements differ, not by frame or entity.21.30–27.45 Seconds still see third person/SBS and simulator waiting for transition; stabilization has not detected a new third person candidate and cannot close history 59520 Or to rule out short flashes.30–295.58 Medium number of secs new stereo release 9.95 Second/second, XR cycle 90 Hz is a duplicate submission; there are differences in the collection pairs in the sports area, and no time series/window capture/performance causes for all sources have been isolated.0.997 Not equal to 99.7%Correct or low delay.
+
+Source code addition of current input with a permitted handle, without geometry or movement authorization and without propulsion/engine; retain 100 The real posturing,7 cm contact, identity/epoch/freedom/time-out protection.28(a) Passes the narrow strategy;311 The ms branch is only passing in offline recurrence, with actual spacing of the current round 200 ms, no false runback. The new frame of previous box access did work and the round was retested early and it was actually a date 0。52292 Complete original chainsaw start/cancellation, change of gun with Grip and resumption of firing, back-to-side/shoring/shoulder-fire/fixed gun turn, de-location/discard,4(b) Second average/perfect and airlock release following firing;90 The actual ballistics were of a consistent origin and the starting point was the actual gun.
+
+Visualization remains off-limits: close arm/brain armor/gun mask, cross-word tips by gun; left hand grabs need to be accurately aligned and steady.273.98 The second screenshot is in squeeze.0→1、284.05 Seconds in 1→0 The material is not a visual inspection.34 The first person claimed execution, wall/one-time recovery and the demonstration of user head is still pending.
+
+This round is normal and has been re-enacted by Native, access, virtual handles, XR and video exit.0 Public.v 41 No change, maturity.36.47%, this event+0.00pp，11/64/192 The fixed denominator remains unchanged. Helper has been retained as it is.52292/59276/58484 Three rounds, clean up older media.343190239 bytes, source code/value/text/archive/rollback.
+
+Next move: Cross-link/continuing out of perspective based on this video and the release of record fixes to distinguish between capture deviations; focus on gripping/shielding/HUD after verification of steady holding, before completing first person ' s SM 34 And in sequence. Evidence:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\paired-output-52292-review-receipt.json`;full video:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\menu-firstperson-52292-123429\dual-output\paired-output.mp4`。
+
+
+> 2026-10-28 From now on, this document is kept in its entirety as old demand, fractions and evidence files.[Three road maps](6dof-implementation-roadmap-20261025.md)Push: First person calls  ⁇  free hands,  ⁇  touch back/pants for guns; each basic self-measure continues with the next item and user's real sense of skill is in place. All of the following are "new" and four steps continue without waiting for H 1, completely stop simulator and 64 Item/192 The point-of-implementation arrangements are of an ongoing historical nature and no longer serve as a basis for assignment or testing in this round.
+
+<!-- manual-startup-current -->
+**Newest Coverage (2026-10-28T 08:02:09+08:00: Unique branch `codex/6dof-single`Source `9e0ad18`; the ninth package has been updated to the same entry point. The new gun is replaced and restored to the actual GT role code; three slots, free hands/barrel and real Lancer hold side moves are visible, equipment transition stability and physical maturity awaiting feedback.31.02%, this event+0.00;completed by[- The board.](6dof-progress-dashboard.md)Yes.**
+<!-- /manual-startup-current -->
+
+Dynamic status update:2026-10-28T 02:10:45+08:00; fourth package repairs duplicate configuration and delivery, user real-time waiting, HUD quasi-satellite not accessed.30.23%, Event Incremental 0.00；64 and 192 Maintain the operational point.
+
+Recent direct user requirements (%)2026-10-28T 00:25:22+08:00）：**Two worktrees are combined as a development lead, the first person calls it free hands, shoulder and pants, gun-plug fire; each has been compiled to update the same version for user real machine debugging.** Now, you're going to write code in four steps without waiting for H.1 Feedback. The first unified package is not pre-empted by four steps full or automatic, the compiled results are delivered and the same entry is updated after that. Users are responsible for all games/XR/headprint tests; developers write codes, compile/links, pack packages, do not initiate automatic testing or add new diagnostic doors.
+
+Unified Directory:`C:/Users/11/.codex/worktrees/6dof-cover/gearsVr`; branch:`codex/6dof-unified`. The two branches have actually been merged into`9a41f92`，13 Conflict is dealt with. Both parents are`37de6ef`and`f397f9b`Second bage 38a 2b 2 Access to the gun. Third pack.183cb 10 Refurbish the manual start-up of environmental doors; four-step code/compilation results vary from machine to machine.
+
+Body only maintains shared Native/Choose/Bones and has the exclusive possession of Git temporary storage/submission, integration and packaging; Weapon only writes directly agreed stand alone equipment/spot/gun-held/fired consumers. Both parties use a single catalogue later on. Old Weapon directories, history and old candidates are retained back, and the master directory is not submitted to support uncompleted tree cover. Existing repair and original integrity requirements are maintained.
+
+Fixed access:`J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。**The fourth bag was packed:6dof-unified-20261028-4(The fixed entrance has been updated).** [Starter](</J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe>)；[Full description](/J:/gearsVr/candidates/6dof-unified/CANDIDATE.md)First person claims that the free hands, shoulder/pants RT Grip and Lancer gun openings have been plugged in and finished. Fourth bag retains the active Lancer VR firing in the actual direction/shoot/hand perception of the user ' s real machine. HUD-associated star has not yet received new rays; left hand-to-hand tracking has led to unknown 's suspension of fire, and normal single-handed holding is still allowed. The old candidate and ZIP are back on the table.
+
+## Current order of implementation (v)69 Overrided)
+
+1. Check 2572 First break of the first airbag box, Neds_release: actual release/new pressure with Native arbitration/delayed observation logs, fix specific sources without re-routing or re-examining. C Initial service failure records are repeated with the next necessary batch and do not run repeatedly for no new change.
+2. Continue with the same Lancer five-point alignment/reverse wrist, walk scintillation and HUD/start first person; use existing data and a centralized recording without restarting for each small point.
+3. Reservations v 69 Hands on each side.4 Single-handed hair and loose hands; C push running on a continuous basis, with the first actual one-off 3 seconds, after pull off;v 68 The single-eyed focus of executions continues to be maintained.
+4. The current Lancer is completed and returns to the reserved menu X/hand grenade locking and other gun routes; no assistant/other session/parallel new guns.
+
+### Historical Implementation Table (Hyctic Performance Sheet)2026-10-28, is covered by the order above)
+
+| Order | Current code state | Next |
+| --- | --- | --- |
+| 1 First | Harmonization of the fourth package delivered | User-based observation, modified by feedback |
+| 2 Free hands. | Harmonization of the fourth package delivered | User check independent location/complete rotation and naturality |
+| 3 Shoulder/pants rounding guns | Normal entrance is connected and compiled for delivery | User RGrip collects actual weapons in stock; armless display first makes real Tpose |
+| 4 Fire! | Lancer gun code compiled and enabled in fourth package | Users check direction/bulb; HUD-associated stars are not receiving new rays |
+| Unity of candidatures | Delivery 6dof-unified-20261028-4 | Update with subsequent entry, old bag is reserved for retreat |
+| It's a real thing. | By the user | Do not use source code, merge or compile as a play method |
+
+```mermaid
+flowchart TD
+  M["统一源码：已合并 9a41f92<br/>一个开发目录，一个构建负责人"] --> B1
+  subgraph NOW[当前四步代码交付]
+    B1["① 身体平移 42.86%<br/>统一第四包已交付"] --> B2["② 头身朝向 45.00%<br/>统一眼点已编译交付"]
+    B2 --> B3["③ 自由双手 46.67%<br/>第四包已交付，真机待证"]
+    B3 --> W1["④ 肩部／裤兜取枪 60.00%<br/>取枪已接通编译，待真机"]
+    W1 --> W2["⑤ 跟枪瞄准射击 40.00%<br/>枪口代码已编译启用，待真机"]
+    W2 --> P["统一手动候选<br/>第四包已交付，配置异常已修"] --> H["用户真机调试<br/>反馈随到随修，不重复计分"]
+  end
+  subgraph LATER[其余既有成果保留，四步后安排]
+    W3["⑥ 手动换弹 20.00%<br/>保留，后续接入"]
+    C1["⑦ 掩体探身 18.00%<br/>保留，后续实现"] --> C2["⑧ 抓边缩回 40.00%<br/>保留，后续合流"]
+    W3 --> I1["⑨ 掩体联合战斗 0.00%<br/>待武器与掩体"]
+    C2 --> I1
+    I1 --> X1["⑩ 其他武器与动作 20.00%<br/>保留，后续扩展"] --> I2["⑪ 完整合流验收 0.00%<br/>待全部功能与用户真机"]
+  end
+  H -.-> W3
+  H -.-> C1
+```
+
+## How to take into account the big progress
+
+11 The right to continue with the big nodes.14 Item 2,12 Item 3 18 Item 7 20 item, average power in the internal sub-sections of each major point; remaining 7 This time, no big points will be opened and the original tranches will remain.192 An operational point is used to execute the error between the item and the judgement, and no separate points are added. The unknown item does not receive a score but it is clearly marked “foreseeable” on which the code cannot be asserted that it does not exist.
+
+Like three of those little things.40→60 Three more.20÷18=1.11 Percentage points, total increase 20÷18÷11≈0.10 Percentage point. No more waiting for the whole 3-way 60 Jump to 80 Only when changes are seen. The old evidence that is newly discovered is marked as “recognizing evidence”; the new run is marked as “new results”.
+
+| Fractions | Evidentiary requirements |
+| ---: | --- |
+| 0% | There is insufficient evidence to verify the stage of realization of the sub-section; unknown and clearly identified markers are not equal to determining that there is no code. |
+| 20% | A relevant achievement or connection to a positionable location already exists; this small action has not yet formed complete offline passage. |
+| 40% | The core realization/main module of this sub-item is targeted offline evidence or partially run, but the action as a whole was not passed. |
+| 60% | A clearly limited action is passed and properly closed with the purchase of version + controlled simulation; a record of candidate and range. |
+| 80% | The action is passed by the same deliverable candidate, with both eyes visible, necessary for return, start-up exit and operational instructions. |
+| 100% | The local validation and physical head-over approvals required for the sub-item were passed; only actual actions were covered by a short check. |
+
+
+Update: The table above and the “controlled simulation/offline” in historical evidence describe that no automated rerun is authorized. In future, evidence of behaviour for the same player action is provided by a head-check of the user entity and recorded on the basis of actual coverage; source code and compilation results support only the corresponding stage of realization and cannot pass as an act.
+
+
+## Current source code and candidate evidence
+
+Merge Submission 9a 41f 92 Reservations 37de 6 ef and f 397f 9 b Two histories; old first person ' s handbags delivered and first package unified delivered.38a 2b 2 Connect and compile delivery; currently awaiting specific real machine feedback; user-real device confirmation of alternate logout cannot increase maturity by consolidation.
+
+## Implementation and acceptance of each sub-item
+
+The following three actions are carried out sequentially, defining the range of adoptions for this subparagraph together; they cannot be adopted for the whole item by just doing the first one. The old evidence only retains the part that is already written and the new candidate/assembly action referred to in step 3 still needs new evidence accordingly. The full set of acceptances is not complete at present.
+
+
+## 1 Around, moving up and down:42.86%
+
+14 Sub-sections, each internal weight 1/14 The big node is the whole thing.1/11。
+
+| Numbering | Minor | Current | Prefix | Current certified and gap |
+| --- | --- | ---: | --- | --- |
+| B 1.01 | Set the correct physical neutrality benchmark when entering the game | 60% | Pre-established scene | The same physical position captures eye points, head, pelvis and feet, the body and hands for continuous submission; fixed standing and small area of head movement. |
+| B 1.02 | Realism is the same distance, the same direction. | 40% | B 1.01 | Six-way conversion offline; no model bone distance impersonating human dimensions, the latest concourse still pending against the game. |
+| B 1.03 | Body follows when moving right | 60% | B 1.01、B 1.02 | Old B 9 Shift right 3 cm controlled body is read-backed; it does not equal the latest benchmark or natural mass cross-sectional passage. |
+| B 1.04 | Follow the body when moving left | 60% | B 1.01、B 1.02 | Old B 9 Shift left 3 cm passes; the right move cannot replace the left acceptance. |
+| B 1.05 | When you actually lift your body, you move your eyes and bodies up. | 60% | B 1.01、B 1.02 | Old B 9 Up 2 cm passes; the full amount of natural rises is not within the old range of this item. |
+| B 1.06 | When you actually lower your body, you move your eyes and body down. | 60% | B 1.01、B 1.02 | Old B 9 Down 2 cm passes; full range of bottoming and shelter cover is tested separately. |
+| B 1.07 | The distance and direction of the exterior and forward. | 40% | B 1.01、B 1.02 | The six-way horizontal adaptation has been offline; the old run at the first three nodes did not form the full pass of the previous movement. |
+| B 1.08 | Only once the tilt and group offsets are applied | 40% | B 1.03、B 1.04、B 1.05、B 1.06、B 1.07 | The adaptor and backfill offline results are maintained; the latest trans-shipments and lifts are still pending. |
+| B 1.09 | Head and pelvis relative motion. | 60% | B 1.01、B 1.02 | Old B 9(b) Limiting small motion to head/pelvic response;14 The single point does not justify the new neutral benchmark in its entirety. |
+| B 1.10 | The upper body and the shoulder positions allow normal arm length. | 40% | B 1.01、B 1.09 | The fixed arm length and body search for delineation base exists; the latest visible stream of cameras/shoulder/hands is not passed. |
+| B 1.11 | The foot restraints are not quietly broken when the body moves. | 40% | B 1.09 | Fixed foot and complete output playback passed; actual natural postures and final images are pending. |
+| B 1.12 | The body benchmark is correctly moved when the original person moves | 20% | B 1.01、B 1.09 | The baseline handling connection is located; no full results are available for the current set that remains correct after actual walk. |
+| B 1.13 | You can't jump after you've returned or tracked the reference changes. | 40% | B 1.01 | Offline reference rule and controlled control are reinstated; HR does not prove that HMD/hard reference changes were fully passed. |
+| B 1.14 | Gradually, it's expanding to natural crouching and excursion. | 0% Pending | B 1.03、B 1.04、B 1.05、B 1.06、B 1.07、B 1.10、B 1.11 | There is currently no certified natural full-scale joint adoption;0 It is stated that no evidence was available at the stage of this item and that there were no relevant codes for the assertion. |
+
+
+### B 1.01 Set the correct physical neutrality benchmark when entering the game
+
+This round of reviews (No.47 In the case of the most recent common benchmark, the neutral stand-off is still pending and will be called upon for real failure.[Hour 47](J:/gearsVr/analysis/6dof-progress/hour47-h1-first-rejection-pending-reviewed.json)。
+
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: Preset scene.
+
+Evidence of common benchmarking and single points is available; the real source of initialization to the latest body set has not yet been passed.
+
+
+
+1. **B 1.01.1** Fixed station position view, recording original HMD, role, body benchmark and baseline setting.
+
+2. **B 1.01.2** Put the eye, skull and pelvis in the same benchmark; the baseline shall not be taken from the previous frame of superseding deviation.
+
+3. **B 1.01.3** Keep your head still and start moving again, confirming that the first frame does not jump and continues without repeating.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[B14](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing14/runtime-c0-boundary-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.02 Realism is the same distance, the same direction.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01。
+
+Six-way conversion offline; no model bone distance impersonating human dimensions, the latest concourse still pending against the game.
+
+
+
+1. **B 1.02.1** Use a fixed millimeter of rice/play units and axle, upper-down, back-up and forward.
+
+2. **B 1.02.2** The difference in body is filled by a comparison game shift with known centimetres input, without changing the IPD or headscale.
+
+3. **B 1.02.3** Return to the starting point, confirm that conversion is not cumulatively biased; and have a cross-reference rate in the same candidate.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.03 Body follows when moving right
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+Old B 9 Shift right 3 cm controlled body is read-backed; it does not equal the latest benchmark or natural mass cross-sectional passage.
+
+
+
+1. **B 1.03.1** Keep your head on the right.3 Centimeters.
+
+2. **B 1.03.2** Check the right movement of eye points, head and pelvis and the same body results.
+
+3. **B 1.03.3** Right move back to your place; latest set of candidate visibilitys.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.04 Follow the body when moving left
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+Old B 9 Shift left 3 cm passes; the right move cannot replace the left acceptance.
+
+
+
+1. **B 1.04.1** Keep it moving. Move left.3 Centimeters.
+
+2. **B 1.04.2** Check left shift symbols, eye spots and pelvis responses without mirror reverses.
+
+3. **B 1.04.3** Left move back to your place; latest set of candidate visibilitys.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.05 When you actually lift your body, you move your eyes and bodies up.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+Old B 9 Up 2 cm passes; the full amount of natural rises is not within the old range of this item.
+
+
+
+1. **B 1.05.1** Keep the rotations unchanged, and raise your profile.2 Centimeters.
+
+2. **B 1.05.2** Confirms that the up-to-date movement is from a real location input, with the same eye point as the body using the same result.
+
+3. **B 1.05.3** Maintaining altitude and returning to its original position without leaving an additional base eye high.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.06 When you actually lower your body, you move your eyes and body down.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+Old B 9 Down 2 cm passes; full range of bottoming and shelter cover is tested separately.
+
+
+
+1. **B 1.06.1** Keep the rotations unchanged and keep your head down.2 Centimeters.
+
+2. **B 1.06.2** Recognition of point of view and body decline, without a header/header angle being used to replace height.
+
+3. **B 1.06.3** Back to the original altitude, the check benchmark was not re-corrected at low levels.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.07 The distance and direction of the exterior and forward.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+The six-way horizontal adaptation has been offline; the old run at the first three nodes did not form the full pass of the previous movement.
+
+
+
+1. **B 1.07.1** Keeps the game below your feet, moving forward and back in small amounts.
+
+2. **B 1.07.2** Compare head, upper body and final eye point without turning the probe into a game walk-in.
+
+3. **B 1.07.3** One back and then, confirming that there is no additional accumulation or directional reversal.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.08 Only once the tilt and group offsets are applied
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.03、B 1.04、B 1.05、B 1.06、B 1.07。
+
+The adaptor and backfill offline results are maintained; the latest trans-shipments and lifts are still pending.
+
+
+
+1. **B 1.08.1** Enter the top-right and bottom-left position first.
+
+2. **B 1.08.2** Compares the results by axis, and the body results are no longer reciprocated to the next frame input.
+
+3. **B 1.08.3** Revert and repeat, cumulative deviation should be zero.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[I'm out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/full-body-c0-absolute-tracked-receiver1/cpu-1792922639039692300/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.09 Head and pelvis relative motion.
+
+This round of reviews (No.46 Copies, fractions unchanged: retain the old limit 60%;ad physical target actually submitted not equal to the skull/bone/eye relationship.[Hour 46](J:/gearsVr/analysis/6dof-progress/hour46-first-person-and-h1-runtime-reviewed.json)。
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.02。
+
+Old B 9(b) Limiting small motion to head/pelvic response;14 The single point does not justify the new neutral benchmark in its entirety.
+
+
+
+1. **B 1.09.1** The goal eye, skull and pelvis are preserved at the same time.
+
+2. **B 1.09.2** A smaller range of body homogenization is generated by the same input, with a fixed deviation for the head eye.
+
+3. **B 1.09.3** The latest re-cantonment of the affected range avoids full passage by reading at the end.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[B14](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing14/runtime-c0-boundary-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.10 The upper body and the shoulder positions allow normal arm length.
+
+This round of reviews (No.47 In the form of a copy, the score remains unchanged:41 Group shoulder line/arms long condition analysis delivered; not accurately called, but single-line neutral gestures still failed.[Hour 47](J:/gearsVr/analysis/6dof-progress/hour47-h1-first-rejection-pending-reviewed.json)。
+
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.09。
+
+The fixed arm length and body search for delineation base exists; the latest visible stream of cameras/shoulder/hands is not passed.
+
+
+
+1. **B 1.10.1** First, the shoulder lines, head-eyes and characters are aligned in a direction rather than stretching their arms.
+
+2. **B 1.10.2** Check the right-hand target with the same neutral attitude as normal reach.
+
+3. **B 1.10.3** Hands are fixed when moving and cannot reach the target by frame.
+
+
+Evidence:[I'm out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/full-body-c0-absolute-tracked-receiver1/cpu-1792922639039692300/receipt.json)、[Arms are out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/fixed-length-receiver1/attempt-1792907100878442400/receipt.json)、[♪ Butt back on ♪](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/body-c0-hands-candidate3/B13-reach-replay1/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.11 The foot restraints are not quietly broken when the body moves.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.09。
+
+Fixed foot and complete output playback passed; actual natural postures and final images are pending.
+
+
+
+1. **B 1.11.1** Enter a small area head position change after the reference below the fixed foot.
+
+2. **B 1.11.2** The observation of feet, pelvis and upper body is not intended to be concealed by moving foot or whole person transmission.
+
+3. **B 1.11.3** Keep explicit failure or surrender, without presenting half the result, beyond the current proximate posture.
+
+
+Evidence:[I'm out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/full-body-c0-absolute-tracked-receiver1/cpu-1792922639039692300/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.12 The body benchmark is correctly moved when the original person moves
+
+**Current 20% • Source code/wiring.** Head: Bottom of body and bunker. Forward: B 1.01、B 1.09。
+
+The baseline handling connection is located; no full results are available for the current set that remains correct after actual walk.
+
+
+
+1. **B 1.12.1** First, we get the stand-up benchmark and then we move the role in short slots.
+
+2. **B 1.12.2** The real head moves are then superimposed only as the valid person changes the moving benchmark.
+
+3. **B 1.12.3** Repeat a small stride after discontinuation to confirm that the benchmark is not in the old world position.
+
+
+Evidence:[Body Source](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/tools/native-capture/body_goal_view_adapter.h)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.13 You can't jump after you've returned or tracked the reference changes.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01。
+
+Offline reference rule and controlled control are reinstated; HR does not prove that HMD/hard reference changes were fully passed.
+
+
+
+1. **B 1.13.1** List L separately 3 Remedial, track space changes and general controller recovery.
+
+2. **B 1.13.2** The old margin is discarded when reference changes occur, and the head, body and hand references are re-established together.
+
+3. **B 1.13.3** Recheck station and small level shifts after recovery; changes not actually covered continue to be pending.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[HR](J:/gearsVr/analysis/6dof-progress/hr-controller-loss-recovery-reviewed.json)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 1.14 Gradually, it's expanding to natural crouching and excursion.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: B 1.03、B 1.04、B 1.05、B 1.06、B 1.07、B 1.10、B 1.11。
+
+There is currently no certified natural full-scale joint adoption;0 It is stated that no evidence was available at the stage of this item and that there were no relevant codes for the assertion.
+
+
+
+1. **B 1.14.1** After the small action was adopted, it was scaled up to take into account existing availability and clearly documented support.
+
+2. **B 1.14.2** The first failure of the observation posts, their landings, forward visits and sidewalks stopped the scope.
+
+3. **B 1.14.3** Develop a stable range of support and then give users short-term experience.
+
+
+Evidence:[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+## 2 Physical stability when turning and looking up:45.00%
+
+12 Sub-sections, each internal weight 1/12 The big node is the whole thing.1/11。
+
+| Numbering | Minor | Current | Prefix | Current certified and gap |
+| --- | --- | ---: | --- | --- |
+| B 2.01 | Neutral direction and eye-turn center right. | 60% | B 1.01 | The actual first person is known to have visible left and right eyes, with access to the centre of the authored head-eye and common body benchmarks;10 Doyaw/6 Cm-Step Shift to 0.15 radians are crooked to the limit of this round. |
+| B 2.02 | Turn right and change the direction of observation. | 60% | B 2.01 | Old B 9 Normal yaw+10; complete natural reverses. |
+| B 2.03 | The symbol and response to the left head is correct | 40% | B 2.01 | Left- and right-rotation math has offline base; old B 9+10 The results do not pretend to be left-turned. |
+| B 2.04 | You don't have to raise your head. | 60% | B 2.01 | Old B 9 pitch +10 degrees and returns; new benchmarks are pending. |
+| B 2.05 | Keep your head down, and you don't need to lower your body. | 40% | B 2.01 | The offline check of positive and negative rotations is reserved; the latest game of low-head action, the evidence for both eyes, remains to be filled. |
+| B 2.06 | The right twist of the side-drive is correct. | 40% | B 2.01 | Full attitude math passed; actual roll and eyes comfort failed. |
+| B 2.07 | Pure rotation does not duplicate body shift | 60% | B 2.02、B 2.04 | B only 9 The small corner yaw/pitch is controlled; the larger corner, roll and the latest stream are pending. |
+| B 2.08 | And when you turn around with real flattening, both of them will be preserved. | 40% | B 1.08、B 2.01 | Combining target is offline; real position changes cannot be lost by calling a turn-over. |
+| B 2.09 | No residual offset after rotation | 60% | B 2.02、B 2.04 | Old B 9 Passed after normal yaw/pitch; does not amount to a re-initiation baseline. |
+| B 2.10 | Turning head and multiaxis without jumping. | 40% | B 2.03、B 2.05、B 2.06、B 2.08 | Multiple sets of attitude travels to mathematics already; current continuous game images are not accepted. |
+| B 2.11 | Swing poles to or back in sync with the header | 20% | B 2.01、B 1.13 | Continuous contract source code is repositionable; new real smooth/snap and front-hand body flow check not yet complete. |
+| B 2.12 | Expand normal observation angles and validate horizons | 40% | B 2.03、B 2.05、B 2.06、B 2.10 | Broader mathematical domains are offline on a basis, with actual support angles and ultimately visible vision not certified. |
+
+
+### B 2.01 Neutral direction and eye-turn center right.
+
+This round of reviews (No.47 In the first person ' s case, the switch is valid; ae eyes are still under close geometry and correctly usable view points are not passed.[Hour 47](J:/gearsVr/analysis/6dof-progress/hour47-h1-first-rejection-pending-reviewed.json)。
+
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01。
+
+Static head-eye positioning and rounding through mathematics; author configuration is not a physical determination.
+
+
+
+1. **B 2.01.1** Records HMD observational direction and fixed eye deviation.
+
+2. **B 2.01.2** The rims rotate around the actual eye point, and the staved skull is moved by fixed deviations to the arc and the body.
+
+3. **B 2.01.3** The latest candidate has checked the body for direction, actual first person eye and observation; with real XR eyes, there is no substitute for capability flag or old animation.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json)、[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.02 Turn right and change the direction of observation.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 2.01。
+
+Old B 9 Normal yaw+10; complete natural reverses.
+
+
+
+1. **B 2.02.1** Fixed HMD position, enter+10 Doyaw.
+
+2. **B 2.02.2** Confirm angle to be approximately 0.17453 radians, observation direction is consistent with input.
+
+3. **B 2.02.3** Keeps the back-backing and does not rotate as an additional transverse or body shift command.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.03 The symbol and response to the left head is correct
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 2.01。
+
+Left- and right-rotation math has offline base; old B 9+10 The results do not pretend to be left-turned.
+
+
+
+1. **B 2.03.1** Fixed position, enter-10 Doyaw.
+
+2. **B 2.03.2** Checking the left direction, and physical homogenization cannot be reversed to compensate.
+
+3. **B 2.03.3** Saves evidence of this actual game in a center and right symmetry.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json)、[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.04 You don't have to raise your head.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 2.01。
+
+Old B 9 pitch +10 degrees and returns; new benchmarks are pending.
+
+
+
+1. **B 2.04.1** Position fixed, enter+10 Dopitch.
+
+2. **B 2.04.2** Confirm that the header changes the direction of observation and does not process up or up.
+
+3. **B 2.04.3** The back-end benchmark is maintained without additional height.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.05 Keep your head down, and you don't need to lower your body.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 2.01。
+
+The offline check of positive and negative rotations is reserved; the latest game of low-head action, the evidence for both eyes, remains to be filled.
+
+
+
+1. **B 2.05.1** Position fixed, enter-10 Dopitch.
+
+2. **B 2.05.2** Confirm that the head is only changed in direction and does not automatically crouch down or push the camera out of the body.
+
+3. **B 2.05.3** Check head eye deviation and pelvis position back.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json)、[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.06 The right twist of the side-drive is correct.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 2.01。
+
+Full attitude math passed; actual roll and eyes comfort failed.
+
+
+
+1. **B 2.06.1** Fixed position, small round and right.
+
+2. **B 2.06.2** Keeps the real side crooked head and does not remove it as a game run.
+
+3. **B 2.06.3** (c) The direction, eyes and body position of the check-in back.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.07 Pure rotation does not duplicate body shift
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 2.02、B 2.04。
+
+B only 9 The small corner yaw/pitch is controlled; the larger corner, roll and the latest stream are pending.
+
+
+
+1. **B 2.07.1** Keep the real position completely fixed and change direction.
+
+2. **B 2.07.2** Arcs from brain oscillation cannot be added to the pelvis or physical position transfer again.
+
+3. **B 2.07.3** Compare the body benchmark before and after rotation, confirming that no cumulative probes are available.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.08 And when you turn around with real flattening, both of them will be preserved.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.08、B 2.01。
+
+Combining target is offline; real position changes cannot be lost by calling a turn-over.
+
+
+
+1. **B 2.08.1** Turn your head separately and add a small transverse/uplift at the same angle.
+
+2. **B 2.08.2** Check the rotation and peace move separately, without locking down HMD positions.
+
+3. **B 2.08.3** Returns the original corner of the position and validates each application.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.09 No residual offset after rotation
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 2.02、B 2.04。
+
+Old B 9 Passed after normal yaw/pitch; does not amount to a re-initiation baseline.
+
+
+
+1. **B 2.09.1** Restore zero-point input from yaw or pitch.
+
+2. **B 2.09.2** Waiting for the original stable judgement to compare the head and body benchmarks.
+
+3. **B 2.09.3** Repeating the same action does not increase bias; preserves the original adopted result and only evaluates the affected increment.
+
+
+Evidence:[B9](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing9/runtime-motion-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.10 Turning head and multiaxis without jumping.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 2.03、B 2.05、B 2.06、B 2.08。
+
+Multiple sets of attitude travels to mathematics already; current continuous game images are not accepted.
+
+
+
+1. **B 2.10.1** From yaw to pitch, add a small roll and keep input continuous.
+
+2. **B 2.10.2** There was no intermediate change of benchmark between the direction, body and hands of the examination.
+
+3. **B 2.10.3** Saves the whole section instead of selecting a stabilization frame, marking the first jump.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json)、[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.11 Swing poles to or back in sync with the header
+
+**Current 20% • Source code/wiring.** Head: Bottom of body and bunker. Forward: B 2.01、B 1.13。
+
+Continuous contract source code is repositionable; new real smooth/snap and front-hand body flow check not yet complete.
+
+
+
+1. **B 2.11.1** Reuses the established smooth or Snap to move settings without adding a new shift to the rule.
+
+2. **B 2.11.2** The shift is to update the body reference and hand world transformation.
+
+3. **B 2.11.3** Maintain a real hand posture and confirm that no wave or scouting is mistaken for the reference shift.
+
+
+Evidence:[Hand-continuing source code](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/tools/vr-common/hand_world_continuity_bridge.h)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 2.12 Expand normal observation angles and validate horizons
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 2.03、B 2.05、B 2.06、B 2.10。
+
+Broader mathematical domains are offline on a basis, with actual support angles and ultimately visible vision not certified.
+
+
+
+1. **B 2.12.1** The small corner is then scaled up to a normal left-hand, head-up and down angle.
+
+2. **B 2.12.2** The body and scene are examined to avoid the head geometry covering the view.
+
+3. **B 2.12.3** Confirm the range of support and hand it over to H.1 Experience, not using the mathematical corner as an area to play.
+
+
+Evidence:[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json)、[I'm out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/full-body-c0-absolute-tracked-receiver1/cpu-1792922639039692300/receipt.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+## 3 Free hands to exchange the original animation:46.67%
+
+18 Sub-sections, each internal weight 1/18 The big node is the whole thing.1/11。
+
+| Numbering | Minor | Current | Prefix | Current certified and gap |
+| --- | --- | ---: | --- | --- |
+| B 3.01 | Left-hand input allows for independent entry into a common posture. | 60% | B 1.01 | Only left/right is moved in the same precise XR input instrument, with each of the final wristbone and actual right-and-right eye variations; the other hand remains independent. |
+| B 3.02 | Control points correctly converted to wristbone. | 40% | B 3.01、B 1.02 | Authors with complete attitude are created by default grip gibbwist configuration and offline check; physical adhesion to be adjusted. |
+| B 3.03 | Left hand follows position within limits. | 60% | B 3.02、B 1.10 | B 17 Quiet, B.18 The hand-limited movement of the fixed head passes; new head flow is still pending. |
+| B 3.04 | Right hand follows position within limits. | 60% | B 3.02、B 1.10 | Old candidate restricted right hand movement; gun after gun belonged to W 2。 |
+| B 3.05 | And your hands are not controlled by each other. | 60% | B 3.03、B 3.04 | B 18 The scope of the stage IX controlled movement is retained; genuine arbitrary actions and new benchmarks are not adopted accordingly. |
+| B 3.06 | Wrist-to-hand and pressure-up are right. | 60% | B 3.02 | The right-hands change yaw/pitch separately, the actual wrist/visible pistol posture corresponds to the change; the full natural range of roll remains on track. |
+| B 3.07 | The whole roll can be passed to the palm. | 40% | B 3.02 | Full four-digit target is in place; acceptance and inspection at running time are still clearly missing. |
+| B 3.08 | When you turn around or move, the hands of the world are not towed. | 60% | B 1.08、B 2.08、B 3.03、B 3.04 | Control Raw World Posture, head side crooked.0.15 radians; ultimately, the wrists are only about mm class acceptable changes without any visible drag-on. |
+| B 3.09 | Player arms are fixed and do not stretch by frame | 40% | B 1.10、B 3.02 | Fixed upper/lower arm ratio module passed offline; real chain of individuals to be tested. |
+| B 3.10 | First arm stretch measurements, preservation consistent with next reading | 20% | B 3.09 | The source code for measuring, configuration and startup is available; the entity measures that the final bracelet has not been accepted. |
+| B 3.11 | Safe passage when the target is not within reach. | 40% | B 3.09 | Unable to play back and qualify for return; natural limit action still not accepted. |
+| B 3.12 | Update hands while standing normally | 60% | B 3.03、B 3.04、B 3.05 | Old B 18 There is a continuous controlled trajectory, limiting head/stand range; the latest set of continuous visible effects has not passed. |
+| B 3.13 | Return the original action correctly when it is controlled | 60% | B 3.12 | B only 19 Qualificational transfer and original control paths passed; not all animations and precise return postures have been tested. |
+| B 3.14 | Re-engage after the original takeover. | 60% | B 3.13、B 3.11 | B 19 Limiting the back-control pass; menus, dramas and all special actions are not included in the old results. |
+| B 3.15 | Controls are recovered after they've been dropped. | 60% | B 3.12 | HR only overconstrol valid position 15→0→15 HMD and hard reference unchanged; not extended to all trace recovery. |
+| B 3.16 | Expired samples, reconnection and new scenes don't come together. | 40% | B 3.15、B 1.13 | There is a continuous check-up base; HR does not cover hard reference, remix and new generation of HMD. |
+| B 3.17 | Free hands can continue working after the interaction has stopped. | 60% | B 3.12、B 3.14 | The stoppage of the controlled stock, the continuation of the body/freelance and normal recovery have passed; the failure to start HZ is not evidence of this return. |
+| B 3.18 | Head and hands are flowing and the menu is properly handled. | 60% | B 1.09、B 2.10、B 3.07、B 3.08、B 3.12、B 3.14、B 3.16 | The hands, independent movements, head-to-heads, suspension of theatre menus and restoration games are all supported by actual eyes; physical appearances and natural large-scale manoeuvres remain untested. |
+
+
+### B 3.01 Left-hand input allows for independent entry into a common posture.
+
+Current code evidence (No.48 E: new stand-alone module fcff 82 c Completes the target of independent integrity at the right and right point of the first person, with MSVC object compiled exit 0;to be completed by the date of the completion of the integration/final link/user-realization, without the upgrade of the slotting. Current score 40%; next is the integration with candidate and subsequent user-level machine.
+
+This round of reviews (No.46 Copy, fraction unchanged: Left-to-right fixed hand commands and restoration are provided by Sourse 1 Read; final hand solver and surrender still 0, complete hands entered into the armbone unpassed.[Hour 46](J:/gearsVr/analysis/6dof-progress/hour46-first-person-and-h1-runtime-reviewed.json)。
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01。
+
+Samples of Scene's hands entered and fixed posture are available; complete independent movement must also be linked to the final armbone.
+
+
+
+1. **B 3.01.1** The same effective tracking identifies the right hand and the left hand, without rereading the frame to put your hands together.
+
+2. **B 3.01.2** Only left hand, only right hand, check no strings or co-moments.
+
+3. **B 3.01.3** The loss of one side does not forge the validity of the other.
+
+
+Evidence:[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[B17](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing17/runtime-hands-review1.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.02 Control points correctly converted to wristbone.
+
+Current code evidence (No.48 E: new stand-alone module fcff 82 c Completes the target of independent integrity at the right and right point of the first person, with MSVC object compiled exit 0;to be completed by the date of the completion of the integration/final link/user-realization, without the upgrade of the slotting. Current score 40%; next is the integration with candidate and subsequent user-level machine.
+
+This round of reviews (No.47 In the case of ae, fixed left and right hand commands have arrived, all hands are inaccessible, targets to wrist bones and visible hands remain unreached.[Hour 47](J:/gearsVr/analysis/6dof-progress/hour47-h1-first-rejection-pending-reviewed.json)。
+
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 3.01、B 1.02。
+
+Authors with complete attitude are created by default grip gibbwist configuration and offline check; physical adhesion to be adjusted.
+
+
+
+1. **B 3.02.1** Select the right and right wrist position that matches the model, including location and complete direction.
+
+2. **B 3.02.2** The same grip input is converted to a wrist target, with the body and wrist rotated.
+
+3. **B 3.02.3** Unknown model maintains the original animation without automatic marking by any animation gesture.
+
+
+Evidence:[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[Head off the line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-head-authored-tracked-receiver1/cpu-1792919063575648600/receipt.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.03 Left hand follows position within limits.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.02、B 1.10。
+
+B 17 Quiet, B.18 The hand-limited movement of the fixed head passes; new head flow is still pending.
+
+
+
+1. **B 3.03.1** Hold your head, small movement of left hand, right hand.
+
+2. **B 3.03.2** Checks the target of the left wrist, actual wrist position and the entire sequence of actions.
+
+3. **B 3.03.3** Go back to your place and check that the right hand was not dragged away together.
+
+
+Evidence:[B17](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing17/runtime-hands-review1.json)、[B18](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing18/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.04 Right hand follows position within limits.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.02、B 1.10。
+
+Old candidate restricted right hand movement; gun after gun belonged to W 2。
+
+
+
+1. **B 3.04.1** Hold your head, small right hand move, left hand hold.
+
+2. **B 3.04.2** Check the actual position of the right wrist for continuous updating, without replacing the hand with a gun.
+
+3. **B 3.04.3** Go back to your place and check for stability of the left hand and body benchmark.
+
+
+Evidence:[B17](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing17/runtime-hands-review1.json)、[B18](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing18/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.05 And your hands are not controlled by each other.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.03、B 3.04。
+
+B 18 The scope of the stage IX controlled movement is retained; genuine arbitrary actions and new benchmarks are not adopted accordingly.
+
+
+
+1. **B 3.05.1** The group has been able to reach out to the locals and the right and left hands in two supported positions.
+
+2. **B 3.05.2** Continuous observation of independent targets and actual output on both sides cannot be limited to the last frame.
+
+3. **B 3.05.3** Return to confirm ownership and maintain the baseline.
+
+
+Evidence:[B18](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing18/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.06 Wrist-to-hand and pressure-up are right.
+
+Current code evidence (No.48 E: new stand-alone module fcff 82 c Completes the target of independent integrity at the right and right point of the first person, with MSVC object compiled exit 0;to be completed by the date of the completion of the integration/final link/user-realization, without the upgrade of the slotting. Current score 40%; next is the integration with candidate and subsequent user-level machine.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 3.02。
+
+Full attitude configuration and mathematical presence; position trajectory does not automatically prove all the rotations of wristbone.
+
+
+
+1. **B 3.06.1** Fixed grip position, change yaw and pitch respectively.
+
+2. **B 3.06.2** Check the wrists in the direction of the palm of the hand and not just look at the wrist point coordinates.
+
+3. **B 3.06.3** Rotating back, check that the homing was not destroyed.
+
+
+Evidence:[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[B18](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing18/runtime-hands-review1.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.07 The whole roll can be passed to the palm.
+
+Current code evidence (No.48 E: new stand-alone module fcff 82 c Completes the target of independent integrity at the right and right point of the first person, with MSVC object compiled exit 0;to be completed by the date of the completion of the integration/final link/user-realization, without the upgrade of the slotting. Current score 40%; next is the integration with candidate and subsequent user-level machine.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 3.02。
+
+Full four-digit target is in place; acceptance and inspection at running time are still clearly missing.
+
+
+
+1. **B 3.07.1** (b) Fixed hand position, with a separate internal and outward stroke of wrists.
+
+2. **B 3.07.2** The direction of the observation hand changes with the roll and cannot be erased by the original animation.
+
+3. **B 3.07.3** Check hands and palms back and do not flip.
+
+
+Evidence:[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.08 When you turn around or move, the hands of the world are not towed.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.08、B 2.08、B 3.03、B 3.04。
+
+Common pre-HMD transformation is offline based;18 The fixed header does not support this.
+
+
+
+1. **B 3.08.1** Both hands remain in real space, turning their heads and moving around.
+
+2. **B 3.08.2** Change only the observation projection and a rational response, with world targets on their hands.
+
+3. **B 3.08.3** Back to the head, hand, shoulder and body are used with the same reference.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.09 Player arms are fixed and do not stretch by frame
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.10、B 3.02。
+
+Fixed upper/lower arm ratio module passed offline; real chain of individuals to be tested.
+
+
+
+1. **B 3.09.1** This fixed arm length is obtained from a valid personal record or an explicit default value.
+
+2. **B 3.09.2** The reach changes the target only, and keeps both arms constant.
+
+3. **B 3.09.3** Old records are rejected when invalid records or models are replaced without compensating the head or the world.
+
+
+Evidence:[Arms are out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/fixed-length-receiver1/attempt-1792907100878442400/receipt.json)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.10 First arm stretch measurements, preservation consistent with next reading
+
+**Current 20% • Source code/wiring.** Responsible: Arms interaction (configuration)/body bottom and bunkers (consumption). Forward: B 3.09。
+
+The source code for measuring, configuration and startup is available; the entity measures that the final bracelet has not been accepted.
+
+
+
+1. **B 3.10.1** Effective hand-to-hand data collection through established start-up portals.
+
+2. **B 3.10.2** Atoms in their original form are preserved, making it clear that they are arm-expanding estimates rather than human shoulder width measurements.
+
+3. **B 3.10.3** Re-launch reading of the same records, checking valid objects and wrist targets, and bad data following established back paths.
+
+
+Evidence:[Arm spread source](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/tools/vr-launcher/armspan_startup.py)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.11 Safe passage when the target is not within reach.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 3.09。
+
+Unable to play back and qualify for return; natural limit action still not accepted.
+
+
+
+1. **B 3.11.1** Gradually move the wrist target beyond this support.
+
+2. **B 3.11.2** Keep your arm fixed and do not submit half a set of results or limitless stretches.
+
+3. **B 3.11.3** Removable to reach, ready to regain control and retain the first reason for refusal.
+
+
+Evidence:[♪ Butt back on ♪](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/body-c0-hands-candidate3/B13-reach-replay1/receipt.json)、[B19](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing19/runtime-hands-review1.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.12 Update hands while standing normally
+
+This round of reviews (No.46 Copies, fractions unchanged: old limit 60%Reservations; latest candidate continues to be physically updated but submitted successfully by free hands 0 Evidence:[Hour 46](J:/gearsVr/analysis/6dof-progress/hour46-first-person-and-h1-runtime-reviewed.json)。
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.03、B 3.04、B 3.05。
+
+Old B 18 There is a continuous controlled trajectory, limiting head/stand range; the latest set of continuous visible effects has not passed.
+
+
+
+1. **B 3.12.1** Move hands and plug in static with short tracks already available.
+
+2. **B 3.12.2** Each section checks the actual handbone update and cannot only count backs or sample numbers.
+
+3. **B 3.12.3** Save the entire paragraph and the success range, release into liability after normal withdrawal.
+
+
+Evidence:[B18](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing18/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.13 Return the original action correctly when it is controlled
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.12。
+
+B only 19 Qualificational transfer and original control paths passed; not all animations and precise return postures have been tested.
+
+
+
+1. **B 3.13.1** Initiating an accredited original take-over in a stand-up supported situation.
+
+2. **B 3.13.2** VR hands stop having output that no longer belongs to themselves and retain the original action control.
+
+3. **B 3.13.3** Actual attitude against the original post-return; remaining beyond old eligibility.
+
+
+Evidence:[B19](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing19/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.14 Re-engage after the original takeover.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.13、B 3.11。
+
+B 19 Limiting the back-control pass; menus, dramas and all special actions are not included in the old results.
+
+
+
+1. **B 3.14.1** One original version was taken over before the end of the period and effective same-generation tracking was reestablished.
+
+2. **B 3.14.2** Recover from the current posture and do not include the old temporary writings again.
+
+3. **B 3.14.3** Move your hands again to confirm that return can indeed be followed by a resumption of work.
+
+
+Evidence:[B19](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-live-standing19/runtime-hands-review1.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.15 Controls are recovered after they've been dropped.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.12。
+
+HR only overconstrol valid position 15→0→15 HMD and hard reference unchanged; not extended to all trace recovery.
+
+
+
+1. **B 3.15.1** Sets other conditions, only to render the tracking of the coloner ineffective.
+
+2. **B 3.15.2** Stop using hand samples and retain valid head and body behaviour.
+
+3. **B 3.15.3** Recover the same generation valid sample, confirm re-entry and no jump.
+
+
+Evidence:[HR](J:/gearsVr/analysis/6dof-progress/hr-controller-loss-recovery-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.16 Expired samples, reconnection and new scenes don't come together.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 3.15、B 1.13。
+
+There is a continuous check-up base; HR does not cover hard reference, remix and new generation of HMD.
+
+
+
+1. **B 3.16.1** Distinguishing between controller recovery and center/tracking spatial/role changes only.
+
+2. **B 3.16.2** Old generations of subsamples and old objects may not continue to be written into the current body.
+
+3. **B 3.16.3** Re-access controls under new valid references, leaving separate uncovered types.
+
+
+Evidence:[Hand-continuing source code](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/tools/vr-common/hand_world_continuity_bridge.h)、[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[HR](J:/gearsVr/analysis/6dof-progress/hr-controller-loss-recovery-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.17 Free hands can continue working after the interaction has stopped.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: B 3.12、B 3.14。
+
+The stoppage of the controlled stock, the continuation of the body/freelance and normal recovery have passed; the failure to start HZ is not evidence of this return.
+
+
+
+1. **B 3.17.1** Stop supporting holding interactions and maintain effective free-hand tracking.
+
+2. **B 3.17.2** Confirms that the interactive no-submission is discontinued and that the freelancer remains updated with new inputs.
+
+3. **B 3.17.3** The recording function is discontinued and the overall recovery is completed on a normal life cycle basis.
+
+
+Evidence:[HR](J:/gearsVr/analysis/6dof-progress/hr-controller-loss-recovery-reviewed.json)、[HW](J:/gearsVr/analysis/6dof-progress/hw-weapon-mesh-boundary-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+### B 3.18 Head and hands are flowing and the menu is properly handled.
+
+This round of reviews (No.47 Copies, fractions unchanged: the latest whole paragraph remains in a fixed free-hand visible phase; combined movement/transaction and H 1 Not adopted.[Hour 47](J:/gearsVr/analysis/6dof-progress/hour47-h1-first-rejection-pending-reviewed.json)。
+
+
+**Current 20% • Source code/wiring.** Head: Bottom of body and bunker. Forward: B 1.09、B 2.10、B 3.07、B 3.08、B 3.12、B 3.14、B 3.16。
+
+Modules and restricted handovers already exist; the entire header hand, menu and visible hands are not fully passed and HW images remain blocked.
+
+
+
+1. **B 3.18.1** First, confirm that the actual first person's eye point is clearly visible with fixed free hands and then combine manual turn/small move to get a corresponding XR eye action.
+
+2. **B 3.18.2** Do another explicitly supported menu/action takeover and resume; unsupported plays or special actions keep to-do.
+
+3. **B 3.18.3** The same frozen candidate for H 1 Three action experience sheets; no requirement to complete W first 2 All guns followed and fired.
+
+
+Evidence:[Specification W](C:/Users/11/.codex/worktrees/weapon-6dof/gearsVr/docs/weapon-6dof-interaction-design-20261022.md)、[HW](J:/gearsVr/analysis/6dof-progress/hw-weapon-mesh-boundary-reviewed.json)、[Scope review](J:/gearsVr/analysis/6dof-progress/first-three-node-scope-and-hu-reviewed.json). The latest complete stream/entity profile: to be tested.
+
+
+## 7 Real location, bunker access and stabilization perspective:18.00%
+
+20 Sub-sections, each internal weight 1/20 The big node is the whole thing.1/11。
+
+| Numbering | Minor | Current | Prefix | Current certified and gap |
+| --- | --- | ---: | --- | --- |
+| C 1.01 | Current state of service and slot authentication for short bunkers | 60% | Pre-established scene | CT 3–CT 5 The original version of the fixed short bunker, CoverType/state and geometric reading, was supported by evidence; no collisions or probes were established. |
+| C 1.02 | High bunkers are equally authentic with different slots. | 0% Pending | C 1.01 | The CT evidence read covers only the fixed short bunker; complete certification of high bunkers and trans-truck locations is unknown. |
+| C 1.03 | The neutral eye of the short bunker is really hidden beneath the top. | 40% | B 1.01、C 1.01 | The old ai applied low-eyed points, but the only candidate was on top of them and did not prove that the bunker scene was blind; the target was not fully running through. |
+| C 1.04 | High bunker neutral eye point based on actual geometry | 0% Pending | C 1.02、B 1.01 | Nuclear pass through evidence without high-level bunker neutral cover cannot be applied to short shelter results. |
+| C 1.05 | Face the wall, but not head-to-head. | 0% Pending | C 1.01、B 1.09、B 2.01 | Common heating is not the C.1 Repeated scores; not sufficiently substantiated during the actual bunker line phase of this item. |
+| C 1.06 | The real ones can go on and on. | 60% | C 1.03、B 1.05 | Old An.0.15／0.30／0.55 The miomic uplift is read back to the upper body/bone; non-atom, final image and current benchmark not confirmed. |
+| C 1.07 | Real body reduction can be back in a row. | 60% | C 1.06、B 1.06 | Old AN is down/zero response reservation; current full set of collisions, hits and eye effects are not observed. |
+| C 1.08 | Real left-hand look and take it back. | 0% Pending | C 1.03、C 1.05、B 1.04 | Common holographic targets do not repeat scores; AN-right input only proves that it does not miss the probe, C 1 The real left-link phase is pending. |
+| C 1.09 | Real right look and take it back. | 0% Pending | C 1.03、C 1.05、B 1.03 | Common holographic targets do not repeat scores; right-hand body/image lines and actual results are pending, and the conclusion on the left cannot be followed. |
+| C 1.10 | The cover is a pure turning. | 60% | C 1.03、B 2.07 | Old AN position fixed yaw 15 degrees/pitch 10 The upper angle is zero; coverage only is not mistook and not all side probes/images pass. |
+| C 1.11 | The different walls are right down. | 0% Pending | C 1.05、C 1.08、C 1.09、C 1.10 | Missing current benchmark in 90／180 Real access to the wall; C 2 The grab axis is not recounted in this entry. |
+| C 1.12 | The triggers remain on fire without automatic detection. | 0% Pending | C 1.03、C 1.08、C 1.09、W 2 | The original action assignment is for the nuclear candidate; maintenance of low-eye or prototype detonating bullet does not support the entry replacement phase. |
+| C 1.13 | Move along the bunker and switch the slots. | 0% Pending | C 1.01、C 1.02、C 1.03、C 1.05 | Fixed slot reading cannot replace evidence of continuity along the edge, corner and new neutral benchmarks. |
+| C 1.14 | The original side exit and back exit are not blocked | 0% Pending | C 1.03、C 1.08、C 1.09、C 1.13 | Early withdrawal from record retention in original; two-way exit phase of new common body and semi-prospecting state to be validated without recounting the original capability. |
+| C 1.15 | The head crosses the wall without revealing behind it. | 0% Pending | C 1.03、C 1.08、C 1.09、B 1.09 | CT 5 Space Trace and collisión_verified=false, without proof of body/head collision. |
+| C 1.16 | Physical exposure is consistent with the range protected. | 0% Pending | C 1.06、C 1.07、C 1.08、C 1.09、C 1.15、W 2 | No physical body exposure/closure rings exist; no outward eye movement or semi-detection bombs can prove it. |
+| C 1.17 | Remove game-side shakes when running normally | 20% | B 1.12、B 2.10 | Stable camera candidate; AQ 6 Overwrite SM only 4 Apply, normal running stability to be tested. |
+| C 1.18 | Sprinting and stable view of running along the bunker. | 40% | C 1.17 | AQ 6 In actual SM 4 Yes.54 Sub-application, but camera_stability_accidented=false; run undocumented along bunker. |
+| C 1.19 | Run-off, terrain and access to bunkers for continuous transition | 0% Pending | C 1.14、C 1.17、C 1.18、B 2.08 | R 02–R 04 The required combination transition, slopes and real head start were not fully supported. |
+| C 1.20 | Revert the position and visual point after the breach. | 20% | C 1.03、C 1.06、C 1.08、C 1.09、C 1.14、B 3.16 | Recover the contract and the normal clean-up reserve of the old bureau; successful clearance does not amount to a shelter suspension, mid-range, redraw or binocular acceptance. |
+
+
+### C 1.01 Current state of service and slot authentication for short bunkers
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: Preset scene.
+
+CT 3–CT 5 The original version of the fixed short bunker, CoverType/state and geometric reading, was supported by evidence; no collisions or probes were established.
+
+
+
+1. **C 1.01.1** Access to known short bunkers through original operation.
+
+2. **C 1.01.2** Links the current player, role, bunker and slot to reject the old object or empty identity.
+
+3. **C 1.01.3** The reservation is actually read by reading and failure, without using a single space Trace as an effective surface.
+
+
+Evidence:[CT3](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct3-runtime.json)、[CT4](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct4-runtime.json)、[CT5](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct5-runtime.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.02 High bunkers are equally authentic with different slots.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.01。
+
+The CT evidence read covers only the fixed short bunker; complete certification of high bunkers and trans-truck locations is unknown.
+
+
+
+1. **C 1.02.1** Select a high bunker and another effective slot, which continues to use the original access mode.
+
+2. **C 1.02.2** Check the type, permitted direction and current geometry of the scene and do not copy the short bunker constant.
+
+3. **C 1.02.3** The old identity is disabled after switching the slot, and new slot data are used later.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[CT3](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct3-runtime.json)、[CT5](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct5-runtime.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.03 The neutral eye of the short bunker is really hidden beneath the top.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: B 1.01、C 1.01。
+
+The old ai applied low-eyed points, but the only candidate was on top of them and did not prove that the bunker scene was blind; the target was not fully running through.
+
+
+
+1. **C 1.03.1** The short bunkers were still entering, without pressing the grip and making real contact.
+
+2. **C 1.03.2** A neutral eye point based on certified top and residual levels, which does not systematically lower normal walking.
+
+3. **C 1.03.3** The government has also been able to identify the presence of a single person who is not automatically visible and can continue to stand in reality against the geometrics and eyes that are masked.
+
+
+Evidence:[- Al, keep your eyes down.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body5b-ai-runtime-review1.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.04 High bunker neutral eye point based on actual geometry
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.02、B 1.01。
+
+Nuclear pass through evidence without high-level bunker neutral cover cannot be applied to short shelter results.
+
+
+
+1. **C 1.04.1** Get a legal cover for the high bunker.
+
+2. **C 1.04.2** Benchmarks are established by character and geometry, without all walls being used for fixed heights.
+
+3. **C 1.04.3** (c) The static and turning-over inspection to cover, while retaining legal side-scan capability.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.05 Face the wall, but not head-to-head.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.01、B 1.09、B 2.01。
+
+Common heating is not the C.1 Repeated scores; not sufficiently substantiated during the actual bunker line phase of this item.
+
+
+
+1. **C 1.05.1** When entering the bunker, take a wall direction and generate body orientation.
+
+2. **C 1.05.2** Only the body references are adjusted and no back-to-wall shifts are imposed to the top.
+
+3. **C 1.05.3** The right and left look freely, confirming that the body is still walled and that its vision is not being pulled back.
+
+
+Evidence:[I'm out of line.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/full-body-c0-absolute-tracked-receiver1/cpu-1792922639039692300/receipt.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.06 The real ones can go on and on.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: C 1.03、B 1.05。
+
+Old An.0.15／0.30／0.55 The miomic uplift is read back to the upper body/bone; non-atom, final image and current benchmark not confirmed.
+
+
+
+1. **C 1.06.1** Gradually, from the shaded position to the real headline instead of LGrip.
+
+2. **C 1.06.2** Observe a continuous upper body response from a small amount of head-on to higher positions, rather than an entire animation.
+
+3. **C 1.06.3** Stop at the middle height and keep the real shift rather than press back to neutral eye.
+
+
+Evidence:[An scout.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body7-an-motion-summary1.json)、[AN cleanup](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/cover-host-1024an-camera-final1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.07 Real body reduction can be back in a row.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: C 1.06、B 1.06。
+
+Old AN is down/zero response reservation; current full set of collisions, hits and eye effects are not observed.
+
+
+
+1. **C 1.07.1** It's a low profile from the top of the field.
+
+2. **C 1.07.2** Keep your body and eyes down, without asking for scratches or keys.
+
+3. **C 1.07.3** Return to the original real posture and check for shaded positions to be restored without the benchmark being rewrited.
+
+
+Evidence:[An scout.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body7-an-motion-summary1.json)、[AN cleanup](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/cover-host-1024an-camera-final1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.08 Real left-hand look and take it back.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.05、B 1.04。
+
+Common holographic targets do not repeat scores; AN-right input only proves that it does not miss the probe, C 1 The real left-link phase is pending.
+
+
+
+1. **C 1.08.1** To the legitimate left edge, not to press LGrip, move head-to-left.
+
+2. **C 1.08.2** Left-hand probes with upper body and point of view can be stopped in half, with the original adhesion to retention.
+
+3. **C 1.08.3** Move back to the original location and cannot misdirect the probes into the original side.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.09 Real right look and take it back.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.05、B 1.03。
+
+Common holographic targets do not repeat scores; right-hand body/image lines and actual results are pending, and the conclusion on the left cannot be followed.
+
+
+
+1. **C 1.09.1** To the right edge of the legitimate, not to press LGrip, and really move head-over to the right.
+
+2. **C 1.09.2** Checks right direction, body posture and continuous middle position.
+
+3. **C 1.09.3** Move back to the position, check adsorb and dots.
+
+
+Evidence:[Base Offline](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body-goal-view-tracked-receiver1/cpu-1792925368609010900/receipt.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.10 The cover is a pure turning.
+
+**Current 60% • Limiting the purchase of the version to run.** Head: Bottom of body and bunker. Forward: C 1.03、B 2.07。
+
+Old AN position fixed yaw 15 degrees/pitch 10 The upper angle is zero; coverage only is not mistook and not all side probes/images pass.
+
+
+
+1. **C 1.10.1** Fixed HMD position, only turning around or heading.
+
+2. **C 1.10.2** The direction of the observation is confirmed, but not the angles are used to generate upward elevation.
+
+3. **C 1.10.3** Re-rotational horizontally and retention of the true shift; the latter has yet to produce new results.
+
+
+Evidence:[An scout.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body7-an-motion-summary1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.11 The different walls are right down.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.05、C 1.08、C 1.09、C 1.10。
+
+Missing current benchmark in 90／180 Real access to the wall; C 2 The grab axis is not recounted in this entry.
+
+
+
+1. **C 1.11.1** Repeated right and left access to legal bunkers in different directions.
+
+2. **C 1.11.2** The direction is determined by the current wall and real location, with no fixed use of the world X axis or a real-time head-on.
+
+3. **C 1.11.3** Turn around and repeat it again. The same real move cannot suddenly reverse.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.12 The triggers remain on fire without automatic detection.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.08、C 1.09、W 2。
+
+The original action assignment is for the nuclear candidate; maintenance of low-eye or prototype detonating bullet does not support the entry replacement phase.
+
+
+
+1. **C 1.12.1** Fixed header, LT and RT respectively, recording actual sight/fire assignments.
+
+2. **C 1.12.2** To suppress the additional left, right and upper locator movement in this context, it cannot swallow the trigger.
+
+3. **C 1.12.3** Review of legitimate weapon movements remains in force; authoritative hit accuracy continues to be W 2 Receiving and Inspection.
+
+
+Evidence:[- Al, keep your eyes down.](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/body5b-ai-runtime-review1.json)、[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.13 Move along the bunker and switch the slots.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.01、C 1.02、C 1.03、C 1.05。
+
+Fixed slot reading cannot replace evidence of continuity along the edge, corner and new neutral benchmarks.
+
+
+
+1. **C 1.13.1** Use the original to move input along the bunker to a neighbouring slot or a legal corner.
+
+2. **C 1.13.2** Re-certify new slots and benchmarks to avoid old bias pulling people back.
+
+3. **C 1.13.3** A small probe after the stop, confirming that the original adsorption and new references continue to take effect.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[CT3](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct3-runtime.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.14 The original side exit and back exit are not blocked
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.08、C 1.09、C 1.13。
+
+Early withdrawal from record retention in original; two-way exit phase of new common body and semi-prospecting state to be validated without recounting the original capability.
+
+
+
+1. **C 1.14.1** Implement back/back side of the original version, respectively in neutral, semi-prospecting and retrenchment states.
+
+2. **C 1.14.2** The exit is successful and the point of view continues, and a true search itself cannot automatically send an exit.
+
+3. **C 1.14.3** Checking of old slots outside bunkers without residual; holding the grip to exit by C 2 Check.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[Body progress](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/releases/0.0.4/PROGRESS.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.15 The head crosses the wall without revealing behind it.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.08、C 1.09、B 1.09。
+
+CT 5 Space Trace and collisión_verified=false, without proof of body/head collision.
+
+
+
+1. **C 1.15.1** Consumption of certified wall geometry and gradual movement of real head to physical walls.
+
+2. **C 1.15.2** The true headline continues to be tracked, with the established cover strategy limiting the use of restricted visions and not using a real posture.
+
+3. **C 1.15.3** Returning to the legitimate areas restored sight and confirmed that no rear scenes were shown.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[CT5](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-trace-diagnostic-candidate1/ct5-runtime.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.16 Physical exposure is consistent with the range protected.
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.06、C 1.07、C 1.08、C 1.09、C 1.15、W 2。
+
+No physical body exposure/closure rings exist; no outward eye movement or semi-detection bombs can prove it.
+
+
+
+1. **C 1.16.1** Step-by-step detection and retrenching, recording actual exposure to the upper body and the original condition of the attack.
+
+2. **C 1.16.2** Check for the presence of eyes and the protection of body from errors, and maintain a sorbence in its original form.
+
+3. **C 1.16.3** The gun is still blocked; the full battle and the hit chain are returned to I, respectively.1／W 2, do not repeat scores.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.17 Remove game-side shakes when running normally
+
+**Current 20% • Source code/wiring.** Head: Bottom of body and bunker. Forward: B 1.12、B 2.10。
+
+Stable camera candidate; AQ 6 Overwrite SM only 4 Apply, normal running stability to be tested.
+
+
+
+1. **C 1.17.1** Fixed HMD, ordinary run in the short flat.
+
+2. **C 1.17.2** Separate the person ' s move from the place/angle of the game, and only remove the latter.
+
+3. **C 1.17.3** Checks the horizon for stable, real paths and speed retention, not filtering the final camera.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[AQ6 Border](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/sm4-aq6-acceptance-boundaries1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.18 Sprinting and stable view of running along the bunker.
+
+**Current 40% :: Offline/local evidence.** Head: Bottom of body and bunker. Forward: C 1.17。
+
+AQ 6 In actual SM 4 Yes.54 Sub-application, but camera_stability_accidented=false; run undocumented along bunker.
+
+
+
+1. **C 1.18.1** The regular running candidate is entering the SM.4 Sprint, then cover the game to run along the bunkers.
+
+2. **C 1.18.2** Distinguishing the camera by mode with a shake and real path, not just counting the number of applications.
+
+3. **C 1.18.3** Keep the final eye stability and failed borders.4 The result was all running.
+
+
+Evidence:[AQ6](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/sm4-aq6-summary1.json)、[AQ6 Border](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/sm4-aq6-acceptance-boundaries1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.19 Run-off, terrain and access to bunkers for continuous transition
+
+**Current 0% :: Pending.** Head: Bottom of body and bunker. Forward: C 1.14、C 1.17、C 1.18、B 2.08。
+
+R 02–R 04 The required combination transition, slopes and real head start were not fully supported.
+
+
+
+1. **C 1.19.1** Run, stop, general/sprint switch, burst into the bunker and exit.
+
+2. **C 1.19.2** Keep real height and turn in the slope/stair and active shift, superimpose real head moves.
+
+3. **C 1.19.3** (c) Aim after stopping, confirming that no high jumps, swings, locks or restoration of old run-off vibrating.
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[AQ6 Border](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/sm4-aq6-acceptance-boundaries1.json). The latest complete stream/entity profile: to be tested.
+
+
+### C 1.20 Revert the position and visual point after the breach.
+
+**Current 20% • Source code/wiring.** Head: Bottom of body and bunker. Forward: C 1.03、C 1.06、C 1.08、C 1.09、C 1.14、B 3.16。
+
+Recover the contract and the normal clean-up reserve of the old bureau; successful clearance does not amount to a shelter suspension, mid-range, redraw or binocular acceptance.
+
+
+
+1. **C 1.20.1** Distinction between the same scene and the change in pattern during a search, respectively, suspended/restored, neutralized or tracked.
+
+2. **C 1.20.2** Ending old identities and transgenerational deviations and re-establishing reference in the current state of effectiveness.
+
+3. **C 1.20.3** Post-recovered inspection of the probe and eye contact; death-file joint combat with default flow still back to I 1／I 2。
+
+
+Evidence:[Specification B](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/docs/6dof-cover-interaction-design-20261024.md)、[AN cleanup](C:/Users/11/.codex/worktrees/6dof-cover/gearsVr/analysis/cover-implementation-20261024/cover-host-1024an-camera-final1.json). The latest complete stream/entity profile: to be tested.
+
+
+## How to move work so that it doesn't turn into a lot of documents and tests.
+
+
+The body session is only about one visible player action at present; the weapon session is only about delivering the independent consumer or narrow diagnosis needed to block it.1 Fixed-position independent movement grouping resumed once; retrofitting/authorization of gun remains at W 2"H shall not be considered as a matter of law unless there is factual evidence that the same issue has prevented free hands from being held up.1 Extra prefix.
+
+Each subitem returns first to the existing source code and offline results, and only redos the part that is affected by this change. Increase direct return for specific errors; do not return for this 192 New Action Point 192 Set test or start 192 Game. The same scene can cover multiple actions in a continuous trajectory, but the results must be recorded separately without adding points to the neighbour ' s score.
+
+Report only " Change subID, old new fractions, observationable actions, initial failure, next small step, waiting window" per hour; no new function is written through 0, do not repeat the old decoded records. Effective work and external waiting times are unknown without reliable time. Two consecutive attempts to fix the entry without reaching the target action; fixed input is pre-required when it remains abnormal, without continuing to expand the scope.
+
+H 1 Candidates must provide frozen identity, verified start/normal exit, maximum 3 An action, expected phenomena and the location of an Export logs. Users only give feedback on experience, not take over a check-up of the test script. This is not yet ready.
+
+All default integrations keep the latest Junker, Focus 1 The latest freeze default is the minimum increment to be proven.0.4 The original start/time/cleaning door and the only Native writer remain unchanged.
+
+
+Machine Recording:[breakdown-v2.json](J:/gearsVr/analysis/6dof-progress/breakdown-v2.json). Current summary table:[Overall progress chart](J:/gearsVr/docs/6dof-progress-dashboard.md)Old snapshot:[Last snapshot of v1](J:/gearsVr/analysis/6dof-progress/history/2026-10-27T171217+0800.json)；[Full hour filing of v1 report](J:/gearsVr/analysis/6dof-progress/history/dashboard-v1-2026-10-27T171217+0800.md)。
+
+
+### 2026-11-04 18:00 - Frag Visible Code Connector (no game review)
+
+The special finger bag is in the only C.0 Bones mix path; current Frag type, model, attachment and hold check through independent reading branch.5 Visible transfer visible holding type with old Rig/ Hand/main-mount V 1 Separate; Native and Playground are compiled. Existing only component writer can be used for actual C 0 The handheld moves the original Frag model, using a stand-alone preliminary handshake without rifle openings or firing permission. The original chain animation is maintained; static grip points have yet to check the actual animation with the hand appearance.
+
+The compilation and existing data check were approved: BodyhandsContext 7708/0、BodyMainMountSender 503、BodyMainMountProvider 344、BodyMountMetadata 30、WeaponHandBroker 2338/0、WeaponMeshFollow（3 The objects are scaled/rotated. These are code/CPU evidence, not game throws, visible patches or head-over approvals.
+
+Open entrance remains v 54;no new game started, no new candidates deployed and maturity maintained 36.47%. Freezing source code:`C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\equipment-controls-prepared-20261104-175945`. Details:`analysis/solo-m1-20261028/frag-visual-hold-integration-20261104.json`. The next delivery point is the continuous sampling of the real controller and preparation/showing/delay call to the original version, which resolves the one-time generation and re-renewal of the animation notification, followed by a full video review.
+
+
+### 2026-11-04 18:28 - Frag original trajectory and actual loose frame (complete run-off connection to be completed)
+
+Re-entry the existing controller loop to keep the original sample time, source and location; no new input publisher or forged Stereo/hand/Rig frame. The grenade model logic calculates the position, speed and deadline by real release frames in the record, excluding subsequent hand movements; no trace/source change, duplicate and lost input, or extra press loop can be released.
+
+Compiled and coded evidence: Native, Playground, Entity XR, Simulation XR all compiled successfully; GlenadeThrow, Real Self-Map Continuity Bridge passed; Bolo 1410;existing Smoke 1713(Sharing logic regression); Current Tracking Reader 273/0. These do not prove that the original version of the game is prepared/generated/capable/filled, dynamically held or head-on experience passes.
+
+Next step is to go directly to normal GT 's real holdings, original calls and ownership restored, and resolve animation notifications to re-resize, and then the whole video. This round does not start the game, the public version is maintained v 54♪ Growing up and still 36.47%. Middle code saves incremental `frag-motion-code-20261104-182741`based on full source code `equipment-controls-prepared-20261104-175945`;records `analysis/solo-m1-20261028/frag-motion-history-integration-20261104.json`。
+
+
+### 2026-11-04 19:27 - Original Frag call and prepare the closing code check point
+
+Original preparation/stopping, release notification, drop point/start speed and completion of access check with actual reflection declared access type; new target and rotation readiness pair release, pre-cut/receiving gun, and normal GT stop cleaning, compiled and approved. Amend the pre-position name bSpinningGrende and original embedded set to return to the door control position for observation. 1410 The entry Bolo core check is passed and neither of them is equal to the game throw pass.
+
+Currently only the interfaces and cleanup are compiled: normal GT grenade movement, actual generated/detonated bomb callback, post-drop access and old animation notifications remain to be completed. Open entrance is maintained v 54- The maturity is maintained. 36.47%, no new game or evidence of head-on;The current FPS/user running window is not operated.Next step: the actual emergency-GT Frag own: current action plus the investigating Raw ring/trigger opserver and co-enter Nativebasis, real original receptors before the auto-equip, and cancellation/switch review. compiled but are not yet called by a live throw dispatcher.
+
+Records:C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\frag-original-preparation-integration-20261104.json;Incremental source and binary:C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\frag-original-preparation-code-20261104-192737。
+
+---
+
+## 中文
+
 ## 2026-11-06 13:39 67624组合复查与同游戏继续：C规则通过，二次抓握失败保留
 
 固定入口v71不变：推到头持续握住持续运行，首次实际松手后单次余转3秒，后拉关闭。普通闭合量的私有125544完成Grip/食指双持、实际转向/双持开火/单手恢复，原弹匣食指与替换弹匣Grip全程保持插入，空仓E实际动作/松手/回位/恢复射击，以及C核心动作。首个原版处决通过，但第二次C抓握启动失败（token12 ambiguous）。未伪称计时缺陷或修复。

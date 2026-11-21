@@ -1,3 +1,57 @@
+# Unified Manual Candidates 2 First person, free hands, guns, Lancer, gun.
+
+Version **6dof-unified-20261028-2**. The fixed entrance is still `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`. Source code is in the Unified Working Tree `codex/6dof-unified`, actually submitted together `9a41f92` Keep both sides of history. Old initials, old body bags and historical branches are kept.
+
+## Four-step chain.
+
+| Order | Current code connection | Authentication status |
+| --- | --- | --- |
+| First | Automatically select, same eye/body base, Ref 115 Neutral, candidate for near cut | Compiled/packaged, not authentic |
+| Free hands. | Full position/rotation, fixed bone length, side-by-side tracking and animated interface | Compiled/packaged, not authentic |
+| Shoulder/pants rounding guns | Real RGrip Edge, original inventory switching and attachment, same-father | Compiled/packaged, not authentic |
+| Lancer, fire! | Right trigger to the ground, R.2, actual Muzzle socket returns to consumers with the shot starting and base direction | Compiled/packaged, not authentic |
+
+This edition `unified_fire_ready=true`, normal manual session allows for the assembly of a compiled gun after the device is connected. `original_aim_only` Not returning path as a uniform mode; not start new VR Rs without current valid shot/shoot snapshot 2 Keep the original entry, identity, freshness and normal cleaning restrictions.
+
+## Use
+
+Connect physical headlights, using the system OpenXR or VDXR. Default multiple rate **0.4**# Close the camera **0**, first person is declared open; a purchase path has been configured and does not require running scripts or separate versions of the weapon.
+
+1. Enter a common controlled scene, observe first person's name, real head horizontal/turning, then move separately, rotate the right hand.
+2. When no valid arm is recorded, the arms horizontally spread while holding both sides for at least two seconds. The right hand then press RGrip to collect the weapon in the vicinity of the shoulder/pants pocket. This round starts with fire. **Lancer**Left shoulder weapon 2 Right shoulder weapon. 1; the existing mapping of the left pocket pistol and right-pants hand grenade is maintained, but not the new version of the firing suitable.
+3. Press the right trigger for a secure game scene to observe the opening/bulleting of the gun when the head is not moved, the shooter is turned and the gunman is not moving, the head is turned. Click " Stop VR" after unzipped and then exit the game; logs can be used as a starter for "Export Log".
+
+Original log is still on the list `analysis/runtime/`, Interface log in `analysis/vr-launcher-ui/`. Session JSON `unified_weapons` Recording equipment connection/fire capable state; these are only operational and not hits or video proof of acceptance.
+
+## Achieving borders
+
+- The gun is read only in normal PostPlayerTick, with actually held and actually attached support for Lancer `MuzzleSocketName="Muzzle"` and type `GetSocketWorldLocationAndRotation`. Do not configure the direction of the gun pipe with HMD forward, old HUD queries or wristbone positioning.
+- Current manual barrel configuration **Socket Local +X**; waits for user direction feedback; it is a clear realization configuration, not accepted bore certificates.
+- The same shot freezes the starting point and direction of the same gun. `Pawn.GetWeaponStartTraceLocation → GetAdjustedAim → GetPushedForwardStartTraceLocation → CalcWeaponFire`;to be called to the physical starting point, where help is also processed in the same shot.
+- Change the inner layer. `WarPawn.GetAdjustedAimFor` Base direction, retain outer layer `WarWeapon.GetAdjustedAim` . Subsequent original collisions, injuries, dispersal and effects continue; each original function is still performed once, former RAX and abnormal paths are maintained.
+- Native Notifications call back only for consumption preparation POD, shot scope, type metadata and atomic life cycle; no caller caller, rereading Cliter Frame, owner/cache lock, consume VM parameters or create a second book. Return field is limited to this call 12 Byte Victor/RotatorResult; undefined parts are written to the reserve service obligation and cannot be erased through unwind.
+- Independent HUD query for a quasi-star**No new rays yet.**The target star cannot be considered as evidence of alignment.
+- Participant gives unknown shooting snapshots when his left hand is not tracked/unknown, and this edition will temporarily reject new firing in this state. The left hand is being followed normally and the non-handgun single status is still allowed; no one can be claimed to have supported single-handed fire after loss of his left hand.
+- 0.12 m Close cut will also cut off very facey hand or scene objects. No new rounds, bunkers or other weapons are suitable for firing.
+
+## Build and Back
+
+Only source code checks, compiles/links and packs. No Game, XR, Simulator, Test, Self-Detecting, Relay or Receiving and Inspection prechecks are run. New PG only builds `GearsPlayground` Target, original Native/XR uses the actual translation of the package in part unchanged. Failed to maintain and amend records instead of successful translation as a substitute for real machine acceptance.
+
+| Component | SHA 256 |
+| --- | --- |
+| Native | `458cdf929da1df7d6263c75f2adcac042cd7f4dbce077eb347b668e8322ba36b` |
+| XR | `6db1b9bc72a42c4ef5a2b3d0fe99858c794e16f7206620ec4e25fe35ca53d727` |
+| PG Gun Candidates | `80086cf51dd9b57f666ed108524f9a7069441e6e297c2f0dd6c6cca7df943f1c` |
+
+Build log and freeze source directory ignored in working tree `analysis/6dof-unified-20261028/pg-package2-build/` and `package2-source/`. The latest Junker, menu, Focus, Independent Left Eye History, Diagnosis and Normal Discontinuation/Audience/Archive Protection is maintained.
+
+Keeps the initial resource in use while updating, without stopping a user-made session. Backup stops and exits normally, then starts with the retained first package or old body manual/J home directory starter; do not start multiple games in parallel. The four-step code is connected, the user's real machine check is still incomplete and cannot be recorded as all playouts.
+
+---
+
+## 中文
+
 # 统一手动候选 2：第一人称、自由双手、取枪、Lancer 枪口开火
 
 版本 **6dof-unified-20261028-2**。固定入口仍是 `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。源码位于统一工作树的 `codex/6dof-unified`，实际合并提交 `9a41f92` 保留两边历史。旧首包、旧身体手动包和历史分支均保留。

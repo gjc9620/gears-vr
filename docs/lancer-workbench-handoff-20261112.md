@@ -1,3 +1,105 @@
+# Lancer Debugging the table to interface with game side access
+
+## Player Feedback and Current Behaviour (Performance)2026-11-12）
+
+Player Recognition 0.3.0 The table is generally easy to use and is clearly recognized: hand-held C-handing Volume automatically spreads and leaves the automatic collection.
+Players report that push is initiated, the slides are not returned automatically after the saw operation and the handle cannot be retrieved.
+
+0.3.1-dev/build 10 Repair of the platform access layer: end of three seconds after release, unheld again
+C-Slipboard 0.32 m/s returns zero process (8 And the whole trip.0.25 seconds; keep the roll-out until back, zero and press
+The area approach is determined to be active/released. Hands remain in the area and are collected after leaving.
+Releases are also returned. Maintaining the endpoint after start-up is real; not changing to hold ends in three seconds.
+When holding a true hold again, the player does not automatically pull and the original new button, real motion and observation threshold is maintained.
+
+Reason: Old adapter only removed electrical power from operation, not restored c_pull_; deployment conditions include c_pull_>0，
+It causes slipsticks and spread residue.tools/quest-workbench/practice.h Not the side fix.
+
+## A description of Lancer side session
+
+1. Use this document as a follow-up access requirement and player feedback, not to use the workstation as a game.
+2. Check whether existing side C recovery paths have achieved the same behaviour before addressing actual differences; do not directly cover
+   Keep the original single-author of the game.
+3. Player-accredited workflow: Editor of the GrabPose/Volume/Snap Hand handle test A/X edits continue to be tested.
+   Left shoulder ammunition, old boxes, new boxes inserted and air silo E fired have all been accessed into the stand.
+4. Newly adjusted complete parameters such as Volume/Snap/Hairspace are stored in project.json, model project copy and
+   Intaction-settings.json; no automatic sync to Mod at present. The side of the game should clearly edit configuration, coordinates
+   With units, current weapons/rigs and actual consumers of fields to avoid importing fingers but claiming full access.
+5. There are four real left-hand positions.analysis/quest-workbench-20261112/owner-v020-captures。
+   Counterpart 1794418169059-1、magazine 1794418220181-2、E1794418385098-3、
+   C1794418426664-4; the right-hand owner does not hold the batch. Keep each other's evidence of capture.0.3 New with part_delta_known
+   Documents must be frozen by going atopt_moving_lancer_captures.py; old adopt_lancer_captures.py.
+
+## Consistency with the game: Same core, not yet equivalent to the whole
+
+| Part | The relationship between the desk and Mod | What needs to be compared |
+| --- | --- | --- |
+| Pulling boxes, ammunition services | Compile pure logic/geometry rules for the same fixed snapshot | Original game inventory submission, animation and physical component observation |
+| E-string. | Same process, end-end support, real action and observation backshow rules | Original game bone/animation consumer and time sequence |
+| C-saw. | Same core orbit and start determination; continuous holding/release tails connected by adapter | Automatic re-entry, original engine status, execution, sound painting |
+| Hands, wrists, machine. | Reuse port solver, template and 25 Zero. | The original game full arm IK, role posture, real time gun and full skin |
+| Left shoulder. | Same default body slot layout | Head transfer agent, not real torso tracking; custom settings are not automatically imported |
+| Speed, recoil, sound, vibration. | The desktop is pretentious | Full feedback from unrecovered game engine |
+
+Fixed Snapshot 36 I'll see you at the exact Hashi.tools/quest-workbench/assets/game-rules.json. This is making the
+The source version of the APK does not mean that all subsequent private Mod changes will automatically enter the workstation.
+Almost identical to the game: The same core rules do not equal input mapping, access status machines, rendering feedback and engine behaviour.
+Align. This omission is the actual reverse of access differences.
+The actions are briefly compared at the workstation/playspace, recording differences and acceptances.
+
+## Restoration of validation and delivery
+
+The CPU process check has been passed and new validations added: continuous holding after start-up, end of loose ends,
+Android compiles and signs
+and 16 K-System passes. It is not a live/outcast or closes the game to its current C problem.
+
+APK0.3.1-dev/code10，SHA256
+b79c3690582a2f9474ac47a503b581f6085b1946a43bbad54b4cc31b104aee0b。
+Build Record analysis/quest-workbench-20261112/apk-build-v10-saw-return。
+This game is not started, Mod module is not changed, and no other sessions are sent.
+
+
+## 2026-11-12 Quest Touch holds a gun-snatch feedback/ 0.3.2
+
+The player is about to lose his gun when he reports it again.45 Check the freeze.
+weapon_lancer_wrist_mount.h，35 The configuration is specific to the old PSVR Aim/Grip observation, not GeneralQuest
+Physically. Can't put 35 This time, I'm calling it.45 The real cause and effect of the degree: the offline Grip neutral calculation gives a downwards view.35 Dou,
+The angle between the actual Touch Grip and the physical manual level is not sampled.
+
+Workstation 0.3.2/code 11 Use the real Touch Aim to determine direction, Grip position/real side grip and track.
+Still responsible for location and acquisition; wrists are decompositioned by the gun and current master GrabPose, with an anchor in the original palm.
+The correction will not change the direction of the gun.
+Both Aim and Grip request 15 Effective/tracking sign(s); loss of Aim after acquisition with Aim releases and reholds the required new button.
+Do not use HMD-level locker, do not blindly fix -45 degrees, without modifying original XR data or the PSVR-side tagging.
+
+(a) The direction of the gun is consistent with that of Aim in cases where CPU returns by horizontal, up and down, inconsistent Grip overtows and modification of the main wrist;
+The reloading/C/E/Input process check has been passed. Android compiles/signs/16 K-ray is passed. No new version of the machine has been confirmed, and the government has not yet made a decision on the issue.
+USB currently has no queen 3, the installation connection issue has been raised; final installation still 0.3.1/code 10。
+
+Follow-up Lancer session should distinguish between Aim/Grip and postures according to actual input device, retaining existing PSVR evidence; not direct
+Remove Game 35 Configure or claim that the table is exactly the same as the game. This change is only for the table.
+
+
+## 2026-11-12 Remove and shoulder loads from the box/ 0.3.3
+
+Player reports that the cartridge is not removed and no new box can be retrieved behind it. Code recurrence: full 60 The first one is the "Standing" of the video.
+ReloadModel.begin returned to full, and the workstation still removed the appearance but stocking was stopped at idle with a shoulder only
+Allows feed_port to hold the second round. Another explicit omission is that the old box remains on the scene after it has been released.
+
+0.3.3/code 12 The only way to repair access is by repairing the independent desk: removing a full/unprepared branch will keep an actual record of old cartridge loads, and then leaving the data open.
+Local exchange services are opened with removed cartridges; original boxes revert to the original number when they remain in hold and plugged back, new boxes from the same general pool
+The base share of ReloadModel is not relaxed or modified.
+This does not mean that the side of the game is already being verified. The box is visible in your hand and can be plugged back; it is hidden and the parts are taken off.
+Shoulder re-presses to get a new box. Hides the old box without retaining interactive residual models.
+
+CPU added three consecutive unloaded rims, hidden by the left shoulder, and re-plugged through the box.
+The AAK compiles, signs/16 K-System through.
+Organisation 0.3.1 C-Role and 0.3.2 Touch angle repair. Currently, USB is not equipped and has not been installed and is still in actual condition 10。
+The subsequent game side session should check the transaction policy of the original game full-box and normal pick-up of the new box, without blinding local reset/prime.
+
+---
+
+## 中文
+
 # Lancer 工作台调试与游戏侧接入交接
 
 ## 玩家反馈与当前行为（2026-11-12）

@@ -1,3 +1,70 @@
+# Veterinary rifles: local performance repair and Chinese subtitle presentation
+
+2026-11-16, Work Directory `J:/codexWorktree/gearsVr`. Duplicate queries, compilation, self-measurement and presentation videos for this HB module have been completed; they do not represent the project as a whole 120 FPS targets or entity head-on experience have been achieved.
+
+## Actual changes
+
+- `tools/playground/weapon_hammerburst_animation.inl`: HB branch returns with a double-function query entry, batch positioning input/return parameters, using this validated parameter layout directly. The former Lancer/Longshot branch retains. The engine is repositioned to return values after call; MatchRefBone recreates the current functions and parameters of GetBoneMatrix after execution.
+- Add `weapon_hammerburst_part_query.inl`: Only HB skeletal observations are handled without cross-frame objects, matrices or successful boolean caches. Actual skeleton matrix and function calls are not omitted.
+- Add `weapon_hammerburst_curve_fields.inl`: 5 symmetrical succession/field chain searches of the same animation series are synthesized into a strict Reader cycle. Keep a node-by-point identity, first name matching, inheritance/field rings, owner/ type/dimension/bytes/extent and current content double read. No cache last curve content or Hash replaces the current check.
+- `weapon_hammerburst_guide.inl`Seven drawing parameters are changed from duplicate search to the same batch positioning, retaining the burl mask, scope, non-overlapping and current identity check before mapping. Non-HB, no valid binding, mapd frame of co-source exit earlier. `copy_frame_on_gt` Retain: The upstream may have been called over the engine and its motion observations cannot automatically serve as current proof of drawing. There is no sign of closing or deleting this boundary to reduce calls.
+
+Four files are already checking for shared root code and R.26 The original file is fully aligned and then the root directory is in place. `analysis/hammerburst-20261115/manual-integration-r30/root-before/`;no other session changes are covered. Public packages/fixed manual access is not replaced and waits for integration and real machine testing to be done.
+
+## Compile and self-measure
+
+- R 30 Freezing Candidates 1931 Source File, Compare R 26 Modify only 2 HB documents, increase 2 HB helper;60 The item GERS is configured in the same way. Release Build through Playground SHA 256 `d0dc4e239ebaef896a51579730c20587ec143ecde765ca54cea7b73c38e88680`。
+- The current independent Playground construction of shared root code is also passed. This build-up is not started; the actual play log corresponds to the freezer R 30, cannot be commingled into a current shared package already running for acceptance and inspection.
+- New production of Curve Helper and the original five typed Reader 11 The test directly executes the production of a tool and existing memory file, not back to the game.
+- R 30 d/ Game 25496: waist-fired, empty guns, moving, passive Snap uncontrolled, Grip controlled, hands moved and fired, hand-held back to Snap, leaving Volume, regular round-up, cutting the pistol back to the same HB and re-fired.30 Send original rays continuously and write/track from the same source. Hands move flat.3.162258 Raw, keep the error around.0.0000024 degrees.
+- General reloading stock (boxes/premises)60/78→78/60→72/60♪ And the reward ♪0;repeated with 66/60。
+- R 30 e/ Game 22704: Perfect closure 3437- Ms, in the original.4000 Ms inside, results 3 inventory.72/78→78/72→72/72♪ And the reward ♪0→6→0；12 The original ray is continuous and sourced from the same source.
+- Both successful operations actually have both eyes to start confirmation, clean-up exits.0. No physical header test has been started.
+
+## Real range of performance observations.
+
+Statistics use new game image keys from the same session CSV `xrEndFrame` Recount when successfully accepted, without XR-cycle Hz, Present call rate or video 15 Hz sampling rate.
+
+|R 30 d Phase|Actual new game image delivery rate|Observing Range|
+|---|---:|---:|
+|The waist shoots.|20.92 Frame/sec|3.01 sec|
+|I'm free to carry a gun.|21.12 Frame/sec|7.05 sec|
+|Move/Turn|21.01 Frame/sec|12.09 sec|
+|Manual general reloading and re-launching.|19.92 Frame/sec|38.26 sec|
+|Change of gun and re-fire.|17.89 Frame/sec|16.10 sec|
+
+These figures remain low and cannot be claimed to have been resolved in relation to the overall performance of the project.26 Run with other session loads, R 30 d Not at start-up; the baseline is still failing in the movement of hands. Therefore, this A/B is not available to claim a causal increase. Reduces the number of queries, compiles success and improves the frame rate separately. Nor does the video be classified as a low frame ratio factor.
+
+## Presentation Route
+
+Press `.agents/skills/gearsvr-demo-video/SKILL.md` Make plain Chinese subtitles. Keep ASS source, script, QPC time and identity/source records; no speed change, no cutback, no desktop capture, no audio. Images are created with the home simulator channel and subtitles below, without blocking the area of operation.
+
+- Main presentation:`analysis/instances/hb-perf-opt-1116-r30d/recorded-performance/demo/demo-subtitled-final.mp4`，182.67 seconds,25 Subtitles. The route is to take a gun and shoot the hip empty, turn around and turn the wood Snap/Grip shoot at/release the switch-off rifle for active pause/B recovery.
+- Perfect change of bullets:`analysis/instances/hb-perf-perfect-1116-r30e/recorded-perfect/demo/demo-subtitled-final.mp4`，40.73 sec. The quick action combination means avoiding continuous subtitling, ending with actual timing and reward results; still at the same speed.
+- Viewed Normal Full Course 7 Page, perfect whole process.2 Pages and 3 A key frame; two subtitles are in the centre/end and readable in Chinese. The immediate handheld/bracket still has a short horizon that darkens and covers up, and is kept on video; it does not claim to be impervious per original frame or whole angle.
+
+## Save Failed and Bullet Window Processing
+
+R 26 Baseline R 30 a Inverted while hand-to-hands were moving together 4.84 Stopped. Cleaning up properly.0。R 30 d Corresponding action passed, but does not prove that the historical breakout has been eliminated by cause or effect.
+
+User reports that the Python terminal has been repeatedly ejected, suspending the new start-up and reconciliation process; both of the original baseline processes were withdrawn at that time and cannot prove that the terminal is a session only by means of an amputation. The Python subprocess for amending the home video code is missing `CREATE_NO_WINDOW`♪ Then we'll all be together ♪ `python.exe` Plus Create NoWindow to implement the existing access and not activate the visible console.
+
+R 30 When trying pythonw as a starter, install precheck refused, no game created. Normal stop returns 1, old workingr was waiting for the missing birth certificate clean-up cycle; ex-identity (PID)46112, creation time 134392773271003634, complete image) check and only end the party workingrker, recorded as an abnormal clean-up, and never counted as normal exit or play pass.30 d/e hides the normal post-commencement completion using the original interpreter. Old log and failed video are kept.
+
+Summary:`analysis/hammerburst-20261115/performance-r30-final-review.json`This is the partial optimization of four documents, necessary checks, current normal play and subtitle video delivery; overall frame rate, historical causes of intermittent breakdowns and subsequent unified real-life experience are maintained separately.
+
+## Follow-up on the control table window.
+
+User subsequently provides 12:50:26、12:50:36 This session makes Make_demo_video process still produces evidence of the same title console. The above conclusions are withdrawn by relying solely on the ClearNoWindow/Hidden parameters, which have resolved the problem; no actual console window was validated at that time.
+
+The offline processing portal is now reoriented to the GUI subsystem pythonw.exe, except for the original python.exe, which is started by a game, which matches only three running entry filenames. Make_demo_video also rejects the console handle non-zero and control table interpreter as the normal offline access; FFmpeg still uses CREATE_NO_WINDOW. Shared Video Demo skills are already limited and do not replace game starter fully.
+
+The modified physical entry shorts are passed through: the pythonw console handle 0, no-here-to-be visible window, and the active CREATE_NO_WINDOW test subprocess is also 0;last FFmpeg shorts 102 Subwindow sample without a home-based visible window, exit 0. Record demo-no-console-probe-20261116 Then the real subtitle generation portal was successfully implemented under the GUI interpreter.25 Subtitles; no game started, no re-recording, no recoding of existing videos. No user or other session window is closed. This certification only confirms the measured entry point and does not claim that the independent start chain for other sessions has been repaired.
+
+---
+
+## 中文
+
 # 兽族步枪：局部性能修复与中文字幕演示
 
 2026-11-16，工作目录 `J:/codexWorktree/gearsVr`。已完成本次 HB 模块的重复查询优化、编译、自测和演示录像；不代表项目整体120 FPS目标或实体头显体验已经达标。

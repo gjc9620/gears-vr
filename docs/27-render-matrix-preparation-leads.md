@@ -1,3 +1,33 @@
+# Matrix preparation and historical data: only read-only surveys
+
+2026-10-12 Original single-person level PID 40592. Continue Document 26 . This is a process code and log only read, with no new Hooks, matrix changes or screenshot enabled.
+
+## Confirmed code relationship
+
+- Consumer entry 0x15a80c Default Drawing Candidate 0x11908c Call 0x1fc060;other drawing candidate 0xe29520 is also called for the same preparatory function. There is no dynamic distinction between specific branches.
+- 0x1fc060 From Rendering Object +0x68 Take out the view array to 0xD30 is the element long. View +8 The pointers are involved in the preservation and determination of subsequent historical data; their specific type has not yet been proven.
+- 0x1fc300 / 0x1fc30d From Current View +0x70 / +0x90 Copy Together 64 Byte to the associated object +0x210 / +0x230. Other paths are also from view +0xB0 / +0xD0 Copy Together 64 Byte to Associated Object +0xE0 / +0x100. The code contains time values, view sizes and other status determinations. Therefore, eye realization cannot be simplified to write in a matrix; it also needs to check eye correlation and derivative data.
+- Prepare function for early call 0x18c3b4. The latter selects different paths by setting, one of which is 0x18c3f8 → 0x18c460 → 0x18c4d0。
+- 0x18c460 Add one after the number of samples to the frame number, in base figure 2 and 3 Call 0x18c4d0 and then subtract 0.5, write two float-point outputs.0x18c4d0 Value obtained by repeat extraction, dividing by base figure, multiplier weight; constant reading of confirmation weight at start value 1.0, Center Offset to 0.5。
+
+The above numerical algorithm corresponds to the base figure 2/3 . Combining the position of rendering, it is a candidate for frame sampling deviation; there is no dynamic proof that this configuration branch was used in rotation and no output entry view was traced to +0xD0 / +0xD4 . So it is not directly recognized as an identified anti-sawlix vibrating.
+
+## Next round of validation designs
+
+Add the preparatory function to pre- and post-observation within the same object life cycle, compare two matrix regions with associated state points, and confirm at what stage the change takes place. Still do not rewrite the matrix or add a view. If the preparation phase does change the projection, then track down the specific updated functions and derivative data to refresh order; then design limited, avoidable single eye differential tests after confirming these relationships.
+
+This survey is oriented towards dual-eye rendering. Existing OpenXR rotation/diversion sampling and restricted head-driven game view point results remain valid; complete stereorelease and final deployable versions are still to be achieved.
+
+## Local evidence
+
+Ignore Directory `analysis/native/`：`render-init-candidates-40592.json`、`render-view-matrix-helpers-40592.json`、`render-init-update-leads-40592.json`、`render-view-adjustment-40592.json`、`render-subpixel-sequence-40592.json`、`render-alternate-path-40592.json`. Other candidate search outputs are also maintained, but the offset matching does not identify the object and irrelevant homogeneity is not included as a conclusion.
+
+All backsyncs are derived from the current process normal code segments verified by EXE Hashi. The analytical tool does not cross protected code segments; no candidate function is performed and no changes have been made to user Ghidra projects.
+
+---
+
+## 中文
+
 # 矩阵准备与历史数据：只读调查
 
 2026-10-12，原版单人关卡 PID 40592。接续文档 26 的静止生命周期基线。本次仅读取进程代码和已有日志，没有启用新 Hook、修改矩阵或截图。

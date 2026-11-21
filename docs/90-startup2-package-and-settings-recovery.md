@@ -1,3 +1,31 @@
+# Startup 2 Package & Settings Menu Back
+
+2026-10-17. The previous round of initial resolution consolidation has been incorporated into the new local package; it is not officially published.
+
+`analysis/release-staging/reticle39-startup2-20261017` The quarantine pre-screening was approved.700 List of documents,43,421,471 bytes. ZIP is generated only by List `analysis/release-zips/GearsVR-V1-development-Reticle39-startup2-20261017.zip`，701 Members,13,634,871 Bytes, SHA 256 `d84b671f89a44d8ce595f8bf2b227bfae38961e5a3986fe80fced56d18f50df1`. Old ZIP remains unchanged.
+
+## Actual
+
+Python-I/-B startup package launcher/Reticle 39／Borderless 1, with a free-pack game and visible emulator. Sessions continuous-stereo-11080-20261017-072757-7e 81f 5b 4；PID 11080 Can not open message 55 Mix with PID, complete creation of identity in session and portable 57-actual-runtime-audit.json。
+
+Ready.2992 milliseconds, camera ready to actual first projection.5997 milliseconds. With new code in the last round 3279／6282 msec is the same, but two rounds do not create stability. Then the death menu reads a check point and then suspends access to graphic settings; all navigational checks are made for actual UI identity/focus without any stop map location or memory modification.
+
+Record shadow option for setting the time 3 After Left,1. First confirmation that the dialogue is overtimed and original failure records are maintained. Change again and confirm with Enter, which is precise in ConfirmVideoSettings and has read protected twice. INI ' s lasting change only confirms AllOWD 3D 10=True→False、DEFAULTSETTING=4→5; the actual GPU parameter changes in the shadow are not proven and cannot be described as complete paint-to-mass/Ultra pressure tests.
+
+Apply for a new GPU image after returning to the level, strictly requiring snapshot_index and source_serial to write back before the application is completed, saved_monotonic_ns is not earlier.16175／source 15393 Request QPC 55162988267400,Save 55163048912400，3840×2160, neither eye is a black scene. It is a new image of the settings and returns, not an old screenshot. The normal menu/restoration and this limited setup application do not terminate XR; it still does not prove that all historical blackscreens are repaired.
+
+Normal stop, primary clean-up, XR exit, regular game closure pass;700 List file Hash remains unchanged. INI-by-By-Tune Resume Backup, SHA after game closes 256 `85620109d28bd0da07c7aa3081fcba45d17ac454f6607ddfb694223e556227dd`. Restore results as portable 57-actual-runtime-udit.json is the standard; no test paints are left to users.
+
+## Reconversion of identity
+
+World_rebind_monitor is the same in full snapshot and national world_handoff_face 4 Regular HUD/inventory has ui_runtime_binding to re-retriev, weapons replacement is rebind_weapon and freshness failed after submission into the base 4 The targeted source code review does not find specific counter-cases of supported dependency changes leading to permanent card deaths, so the round does not add speculative reconnections or circumvent authentication with rejection times.
+
+Actual machine guns/full loads, additional over-the-horizon, long-term play and real headline karton/quasistar integration remain unaccepted; new package release_ready=false.
+
+---
+
+## 中文
+
 # Startup2包与设置菜单返回回归
 
 2026-10-17。上一轮启动解析合并已纳入新本地包；不是正式发布。

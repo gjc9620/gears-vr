@@ -1,3 +1,78 @@
+# Six remaining weapons: interactive demand identified and development portals
+
+Date:2026-11-09 Status: User has reviewed, revised and explicitly authorized to initiate development; not to implement completed or operational acceptance reports.
+
+The draft is interactive from existing items docs and applies the user ' s current round of direct revisions: perfect reloading.4 sec; Troika touched machine gun handle entry empty-handed; Smoke mass 2 The last user's instructions are used when the old information conflicts with the draft.
+
+## 1 Document and follow-up session
+
+| Weapons | Required Document | Follow-up |
+| --- | --- | --- |
+| Gnasher shotgun. | [Specific interaction and acceptance](gnasher.md) | New Independent Development Session |
+| Boomshot grenade launcher | [Specific interaction and acceptance](boomshot.md) | New Independent Development Session |
+| Torque Bow sprained bow | [Specific interaction and acceptance](torque-bow.md) | New Independent Development Session |
+| Hammer of Dawn | [Specific interaction and acceptance](hammer-of-dawn.md) | New Independent Development Session |
+| Troika fixed machine gun | [Specific interaction and acceptance](troika.md) | New Independent Development Session |
+| Smoke Smoke grenade | [Specific interaction and acceptance](smoke.md) | Existing grenade session, first Frag and then Smoke, do not repeat session |
+
+User has specified request to create and start **5 One.**Develop Sessions, Models **gpt-6.1-sol，high**. The smoke is covered by existing grenade sessions, which are not created repeatedly. The session identity and start-up result are saved by a combined actual creation record instead of starting evidence using the plan text of this document.
+
+Every weapon file matches[Public interactive contracts](common.md)Use. The current uniform source code is used to implement it, and the old offline or frozen tree cannot be covered by the existing shared code.
+
+User Add: Develop a workspace fixed to **C:/Users/11/.codex/worktrees/6dof-single/gearsVr**Keep the module decorating. All weapons must be implemented.[Sniffing experience and parts-by-part grab positions.](grasp-and-snap.md): Each interactive component has a certificate of the GramPose and actual image, which cannot be replaced by a general handshake or dot.
+
+## 2 What players actually do
+
+| Weapons | Normal chain of operation | Differences that must be retained |
+| --- | --- | --- |
+| Gnasher | Left shoulder-by-hand, bullet-by-ball. Insert, three rounds per round. | And then you have to complete the same lever cycle after each real shot; not pump the wood. |
+| Boomshot | Grab the filling unit with your left hand and open it. Zoom, take an original filling component from your left shoulder. Zoom, close lock. | One-shot; cannot be used by name to turn a chain or let players capture flying bullets |
+| Torque Bow | Left shoulder arrows, poaching, loading up the slot. | Charlie's got a new r.3 Cancel; cancel must not shoot or take a bullet |
+| The Hammer of the Dawn. | ♪ Hold the right trigger, original determination/preheat/irradiation ♪ | No cartridges, charge and new reloading; not to cross original area and target limits |
+| Troika | Unarmed touch the machine gun handle into position, right or left, Grip, keep scratching the double-knuckle, poaching the right trigger, poaching out of operation. | Entry does not require additional keys; fixed axis, original rotation limit, hand qualification and automatic restoration; no shoulder slot |
+| Smoke | Right pocket continues. RGrip takes, tweaks, tweaks, real twirls. | Independent smoke inventory/balls/original trigger effect; no succession to Frag explosive injury or fuse |
+
+## 3 Rules that have been replaced in old information
+
+- All Weapons Press R first 3 Only started changing bullets" already v 2 Cancel; first clear physical action initiated, R 3 Only help is available. The twisting bow is in the middle of R.3 For cancellation.
+- The grenade “Right trigger ready, loose trigger” is no longer used in the current Frag/Smoke; W 12 The latest revision clearly indicates that Smoke continues to be RGrip, Matsu and Grip.
+- The original animation angle, historical capacity/time is not considered as a control threshold or current instance fact.
+- The user has clearly harmonized the perfect period for this batch of weapons with a physical reload to 4 Seconds, cover the perfect cut-off contract; unconventional reloading of weapons does not add a new reload process.
+- Troika 's automatic reloading is not the same as a manual switch, nor can it be called a custom overheating system.
+- No new left-handed layout, fast loaders, traditional bow strings, speed/harm balance or online assurance are added to this batch.
+
+## 4 User-identified rules of implementation
+
+1. The shotguns are kept at the end of each round, “left hand support plus right arm to take back position” and a maximum of three rounds per round.
+2. The twister holds the normal trigger, R.3(a) The explicit cancellation;4 Second hand-held arrows for bullets, no reset of the original holding clock.
+3. Troika is asked to enter without a button or Grip if it touches the real machine gun handle empty-handed; after the original occupancy continues with the Grip operation and either hand ceases. Exiting from the current main line map.
+4. Gnasher/Boomshot/Bow perfect reloading.4 Seconds, starting with the first effective filling action and ending with the necessary mechanical action; after normal time completion, Gnasher ' s early end of uncompleted target is still normal.
+5. Smoke is clear.2 kg, direct hand-held and continuous Grip holding, output from Matsuo Grip, real speed not scaled by mass.
+6. Sizes, angles, exposure range, points of contact and itinerary are considered and verified by the respective weapon sessions without requesting user-specific parameters; original identity, time limits and serial protection remain.
+
+Actual original functions, resources and ABI are still subject to validation in the current game; this is an implementation process that no longer awaits the identified interactive confirmations mentioned above.
+
+## 5. Completion of the caliber and commencement of work
+
+One shot is recorded separately: a needs review, source-code connection, compilation, actual game action, eye image, candidate delivery, headline feedback. No one can be replaced by another item.
+
+Follow-up verification of the use of existing games/simulators to direct and double-track video, prohibiting Computer Use. Shared running windows must rotate and be the only interface after complete closing; stay in session while waiting, without ending the task by regular queues.
+
+The current phase of development is in the implementation stage; five new sessions will be preceded by reading this directory and existing sources, maintaining shared current source code and advancing each other.71 This document is not automatically replaced.
+
+## 6 Basis
+
+- [Gun-by-gun card W03/W07–W10/W12](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/weapon-cards.md)
+- [Interactive review v2](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/interaction-review-v2.md)
+- [Original access and boundary](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/original-entry-map.md)
+- [Original implementation of handover orders (location only, current source code alignment)](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/implementation-handoff.md)
+- [Common contract for weapons and bunkers](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/offline-tech-prep-20261028/shared-contracts.md)
+- [All Weapons Interactive Program](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/all-weapons-interaction-plan-20261028.md)
+
+---
+
+## 中文
+
 # 剩余六种武器：已确认交互需求与开发入口
 
 日期：2026-11-09。状态：用户已审阅、修订并明确授权启动开发；不是实施完成或运行验收报告。
@@ -68,5 +143,3 @@
 - [原实施交接单（仅作定位，需对齐当前源码）](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/weapon-specs-20261028/implementation-handoff.md)
 - [武器与掩体共同合同](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/offline-tech-prep-20261028/shared-contracts.md)
 - [全武器交互方案](C:/Users/11/.codex/worktrees/6dof-single/gearsVr/docs/all-weapons-interaction-plan-20261028.md)
-
-

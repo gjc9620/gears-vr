@@ -1,3 +1,78 @@
+# 12 Weapons: offline interactive delivery
+
+Date:2026-10-28 Review v 2- Take it.[Approved programmes](../all-weapons-interaction-plan-20261028.md). Default to cancel the full weapon R 3 Switching bullets: Start with the first clear physical action of this gun, R.3 Only optional release aids. Mainstream VR cross-checks, Boltok institutional assembly checks, the wrinkle bow off-launch design and two grenade fuse static surveys have been completed, and complete replacements are delivered. This time no changes to run source code, no buildup candidate package, no startup game/XR, or operational connection are established.
+
+| Delivery | Contents |
+| --- | --- |
+| [The direct start is on the handing over of the order.](implementation-handoff.md) | Interface fields, gun-by-gun code differences, original inventory/receipt, loading responsibility, order of implementation and key inspection cases; code accordingly, as ordered |
+| [Code Change Location](code-locations.md) | 33 relevant documents,78 Function Positions and Files SHA 256;indicating in symbols to allow main lines to continue advancing |
+| [Interactive review and findings v2](interaction-review-v2.md) | R 3 Judgment, full-gun review, Boltok original parts/design joints, twist bow cancellation sequence, different trigger paths for Frag/Smoke |
+| [Offline model produced](../../assets/weapon-6dof/offline-v2/README.md) | 3 (a) Full live ammunition, six-hole nests, reusable starters;5 GLB, preview, LOD, materials, tags and generators |
+| [12 weapons-specific cards](weapon-cards.md) | Access per gun, air/silo/post-fired action, ammunition submission point, tip, interruption, model and code map |
+| [Model worksheet](model-work-orders.md) | (a) Originals are duplicated, bone-driven, to be removed, and additional; including 12 The result of the widget check for a source grid |
+| [Original code portal](original-entry-map.md) | Public bomb exchange services, original gun-by-gun function, grenade generation and initial replacement, call conditions to be certified before access |
+| [Offline Specification Index](authoring-manifest.json) | 12 Division stability ID, specific class, original grid Hash, static capacity, model tasks and existing source maps; not operational configuration |
+
+Cross-arms/shelter input cross-repeated, active cancellation, initial speed and life cycle[Common rules for total handover](../offline-tech-prep-20261028/shared-contracts.md)Yes; check against identification[Total handover](../offline-tech-prep-20261028/README.md)。
+
+## Scheduled Interaction
+
+| ID | Weapons | The core action of this round is set. | Original package static capacity reference |
+| --- | --- | --- | --- |
+| W 01 | Lancer | Grip grabs, implicitly releases,  ⁇  change boxes,  ⁇  natural thrust/lock lock | 60 Reserve ceiling 600 |
+| W 02 | Hammerburst | Hand-opening locks, twirl boxes, twigs, twirls. | 78 Reserve ceiling 702 |
+| W 03 | Gnasher | Start when you're missing the bullet, and maximum per round. 3 Fire, less rear locks; after firing, the lever cycle must be completed | 8 Reserve ceiling 31 |
+| W 04 | Longshot | Open the shell, poach it, load a full live bullet, poach it, close the lock. | 1 Reserve ceiling 23 |
+| W 05 | Snub | Pull out the grab and implicitly release  ⁇  Change box; empty tank pulls a slider, half-port free | 12 Reserve ceiling 60 |
+| W 06 | Boltok | The frame is open with a bullet nest, the joint repulsion shell, the hair-to-heap filling, the closed and partially filled. | 6 Reserve ceiling 24 |
+| W 07 | Boomshot | Open the barrel loading unit  ⁇  Plug-in filling component  ⁇  Close | 1 Reserve ceiling 11 |
+| W 08 | Torque Bow | Load an arrow, Zip it. | 1 Reserve ceiling 11 |
+| W 09 | Hammer of Dawn | Weapons point to target, Zoom, lock and beam. | Original function reports unlimited ammunition; unconventional reloading |
+| W 10 | Troika | Get into the gun position, boom, double-share turn/fire, boom, it's automatic recovery, boom, exit. | Do not design manual change boxes |
+| W 11 | Bolo / Frag | (a) Continuous Grip Access/ Hold Pine Grip Bump-Putting;2 kg（2026-11-08 User Overwrite) | Base Category MagSize 1、MaxSpareAmmo 3;not directly considered as a total HUD;[Current Authentication Status](../frag-grip-release-20261108.md) |
+| W 12 | Smoke | Same gestures, separate smoke stocks, cartridges and effects. | Idem, read this example of physical inventory |
+
+All capacity is checked by the default object of the saver and cannot override the actual values of running-time Getter, difficulty, mode or specific variants. Snub's silo branch, Boltok's reloading bullet etc. are VR design options for this project; it is not claimed that these physical operations already exist in the original version.
+
+## Model conclusions
+
+12 The gun/mine subject has a verifiable source and does not need to be re-doed 12 Put the whole gun. Lancer, Hammerburst, Boomshot's hand-held filling component and Torque Bow's hand-held arrow priority re-use the original independent resource; Snub's hand-held cartridge by original `Magazine` The other activity agencies prioritize the driving of the bone.
+
+3 complete munitions have now been generated v 2 GLB, which contains two tiers of LOD, UV, PBR material and capture/insert reference nodes. Boltok's original bomb nest is closed on both ends and replaced with six real cross-sections. Lancer's original startup is now in the main line directory; this round checks its generation results and only copys it into an independent offline directory. Snub's original cartridge is now available. 314 The triangle has also been removed in private anallysis, keeping the UV/modeline/material belonging. There is no re-loading of the whole gun.
+
+This time, we're rechecking. 2 Save resource packages,12 original grid,18 Default object and export from the package orientation 41 The new evidence identifies the original Boomshot fill, Torque Bow holding arrows, the specific type of dawn hammer and the chain to stop exposure. Bones audit identifies 71 A single, self-extractable hardcore group with a gun; it's not. 71 (c) Work on the completion of the modelling.
+
+## Completion of border and residual matters
+
+| Level | Current Status |
+| --- | --- |
+| Disparities between player action and gun-by-gun | 12/12 Specifications developed; rules for input, quota filling, hint and interruption are stated |
+| Source and treatment decision-making | 12/12 Subject checked; stand-alone/generic/refill route established |
+| Original semantic portal | 12/12 Map specific class, save function and existing module |
+| Bones to mechanical parts. | Boltok Object 03 Stamp, Object 02 Blast, Object 08 Seter, Object 01 Fixed backdisk checked by level/assembly; original animation not checked 21 The first of these is the "ArnamSet" (the "AnimSet").80° Shake out for design start |
+| Capture points, axes, filling axes, process values | Need to be marked against the exact example and unified body baseline; no guess values given this time |
+| native call ABI, return value replacement and running ownership | Historical tests on public switchovers; special access points not all certified for call, item by item |
+| New modelling and document checking | 4 New geometry,8 LOD, plus reuse startup, total 5 GLB delivered; is not a certified game ratio or running asset |
+| Model loading, physical connection, game and header validation | Not implemented; not counted as completed |
+
+Subsequent code reuse `tools/vr-common/` The first is to resolve the public quota and original timer/notification of ownership, followed by a gun-by-gun machine; the complete ammunition loads only select one common pipe line; the grenade share speed estimate, with two sets of atomic bombs retained and effects.
+
+Implementation of the handover order has already indicated exact behaviour required to modify the old module, including R 3 Fields, old box-back pools, partial filling exit and minimum speed/place transfer threshold for hand grenades. The original GLB engine resource creation/loading backend remains a bottom line that must be prepared, with fixed input, component life cycle and first validation steps; it cannot be claimed that it already has a usable native call. Interactive design is not left to be reopened next time.
+
+The round is out of line and the following sets of points, scales and status are required to be identified for a single call, without using the main line construction or game running window. `C:/Users/11/.codex/worktrees/6dof-single/gearsVr`、`codex/6dof-single` and fix manual access without creating a separate running package. First edition starts checking with the source code HEAD as `10510241b620b2960d79b9d1abc517e42c9c59b9`;This is not the version number of this set of specifications that has been integrated.
+
+## Local evidence
+
+Source extraction, default values, bone group geometry and source Hash kept in neglect [analysis/weapon-specs-20261028](../../analysis/weapon-specs-20261028/)。`sources.json` (b) Recording of two packages of identity;`all-12-mesh-parts.json` (b) Recording bone group attribution;`explicit-defaults.json` That's right. 18 object resolution;`map-script-provenance.json` Records 41 The export source and the reconciliation limit of the item. `invalid-tuple-order` The document is a failed intermediate of the reservation and is not evidence.
+
+Still unresolved static script;5 An export object has an array of interlinking warnings. Only the control stream, cursor and object references can be identified are quoted, and not exported `.uc` As a retail of abI, which is either compiled or certified. Original package, extraction geometry and back-compilation are not entered in the list of issueable assets.
+
+v 2 New evidence is focused on `analysis/weapon-specs-20261028/review-v2/`：44 Article orientation functions reference,3 A Bow Status Export,21 A Boltok bone name matching scan, in situ assembly map, frame reference data, Longshot original shell references, Snub private shredding and final file validation records. Model viewer prevents local file URLs from being completed because the embedded browser has not completed UI measurements; preview maps have been rendered.
+
+---
+
+## 中文
+
 # 12 种武器：离线交互规格交付
 
 日期：2026-10-28，复核版 v2。承接[已批准方案](../all-weapons-interaction-plan-20261028.md)。默认取消全武器的 R3 换弹前置：由本枪首个明确物理动作开始，R3 仅为可选释放辅助。已完成主流 VR 交互对照、Boltok 机构装配核对、扭力弓非发射取消设计与两种手雷引信静态调查，并实际交付补件。本次未修改运行源码、未构建候选包、未启动游戏／XR，也未建立运行时接线。

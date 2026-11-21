@@ -1,3 +1,70 @@
+# Microdiggle verification of six-axis primary view point
+
+2026-10-11 Single-person first-class prison clearance, static character, PID 39988。
+To the original, SceneView. `RVA 0x15cf08` Internal, Caller `0x15d0ca` The viewer readings are subject to temporary deviation.
+Change only the temporary position/rotation of the call; no person location or CameraCache.
+
+## Experiments and results
+
+45 Seconds of collection:3 Second baseline, six axes. 4 Second sine microturbage, then recover.
+Rotate ±273 Rotator units (approximately  ⁇ )1.5°,Classed  ⁇2 Game units.
+Front/right, defined by clean shot yaw, top world Z.
+
+| Phase | Scene Record | Non-zero offset records | Different View Matrix |
+| --- | ---: | ---: | ---: |
+| Baseline | 821 | 0 | 1 |
+| Pitch | 1126 | 1124 | 512 |
+| Yaw | 1128 | 1126 | 508 |
+| Roll | 1085 | 1084 | 514 |
+| Back and forth. | 1125 | 1125 | 1119 |
+| Left and right | 1114 | 1114 | 1114 |
+| Up and down. | 1136 | 1136 | 1129 |
+| Restore | 4972 | 0 | 1 |
+
+All 12507 The matrix of a sample of scenarios is limited; the projection matrix remains the same.
+The view matrix for the recovery phase is fully aligned to the baseline. Output - source values are the largest deviation between login and logout
+As agreed 0.00003092 Game units, matching the float plus minus and CSV output accuracy.
+Source rotation always (0,16404,0) Source location is only one recorded Z has an approximate 0.000031 The floating point is bad.
+Independently read and observed. 319 The following is a sample of the CameraCache samples:
+The observation is being launched late. It can't be considered as a whole. 27 Full cache evidence during a second microturbation.
+
+Event Packing Functions Together 62542 (a) A record that only the target caller accepts deviation;
+No deviations when the focus is lost. 12509 Article, failure to report HRESULT.
+Logs are abandoned 6 Article, therefore not without damage.
+Organisation `disable_status=0 active=0`, the test state is complete.
+No additional remote bytes reading after this round has ceased; the status log cannot be equated with an additional independent byte verification.
+The game process is out while working; no automatic re-starting of the game for this purpose.
+
+## The distribution problem.
+
+The original MinHook trackline search is near the target. 1 GiB。
+The current process has a low address with more space debris and recently has been aligned to the empty space view entrance 1155 MiB，
+Cause `MH_ERROR_MEMORY_ALLOC`, two failed DLLs didn't enable Hook.
+
+Generate a copy of the buffer.c to retain the licence while constructing, and move the search range to 1.5 GiB，
+Do not modify the original source code for third parties or release the game memory. Try again the last four Hooks return MH_OK.
+Each load still checks the version, player object and original function entry bytes and refuses to collect them in parallel.
+DLL and trampoline stay after stop to the game exit, without automatically unloading.
+
+## How?
+
+```powershell
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $py J:\gearsVr\tools\native-capture\analyze_sweep.py J:\gearsVr\analysis\runtime\sweep-39988.csv --output J:\gearsVr\analysis\runtime\sweep-axis-validation.json
+```
+
+Eight checks passed: full phase, caller/focus limit, matrix limited, offset algorithm, six axes each changing view,
+The projection is unchanged, baseline/recovery is not included and recovery is consistent with the baseline.
+Original data ignored in Git analysis/runtime; report and analysis process submitted to Git.
+
+This proves that the primary view point of the current level accepts three axes rotation and three axis plane transfer.
+No axle-by-axis observations and no real head start entry; no proof of bi-eye stereo, first person position,
+Scale, aim or bunker/extra-scenes behaviour, not considered complete 6DoF VR Mod。
+
+---
+
+## 中文
+
 # 六轴原生视点微扰验证
 
 2026-10-11，单人第一章监狱关卡、人物静止，PID 39988。

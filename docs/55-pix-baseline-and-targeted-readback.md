@@ -1,3 +1,60 @@
+# PIX Original Path Contrast to Point Read Back Precondition
+
+2026-10-13. Keep the same frame multiple view main line and double-render it in the same frame order as an option to exclude AER. This round does not enable new rendering Hook, without repairing the right black screen.
+
+## Controlled PIX startup
+
+Normally close the last round of pre-enclosed PIDs 44960, CloseMainWindow and waiting to exit successfully. Use this machine PIX 2603.25 official pixtool, directly start the known game path with parameters `-NoPauseUnfocus`, requests a frame of capture. This round does not call VR DLL injection or the old RenderDoc import replacement script.
+
+Result: pixtool exit code 1, not generated `baseline-20261013.wpix`。Windows Application Error 1000 Records the game crashes in relation to start-up time:
+
+- Time:2026-10-13 15:33:04（Asia/Shanghai）。
+- Game PID:44060"In the event `0xac1c`;in the log 50016 is a PIX-assisted process that should not be misconceived as a game PID.
+- Unusual:`c0000005`。
+- Modules:`C:\Windows\System32\d3d12.dll`Version `10.0.26100.9278`。
+- module offset:`0x10538`。
+
+Original evidence is stored in `analysis/pix/baseline-20261013.log` and `baseline-20261013-crash.xml`. WeR Report.wer access was denied to the operating system, no permissions were changed or read successfully, and therefore no crashing anchor and complete load list of modules was obtained.
+
+This narrows the failure to capture D during startup.3D 12 An anomaly cannot be identified as the source of the anomaly being a system DLL, game protection or PIX package. The path to AgySDK in the log is a PIX-assisted process, nor can it be used as evidence that the version was loaded into the game. The front-office permission warning appears in the history successful smoke capture log and this failure cannot be explained by the warning alone.
+
+## Normal startup contrast
+
+Same EXE, work directory and `-NoPauseUnfocus` Parameters are directly started, PIX or VR injection is not used, PID 37692 Normal access to the level. Window screenshot confirms world geometry:`analysis/game-io/frames/20261013-153429-0545ccfe.jpg`。
+
+Module records `analysis/pix/baseline-direct-modules-37692.json` Show dxgi,d 3d 12、D 3D 12 Core from Systems 32. The game is kept running. This is a contrast to support the capture start-up problem and does not prove that all normal starts are stable with all levels.
+
+## Intermediate Texture Rereading cannot directly reset backbuffer
+
+Existing `gpu_readback.h` OneShotReadback relies on the swapchain/ queue binding obtained at creation, obtains the current backbuffer before Present, copys the PRESENT  ⁇ COPY_SOURCE  ⁇  PRISEENT records and reads them after the fence is finished. It only supports specified entries 8/10 bit colour format.
+
+The middle scene colour may have different status, format, subresources and cross-queuing, and cannot be used directly after replacing the source pointer. The current view tracker records the RTV description, resource address and drawing area without recording the full resource barrier, SLV binding and queue submission. The current information is therefore not sufficient to perform a secure and accurate mid-texting back.
+
+The subsequent site test needs to be determined:
+
+1. The final processing of the resource, format and mip/array slice that is actually read, rather than recording only the RTV it has written down.
+2. The list of commands and queues that produce this element confirm the reading time point, actual resource status and synchronised dependency.
+3. Copy to the independent readback resource before content is overwritten, restoring the known status; retain source resources until GPU is complete and do not wait for or write a file while drawing a thread.
+4. Keeps the same test/framemark, eye/retroverse, resource and subresource identity, copy point and finish fence for output. Unknown status, description or tracking spill should be refused.
+
+## Next set of directed static analysis targets.
+
+Snippled while running `d82f58` The following calls exist before the end quad. Checked against the address of.asm:
+
+| Call Point RVA | Target RVA | Purpose of analysis |
+| --- | --- | --- |
+| `d831aa` | `2754f4` | Check final processing parameters/kiding readiness |
+| `d831c3` | `1665dc` | Quote current view-related objects, and track each view input source as a priority |
+| `d83260/d832ef/d83373` | `1b4ca0` | Check whether the global/object data that is being fed is texture, sampler or constant |
+
+These are candidate input preparation paths that have not been back-compiled to confirm callee and have not been created to D 3D 12 SSV maps cannot be named as recognized SceneColor binding functions. The next round of orientation analysis of these functions avoids extending to full EXE or adding blind Hook.
+
+References:[Microsoft pixtool document](https://devblogs.microsoft.com/pix/pixtool/). This command format and option check the installation version simultaneously `--help launch`、`--help take-capture`。
+
+---
+
+## 中文
+
 # PIX 原版路径对照与定点回读前置条件
 
 2026-10-13。保持同帧多视图主线，同帧顺序双渲染为备选，排除 AER。本轮未启用新渲染 Hook，未修复右侧黑屏。

@@ -1,5 +1,98 @@
 # GearsVR 0.0.3
 
+2026-10-24: Current standalone functional workspace `6dof-cover` Branch, sorted[6DoF bunker interaction and realization specifications](docs/6dof-cover-interaction-design-20261024.md)Succession 0.0.4 Develop a baseline. This is only for specifications and preparation, and new excursions have not yet been achieved.0.0.3 Issue background.
+
+By User 2026-10-23"and the request, original 0.1.0 Develop content to 0.0.3 Release, current branch is `codex/0.0.3`- I'm sorry.0.1.0 Branch deleted, content and historical reservations submitted. See the status of this publication[0.0.3 Records](docs/releases/0.0.3/PROGRESS.md)Before[0.1.0 Record](docs/releases/0.1.0/PROGRESS.md)Retain it as historical evidence.
+
+This machine developed using the repository root directory `J:\gearsVr\GearsVR Launcher.exe`The main menu of the game `happyotaku playground` The entry is loaded from the current development list. The public package that depresses to the game directory uses a separate list, which will function according to the version of the package.2026-10-22 The problem of the failure to initialize Playground has been repaired and the VR start was interrupted. See[Positioning and Validation](docs/playground-startup-reservation-20261022.md)。
+
+2026-10-22 Merged `codex/0.0.2` /UTF-8 And start the diagnostic restoration, keep first person's name, Playground and retrofitting. [0.0.3](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.3)This release is complete.[CHANGELOG](CHANGELOG.md). Below 0.0.1 The package and the certification results retain their historical scope.
+
+2026-10-21 Start development and testing using the purchased Steam original, default work directory `J:\gearsVr\Gears of War Reloaded`, old progress is backed up and moved to the original account number. Two originals are complete 3,609 Document Hashi Aligns; local steam startup identity and multi-account settings are compatible. Users have stopped adding compatibility games, no positive double-eye/head-notification has been added this time, and the following release is not updated 0.0.1 See you at the bag.[Migration log](docs/retail-steam-compatibility-20261021.md)。
+
+The third person is a pair of two frames VR Mod.2026-10-21 Generated 0.0.1 Local Open Test Package `releases/0.0.1/GearsVR-0.0.1.zip`Published [GitHub Release](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.1). User confirmed first act pass, KRVR+AVP and VD+Quest 3 Playable and confirm the resolution of the problem.2 The seconds are delayed, subsequent sections are not fully validated and the DLSS is disabled. See installation[With the tutorial](docs/releases/0.0.1/README.txt)I'll see you in the press.[Issuance of notes](docs/releases/0.0.1/RELEASE_NOTES.txt), see construction and check range[Pack up the records.](docs/releases/0.0.1/PACKAGE_BUILD.txt)。
+
+Current package freeze AdsAnchor 2 native / MountedLatency 1 XR, VR, is the OpenXR recommended x starter; game resolution controls desktop mirrors. The compression package contains Python and does not require the player to prepare for environment development. The following date logs and research results are kept in historical range.
+
+2026-10-15 The player test entrance has been removed to the Low/High fixed resolution as required, and is resized by game output. Double-click on the root directory of the machine's repository `GearsVR Launcher.exe`, select the simulator or system OpenXR Runtime, click " Start VR " and enter the level. Stop VR will stop a session normally and do not automatically end the test or kill game.1920×1080 Game output corresponds to every eye 960×1080; reset the game and VR when you change the game resolution. The new combination has been compiled and checked offline to see if the flashing disappears to the user.[Starter Description](tools/vr-launcher/ui/README.md)and[Current build record](docs/62-game-resolution-launcher.md)。
+
+- [New process and learning routes](docs/00-roadmap-and-learning.md)
+- [Camera location evidence.](docs/02-camera-analysis.md)
+- [Native camera analysis](docs/03-native-camera-analysis.md)
+- [Original Call Verifier Results](docs/04-native-capture-validation.md)
+- [Rendering to rewrite authentication](docs/05-render-yaw-wobble-validation.md)
+- [Quick debug start and restore](docs/06-debug-startup.md)
+- [Low-consumption semi-automatic mapping and handle tools](tools/game-io/README.md)
+- [Mapping and handle validation logs](docs/07-game-io-validation.md)
+- [OpenXR Independent Session and Submission Validation](docs/08-openxr-independent-validation.md)
+- [Six-axis original view point validation](docs/09-six-axis-render-validation.md)
+- [VR Interactive Program Record (to be achieved)](docs/10-vr-interaction-design.md)
+- [Weapons 6DoF Interactive Design and Acceptance Specifications (2026-10-22 to be achieved)](docs/weapon-6dof-interaction-design-20261022.md)
+- [Real headline connection authentication](docs/11-headset-connection-validation.md)
+- [Real-time head-to-head access verification](docs/14-live-head-camera-test.md)
+- [Game window into a visible prototype](docs/15-game-screen-display.md)
+- [Final deployment delivery target](docs/16-deployment-target.md)
+- [Game original GPU render object observation](docs/17-native-gpu-observation.md)
+- [First person named Mod Installation and Restoration](docs/18-first-person-mod-install.md)
+- [First person, Mod. Shake and recoil.](docs/19-first-person-motion-and-recoil.md)
+- [Original GPU queue bound and single frame readback](docs/20-native-gpu-binding-and-readback.md)
+- [Original Continuous GPU Image Sharing](docs/21-native-gpu-sharing.md)
+- [Undeclared OpenXR auto-certification](docs/22-openxr-simulator.md)
+- [The scene view is assembled for investigation](docs/23-render-family-investigation.md)
+- [Rendering view copy dynamic validation](docs/24-render-view-copy-validation.md)
+- [Full rendering object structure against original](docs/25-renderer-construction-validation.md)
+- [Rendering thread consumption and view life cycle](docs/26-renderer-consumption-and-lifetime.md)
+- [Matrix preparation and historical data survey](docs/27-render-matrix-preparation-leads.md)
+- [Verifier before and after rendering](docs/28-render-preparation-validation.md)
+- [Offline check for left- and right-eye view calculations](docs/29-offline-stereo-view-math.md)
+- [Second View Structure & Object Border Survey](docs/30-second-view-construction-leads.md)
+- [Original authentication without submitting copy of source view](docs/31-source-view-shadow-validation.md)
+- [Research on creation, historical data and releases of association](docs/32-view-state-construction-and-release.md)
+- [Validate the birth cycle of an independent view state](docs/33-independent-view-state-validation.md)
+- [Full source view construct parameters and call scaffolding](docs/34-source-constructor-argument-map.md)
+- [Native validation of complete source view construction](docs/35-full-source-constructor-validation.md)
+- [Validation of combinations of independent state and complete source view configuration](docs/36-independent-state-source-constructor.md)
+- [Eye input preparation and four-point parameter investigation](docs/37-eye-input-preparation.md)
+- [No original authentication submitted for eye offset](docs/38-native-unsubmitted-eye-validation.md)
+- [Main line progress and next acceptance](docs/39-mainline-progress-and-acceptance.md)
+- [Object boundary of the double viewer renderer](docs/40-two-view-renderer-boundary.md)
+- [Construction verification of original retrofitted objects from two-view view](docs/41-two-view-renderer-construction-validation.md)
+- [Single frame double view into original rendering path](docs/42-single-frame-two-view-submission.md)
+- [Continuing the double view and actual image problem](docs/43-bounded-two-view-rendering-and-pixel-failure.md)
+- [Regional tracking versus single view](docs/44-view-rectangles-and-single-view-control.md)
+- [DLSS Contrast Right Black Screen](docs/45-upscaler-control-and-missing-right-view.md)
+- [GPU Draw Area and Crop Evidence](docs/46-gpu-viewport-and-scissor-evidence.md)
+- [Colour target corresponds to window back buffer](docs/47-render-target-and-backbuffer-evidence.md)
+- [Original call path for the final output of windows](docs/48-final-output-call-path.md)
+- [Final processing object for left/ right view](docs/49-per-view-output-objects.md)
+- [Final output call with area parameters](docs/50-final-output-quad-parameters.md)
+- [RinderDoc Access and Single Frame Measurement](docs/51-renderdoc-capture-compatibility.md)
+- [RinderDoc Call the Pointer Checking and Failed Records](docs/52-renderdoc-import-bridge-failure.md)
+- [Double-Diagnosis Shifting to Ghidra Analysis](docs/53-render-diagnosis-and-runtime-ghidra.md)
+- [Rendering the structure review and local geometry observation boundary](docs/54-render-route-review-and-geometry-limits.md)
+- [PIX Original Path Contrast to Point Read Back Precondition](docs/55-pix-baseline-and-targeted-readback.md)
+- [Final input binding and actual drawing path](docs/56-final-input-binding-and-observed-draw-path.md)
+- [The starship, the gun changer, and the UI and subtitles are moving forward.](docs/57-ui-position-and-subtitle-route.md)
+- [Description of the use of survey tools](tools/package-inspector/README.md)
+
+## Current validation result
+
+Camera locator identifies the current player camera by EXE version Hashi, module RVA, back-to-back metadata and object relationships. The camera is validated in two games and one check point reload. Tools do not use the stacked address of the old process as a new process address.
+
+Recovery 2 The real head start test continues. 14 min 49 Seconds, users confirm that the two eyes have a game scene and are working well; make a suspicion 3 DoF, the star-to-star and the gun exchange UI position is deviating. Logs change real positions, with a pair of eyes containing a horizontal shift but not yet able to announce direction, scale and near-vision experience.1 The display of the start menu is validated by simulator, then continues with the frame and ends normally. The latest replicability range, list of experiments and uncompleted items are found in route documents; first person name and controller are left with guns for subsequent version.
+
+## Warehouse boundary
+
+Git saves scripts, version configurations and research documents we have prepared. Game, third-party software, third-party DLL, download package, depressed game package, run-time memory snapshots and backcompilation output left on the machine by `.gitignore` Exclude.`analysis/` Local original evidence in this case is not copied with the warehouse; it can be regenerated through investigative tools.
+
+The path of the existing tool is based on the current Windows work directory. Redeployment requires self-prepared games and tools dependent, see the tool description. The repository does not contain game files or fully operational VR Mod.
+
+---
+
+## 中文
+
+# GearsVR 0.0.3
+
 2026-10-24：当前独立功能工作区使用 `6dof-cover` 分支，已整理[6DoF 掩体交互与实现规格](docs/6dof-cover-interaction-design-20261024.md)，继承0.0.4开发基线。此处仅完成规格和实现准备，新的抓边探身行为尚未实现。下文保留0.0.3发布背景。
 
 按用户2026-10-23的要求，原0.1.0开发内容改以0.0.3发布，当前分支为 `codex/0.0.3`，原0.1.0分支已删除，内容和提交历史保留。本次发布进度见[0.0.3记录](docs/releases/0.0.3/PROGRESS.md)，此前[0.1.0记录](docs/releases/0.1.0/PROGRESS.md)保留为历史证据。

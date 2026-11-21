@@ -1,3 +1,41 @@
+# DLSS Manual Entry: End immediately after level is activated VR
+
+2026-10-20. This page records the recovery of the original version `GearsCaptureNgxManual2.dll`，SHA 256 `25c414e8ca46da30340f907367956bb87f8142161c279133450c58fd0fb1b66e`. The subsequent independent entrance has been updated to retain the repaired NgxManual 3 See.[Performance Optimization and Contrast](dlss-descriptor-copy-performance-20261020.md). Turning the old test starter off before using it, re-clicking on the root directory `GearsVR DLSS Test.cmd`; old GUI keeps a private copy of the DLL/list at creation. The normal default entry for fixation is Startout 5。
+
+## This time, it's a real failure.
+
+Paste by User 18:21 Log Counter `continuous-stereo-36508-20261020-182152-42feda7d`Actual DLL is NgxManual 1，SHA 256 `0cbe380e5cd222926bd42472ccad6506e3533adf33253ee826da2d579bdc8983`. No regular entrances 5 The conclusions adopted replace the acceptance of this test version.
+
+native successfully activated, but publicized 0、projection 0、owned_error 24;first UI default is none, DLSS output publicization re-projected 1. Output exits diagnostic log 4, no valid binding and completion certificate. Two native output stepsd 83cbf/2b 11a 0 Already present, actual target is in the middle.10 And owned RGBA 8 Geometry is current.6144×3264 Half; this rejection point is an additional DLS output certificate, not a draw_state from the previous round of HUD.
+
+## Rehabilitation
+
+The SDK/native-gap output of owned-sense DLSSjoin is from the owned DOF pass. Normal Outlook is still being executed in primary startup and subsequent rendering, using another binding, which does not allow participation in the same certificate record.
+
+`dlss_output_control.inl` Creates local scope for normal Outlook without proof of key only when it is compiled and enabled. It calls the original function normally, does not contaminate SDK/native-gap records internally or borrows an external certificate. Upon leaving, it restores previous TLS scope. The identity of the owned DOF, binding, setter, quad, eye integrity and SDK release check remain unchanged. The control logic of ordinary old transmissions is still covered by independent testing.
+
+Return directly to normal flag 4/flag 8 Pass: No geometrical change, no matter/bind takeover, original releaseable and SDK not empty; complete owned SDK-eye normal pass not contaminated, incomplete SDK single eye cannot be completed. Previous native-gap, misbelt, target/epoch/code refusal and abnormality check continue.
+
+## Authentication
+
+Freezing Source Relative to NgxManual 1 The new product is used to store the above-mentioned production changes.22 Start self-check,31 Item for inspection,8 Additional inspection of items, and 4 The script test is independently initiated.9 A precheck of DLL/EXE, GUI and VDXR files is enabled; no IDA database is opened or operated, no tool installed.
+
+Actual backstage game session `continuous-stereo-10880-20261020-182914-c6411533`- I'm sorry. `analysis/runtime/fps-resolution-720p-ngx-manual2-startup1-20261020.json`：
+
+- Keep render ratio 1.0 An emulator, matching the VDXR recommended size, every eye 3072×3264 Source:6144×3264, Desktop 1280×720。
+- 30 A valid telemetry sample.32.6159099(b) Second-square stereo projection;515 The new video is available on Facebook.3908 Subsimulate submission, maximum interval 85.3554ms。
+- owned_error 0 UI default none, DLSS output publicisation re-projected 0；517 The second regular birth inspection is issued as no_site and does not forge SDK completion certificates.
+- Receiver GPU Readback 155、serial 154 The right and left eye have full levels and characters, different eyes.99.9410%。PPM SHA 256 `8b47937476f9b278ecb11544d8c8d8f81b63fb120d6aed8a99faf160946f18ef`- I've got visual.
+- Clean-up, XR/owner exit 0, the game exits normally and settings are restored by by bytes. The backstage uses a certified rear window, read-output only, temporary silent sound and disabled physical handle background input.
+
+The verification range for this round is **DLSS test entrance first closes the level with SR and continues to show the chart**. DLSS was not actually opened again during this start-up return, nor was it physically visible or cross-world; these cannot be inferred from the above results.68 Switches are recorded separately from the current round of acceptances.
+
+Detailed freezing of source code, construction, pictures and test information is on signed analsis/. `analysis/runtime/ngx-manual2-startup-acceptance.json`;saving old templates as `ngx-manual2-previous-template.json`. No release packages generated.
+
+---
+
+## 中文
+
 # DLSS 手动入口：关卡启动后立即结束 VR
 
 2026-10-20。本页记录启动修复版本 `GearsCaptureNgxManual2.dll`，SHA256 `25c414e8ca46da30340f907367956bb87f8142161c279133450c58fd0fb1b66e`。后续独立入口已更新为保留此修复的 NgxManual3，见[性能优化与对照](dlss-descriptor-copy-performance-20261020.md)。使用前关闭旧测试启动器，重新双击根目录 `GearsVR DLSS Test.cmd`；旧 GUI 保留创建时的私有 DLL/清单副本。启动修复验证时普通默认入口为 StartupOutput5。

@@ -1,3 +1,173 @@
+# Low-consumption semi-automatic debugging
+
+2026-10-15 Add a new separate `background_input.py`: The project common game and VR share boot access defaults the backstage processing of the primary controller, with the actual backstage " Enables the restoration of the re-enabled" camera and movement of people cross. See changes and stop methods.[Backstage handle record.](../../docs/67-background-controller.md)。`game_io.py action` Default is still in the middle of a focal failure; identification and patch check for visible backstage actions are shown below.
+
+Valided in Réloaded, single window image capture, virtual Xbox 360 Handheld,
+Restores the pause menu, left and right lenses, read-only lens data. The service does not contain automatic customs clearance or recognition models.
+Select a small number of actions by the assistant against the current test target and view a picture if necessary.
+
+2026-10-14 Menu Navigator Reuse `menu_state.py` and `menu_control.py`: Read UE 3 The current scene, player zero focus chain and bullet window text send a confirmation to the verified game window. There is no page-by-page cut-off or a fixed time frame for returning to the car.
+
+```powershell
+& $py J:\gearsVr\tools\game-io\menu_state.py --pid <本次游戏PID> --out J:\gearsVr\analysis\runtime\menu-state.json
+& $py J:\gearsVr\tools\game-io\menu_control.py --pid <本次游戏PID> --seconds 60 --out J:\gearsVr\analysis\runtime\menu-control.jsonl
+```
+
+Reader validates the version of the EXE Hashi, repositioning object registration forms and reflecting fields; does not modify the memory of the game. Supports calibrated title pages, English online service errors, battle entrances, single-person games, continuing operations. Wait and timeout when unknown bullet windows, different languages or focus do not match, do not automatically confirm. 0.6 seconds, reread the status and check PID/HWND.8 or the service stop tags aborting.
+
+The title page contains the AttractLauncher overlay that does not receive input, with only three validated scenes being specially processed. The bullet window is read through the first UIString original text node of Title/MessageText; the original node layout is obtained by cross-calibration while running this version, and the unknown vtable, error attribution or super long string is rejected. 1 M-sec, click the window. 1.6 milliseconds;first positioning agreement 1–2 seconds, read failure during the transition is repeated.
+
+`loading_requested` Only the "continue of battle" was sent, which does not mean that the level is loaded. VR starts a camera time stamp that remains independently certified for controlled WarPawn, Controller, Level relationships and updates. JSONL records changes in state and actions, without automatically saving or uploading intercepts.
+
+Actual: PID 16336 From the main menu to the continuation of the battle 5.313 seconds;fresh PD 33964 Wait and complete all five steps from UI without initialization 21.297 seconds, then the starter independently confirms that the player is ready.40 The field offline test is passed. Support is limited to the above calibrated path, not an arbitrary menu or any archive selection.
+
+## Rationale
+
+`WindowCapture.exe` Through Windows Graphics Capture `CreateForWindow(HWND)`
+Tie game windows to use D in standalone processes 3D 11 Read capture texture without relying on inside game D 3D 12 Hook。
+It cuts the window border, title bar, defaults 1920×1080 Client area reduced to 640×360 JPEG (Quality) 0.72）。
+Enable DPI perception while processing HWND, avoid system 200% The scaling leads to the upper left corner only.
+Reporting errors when failure or window minimization is not reversed to the desktop screenshot.
+
+The window image includes the menu that the game draws itself; what is captured when the game is suspended will also be paused.
+WGC may show the capture border briefly when you start capturing.
+
+`game_io.py serve` Maintain a Vigem virtual Xbox 360 Hand handle, take orders using local file queues.
+The service does not listen to the network, does not inject keyboards and does not modify the game memory. The handle is a durable device that avoids re-entry at each operation.
+
+And then there's something else. `confirm_window.py`Send a group of Enters to every game with only a path check
+WM_KEYDOWN/WM_KEYUP, does not send global buttons. The failure of the network window and battle menu have been observed receiving this message.
+Even without the focus of the game, it works; this does not mean that all game inputs can be executed in backstage.
+Confirms the current menu when you have a manual diagnosis; auto-navigation uses the memory status controller above.
+The handle action of the game is default to focus; backstage actions must be visiblely enabled and process identity bound.
+
+When user specifies the position of the taskbar, you can use separate `focus_taskbar.py` Activate the window. For example, the user specifies Win+0：
+
+```powershell
+& $py J:\gearsVr\tools\game-io\focus_taskbar.py --slot 0 --pid <本次游戏PID> --creation-time <本次FILETIME>
+```
+
+This tool verifies the game path, PID and creation time by sending specified shortcut keys only when it is not focused and does not hold the qualifying key. Finally, confirm that the front desk HWND is the game. The slot is provided by users without guessing about the taskbar; no game input is sent if a failure occurs. It does not restart virtual handle services or consider " shortcuts sent " as a focus success.
+`telemetry` The video is re-used as a previously read-only, version-of-the-art camera locator.
+
+Hand-held connections are not the same as being assigned to game players.2026-10-14 PID 34688 Use window Enter
+After entering the level, the original XInput device is still undistributed (player index -1); pure rocker commands delivered
+Windows, but skipped by a game. A regular Back short-sum player 0 After that, the same right swinger
+Native camera turns 20.484°. Automatic motion tests should check actual camera changes, not just the commands `ok`。
+Back's behavior depends on the current interface; this validated normal level does not have a new menu, which does not mean that you can
+Unknown interface blindly pressed. Evidence is located in `analysis/runtime/input-assignment-34688-*.json`。
+
+Enter to check the full EXE path first; default mode requires focus of the window. One action 0.02–3 seconds;per cent 10ms
+Check the protection conditions, stop files and F for mode 8, and finally zero the buttons, the boomers, the triggers.
+Service restart cancels old queue command, more than 90 Second orders are not executed.
+F 8 The response is also affected by the system ' s movement.
+
+## Start
+
+```powershell
+& J:\gearsVr\tools\game-io\Start-GameIO.ps1
+```
+
+The service is hidden from the backstage, with a handle neutral and does not automatically operate games. No re-starts each round.
+Current Python path:
+
+```powershell
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$io = 'J:\gearsVr\tools\game-io\game_io.py'
+& $py $io status
+& $py $io telemetry
+& $py $io capture
+```
+
+`status` Returns game processes, focus, handle connections and XInput slots.
+`telemetry` Return lens position/angle/FOV, and compare 0.2 is the time of the second lens updated.
+Time stops are pauses/stops more clues and cannot be independently certified for the specific menu status of the game.
+
+Can not open message `analysis/game-io/frames/`Default returns only file paths, resolution, brightness, change fractions, etc.
+Short JSON,**It doesn't automatically pass the picture to the model.**. When you need to judge the image, the assistant opens the selected picture.
+Brightness change fractions are only rough pixels and cannot be shown to have moved successfully alone.
+
+Lower resolution available `capture --width 320`;as needed to read small words `--width 960`。
+Low token costs are mainly from lower reading and lower size of pictures, while JPEG bytes are not images token numbers.
+
+## Example of operation
+
+Try to focus on the game (Windows may limit backstage programs to activate windows, and then a little game is required):
+
+```powershell
+& $py $io focus
+```
+
+Short-click confirmation key, and once after default screenshot:
+
+```powershell
+& $py $io action --buttons a --seconds 0.12
+```
+
+Turn the camera down, no screenshots, and then use the digital results:
+
+```powershell
+& $py $io action --right 0.55 0 --seconds 0.45 --no-capture
+& $py $io telemetry
+```
+
+Available buttons: a/b/x/y/start/back/up/down/ left/right/lb/rb/ls/rs.
+Rock the pole. `--left X Y` / `--right X Y` Scope -1..1;the trigger `--lt V` / `--rt V` Scope 0..1。
+`--wait-focus 45` You can wait for the user to turn the focus over to the game and then execute a short action.
+The roller is required to exceed the dead end of the game, and a small number may not be effective.
+
+Visible Backstage Actions (Performance)2026-10-16: Using the exact PID of this game and creating FILETIME, no window or taskbar shortcuts are activated:
+
+```powershell
+& $py $io action --background --pid <本次游戏PID> --creation-time <本次FILETIME> --right 0.55 0 --seconds 0.45 --no-capture
+```
+
+Service must run a new version `game_io.py`; old services are lacking `background_action_v1` When capability identification is performed, the client refuses to line up and requests to stop and run `Start-GameIO.ps1`。
+Backstage mode calls first `background_input.change(pid, 'status', expected_creation=...)`, read-only full input function in `enabled` Status; not enabled, unknown bytes, PID or creation time inconsistent are rejected and patches are not automatically modified.
+Check the PID/HWND, process creation and stop request before sending and throughout maintenance. Try to get back in as soon as you fail. Backstage mode cannot be combined `--wait-focus`; still re-use the same permanent virtual handle.
+This model has been tested for mock offline protection; the effects of actual game actions in the backstage still need to be independently validated with camera, character or corresponding scene data.
+
+Stopped service and was placed on zero handle:
+
+```powershell
+& $py $io stop
+```
+
+You can hold it.8 Stops the service. Loss of focus only suspends current input and does not quit the entire service.
+Do not re-enter the Windows window after it failed; one click is sufficient.
+(a) If the physical handle is taken over another slot and the game ignores the virtual handle, it requires users to disconnect the physical handle before reconnecting services;
+Current virtual handles in slot 0 The game is accepted.
+
+## Recommended workflow
+
+1. Runs the memory menu controller when you enter a card from the startup menu; no page-by-page screenshot or manual contact focus is required.
+2. Copy that. `loading_requested` , the VR test is started after independent checking of players and level levels.
+3. Default handle action needs focus; mandated backstage testing can use the above-mentioned identity binding mode visibly. Priority is given to digital results such as lens time/angle; unknown UI or need to verify rendering 640 Pixels wide.
+4. No time-trip or video recording; F 8/ Stop tags can stop automatic menu input.
+
+## Dependency and reconstruction
+
+VGEmBus driver is now available on-board, and no system drive has been installed/reloaded.
+vgamepad official repository fixed to v 0.1.0，commit `60bfb9012d7d87df6eb56844bda15626f60a04b1`，
+Ignored at Git `tools/third-party/vgamepad`. Directly quotes the Python module and client DLL,
+No setup or driver installed.
+
+```powershell
+git clone --depth 1 --branch v0.1.0 https://github.com/yannbouteiller/vgamepad.git J:\gearsVr\tools\third-party\vgamepad
+cmd /c J:\gearsVr\tools\game-io\build.bat
+& $py J:\gearsVr\tools\game-io\test_game_io.py
+```
+
+Build C++/WinRT headers and CMake that require the VS, Windows SDK; path to find the built.bat.
+Third parties, compile documents, screenshots and logs are excluded from Git.
+
+References:[Microsoft Single Window Capture API](https://learn.microsoft.com/en-us/windows/win32/api/windows.graphics.capture.interop/nf-windows-graphics-capture-interop-igraphicscaptureiteminterop-createforwindow)、
+[vgamepad Official User Note](https://github.com/yannbouteiller/vgamepad/blob/v0.1.0/README.md)。
+
+---
+
+## 中文
+
 # 低消耗半自动游戏调试
 
 2026-10-15 新增独立的 `background_input.py`：项目普通游戏和 VR 共用启动入口默认放行原生控制器的后台处理，实际后台“启用→恢复→再启用”镜头和人物移动对照通过。修改与停止方法见[后台手柄记录](../../docs/67-background-controller.md)。`game_io.py action` 默认仍在失焦时自动回中；显式后台动作的身份与补丁校验见下文。

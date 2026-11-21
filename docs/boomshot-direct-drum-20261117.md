@@ -1,3 +1,84 @@
+## 2026-11-18 Part Relationship Amendment Delivery (contact)02）
+
+Boomshot ammo/left file read only on Quest cycle 1794499171798-4 Restoring full hand/blaster relationship: Reversing desk A=(-X, Z,-Y), ...75 Scale, centroid and feed, with original Magazine Mesh source-local wrist position (.12446883397,-.10665401194,-.10103154195)m and rotated; same file 15 The main player is restoring the current Boomshot projectauthored template, which is clearly not a master recorder and no longer pretends to be cross-weapons collection imported.
+
+contact 01 Left-hand contact, one round and two rounds were successful, but the main hand model to the AimKey transect caused the gun to be horizontally biased.90°, the candidate is rejected. Reactivate existing mesh_in_aim, condition 02 The original video is now visible, armed, laired, encoded and subtitled; left hand wrapped around the perimeter of the buveh, gun reverts forward, actually replaying barrel under.0°It's a normal switch.14.810691 The second consists of active-held observation stop and alignment, actual re-launching of the original component upon arrival, two rounds Proj_Boomer. Unloaded, non-recovered, non-rerun of the Second Hands, perfect rerun matrix.
+
+PG/Native compilers 0;this instanceboom-contact 02-1118-014243 driver/stop exit 0;isolated-done confirms that the Game/children belongs to is normally out, forced_termination=false. Quest reads only pull and does not install or start applications. This round does not appear as physical header acceptance.
+
+25# The second the original subtitles:analysis/boomshot-20261118-contact/Boomshot-按工作台部件关系抓握.mp4. Contact frame: video 02/check-contact.jpg; evidence: Delivery-review.json; unchangeable DLL and climate:candidate.17 The round cross-arms data conclusions were withdrawn and the following is historical.71/ Fixed access points are not updated and no new Git is submitted.
+
+---
+## 2026-11-18 Important corrections after user contact with the intercept
+
+Pull back below 17 Round "The Real Boomshot"1794486454128-2 And ammo.1794500066511-3“Conclusion: Model, top floor, Gnasher.glb, and Boltock.glb. Screening only by component label/right hand, missing weapon model/content Hash leads to misuse across-weapons archives. The number of operations, seating/centre/ballillery response does not prove the geometrical correctness of the earlier Goal completion status.
+
+This round will be used to read only Quest Real Boomshot projects and 28 File to analysis/boomshot-20261118-contact/quest-readback, no headline application started, installed or modified. The Boomshot project actually uses ammo 1794499171798-4 The main master of the weapon must be removed and it cannot be called collected for import.
+
+More important links: ammo edits show the past M when generated 0 Cached mime vertex converted by reflector axis and 0.75 The player ratio is reduced by the physical heart, showing a part_delta and profile.feed. collects wrist/fingers must recover relative to this actual visible bullet nest and cannot replace its parts coordinates with the gunRoot/seated bone. Independent view three has been rebuilt according to the real Marcus skin and the actual ammo mesh/feed, and hands/finger are effectively enclosed; figure for offline workbensch reconstruation, not a new game screenshot. See the subsequent report on the current cycle of the source repair and new basic operation.
+
+---
+## Final Supplement 17（2026-11-18）
+
+Delivery video:analysis/boomshot-20261117/delivery/Boomshot-真实抓点与完美换弹.mp4，39.24 Seconds,1280×840 Original speed, Chinese 3 lines, controlled Source 1 Actual game rendering. Reuse built 14, no change in the gun/hand/ballistic code. Real master gun 1794486454128-2 The bomb nest.1794500066511-3 Relationships and fingers are in effect; horizontal input of actual rendering model + Y overturn 0°The three original rounds started on the same basis as the shot, with their distribution and gravity maintained.
+
+Regular switch.8,327,396 We're gonna change the bullet.3,260,090 We, the reward was applied 1 Three actual Proj_Boomer and two re-launchs. No loaded motion.0、stop_exit=0, identified-done confirms that it is owned_game_abcent=true, without a dependent subprocess, forced_termination=false. No new physical header acceptance.
+
+Supplementary 15/16 Could not close temporary folder: %s 15 New bomb nests have been obtained but not installed;16 Left shoulder failed. Logs are visible 15 Inserting Mandates 100(b) The entry of ms into age for a transboundary cancellation, without treating it as the sole cause or relaxation of time limits;16 No further details of the branch are allowed. Shows the original shoulder point before existing regions and adjusts to default regional centers (-.2295,-.115,+.05) after insertion from 0.1 Increase the number of seconds to 0.35 Seconds, actually exit and re-fire;17 Process passes. Declares only that the basic process of this round is passed and does not state that intermittent problems are excluded under all load/physical conditions.09 The video's hand/directional conclusions have been withdrawn and the video is being used to create a new image of the event.14/15/16 and all original records are not covered or spelled out.
+
+Full result:analysis/boomshot-20261117/delivery/review17.json;original frame/time: video 17/projection; subtitles/record-making: Delivery/revised 17;responding to DLL snapshot: Delivery/revised-build 14. Offline pythonw codeconsole_hwnd=0、own_visible_windows=[]。
+
+---
+## 2026-11-18 Capture point, horizontal and ballistic correction (replaces below)09(Road visual conclusions)
+
+The real lead gun file has been recovered: owner-cylinder-captured/captures/1794486454128-2...json; the master uses the wrist/gun relation to the file 15 Finger position.1794500066511-3 The wrist and the same finger position. The previous “no master's” conclusion was wrong, and no longer required re-collection.
+
+Gun barrel +Y is aligned to current Aim +X; Grip anchors are positioned.0 Write point to distinguish BOOMSHOT calibration from Lancer wrist angle. The original bomb nest component uses the same C 0 The left wrist and collection relationship are rendered with the action still reading fresh original Grip. Restore the original component ' s Translation, Rotation and all Absolute signs; do not create alternative bomb nests. The left hand Grip closes with a real capture position at the same point of writing on the finger, without additional world wrist targets.
+
+build 14 COMPILated, video 14 Full basic process passes: normal switch 9.693035 Seconds, perfect change of bullets.3.073090 Second, original reward applied=1, three actual Proj_Boomers. The horizontal gun actually delays reading back the gun_basis model +Y z=0; not just to enter Euler. The original shell generation position corresponds to the location of this recording gun, using the same line in the direction; the original GetPlayerAimError is dispersed, gravity and SafeSpawnLoc collision protections are maintained.1.1 The seconds show a frontal side of the target explosion. No physical arms were detected or all angle surfaces claimed to be consistent with acceptance.
+
+A target amendment: video 13 No triggers were launched immediately after perfection; pending withdrawal action, video 14 Actual third successful. The completion of the account book does not mean that the original CanFire has been restored; the demonstration is explicitly reserved for waiting time. video 14 There's still a problem with changing the left-hand shield, video.15 Just adjust the handout and reset the same bueld 14, no function or test matrix is added.
+
+Code/Bulletshot:analysis/boomshot-20261117/delivery/revised-build14; new video and final review are available in the following delivery records of the same catalogue.14 The example of which you belong is duly exited, owned_game_abcent=true, forted_termination=false.09 The cycle is historical and does not constitute evidence of an amended version.
+
+---
+## The latest replica and perfect change of bullets (in English)2026-11-17）
+
+The following historical hand records do not represent a retake of the round. This paragraph is old 09 Round record: The judgement that no real master file was found at the time has been withdrawn. See 2026-11-18 Amend the record.
+
+Perfectly swapped bullets stopped at the real original bomb nest and returned to the base. Recovered inventory ACK early end time, closing request pre-emption problem; current actual normal switch 9,160,892 We're gonna change the bullet. 3,680,652 We, original reward applied 1 Three original Proj_Boomer launches and final re-launchs were successful. No loaded, no switch-off barrel moves.
+
+Retrospect and repair: Boomshot was not stopped; the certified holding records should not be erased from the current frame expiration; the route continued at the post-insert inventory submission stage; geometric confirmation divided into fresh frames; the request was released upon arrival with certification; Grip allowed closure of the request. Checking the original object, same service with Native serial, current source, inventory and one-time input; 100 ms door not relaxed.
+
+Use the original barrel in the direction of the gun +Y to align Aim + X, above +Z, Grip to maintain position anchor; no longer keep the immediate animation of the gun as a horizontal benchmark. Apply the target_rot in neutral simulation positions and lean down to 0[Returned ] Before we put the retorted =1 . The old treaty -29 The degree is a real flaw. The neutral bearing of the gun has been checked, and the physical Touch arms level is unsettled with the owner.
+
+Playground:A3B70BFF1E221489396E04C027B31CD21D7D11219CE2A354E7CD10D19DB46860. Build successful; using compatible-source with freeze baseline, does not package changes to other tasks in the home directory as a whole. Real instance 09-1117-191938 / game 90628，driver_exit=0; eventually owned_game_abcent=true, without owned subprocesses, forced_termination=false. No game tests added after stopping.
+
+Video:analysis/boomshot-20261117/delivery/Boomshot-完整流程与完美换弹.mp4，42.92 seconds,1280×840、6001071 Bytes. Off-step HWND WindowsGapture, controlled simulation input, actual time play; only the front navigation and emulator window title menu is cut without acceleration. Three lines of Chinese process/action/object result subtitles. pythonw encoding, cosole_hwnd=0, own_visible_windows=[], FFmpeg CREATE_NO_WINDOW; has been shown with guns, general ammunition, fast-tracking and perfect re-entry. The original frame, assorted JSON, results and the construction of snapshots are kept in Delivery/Full-demo 09- * And vidio 09-192010。
+
+---
+# Grenade launcher directly switch the bullet nest (2026-11-17）
+
+This is done according to the owner's simplified interaction requirements: taking a gun, raising a gun, shooting, then removing an old bullet nest, taking new one from the left shoulder, adsorbing and inserting it directly. Normal routes are not loaded, shot or turned off. The old agency's inspection codes remain historical compatible paths, not normal interactive steps; normal processes no longer show the old closed barrel guidance.
+
+[Historical version] Imports only left hand support/ammo, with default for main right hand;2026-11-18 It's changed to real master.1794486454128-2. Original model, Marcus 115 The skeleton, wrist-string and original bullet nest components continue to be used again.
+
+Directly reload the original game and submit the munition path. The old bomb nest follows the actual current component with the left hand, pulls it out and releases a hidden; new verb from the left shoulder supply, enters along the thrust of the insertion, adsorbs at the end. No seat or button is generated when valid input cannot be read for the time being, and the hold can be re-referenced outside the entrance. The current input period is still in place. 100 ms; effective neighbour sampling of direct re-loading is maximum 250 ms interval to adapt to the low frame rate of controlled demonstrations, and other weapons and old institutional pathways have not been changed.
+
+Corrects the type error of reading that was discovered in actual operation, and the problem with the original ISComponentAttached returning valid output tags to parameters. Reduces the replicating game status, geometry and finger displaying assets for reading; no changes were made to shared Native, input time stamp or original projector.
+
+DeepSeek CLI workker: Kaku / Deepseek-v 4.1-Flash, long talk. `01a1e554-b7c0-7293-816e-a307a5d40cf1`,Sidingbar title `Boomshot｜DeepSeek 开发 worker`. Simple realization, pose import, build and script are ready for this worker, with the main session being integrated, reviewed and run.
+
+Private build user `analysis/boomshot-20261117/compatible-source` Playground SHA 256 Yes `849589934444ecf9ea2c71a828dc8127c193c53c15be0eb14179c87d016c0364`. Delivery of snapshots and contracts 47 Subtitles are on the... `analysis/boomshot-20261117/delivery`。
+
+Basic demonstration examples `boom-basic-1117-050039` Actual results: original ground pick-up and shoulder grab, hands holding/adaptation aim/shooting/release, release of old verbs out, acquisition of new left shoulder nests, adsorption to seat, re-fired; two original Proj_Boomer dispensers reply respectively called 404965 and 498649. The new bomb nest is followed by AmmoUsedCount 0 After shooting again, 1. HasInfiniteSpareAmmo=true,SpareAmmoCount=2 The same is true of the rule. The script was originally wrong to require a drop in the spare number and exit. 1, the original record is kept, the explanation is amended and the results of the actual action are shown in Basic-050144/basic-review.json. No correction to pretend to be a new game.
+
+Example exit normal: launcher_exit=0 The physical handing, full hand-to-hand alignment and limited backup are not part of this actual demonstration.71 The site is also used to provide information on the situation of women in the country, and has been updated for daily access, installation at Quest and other weapons.
+
+---
+
+## 中文
+
 ## 2026-11-18 部件关系修正交付（contact02）
 
 已按Quest本轮只读回拉的Boomshot ammo/left档案1794499171798-4恢复完整手/弹巢关系：逆转工作台A=(-X,Z,-Y)、.75缩放、centroid和feed，得到原MagazineMesh source-local手腕位置(.12446883397,-.10665401194,-.10103154195)m和旋转；同一档案的15指姿势同步采用。导入脚本校验model/hash/part/side/source time，拒绝误用Gnasher/Boltock来源。主手恢复本轮Boomshot项目authored模板，明确不是实录主手，不再冒称跨武器采集已导入。

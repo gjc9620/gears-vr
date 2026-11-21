@@ -1,3 +1,41 @@
+# DLSS Manual Entry Descriptor Track CPU Optimization
+
+2026-10-20。`GearsVR DLSS Test.cmd` The independent list is updated to NgxManual 3,Preserve NgxManual 2 The start-up certificate proves quarantine repair. DLL is `analysis/native-build-ngx-manual3/GearsCaptureNgxManual3.dll`，SHA 256 `7eda76dbcdc4cea004914840f969c895c1c5ed4bb1c20a5e0aea634b66ccd657`. Effective after re-opening the test starter; there is already a GUI that keeps the private copy of it when it was created.
+
+## Modify and check
+
+The old describer copys the path with the highest number of structures, zero and destroyed even if only one is copied 128 temporary Cell array of items, about 48 KB. Actual NGX observation has a large number of such echoes per second. The single description is now copied separately, with only one source, Cell; the rest remains in place. Keep the head/scope/visible sources rejection/overlap/volume/version/resource holdings and sources proof, do not add to expulsion or authorization, and do not modify rendering orders or resolution.
+
+NgxManual 3 Freezing Source Code with NgxManual 2 Based on differences in production only `ngx_mv_descriptor_provenance.h`, and add synonyms to the 144 Group differential check.22 Start,31 Item for inspection,8 Additional examination and real D 3D 12 Descriptor fixture passed. Synthetic CPU testing 20 10,000 copies of the convention 182 ms down to 5 ms, not just as a frame.
+
+## Practical game A/B/A
+
+Same archive scene, same game configuration bytes, render_scale=1♪ Every eye ♪3072×3264 Source of receipt 6144×3264 Desktop 1280×720. Keep dynamic blurs, Quality Bloom and AAQuay 3, start-up phase DLSS closed.120 Hz authentication emulator; per round 45 A valid sample, last of the stable segment.30 A sample. Counts the newly released pair of eyes, and repeat projection is not included in the frame.
+
+| Order | Build | All-part average | Stabilization section average |
+| --- | --- | ---: | ---: |
+| A1 | NgxManual2 | 21.80 | 22.02 |
+| B | NgxManual3 | 23.53 | 25.79 |
+| A2 | NgxManual2 | 21.41 | 21.97 |
+
+In pairs/seconds. Relative to the two old stable segments average 21.9956 New edition up.17.235%;dispersing before and after old editions 0.262%. The whole section contains disturbances such as post-start readback, and the complete sample is kept in reply. All three rounds are stopped normally, native/XR, restore entrance bytes, normally close the game and restore game settings bytes; candidate audio board shows reported 1、restore_pending 0. Candidate owned_error 0、UI first fault none、DLSS output publication rejected 0。
+
+Simulator Settings File SHA changes height with the preview window that you are saving from. Mechanical reconstruction is three original SHAs, changing only window_health=1304/1265/1226, the remaining fields are bytes the same; each eye dimension, FOV/IPD, full_render=false, show_stats=false and preview_fps 90 Same. No player window moved or adjusted. The difference and complete confirmation was signed `analysis/runtime/ngx-copy-fast-simulator-settings-audit.json`, does not hide the difference in the file summary.
+
+Organisation `continuous-stereo-11728-20261020-191707-6d13842b`：1148 For receiving images,5877 Subsimulate. Actual GPU back-read 6144×3264，SHA 256 `60b9b4ff42353cab07c445949e6fefd953c86396b6d08c079e3eb3b793f1db9e`, the visual check is complete to the eye and to the role; old cosmosphere also has a reread. This evidence does not replace functional/frame rate, cross-world or physical head start acceptance after DLS is activated.
+
+## Access and evidence
+
+Summary reply `analysis/runtime/ngx-copy-fast-comparison-private.json`;source code, build and check as `ngx-manual3-source-audit.json`、`ngx-manual3-tests.json`. Packaging script verified with actual prepare_run 9 The private copy is verified. Only the independent DLSS list is updated; other tasks at the regular entrance are kept up to date.
+
+The first two times of checking against the built directory of existing event files were rejected before activation, and no frame sample was obtained. The test script has been changed to create an independent authentication directory by prepare_run per round, keeping the old log. No sample is interpreted as zero frame rate. These failed confirmations are still kept at ignored eventsis/, not used in the above table.
+
+Previously, the user manually sent "Looks like it's OK" to normal Starupoutput 5 Session, not this NgxManual 3;the feedback and 33475 See you on the history record.[Start repair.](161-vr-startup-output-fallback.md). This round optimizes the not down-rendering, painting or changing the user menu lock policy and does not generate a release package.
+
+---
+
+## 中文
+
 # DLSS 手动入口的描述符跟踪 CPU 优化
 
 2026-10-20。`GearsVR DLSS Test.cmd` 的独立清单更新为 NgxManual3，保留 NgxManual2 的启动证明隔离修复。DLL 为 `analysis/native-build-ngx-manual3/GearsCaptureNgxManual3.dll`，SHA256 `7eda76dbcdc4cea004914840f969c895c1c5ed4bb1c20a5e0aea634b66ccd657`。重新打开测试启动器后生效；已有 GUI 保留它创建时的私有副本。

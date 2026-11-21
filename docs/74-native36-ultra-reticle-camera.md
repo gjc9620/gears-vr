@@ -1,3 +1,57 @@
+# Native 36：4 K output, arcade outer circle, lens and collection border
+
+2026-10-17. User feedback Native 35 Yes.4 The user then leaves the rest and is explicitly authorized to continue repairing the guard-to-no-serv test; the rear-office physical handle remains closed.
+
+## 4 K release failed
+
+Failed Session`continuous-stereo-24660-20261017-031525-76586caf`Center, camera/right eye submission through 1637 And then GPU published it as 0 It's in the original state.`final_eye_failure`Okay.135／137 Recording the right or the left of a valid instrument 1920×2160 Half sector, target.3840×2160、format 24、quad caller `2b11a0`♪ Every eye ♪817(a) The number of times;`eye_valid=1`But the draw gate refused. The five run-time Hashi authentication of the current path is passed. This is a specific output path that rejects evidence, not based on resolution speculation alone.
+
+The old judgement allows this call to write only intermediate textures, excluding direct writing to the current Backbuffer.2a 98301 Allows both these two types of objectives to be included in the certified eye-to-eye path, retaining instruments, UV, geometry, format, Draw/Execute/president and unknown writing checks; open`d83cbf`Or repeat the whole final picture. ddd 874f 6 Completing the GPU synthesis of self-detected carler scope without relaxing product judgement.
+
+## Quasi circle.
+
+CacheUnrealScript `WarfareGame.WarHUD.DrawWeaponCrosshairGOW3`（artifact 2 Export SHA 256 `082c66d6ce62a562f645929c9f09e6e2cff0c5914362bd3a13afdc7b3fa5e4d0`) Shows that the proliferation icon can be drawn four times by DrawIcon, with a change of location along Scale/Xofset/Yoffset; the script still contains undecommended native token and is not reduced as an entire engine.
+
+The old protosol strategy requires each GPU site to be kept in separate cells, with separate pictograms retreating and central icon still being able to correct.3ab 3e 90／cd 77 fbc uses the same term root, a combination of segment bunders that have been independently certified as pure Canvas parastars for use in a central door ban and projecting with the same instrument; does not alter the geometry of the source vertebrae, spread space or borrow different root/HD. The offline test covers four-micrometer segments, independent center coon, different root and partiality.`ui_reticle_direction considered=0`This is therefore still a process of offline validation and does not allow for the actual resolution of the user ' s outer circle.
+
+## Cameras and Borders
+
+f 294764 Add`camera_closer_metres`（0–0.5 Default 0) and bilingual starter controls, capability fields`camera_distance_control`. Move two eyes forward to the same level as the original video camera, and keep IPD/6 DoF; common-person camera only, excluding cainematic and mounted, and retaining at least the person ' s eye 0.4 The pre-mei range. This is an experimental retrofit, without changing the game shooting/crash logic or authenticating the head-over experience of wall blocking and new distance.0.3 rice; controls can be returned 0 The package is still missing.0。
+
+4c 7a 402 Request Windows Borderless permissions and settings on menu/film WCC collection`IsBorderRequired(false)`, do not change the primary texture distribution path of the level. Keep normal up/restore and keep available collections if permission fails. This log`wgc_borderless_access_status=4`、`wgc_borderless_request=accepted`、`border_required=false`; this proves that the system accepts API requests, but not that the eye check border has disappeared. Yellow system collection tips cannot in themselves prove a false dual-eye solution.
+
+## Freeze Build and Actual Return
+
+Native 36 b Source code frozen at dd 874f 6,The Catalogue`analysis/native-source-gameplay36b`, re-enact recorded MinHook depende; does not contain unsubmitted side changes. `tools/native-capture/build-gameplay36b/GearsCaptureGameplay36.dll` SHA 256 `3a669ae8f64567462fc2e31c1cbf37ecb7e7f4fd701b4e3768768b667db16f73`。XR `tools/openxr-probe/build-borderless1/OpenXRPoseProbe.exe` SHA 256 `2c27d29ca68a1629cb987addeedbc49ea59f2f7355408802a4b84ca7d96fe5eb`。14 Primary,56 The block starter check and the GUI build/self-detection pass.36 Freezing Self-Detected Failed to Keep`gameplay36-selftests.json`, the amended result is:`gameplay36b-selftests.json`。
+
+Actual emulator session`continuous-stereo-30096-20261017-034227-40dd3b0b`Continue Saved 4 K paint configuration, visible simulator Runtime and the handle is not enabled. The death menu is automatically released after entering an existing campaign, using the target window Enter to read check points after full identification/menu tree validation, and world selection 1→2 No new battles, transients or modification of the archive were opened. Windows refused to get a focus again and did not bypass the handle limits in the back channel, so it did not complete firing-on-star sampling.
+
+- Original Published 1763、capture attempts 1767、busy 2、linked 1767;no ticket/rectangle refused, exists 2 Subpollution frame.
+- Camera 0.3 The rice application 1776 Inactive 0／rejected 0;HUD layout application 4053 Second, fallback 197,HUD Sequence Error 0。
+- Request Image 1: Instruments 480、source serial 472、3840×2160，saved monotonic ns `41414615792200`; the original GPU and thumbnails show two eyes of character/situation. No head-cognosis acceptance is replaced by a two-eye pixel difference.
+- XR records 4410 Sub-submission,1760 Copy a picture. Range 174.598 Seconds with death menu to stay, maximum interval 125.308 Seconds, not called continuous play-by-black screen pass.
+- Normal stop, native cleanup, exit restored, XR out.0 All authentication; the NM_CLOSE normal closed game after identification has been verified, without mandatory termination.
+
+Original status, logs, images, build list and returns are all signed `analysis/runtime`. New offline candidate`analysis/release-staging/gameplay36-offline-20261017`The pre-separation check is made:695 Documentation,42673824 Bytes containing new camera helper and README in Chinese;`release_ready=false`, no clean player machine or real head show deployment acceptance.
+
+The next step is still to be: real visibility 4 K/Ultra, open-fire outer circle, additional CG/machine gun/loaders, perfect reloading, long tour, Cardon and startover delay.4 The repairs did not prove all of the above.
+
+## Commencing self-detection and re-entry.
+
+9824 aea completes default consecutive sessions 22 The item is uniform until the game is created, removing the same preset/activated duplicate command. One-time proof is carried by a currently successful reservation sub-process report, binding the starter PID/FILETIME, the created precise game identity, this wheel ronce, Suite abstract and DLL/all self-detection program Hashi; activates the consumption certificate, checks the complete file of the current request and rechecks the document before remote activation. The old list/independent order is still running on its own time without supporting it, without using the cross-cachel cache.159 The target test is passed. The original shadow/constructor self-measurement program and the new Helper are completed in the package; the simple module import of the old package does not prove that these executable files are complete.
+
+Actual Session`continuous-stereo-33008-20261017-035657-b3495207`Use same Native 36 DLL／Borderless 1、4 K Configure,0.3 Rice lenses and visible simulators. Before the game 22 The item is self-detected and reserved for unique inspection 7318.112 ms;calding when level is in place 15.215ms，`self_tests_total=15.293ms`, no more repeated implementation 5.5 Second self-measurement. Original readiness.4569.319 ms;last round 14576.799 The difference between ms and ms is also a change in certificate generation, which cannot be attributed entirely to self-detection.7582.909 ms, still not on-the-spot entry to VR.`gameplay36-prelaunch-reserve.log`。
+
+This round normally goes through the two-death menu to read check points, world generation 1→2→3. The first two controller requests, although successful, did not advance real time at one of the controls, FOV 80, does not count as valid ADS acceptance; the old log is not rewritten. The third time you wait for a new generation with actual scenes, GAMEPLAY mode and then send it.3 seconds LT/RT, virtual handle automatically returned; real time camera time forwards. GPU requests image 3 For ticket 2113／source serial 2096、3840×2160 Images showing two-eye guns fired and spread to the starring circle. File`.gpu.ppm.3.ppm`and`gameplay36-ads3-preview.png`. The handle of the back-office entity is never enabled.
+
+Final proto-naturally-subsidized/planned/applied 250, center_received/geometry_missing/projection_projected 0;limited applications 248 Back in the direction.2. HUD layout application 6810 Back off.132, close the camera.2670 Number of refusals 0. GPU release 2652，busy 5, ticket/rectangle refuses 0;XR copying 2648, submission 6512. Range 155.673 Seconds include the Death menu, maximum interval of process 42.483 In seconds, you cannot be considered a continuous tour of stability or physical headline integration/fall point accurate acceptance. Normal stoppage, primary clean-up, re-entry recovery, XR exit 0 pass and then the game is normally closed.
+
+Starter window confirms the full display of the new lens control 0.30 The default path for rice, VDXR is correct and closed after checking. The pre-detection migration has now been done by default and name Nature 36 List enabled,58 The field starter test passes. New, non-variable candidate`analysis/release-staging/gameplay36-prelaunch-20261017`Pre-inspection of isolation passed (Pre-exit)700 Documentation,43408062 bytes;runs the actual in-pack with Python 22 The item is self-measured (in the case of a single item)9 Unique binary file) , no game started. Reply`gameplay36-prelaunch-portable-preflight.json`、`gameplay36-prelaunch-packed-selftests.json`Still, there is a candidate for development that does not replace clean player machines and real head-over acceptance.
+
+---
+
+## 中文
+
 # Native36：4K输出、准星外圈、镜头与采集边框
 
 2026-10-17。用户反馈Native35在4K／Ultra不能进入双目，准星中心图标正常但扩散外圈有问题，希望启动器可拉近人物镜头，并询问黄色采集边框。用户随后离开休息，明确授权继续修复与无人值守测试；后台实体手柄保持关闭。

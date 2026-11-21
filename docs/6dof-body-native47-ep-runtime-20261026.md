@@ -1,3 +1,41 @@
+# Native 47 +EP Positive Backstage Validation
+
+2026-10-26，`6dof-cover` Private candidate. This record separates the actual results of the main chain of equipment from the full bunker function; the default starter and open package are not replaced.
+
+## Enter and Border
+
+- Steam EXE, emulator `render_scale=0.4`, test window is closed, output-only, game silent and restored; physical handle backstage input is closed. Game/XR is empty before testing. Game/XR is empty, game process is closed 55200、Native `started_qpc=2559925659979`. Other Game processes naturally exit before starting the current round.
+- Native 47 DLL SHA 256 `78705ddd823a79a88aed943d559decb3bc873ce32eaf6d05ae9bba7c3d731348`；PG SHA 256 `5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`Runs for weapons sealed in worktree `analysis/equipment-native-rgrip-runtime-20261026ep/`, the original eight operations and `40` Subsubmission/`6` The threshold for seconds remains unchanged.
+- The new source log is `BMSCOM01`, use independent and rigorous Reader resolution; old `BTICMT01` Reader does not contact new format. Master log before 32 Source query, hands v.3 Posture and ARMALP 01 The event is connected to the same pid/Native incarnation, Sequence, tic, Compore, theread.
+
+## Actual Readback
+
+| Inspection | EP Results | Proven scope |
+| --- | --- | --- |
+| The original fixed holder. | 6 Add in seconds 40 Sub-Native Master Submission with consistent post-FK observation | Continuous equipment master no longer stuck to the previous threshold; not images or proof of firing |
+| Move in the back. | `right-ready` 8 Second, small right hand moves and turns 10° 10 Subsubmission; consistent post-FK observations | Continuous submission after different input; two observations are not authentic hits with each submission |
+| Before New Source 32 Article | 32/32 Full source linkages,32/32 Ready echoes,32/32 Capture and postcommittee source valid | This log has 32 Bar capacity, not all of which can be inferred from 62 The lower-ranking executive has submitted the article by article. |
+| Tracking Age | New Sync Message in Postcommittee 7.3631–18.0295 ms;old V 1 Synchronise Information 43.4009–58.6423 ms | old and new sources are not confused;postcommittee is an observation point, not an exact CAS clock |
+| Hands. | 32/32 `pose_pass`The target is both in error and error. 0;post-FK wrist position maximum left error 0.0001563 Right 0.0002552 Game units | Documented hands Local/FK aligned to new source target |
+| Actual consumers | 32/32 Four characters. `Applied`，640 Events,0 Lost, lost,0 Reject Line | Four role practical applications, not replaced by an owner authorized count |
+| Life cycle | HandStop 5, quiescent, then free hands continue, double controllers restore and Bridge close; Native/entry restore,106 Independent inspection, XR exit 0 It's not like that. 10 file and audio recovery;fresh CIM no Game/XR | The current round is normal and the monopolistic test window is released. |
+
+`body_main_mount_attempts=422`、`ready=75`、`not_ready=303`、`context_rejected=42`、`stale=2`、`commits=62` is the diagnostic count of the entire session; it contains a stage other than holding fixed hold and cannot be used to determine whether 62 Before the rules are written. 32 Full posturing evidence.`body_mount_source_age_rejected=105` and `hard_rejected=2` Also retain the original value and do not erase the path of rejection by passing the threshold.
+
+Right hand. `right-ready` At small movement, independent observation of the prope epoch is 1310→1332 Right wrist world coordinates are off. `(-3.191,-1.488,0)` Game unit, right side bone difference of weapon `(-3.294,-1.879,0)`; the pelvis is largely unmoved. The connection supports subsequent input that produces a real bone attitude change, but these two walk-in observations are still insufficient to determine whether the weapon on screen follows visual or authoritative firing rays.`runtime-review.json` Self-Reserve `visible_weapon_follow_proved=false`、`authoritative_aim_proved=false`。
+
+## Follow
+
+The equipment master holds this common premise to continue advancing the bunker line. Physical authentication of the side and upper edge of the high/dry bunker, legal range of collisions, neutral eye points for the bunker, LT/RT original automatic search replacement, LGrip left/right/upside pull and maintenance, real head move/stand, body under fire/gun/authority shooting, running perspective R 01–R 04, the image of the eye and the physical appearance. `accepted=true` Or local bone movements are elevated to the acceptance of these projects.
+
+Native 47 The runable source code still contains the precision of ignoring directories 46 Pumpkin. `source2`It's... 14 Compare a change file with the current tracking source, yes 5 A non-existent,9 Different content; other 4 A new native file has not yet fallen into the tracking source. Current default 3 The formal integration is documented and re-composed by the common father. `capture.cpp` or the entire old snapshot directly overwrites the current default.
+
+Original and derivative evidence: EP `runtime-review.json`、`runtime-final.json`、`instances/equipment-native-rgrip-1026ep/native/`;Ben worktree ignores directories `analysis/body-tick-mount-source-candidate1/ep-source1.json`、`ep-alpha1.json`、`ep-pose1.json`、`ep-budget1.json`、`ep-runtime1.json`. The first strict Reader call uses a relative weapon path because the current work catalogue is in bunker worktree by `open` (a) Error exit;`ep-source-reader-attempt1.json` Keeps the attempt. Subsequent calls are moved to the same package absolute path and pass, unrun game.
+
+---
+
+## 中文
+
 # Native47 + EP 正版后台验证
 
 2026-10-26，`6dof-cover` 私有候选。此记录将装备主握链的实际结果与完整掩体功能分开；默认启动器和公开包未替换。

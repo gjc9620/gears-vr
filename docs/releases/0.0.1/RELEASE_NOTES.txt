@@ -7,5 +7,20 @@ Tested: Act 1, KRVR + Apple Vision Pro, VD + Quest 3.
 Known issue: mounted machine-gun entry/exit may pause for about 2 seconds.
 For bugs, use Export logs and send the ZIP with your headset, GPU and a description.
 
+See README.txt for installation. Change to windowization/no border, no frame ratio, DLSS/DLAA closed and save the game before leaving it altogether.
+Press the whole package to the root directory, starter and Binaris_x 64 Synchronising folder
+
+--------------------
+中文
+
+GearsVR 0.0.1
+
+VR mod for Gears of War: Reloaded.
+See README.txt for the short installation guide and folder layout.
+Before installing: windowed/borderless mode, unlimited frame rate, DLSS/DLAA off; apply and exit the game.
+Tested: Act 1, KRVR + Apple Vision Pro, VD + Quest 3.
+Known issue: mounted machine-gun entry/exit may pause for about 2 seconds.
+For bugs, use Export logs and send the ZIP with your headset, GPU and a description.
+
 安装方法见 README.txt。安装前先在游戏里改为窗口化/无边框、帧率不限制、DLSS/DLAA关闭，保存后完全退出游戏。
 将整包解压到游戏根目录，启动器与 Binaries_x64 文件夹并排。

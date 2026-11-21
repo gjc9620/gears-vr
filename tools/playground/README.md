@@ -330,3 +330,340 @@ owned, behind-windows, muted test arena. It separates real ProcessEvent Hook
 hits from bridge calls that bypass that Hook, logs current body-slot child
 weights/targets/blends and eight original hand controls, and always leaves
 `ownership_proved=0`. See the [probe schema and limits](../../docs/hand-animation-probe-20261022.md).
+
+---
+
+## 中文
+
+# 欢乐游乐场
+
+普通启用 0.1.0 选择 `happyotaku playground`
+游戏主菜单底部。
+启动时为版本配制的 DLL , 在启动前保留一个已禁用的蹦床
+引擎的后期分配。在注册系统准备好后,它就可以使桥架得以通车。
+它在活动器中添加了一个样式按钮
+`WarUIScene_MainMenu`,然后在当地旅行 `MP_WarMachine` with `WarGameSP`.
+没有编成的游戏包被补丁或分发.
+
+范围使用地图上的三驾马车 后面有11个装备小卡车
+目标在发射道沿线重新喷发
+3秒钟;在接车后补充设备。
+保存原杂志并重新装入行为。仅请求的区域
+维持世界及其当地玩家,包括在占领三驾马车时。
+
+与现有的 MSVC/CMake 工具链构建 :
+
+```powershell
+cmake -S tools/playground -B tools/playground/build-local -A x64
+cmake --build tools/playground/build-local --config Release
+& tools/playground/build-local/Release/PlaygroundHookTest.exe
+```
+
+`playground_menu`, `playground_early_reserve`, `playground_build`, `playground_dll`,以及 `playground_sha256`
+将可选组件装入发射装置的显示器。正常的原生/XR
+文物仍被单独封存。 `stage_portable.py` 仅包括已宣布的
+运行时间文件和 DLL; 分析证据和游戏资产仍然被排除在外.
+
+已预定在可观察到的本地游戏线索上进行引擎工作。 indexed number
+函数使用带有明确本地参数和外部参数链接的FFrame;
+未索引函数使用原始进程Event。加载器检查可执行文件
+身份和活的输入字节,并独立验证停机时的恢复。
+关闭也会在启动前停止时释放一个保留钩子.
+可选初始化资源失败只能在
+独立全程返回检查;身份和证书故障
+停止启动。分配诊断可以区分蹦床和钩子表。
+状态和日志是 DLL 旁边的 PID 专用的 。 `PlaygroundTestEnter` 门建为
+明亮的微声, 后窗的自主测试环境。
+
+游戏版本的抵消、布局和观察到的行为是检查对象所特有的
+重新装入可执行文件。 请参看开发记录 。 `docs/releases/0.1.0/PROGRESS.md`
+用于完成验证和其余耳机接收。
+
+武器... 武器... 武器... 武器... 武器... 武器...6 联邦移民局分支也有一个 **私人,选入的锤子爆破R2 candidate**.
+与 `GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2=ON` 和独特的
+`GEARS_PLAYGROUND_OUTPUT_NAME`; 这暴露了 `PlaygroundVrFireEnable`,
+`PlaygroundVrFireDisable`,以及 `PlaygroundVrFireStatus`。仅在
+匹配的立体声和控制输入的发布器是实时的。它消耗精确的
+本地玩家的 XR 帧键 `PlayerTick` 右向移动
+与原画的边缘 `ButtonPress/Release('R2')`短桥缺口保持
+最后一个有效框架直到其 100 毫秒限制; 较长的丢失安全释放此值
+已校验的自动武器。在适配器之前禁用 `PlaygroundShutdown`.
+默认的构造排除了这些出口,并且不会向VR火势前进.
+
+`GEARS_PLAYGROUND_VR_R2_SIM_TEST=ON` 新建孤立的
+`VrFireTestPublisher` 并且只接受哑巴中的模拟输入,
+窗后测试程序。它是一个验证工具,而不是一个发射器选项或
+其他武器在原武器之前一直被封门。
+核实了新闻/释放、取消和共同输入行为。
+
+追加 `GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2=ON` 需要候选人
+编号2 架式桥,同样清晰 `PlaygroundVrFireEnable/Disable` session
+然后向左向左移动边缘到原边 `ButtonPress/Release('L2')`
+和暴露的, `PlaygroundVrAimStatus`。它仅限于在
+game's `bToggleTargeting` 设置是虚假的。切换到一个im被封门,因为
+发行时不会取消其已挂载状态。 一条直接的原扣零售
+探测器确认是悬浮式的 边缘状态机器通过孤立测试
+组合 XR 帧对游戏 L2 候选人还需要成功竞选
+游戏测试和耳机接受。默认 DLL 排除所有 VR 输入
+exports.
+
+用于私人库存核查,与
+`GEARS_PLAYGROUND_EQUIPMENT_OBSERVE=ON` 和独特的
+`GEARS_PLAYGROUND_OUTPUT_NAME`中,每个 500 本地玩家游戏上的 ms
+线程,观察者检查四个原始的库存槽,每个占用
+weapon's `HasAnyAmmo`,当前武器,切换权限,切换动画旗
+和手榴弹的指控,写道
+更改 PID 专用游戏场日志。 读取的榴弹充值如下
+原始的人类玩家 `HasAnyAmmo`/spare-ammo规则;数量不明
+设备状态模型中失败关闭。该候选人只注意到:
+不移动枪械,压制动画,播放声音或呼叫
+`SetWeaponFromSlot`。默认的构建不包括观察员,并且成功
+编译不建立有效的零售运行时间快照 。
+
+私人 `GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST` 候选人
+要求清单观察员, `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST`.
+认证本地控制器观察员活动,右侧的种子压车接近
+左/右肩或拖轮套只公布匹配的原件
+位置号加当前游戏身份。 游戏区域丢弃旧的或溢出
+事件,然后重新阅读游戏线索上的本地玩家目录和
+需要私人拥有的竞技场、后窗和哑弹测试环境
+。空的手榴弹充电失败。
+当请求的空位或其武器没有可用弹药时,
+私人适配器尝试槽武器
+original `FireNoAmmoSound` 提示,然后是当前武器提示,通过
+本地原播放功能。 状态 9 意味着两个提示都无法播放。
+这是电线测试: 原开关动画, 可见的 Stow, 音频提示
+这两种武器都没有,而且可玩性武器转让尚未生效。
+默认的DLL没有XR设备的特制消费者.
+同一座私人桥还搭载左肩弹药压压。
+适配器检查持有的武器的原始备用量和无限零星规则:
+状态 1 弹药的存在, 2 意思是,在原始提示下是空的, 3 表示空
+毫无线索, 4 表示游戏身份或计数无法验证.
+现阶段没有生产或扣除任何轮子或杂志。
+
+单独 `GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST` 选项要求
+认证设备的输入对象,在默认 DLL 中未关闭。 A
+新鲜 R3 事件可以启动原始的 Lancer `Reloading` 国家拥有,
+哑声,窗后竞技场;适配器取代其 2.5- 第二次完成(续)
+带有八秒原游戏倒计时器。仅测试开始和
+完整导出时不进行物理输入, 则执行相同的游戏线程路径。
+明确完成法援引原件 `Reloading.EndOfReloadTimer` state
+函数,用于执行原弹药结算。
+螺栓中风、完美的奖励或默认发射者行为是隐含的。 GVE6
+事件包括输入时代,并拒绝反对一个僵硬的手持时代;
+每个认证的手姿还搭载着每米相同的XR票的游戏单位
+用于物理手势距离。5 出版社无法打开这座桥。
+
+`GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST=ON` 是单独的, 默认关闭
+原输入边界试验在自有的变形竞技场中。 它的测试导出队列
+一个兰瑟 `ButtonPress('B')` 显示游戏线索, 清除原作
+`CheckForMeleeTarget` 立即和在每一个自有勾选上计时器,然后发布 B
+明确停止、身份丢失、计时器故障或游戏场关闭。
+仅在原始文本之后才接受释放 `bHoldingButton_B` 字段清除。
+单独 `GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST=ON` 选项汇编 a
+default-disarmed `PlaygroundLancerSawXrPullArm/Stop/Status` 试镜,只是新鲜的
+GVE6 同一盘左手拉近临时的兰瑟启动请求
+现有原始 B 控件; 没有敌人接触、 可见启动器或默认值
+启动器输入启用。 status 2 武装, 3 pulling, 4 B派来的 5 original
+hold, 6 原动画/延迟停止, 7 restored, 8 停下来,和 9 a 状态
+私人审判自动请求在 15 seconds.
+一旦最初的攻击特别行动 34 开始、停止和关闭
+发布到原始攻击状态离开; 动画比
+等关机就能让关机拒绝 保留了活钩直到
+后经安全复试.
+零售无受害者试验证实,原叶片/糖类状态持续不衰,
+定时器压制;二审关闭了B场,
+证实原B、melee和刀片状态已恢复闲置。
+还没有被手推解器驱动 并且不进行刀片接触,
+配对执行,视觉启动器放置,或耳机验证.
+
+`GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST=ON` 需要私人服务
+网格跟踪帮助器,并添加一个只读的 PlayerTick 样本
+original `b_AR_Chainsaw` and `b_AR_ChainsawEnd` 原骨基质
+枪管矩阵在同一游戏线索勾选中。单独启动导出一个闲置样本
+或已运行的原始锯。 16- 发现的零售试验
+稳定小点 22.47 原单位分开,只定位骨头
+可见的牙齿边缘、目标碰撞、隐蔽和对联处决
+仍然无法验证。 相继的远程反射尝试已被丢弃
+因为原枪部件在通话之间移动.
+
+`GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL=ON` 是另一个私人的,默认的
+使用当前原始枪械基质和临时住房侧式枪械。
+启动主锚, 种子 a 19 cm 合成左手拉通过相同的
+手势世界级模型,然后仅在
+手势符合条件。自有零售试验观察到一个拉动请求,大约是
+18.81 cm 英寸 英寸 297 ms,9个后来的原始刀片/金属样品,与
+自动目标定时器关闭, 并清除 B 发布。 测试不会发布 XR 。
+手框,不绘制启动器;挂载不为Quest手校准。
+
+正在观察经过认证的手势,但私人桥也记录a
+read-only `weapon_magazine_probe` beside `weapon_mesh_probe`。它验证了
+原创武器 `MagazineMesh` ,其名称为 `StaticMesh`,
+reads `HiddenGame`,并询问当家骨骼网点是否为
+随附于此. `known=0` 拒绝不完全或意外的布局; `present=0`
+with `known=1` 表示这种武器没有目前独立的杂志组件.
+相邻的只读 `weapon_ammo_bone_probe` 现在使用原版
+`FindSkelControl(AmmoControl)` 查询和记录 `ControlStrength`,
+`StrengthTarget`,以及 `BoneScale` 缺少一个控制器
+与无效的反射布局分开录入。这些值是
+也证明杂志的知名度
+更改 meshes 或重新装入状态; 仍然需要一个零售运行时间样本。
+
+在同一私人竞技场里 `weapon_reload_native_probe` 读取
+original `WarWeapon` 用于 `GetActiveReloadValues` and
+`DetermineActiveReloadSuccessOrFailure`. 它验证他们的阶级所有权
+和当前游戏图像中的可执行条目指针,然后只日志
+模块相对地址、本地索引和参数大小。它不
+调用、绕行或补丁任一函数。与手提式探测器不同,此
+搜索只需要一个经过认证的装备武器,所以模拟器会话
+没有物理控制器, 就可以到达它。 单凭建筑通行证就无法到达它 。
+零售地址或完美重载期限; 有效的运行时日志和字节
+在提出本土分析或计时要求之前,需要进行比较。
+零售自有阿兰样品找到两个UFunction包装器并配对
+他们的第一任 256 历史运行时间快照的字节( 较短的法官)
+包装符被完全匹配。 将包装符发送到虚拟槽 `0x638`
+and `0x630` 探测器现在还验证并记录了
+有两个虚拟的现场目标作为RVA. 在后来拥有的零售竞技场,装备了
+兰瑟解决了前往RVA的计数器 `0x3e81b0` 法官改为卢旺达援助团 `0x3e7d28`.
+第一次 第一次 第一次 4 每个目标都对应了相应的历史运行时间
+字节的快照字节。它覆盖了主要函数块,但不包括
+Geetter 的单独尾部块。 探测器仍然只读; 此匹配是
+并没有确定任何武器 完美的重装期限。
+相邻者 `weapon_reload_window_probe` 验证当前武器的
+反映浮点数抵消并读取原持续时间数组和所有者索引
+同一认证游戏线条上,它从不叫"获得者"或"法官".
+一家拥有的Lancer零售公司开始 `0.7`, 阵列索引 0 宽度
+`0.1`,在靠近 `0.8` 秒。这是可检查的
+候选人,等待直接的原始所得-产出比较。
+
+`GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` 增加一个更窄的私人
+兰瑟试演设备特制建筑,需要自有的,哑巴的,
+后窗游戏场和已经持有的蓝瑟。 call
+`PlaygroundWeaponMeshFollowEnable` 认证的手持者出版商是
+live; `PlaygroundWeaponMeshFollowStatus` 返回位点 16 用于活动部分
+超载, 位点 17 左侧支撑握把被绑住,低水平 2
+原图 `Weapon.Mesh` 只能跟着右手走,
+`COGAssaultRifle` 接受资产。在测量到的附近,有新的 LGrip 压车。
+网状上左倾点使双手方向盘能够使用;跟踪丢失,抓住
+释放,或移动到区域外会回到右侧位置。
+LGrip 通过组件绑定不等于新媒体。 call
+`PlaygroundWeaponMeshFollowDisable`,等待到位点 16 is
+明确和地位 6 恢复报告(或 7 报告一个已销毁的部件),然后
+call `PlaygroundShutdown`关闭返回 20 恢复时仍然
+等待。第一个跟踪框保留了游戏当前枪械的姿势,所以
+审判检查部分动议,但不要求正确的每件武器控制架
+或测量控制器到平面的偏移。原始连接坐标
+来源于 24- 框架零售样本,如下所述。
+并构建覆盖,但无成功网格运动运行时间或耳机结果
+然而;普通的DLL中并没有包含任何这些出口.
+
+私人 `PlaygroundWeaponMeshFollowTrialStart` 输入练习相同
+游戏线程组件路径,而不假装模拟器提供了一个
+查询控制器。在一个哑巴的、 后窗拥有的竞技场中,首先使用
+私人空档 -2 用于建立装备的Lancer的 VR 所有权。
+然后,试验12个带边的合成右手姿势, 保持每个长的
+足够原始组件世界矩阵更新、检查翻译
+和旋转, 取消覆盖, 并需要恢复。 它的状态
+高处的编码阶段 16 位数和完成的低位样本 16 bits;
+3/12 意味着审判通过, 4 表示失败。 零售 PID 40068 sample
+最大稳定X误差 0.00977 原单位并归还
+`PlaygroundShutdown=0`仅核实组件运动/恢复;
+实际的 OpenXR 手印、头盔渲染、射线和后坐力
+还需要自己的测试 `lancer_support_probe.py --mode mesh_follow_trial`
+记录被忽略的有限度的证据 `analysis/`.
+
+同一私人DLL有一个单独的只读的兰瑟支持手探针.
+`lancer_support_probe.py` 将原蓝瑟装在自有的哑弹范围内,
+calls `PlaygroundLancerSupportProbeEnable`,并需要状态 3 with 24 samples
+在接受忽略之前 `analysis/` 收件人,回调会抓取
+原角色是左IK,左/右手骨基质,没有改变
+棋子/枪械组件矩阵,在每张原始文本之后 `PlayerTick`现状 4 表示游戏
+身份、骨骼、基质或试验环境警卫拒绝探测器。
+允许在此样本中跟踪网格; 任一导出都拒绝重叠。
+矩阵是以后抓点校准的证据,不是经过验证的
+握住的抵消或用Mod号运送的部件。
+complete 24 已安放的 Lancer 框架, 左手 IK 活动。 左中位数
+原枪框上的掌点是 `(8.556242, 43.525180, 0.165157)`
+原始游戏单位; 最大帧漂移 `0.000231` 单位。
+生成的报表在忽略下保留 `analysis/lancer-support-probe-20261022/`.
+相同的有限度回调可以读取原作 `MagazineMesh` 构成部分和
+`AmmoControl` 找到一个自有的零售商持有的蓝瑟样本
+`Assault_Rifle_Magazine` 现时和现时 `HiddenGame=false`,但不附着于
+质地网; `AmmoControl` 身处强势、目标、骨骼
+全部为零。这些闲置状态的字段无法建立最终的可见度
+或原重载时的交接时间。
+
+Run `lancer_support_probe.py --mode reload_visual` 在一个单独的自有区域中
+以在私人竞技场中 进行一场比赛并引用原作
+`ForceReload`。私有游戏线索回调记录最多5秒
+`AmmoControl`, `MagazineMesh` 卒式附件、原状态和弹药计数;
+`tools/weapon-models/analyze_lancer_reload_visual_runtime.py` 抽样报告
+事件间隔 。 318 样本:枪支杂志
+控制器于月经时打开 0.258–0.275 s, 单独的手杂志
+所附报告 0.774–0.791 s, 两者均恢复为 1.479–1.500 s, 原文
+重新装填/一发子弹 2.497–2.510 s. 已抽样
+间隔从一个原动画,而不是 VR 交互截止日期。
+普通 DLL 不导出此探测器 。
+
+`lancer_support_probe.py --mode socket` 样本原蓝瑟
+`Magazine` 套接字和枪械组件矩阵在同一游戏的线条中
+callback. `--mode socket_reload` 在一个原稿中重复此内容 `ForceReload`.
+两种模式都要求相同的私人和自有零售测试范围;其报告
+仍然被忽视 `analysis/`使用中选择
+`tools/weapon-models/analyze_lancer_socket_runtime.py` 用于投影样本
+将枪框插入枪框。
+杂志骨在重新装入动画时会远离。 VR 输入端口指南必须
+冻结枪框引用,而不是跟踪动画插座。
+探测器既不确定插入方向,也不确定控制器的握力校准,
+普通DLL 则不出口任何控制。
+
+同样的私人回调 现在也抽样 `b_AR_Magazine`原骨头
+矩阵。自有零售闲置捕获器将其支柱放在顶端。
+枪身和枪口的底部 沿着枪身在局部分离 `-Z`
+轴。 枢轴是一个候选的上端种子端口锚; 控制器控件
+方向和可见接收器打开时仍需要验证
+物理插入可以进行清点。
+
+选择进入 `GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST` 候选重用
+原始独立 `MagazineMesh` 私人R之后的3 重新装入控件开始 。
+拥有零售的合成左手试验
+其随后的插入-中空观察者
+将持有的杂志与目前的固定枪具发射锚进行对比,
+需要从港口外向接近封闭的
+位置。阈值和手挂载对查询来说没有校准;
+新观察家有合成几何测试和编译。
+重新运行后,没有为不相通的合成手轨显示错误的插入;
+独立对齐的轨道,在2005年
+拥有零售测试。两种测试都使用模拟手姿,而不是查询控制器。
+插入候选人只写私语
+状态/日志:它不能结算弹药,不能完成重新装填或给予完美的奖金。
+
+`lancer_support_probe.py --mode chainsaw_semantics` 是一个有边框的自有零售
+测试 Lancer melee 原始输入。它按下并发布原始 B,
+读出兵士/武器 的精髓和刀片状态,清除原始
+`CheckForMeleeTarget` 在一个空的竞技场上计时器,并证实刀片
+直至未获得受害人而被释放。
+VR拉动手势或锻炼配对的处决.
+
+选入的兰瑟R3 重载试验还预测了这个固定的上锚
+穿过当前武器网格矩阵,而原重装则
+用于验证每个更新中相同的网格身份,并留下
+如果网格无效, 原八秒倒计时器就位 。
+一次自有零售审判 捕捉了七条世界锚地
+原始的清晰完成状态仍然结算的弹药。这些行并不代表
+左手有轨电车或物理插入
+
+仅读的原装重装视觉探测器现在记录了该图像的矩阵
+separate `Assault_Rifle_Magazine`左手骨和枪的原型
+杂志附在棋子上时回调。离线抓住
+分析员发现近刚性中间的夹子 并报告移动的接车/返回
+单项 单项零售 43 附加框架和a 21-frame
+中位点稳定。此参考文献位于原始手骨框中,而不是
+查询控制器抓取框架; 它不能自行执行 VR 插入 。
+
+`GEARS_PLAYGROUND_HAND_ANIMATION_PROBE` 是单独的默认- OFF, 只读
+皮卡/冶炼机生命周期观察员。
+拥有, 后窗, 哑声测试竞技场。 它分离了真正的进程Event Hook
+桥上打出绕过虎克的电话 记录当前身体槽的孩子
+重量/目标/血小板和8个原始手控,并始终离开
+`ownership_proved=0`。参见 [探测器的图案和限制](../../docs/hand-animation-probe-20261022.md).

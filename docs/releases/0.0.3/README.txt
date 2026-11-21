@@ -43,6 +43,75 @@ For problems, click Export logs and send the ZIP with your headset, GPU and a de
 The game is not included. No separate Python installation is required.
 
 
+CREDIT Chinese
+
+Install and Start
+
+1. Start the game properly, setting display mode as window or frameless, frame rate limit to unlimited and closing DLSS / DLAA. Apply then exit the game completely, keep Steam running, using normal online or offline mode.
+2. Undo the entire ZIP to the root directory of the game, let GearsVR Launcher.exe, Runtime, Tools and Binaries_x 64 . Support is also provided for EXE with the directory or one of the Mod subdirectories below above. Use Browne to select games when not automatically recognized; path input boxes now support the last ten historical and direct inputs.
+3. Even the head starter opens. The system OpenXR is used by default; VD users can also choose VDXR.
+4. Point Start VR, enter the level normally and operate with the original mouse or handle; keep the game on the front desk when using the handle.
+
+Add a new first person preview: the starter defaults to switch, and each new game starts with a third person, L 3＋R 3 or E+R toggle, unzip the combination key and switch again. Right swinger dead zone is retraceable 0–50%Default 2%. Add the happyotaku playground to the main menu, which provides 11 Weapons/throwing,6 Re-entry targets, fixed machine guns and unlimited spare ammunition, with normal and active fillings.
+
+Improved bunker targeting, sniper mirrors, up and down machine gun/scene restoration, double-eye transmission and Steam offline configuration recognition.
+
+Recenter is on demand. Cardon can lower Render scale; third person says you want to close the camera to try 0.4. Reset the game and VR after change.
+Turns the game and starter off before updating, depresses the entire package to its original location and overwhelms the Mod file, keeps runtime, tools and starters; updates check paths and preferences.
+
+Supported EXE is 1.0.381.6947, no other build/windows Store compatible conclusion is created. The first person says it's still previewed and does not include 6 DLSS/DLAA is still closed; subsequent sections, close walls/images/shooters and headline combinations retain test boundaries. The local whiteness on the left eye edge has been recorded to be tracked, and color routing and offscreen checks do not amount to a real head start problem being solved.
+
+Endpoint Stop VR, waiting for cleanup to quit the game normally. Export ZIP with header, graphic card and problem description in case of problems; and export the last three start-up records and startup-sumary.txt when no startup is possible analysis/runtime/vr-launcher-session.reserve.log。
+No games, no Python installation.
+
+--------------------
+中文
+
+GearsVR 0.0.3
+
+Install and play
+
+1. Open the game normally first. Set Display mode to Windowed / Borderless, Frame rate limit to Unlimited, and DLSS / DLAA to Off. Apply, then exit the game completely. Keep Steam running in your usual online or offline mode.
+2. Extract the complete ZIP into the game's root folder. Keep GearsVR Launcher.exe, runtime and tools together, beside Binaries_x64.
+
+Gears of War Reloaded/
+  GearsVR Launcher.exe
+  Binaries_x64/GOWDE-Steam.exe
+  WarGame/
+  runtime/
+  tools/
+
+The launcher can also find the game when placed beside its EXE, or in one mod subfolder under either location. Use Browse if needed. Game path now remembers up to ten installations and also accepts direct input.
+
+3. Connect your headset and open GearsVR Launcher.exe. System OpenXR runtime is the default. Use your preferred OpenXR runtime; Virtual Desktop users can also select Quest 3 / Virtual Desktop (VDXR).
+4. Click Start VR, enter a level, and play with your usual keyboard/mouse or gamepad. Keep the game in the foreground for gamepad input.
+
+New in 0.0.3
+
+- First-person preview: enabled in the launcher by default. Each new game starts in third person; press L3 + R3 on a gamepad or E + R on the keyboard to switch, then release both keys before switching again. This uses the original game controls, not tracked motion-controller aiming.
+- Right-stick deadzone: adjustable from 0 to 50 percent; default 2 percent.
+- happyotaku playground: select the new main-menu entry to try eleven weapons/throwables, six respawning targets, a mounted gun and unlimited reserve ammunition. Normal magazine use, reloads and active reloads remain.
+- Improved cover aiming, sniper-scope handling, mounted-gun/world recovery, stereo frame delivery, Steam offline settings selection and game-path history.
+
+Recenter is optional. Lower Render scale if performance is poor; Camera closer = 0.4 is a suggested third-person starting point. Restart the game and VR after changing these options.
+
+Updating
+
+Close the game and launcher, then extract the full 0.0.3 ZIP into the same location and replace the previous mod files. Keep runtime and tools together with the launcher. Recheck your game path and preferences after updating.
+
+Known limits and reports
+
+- Supported game EXE: 1.0.381.6947. Other builds, including Windows Store, have not been established as compatible.
+- First-person is a preview. Close walls, cover, movement animations, weapon sights and comfort still have testing limits. Full 6DoF weapon handling and physical reloading are not included.
+- Mounted transitions have improved and the user considers their current delay acceptable. Zero delay is not claimed.
+- DLSS / DLAA remain disabled. Later chapters and every headset/runtime combination have not all been verified.
+- A local left-eye-edge white-flash report remains tracked; color-path changes and offline GPU checks do not by themselves certify a headset fix.
+
+Click Stop VR, wait for cleanup, then exit the game normally. Exit the game before starting another VR session.
+For problems, click Export logs and send the ZIP with your headset, GPU and a description. It includes the latest three startup attempts and startup-summary.txt, even if VR never started. For startup failures also include analysis/runtime/vr-launcher-session.reserve.log from the mod folder.
+The game is not included. No separate Python installation is required.
+
+
 简体中文
 
 安装与启动

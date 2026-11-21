@@ -38,6 +38,68 @@ Before updating, close the game and launcher. Extract the new full ZIP into the 
 The game is not included. No separate Python installation is required.
 
 
+CREDIT Chinese
+
+Install and Start
+
+1. Start the game properly, setting display mode to window or frameless, frame ratio limit to unlimited and close DLSS / DLAA. Apply then exit the game completely, keep Steam running and login.
+2. Undo the entire ZIP to the root directory of the game, let GearsVR Launcher.exe, Runtime, Tools and Binaries_x 64 . The starter also supports the GearsVR subdirectories next to EXE or below above; when no automatic recognition is given, Browne manually selects Binaries_x 64/GOWDE-Steam.exe。
+3. You can also choose VDXR manually by default using the system OpenXR; Virgin Desktop.
+4. Point Start VR, enter the level normally and play with the original mouse or handle. Keep the game on the front desk while the handle is in operation.
+
+Recenter can be used as needed, without having to press every entry level; it is easy to play with a good view. Cardon can lower the Render scale; trying to close the camera 0.4. Reactivate the game and VR after changing the parameters.
+
+0.0.2 Fixing download scripts is intercepted by Windows, Steam restarts to another process, multiple account setting file recognition and EXE automatically search, and maintains a complete startup error. Original rendering component with 0.0.1 Same;existing first act, KRVR+AVP, VD+Quest 3 Experience from 0.0.1, the new version of the original version is activated and the real headline returns to be retested.
+
+Support game EXE version 1.0.381.6947 Enter/exit of machine gun may still be suspended 2 sec, the following sections are not fully validated and DLS/DRAA and VR depth blurs remain closed.
+Endpoint Stop VR, wait for cleanup to quit the game. Start again and quit the game first.
+ZIP is exported with a header, graphic card and problem description. The ZIP contains the startup-summary.txt and three recent startups, which also record the failure of the startup before entering VR.
+Turns the game and starter off before it is updated, presses the whole package to its original position and covers the previous Mod file so that runtime, tools are kept with the starter.
+No game files, no Python.
+
+--------------------
+中文
+
+GearsVR 0.0.2
+
+Install and play
+
+1. Open the normal game first. Set Display mode to Windowed / Borderless, the frame rate limit to Unlimited, and DLSS / DLAA to Off. Apply the settings and exit the game completely. Keep Steam running and signed in.
+2. Extract the whole ZIP into the game's root folder. Keep GearsVR Launcher.exe, runtime and tools together, beside Binaries_x64.
+
+Gears of War Reloaded/
+  GearsVR Launcher.exe
+  Binaries_x64/GOWDE-Steam.exe
+  WarGame/
+  runtime/
+  tools/
+
+The launcher can also find the EXE when the mod is beside it inside Binaries_x64, or in one GearsVR subfolder under either location. Otherwise use Browse to select Binaries_x64/GOWDE-Steam.exe.
+
+3. Connect your headset and open GearsVR Launcher.exe. System OpenXR runtime is selected by default. Virtual Desktop users can select Quest 3 / Virtual Desktop (VDXR).
+4. Click Start VR and enter a level normally. Use your usual keyboard/mouse or gamepad. Keep the game in the foreground for gamepad input.
+
+Recenter is optional. If the view feels comfortable, just play. Use it only when you want to realign your seated position and forward direction.
+Lower Render scale if performance is poor. Camera closer = 0.4 is a suggested starting point for a closer view. Restart the game and VR after changing these settings.
+
+What's changed
+
+0.0.2 fixes Windows blocking the downloaded startup helper, Steam restarting the selected game into another process, multiple Steam-account settings files, and EXE auto-detection beside the launcher. Startup failures now retain the helper's detailed error output.
+The renderer is unchanged from 0.0.1. Act 1, KRVR + Apple Vision Pro and VD + Quest 3 were tested with that version. The 0.0.2 changes were checked for startup on the retail game; a new physical-headset regression is pending.
+
+Known limits
+
+- Supported game EXE version: 1.0.381.6947.
+- Mounted machine-gun entry/exit may pause for about 2 seconds.
+- DLSS / DLAA remain disabled; keep them off. VR depth-of-field blur is also disabled.
+- Later chapters have not all been verified.
+
+Click Stop VR, wait for cleanup, then exit the game normally. Exit the game before starting a new VR session.
+For a bug report, click Export logs and send the ZIP with your headset, GPU and a description. The ZIP includes startup-summary.txt and the latest three startup attempts, including failures before VR starts.
+Before updating, close the game and launcher. Extract the new full ZIP into the same location, replacing the previous mod files. Keep runtime and tools together with the launcher.
+The game is not included. No separate Python installation is required.
+
+
 简体中文
 
 安装与启动

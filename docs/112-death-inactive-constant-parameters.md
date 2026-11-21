@@ -1,3 +1,35 @@
+# Death. Actual exclusion of two sets of constant parameters.
+
+2026-10-17. The default candidate is still Retial 47. Observation of submission e 5d 650e 6b 6a 483d 0933226f 6f 3d 84030b 65967 ca;independent Hdrpixels 56 DLL SHA 256c 2cbf 500185d 9efc 513c 8c 692c 3f 50090dd 4a 5869de 1ac 2cf 4fb 576c 3a 03f 3c 5. Full DLL and 17 Blocked CPU check passed; XR follows Hdrmached 55。
+
+## Basis for the observations and compilations
+
+First, search KB and then auto-export independent IDA copy: matter 1760b 4 Total 205 Byte, Call Branchd 80630 Total 1104 bytes, with artifact 1 History by Bytes, Hash 7d 20d 3f 5c 510685b 8b 3ffb 12d 12d 51ae 583d 4070e 00cf 11a 39655c 7e 086c 45 b and cd 8bb 3b 4a 32cf 5de 1893c 8cb 9dcf 85dabfbe 5b 3614d 90d 9ed 9c 1834afe 548314. The old Kuhashi has not changed, owned IDA case is closed.
+
+The parameter position of the Hex-Rays pseudocode is unreliable; compiled as RDX descriptor, R 8 Data, R 9 Index. Add only one read-only setter Hook that is closed by default, and install when running the above two code ranges.49 Every single radio in the right and left eye.0xB2 Decimal 178) and Transform (owner+)0xAA Decimal 170) (as currently availabled)80a 7 b A comparison is recorded for each entry. The original parameter and the return value remain unchanged; no rereading already used R at quad 8 A temporary address for the inn, without which highwater is not allocated capacity.
+
+## Actual 96
+
+Session 32756-20261017-123126-4ba 5868 d, Selected instruments 2352/world 1. Four matter and two quarts are recorded; both repeat and reject 0, the same leftr, eye view and rectangle are stable. The two code ranges match the actual process.
+
+Four descriptors are around and around setter and at the quad. **65535,65535,0**;calling float 4 Both. **.5,-.5,.5,.5**,Setter returns 0. The authentication compilation is in descriptor[]2 Yes 0. They are therefore inactive parameters in this variant; they are not that the monitor failed to read for effective upload, and there is no evidence to support “renew these two CPU constants with right eye leaks.” One explanation is that “they were optimized by the compiler” and not directly proven.
+
+The second pixel comparison was successful:2352/world 1/copy_seq 170 HDR right half-mean.027793/.030564/.029827 Limited access 100%;finally right eye 97.5370%Pixels RGB 8, Left-Eye preserves the scene. Repeat confirmation of document 111; no specific root cause of Shader's actual texture sampling was identified.
+
+Evidence is signed. analysis/runtime/hdrpixels96-exact-pixel-audit.json, the session. native-status.death-contants.json and original status, RAW and GPU.0 Explain GPU upload failed: Here is the description size 0, TLS read explicitly not applicable.
+
+## Independence and review of the discontinuation of verification
+
+Actual 96 The original report is properly cleaned and XR exits normally, but the check-out script does not record the new setter entrance, and the game module address is refused to be validated as a graphical system module. The whole session is as if it were actually marked incomplete. The game is regularly closed and four files are returned; no independent validation is claimed for the wheel entry.
+
+Submit 914e 272 For exact RVA 1760b 4 Add Fixed 205 Byte History SHA 256 The independent check was not accepted as the desired bytes learned in the log.97 Re-use Same Unchangeable Hdrpixels 56, when the new binary is activated and observed;**44 All access points, including setter complete.205 Byte Hash**. Case=stoped, primary clean-up, XR exit and normal game off pass; four files are returned to check. This short test only reviews the exit path and is not a substitute 96 The death pixel contrast.
+
+Next, stop trying around these two groups of inactive parameters and direct to the source of authentication binding/bytes for actual death VS/PS, then check HDR ' s coordinates with small size assistive texture. No indication has been given that the pointer layout does not use an downer by-line address or add a General PSO to create an observer. The first edition and real header return are still incomplete.
+
+---
+
+## 中文
+
 # 死亡 Shader 两组常量参数的实际排除
 
 2026-10-17。默认候选仍Reticle47。观察实现提交e5d650e6b6a483d0933226f6f3d84030b65967ca；独立Hdrpixels56 DLL SHA256c2cbf500185d9efc513c8c692c3f50090dd4a5869de1ac2cf4fb576c3a03f3c5。完整DLL及17项冻结CPU检查通过；XR沿用Hdrmatched55。

@@ -1,3 +1,253 @@
+# GearsVR 6 DoF bunker interaction and specification for realization
+
+2026-10-24.2026-10-26 Update. Functional branch and independent worktree is`6dof-cover`, at this stage achieves reconciliation. This specification is fully interactive and does not replace final exposure with an early isolation test or CPU check. The only writing end for the shared body/hand has been verified in a positive backstage test to move free hands and return eligibility.[Native47 + EP Positive Backstage Validation](6dof-body-native47-ep-runtime-20261026.md)Pass original 40 Minor/6 The second master holds the door and completes two shifts with the actual bones; the images follow, authoritative sighting and firing are not accepted.[Independent master-source contract](6dof-body-main-mount-source-contract-20261026.md)Access to real Tick tracking, original Scene/Equip Link and current C 0 Benchmark, not to renew or modify old sources. The grab edge offset and share left hand interfaces have been realized with CPUs, and early quarantine tests cover uptick, low neutral and semi-prospecting fire; they have not yet formed the final LGrip/Bed Body Interlock loop. Run candidates have been active SM 4 In the medium application, normal running, stop/entry bunker connections, and final eye and body perception remain to be verified. The complete replacement of old keys, physical walls, actual LGrip grabs, collision/shooting/gunshot consistency, weapons streaming and head-to-head inspection are retained as unfinished items.[Development progress](releases/0.0.4/PROGRESS.md)。
+
+This specification is based on the current user request.**Untie LGrip and keep the pull body position, grab the edge and move back to the left hand.**. The following is marked as “Accomplishing Default” to complete the details of the project and does not mean that it has been received by hand.
+
+## 1 Playplay experience
+
+Keep the original version for bunkers, adsorbing, moving along them, side exit and back-out. After entering, the body is facing the shelter, with neutral eye spots on its side. Players can stand up in reality, crouch down, lean around or scrutinise to the right, and let the view point move out or back to the real position; they can also grab the edge with their left hand and pull their own virtual bodies backwards. Real body actions and pulling hands can be used to observe and shoot under cover, and can be used in combination.
+
+Removes the original "Land Left On Left, Right on RT Automatic Right" and original buttons from automatic search. LT/RT still undertakes to aim/shoot at weapons that apply; they can no longer place the player's body or lens in a bunker with them.
+
+| scene | Player Operations | Result |
+| --- | --- | --- |
+| Get in the bunker. | Use original access/sorption | Enter the original active bunker, face to cover; no automatic head opening |
+| Move along the bunker. | Move Input Using Original | Follow the bunker to reach available edges, retain original adsorption and collision |
+| Run/sprint | Use original running input | Camera moves with people, removes extra movement of games; real head-to-face activity continues. |
+| Direct left/right spot | Shifting to the left/right side, sideways in reality, changing position of head | Move point of view out with real status; back to back, not ask for keys or grab edges |
+| Real standing/down | Stand up, raise your body, or fall down and bend over your head in reality. | LGrip is not required to detect or retrace the point of view with actual altitude changes; physical exposure and impact must also correspond |
+| Left side to the side. | To the left edge, to the left hand near the edge. Hold LGrip, move right. | The body and the sight point to the left. |
+| Left Zoom | Keep scratching, move left hand to the left; release and then recapture and move left | Body and vision point to right, back to cover. |
+| Right side to the right. | To the right edge, hold on to the left hand. LGrip, grab the edge, move left hand to the left. | Body and vision point to right. |
+| Zoom Right | Keep scratching, move left hand to the right; release and then recapture and move right | Body and vision point back to the left. |
+| Short bunkers. | Where the original version allows LT to go up, use LGrip to grab the edge and push down. | Body and sight rise, open up and shoot. |
+| Up Zoom | Grab the upper edge and move your left hand up. | The body and the sight drops to a shaded position. |
+| Untie me, LGrip. | Release Left Hold key | Release capture, retain current virtual body deviation; left hand can re-assume the carrying of a gun or other actions |
+| Exiting bunker | Quit/ Step Back Quit Input | Get out of there. Unlock the side, lock it in. |
+
+The side and upshow must be a continuous shift, not a full sounding of the animation over a certain threshold. You can either find only one spot or stop shooting in the middle.**Left hand LGrip**- Not with the right hand holding.
+
+## 2 Rule prioritization and old options
+
+This specification replaces[Early VR Interactive Scheme](10-vr-interaction-design.md)The following bunker rules are included:
+
+- Replace "uninvolved/outline bunker status" with "in-format, adsorption and specified exit mode".
+- Replace the words “right-stumping, unwinding and recovery” with the words “real horizontal movement of head and left hand grabs”; no right-shocking poles already in place are used to turn around.
+- Replace the words “to unload the edge of the grip” with the words “to keep the current position”.
+- Replace the words “the edge of the grab is only a successor” with the clear scope of this function, which is achieved along with the upper edge.
+- The neutral eye point after the low bunker enters must be hidden and cannot follow the first person's description of the entry default higher than the shelter. The upper probe is created by a change in real location or pull-and-pull, not automatically by an angle of header, LT or RT.
+
+This time, no normal moving speed and collision, free standing, flying or complete weapon systems are redesigned; additional running/sprint cameras are added to stabilize as required by the user's follow-up. The right-hand swinger of the old scheme does not serve as an uplink for this bunker; it cannot be used in a bunker to create another set of buttons that will be used to cross this specification.
+
+## 3. Capture, maintain and retake
+
+The capture must be satisfied at the same time: it is in a valid bunker, allowed to exit in the direction it follows, effective tracking with the left hand, close to the edge of the gripable edge of the grab, and new push-downs have been found on LGrip.
+
+Left/Right with**Player heads in the local right and left direction as he moves to the current bunker**Define; "up/down" is defined in the game 's gravity direction. Turning, head and lower head do not flip or pull. A grab locks a edge and an operating axis, and cannot jump to the other side by frame near the corner.
+
+Press to record the current body deviation and the position of the left hand in real tracking space. When you hold, calculates the physical shift by moving the hand position relative to that starting point. The body, eyes and non-arranged right hand/weapons are converted with the same body; the grasp of the left hand is shown as holding the edge and connecting with real time hands.
+
+**User confirmed maintenance rules:**Release the hand and stop pulling, but not automatically recapturing, removing body deviations or demanaging bunkers. Retake reset from current physical position; reverse pull on the same edge can be gradually retracted. The old starting point of first capture cannot be used to cause a shot to beat again.
+
+Default: single-takes only horizontally or vertically; re-carves must be carried out loosely. Other axle shifts that are retained still need to be checked geometrically through the current bunker, and cannot accumulate beyond the scope of the shelter by hand change, recapturing or re-engineer. Ending old grabs when moving along the new slot, depending on where the new slot is connected, allows re-graving.
+
+LGrip shares the left hand with auxiliary arms, picks up bullets, loads and grabs mechanical parts. Default is achieved: the held object continues to have a left hand, which must be released before scratching the bunker; when the left hand is empty and closes the edge of the legal shelter, it can hold side. The same time presses only one hit operation, while the edge cannot be seized without simultaneous aid or ammunition.
+
+## 4...head, body, eye and collision
+
+**Real standing, crouching down, bending and leaning/prospecting to the right and left must be effective.**The game points follow as long as the head is in physical space; when you actually stand, you can be found above the bunker, you can actually reduce your body, and you can actually see or take back your right or left. These moves do not require LGrip or extra buttons.
+
+Only**The headline is completely unchanged, only the rotation angles are changed.**When looking up, turning down or turning around only changes the direction of observation and does not generate an additional procedurally elevated, crouching or side-proximation. The shift in reality is accompanied by a change in head position, which must be preserved in its entirety and cannot be ignored because the action is called “turning back” or “heading up”.
+
+The left-hand grip is an additional virtual shift, which coexists with the actual move. Players can stand up/right and right to their own feet, pull only by left hand or pull a stretch before continuing to detect with the real body; both shifts are applied once. Unleashing LGrip keeps only the pull-in virtual deviation, while the real head continues to rise, move around and shrink, without being locked in its state.
+
+The body is facing the bunker, and free observation of its head is two conditions. Natural front is a bunker when it approaches; entering the process does not allow the body to be directly directed against the wall. Players can still see freely when looking on the side, and cannot force their view back in order to get the body towards the wall.
+
+The neutral eye must be built on the current bunker, person posture and space balance. Virtual neutral eye under a dwarf shelter should follow the top and retain the necessary collision surplus; it cannot be fixed at all shelters or addressed by lowering the general walk-by-view point in the global context. This requirement is directed to the basic eye point, not permanently limiting the final header's sight to the top: players must be able to see the outside after they have actually stood up or scrutinised across legitimate edges, and cannot offset real shift through each frame, fixed altitude or pressure back.
+
+Real head moves and left hand pulls are two independent inputs, one stacked. Body movements cannot be recalculated as a hand input into the next frame; they cannot be driven by virtual hand coordinates that have been converted to world space or can be replaced by “relationship of hands” in order to actually track spatial shifts.
+
+Virtual body pull must be subjected to continuous collision inspection and cut in the current bunker range. Real head moves continue to follow; if you try to cross a physical wall, you need to hide your vision and ask for return to a legal area, not to display it directly from behind walls or to force a head-to-head position.
+
+The detection is not a mobile camera. Virtual body/top exposure, area under attack, gun-scraping and actual shooting must be matched; using the original adsorption does not automatically match the original fire or firing conditions. No “eyes are outside but the original version is protected by complete hiding” can occur, nor can sorbence be destroyed to complete the sidewalk directly to transport the entire person's collision body out of the wall.
+
+### 4.1 Run and sprint camera stabilization (user add)
+
+User feedback is too high, and explicitly requires that the camera be not moved while running. This is a mandatory camera repair for this branch, covering ordinary outside of the bunker, low-pressure punches, and games allowed to run along the mask; it is not only used when scratching the edges.
+
+- Remove the top-down bumps, left-and-right swings, nods, head-shapes, rollers and additional lens swings that are being applied to the game. When a real head is still running in a straight line, the point of view should move steadily along the person's moving path, with the horizon shaking around without moving at the pace.
+- Keep head-to-head real rotation and peaceful migration without locking the sight, lowering the head to track response or smoothing raw head-to-face data to mask running.
+- Physical movement of persons, high and low terrain, active diversion and necessary attitude changes; cameras cannot be fixed to a certain world height or can be used to resolve the shaking by changing the speed of running.
+- When starting, stopping, running, running and sprinting, stabbing to the bunkers and exiting from them, the basic eye point and direction are linked consecutively, without suddenly retrieving back to the original dithering camera or generating additional jumps or lens swings.
+- Only the motion of the camera caused by running is separated.
+
+Prior to achieving this, you will need to record a stable personal movement reference, original camera position/direction, EyeHeight/portal, HMD raw position and final eye-eye point separately, identifying which layer of movement comes from. Priority is given to removing the explicit growth of the running camera or creating basic view points without that increase, superseding the real header; no filtering can be made for the ultimate camera containing active shift, recoil power and tracking.
+
+## 5 Aim, fire and original action.
+
+In the VR bunker context, remove the automatic probe/spectrum shift branch triggered by LT/RT while retaining lawful targeting, opening and shooting. Exiting the shelter, menu and non-modern input is still handled according to their existing rules and cannot swallow the triggers globally.
+
+If a original shooting requires a certain CoverAction/Advance Licence, it should be driven by the actual verified exposure and weapon state and inhibit any corresponding additional automatic camera movement; no single aim or shoot can be disabled to resolve automatic detection. Specific primary entry, call order and recovery matters require evidence, and this paper does not treat candidate functions as direct write-off interfaces.
+
+The target must be a weapons-authority line and its scene intersection. HMD only changes the observation/show, not automatically turning the viewing position into a weapon ray. When the gun is behind the wall, even if the eye has been found, it must be observed as a real gun cover; whether blind shooting without showing its head can be determined by the proven original weapon rules cannot be used to implicitly ban all firing because of the cancellation of automatic probes.
+
+The right hand can shoot with one hand when the left hand grabs the side; the body remains open after LGrip is released, and the left hand can re-engage. Weapons models must be verified in the direction of a star, gunpoint, random dispersal and final impact. Only the shot or HUD cache on the image does not prove this link.
+
+## 6 Status and interruption
+
+The following is the status of the new interactive layer, which still holds a bunker validity, adsorption and exit determination. The state is called the proposed interface, not indicating that there are codes in place.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Outside
+    Outside --> Attached: 原版进入并认证当前掩体
+    Attached --> Grabbing: 合法边缘 + 新的 LGrip 按下
+    Grabbing --> Grabbing: 左手位移连续驱动身体
+    Grabbing --> Held: 偏移未回中时松开 LGrip
+    Grabbing --> Attached: 反向拉拽回中并松手
+    Held --> Grabbing: 重新抓取，起点取当前位置
+    Attached --> Outside: 原版侧面或后退退出
+    Grabbing --> Outside: 原版侧面或后退退出
+    Held --> Outside: 原版侧面或后退退出
+```
+
+`Attached` and `Held` All allow for real head movement; they are only differences between virtual body deviations and whether or not to return. All capture states retain the original exit capability. Release the scratch side first, connect the active body/eye with the original move transition, do not make a zero shift in instantaneous form, nor can it be immediately re-insorted by the still held LGrip.
+
+Real head moves or left hand pulls across the edge of a bunker are per se props, and do not in itself mean that the original side exits; these two shifts cannot automatically inject walk/exit input. The player takes the initiative to reverse or back-off the original side before submitting the original exit decision.
+
+| Interrupt | Defaults are achieved |
+| --- | --- |
+| Left hand lost track/input samples old | Stop pulling, unlock the arm anchor and retain legal physical deviation; continue to observe when headline tracking is effective; retake needs to be released before press |
+| Headline lost tracker/XR session not available | Continue existing tracking recovery, stop new captures; continue moving bodies without old hand samples |
+| Pause/menu | Pause interaction; return to the same valid bunker to preserve position and capture must be re-established |
+| Recenter/Track space epoch changes | Rebuild the head, hand, body and weapon together to remove old captures; effective world position continuous, no epoch margin calculation |
+| Manual smoothing/Snap shift to body change reference | End old grabs, move to the review bunker and legal deviation in new bodies before they are allowed; no left hand pulls with reference axis changes |
+| Original round corner/shelter slot change | End old grabs and review new slots and directions; old edge anchors cannot continue to pull the body |
+| Death/checkpoint reloading/charts/person replacement | Clearing old bunkers, capturing anchor points and sustaining deviation; new scene re-certification |
+| Story/machine gun/special action takeover | Return the action control; do not release normal bunker offsets to other cameras or characters |
+
+Exit and original special action take-overs take precedence over grabside. Normal terminations and midway failures must return the changes that are available to the function, review the identity of the object and current value and not revert to the object that has been replaced by other systems.
+
+## 7 Existing realized and evidence boundaries reconciled
+
+| Item | Existing evidence | Meaning of this achievement |
+| --- | --- | --- |
+| First person, preview. | `tools/native-capture/first_person_view.h::prepare` Use `Pawn.Location + EyeHeight`, horizontally forward 0.35 M, lift up 0.10m；`first_person_live.inl::prepare` No bunker height branch. | To add a dedicated base eye for the bunker; fixed deviation is an explicit pending entry, but it has not yet been demonstrated in this run sample as the only reason for overloading of all shelters |
+| Run camera steady. | Same `prepare` Remove the original camera roll and position animation, but still extract forward from the original view using real-time Pawn/eyeHeight;[History shake analysis](19-first-person-motion-and-recoil.md)Recording old bag running-phase motorized drawings not uniformly deleted | The preview is not considered as running stabilization; the run angle increment, person/eye high change and active mode switch needs to be distinguished. Currently only user phenomena and source access are available for reasons that are not certified while running |
+| Synthesis of Vision Points | `capture.cpp` First, I'll get you ready. `stereo_matrices`；`camera_closer` There's a separate branch. | Select a single, effective base eye point, synthesize body deviations, HMD, right-and-right eyes; avoid first person designation, closeness and bunkers each one again |
+| Old first person bag. | [First person analysis](12-first-person-mod-analysis.md)Record old packages `WarCam_Cover` It's... `PawnRelativeOffset=[80,0,50]`；[Preview Record](first-person-preview-20261021.md)Description of the current preview using a stand-alone rendering point policy | The old high-level bunker is not targeted, nor can the current preview be used to assert that third-party packages have been integrated; actual retail package identities need to be checked prior to testing |
+| Default Head Input | Current `pose_probe.cpp`、`pose_bridge.h`、`stereo_frame.h` Path provides HMD/eye samples; this baseline does not have access to left-hand grab side input | Not directly HMD as left hand; access to a sample handle with identity, time sequence and valid position |
+| Independent weapons work | `codex/weapon-6dof` Existing `controller_input_bridge.h`、`controller_continuity_bridge.h`、`hand_world_continuity_bridge.h`, its interactive document gives LGrip multiple mutually exclusive uses | Priority is given to re-use of input/continuing contracts on a clear version, establishing shared left hand operational attribution; the branch has not yet joined the weapons candidate and cannot be said to have completed its arms control |
+| Hold your gun, HUD. | [The bunker is locked and repaired.](cover-aim-lock-20261022.md)Dissociate the scene from the hit point query reply. | Retain existing repairs; not authenticating bunkers or firing status with old HUD cache |
+| Original bunker candidate | Used `tools/re-kb/kb.py` Search `Cover`、`CoverAction`、`CoverSlot`、`CoverSlip`、`WarCam_Cover` and related class names | Script/object entries and historical strings found, control interfaces, memory layouts or terminologies for current retail processes not yet certified |
+
+The knowledge base candidate includes `WarPawn.SetCoverAction`、`PickClosestCoverSlot`、`ReachedCoverSlot`、`WarPC.CoverAcquired`、`TryToCoverSlip`and `WarCam_Cover`／`WarCam_CoverTargeting` . They are used only to narrow down the scope of the investigation;`CoverSlip` . The qualifying search does not return to the named native function, nor does it mean that there is no birthright.
+
+Two other actions are assigned to the old script that need to be checked separately:`WarPC.PlayerTakingCover.DetermineLeanDirection`(History export SHA)256 `11c412d0…b2`) Written by bunker position, aim/fire and swing `OutPawnCA`／`OutPawnCD`，`WarPC.PlayerTakingCover_Stationary.DetermineLeanDirection`（`33ea50c8…4e`) also write up the probe. The current regular short bunker was visible when it was actually targeted `CoverAction=7`／`CoverDirection=3`, but export undeconstructed script operators and do not prove which function is currently being executed. The removal of autopsies must confirm the actual entry, action status and subsequent camera/image effects separately in the current process, and cannot be completed by one field or shielding LT/RT.
+
+Original Retrieval Reply in ignored `analysis/6dof-cover-planning-20261024/kb-*.json`. Script entries, historical run-time strings and disk EXE are different sources; press later[Knowledge Bank Rules](58-reverse-engineering-knowledge-base.md)Checks the source Hashi, module base address, caller and current process identity, and conducts minimum IDA investigations when necessary. This round does not open IDA or export new game pseudocodes.
+
+## 8 Development of a structure for realization
+
+Data stream:**Current bunker authentication + hands sample of the same tracking space grab, grab, and stay in position legitimate body shift Eye point/hand/arms/exposure status Submission of the same frame eyes**。
+
+It is proposed to separate pure interactive mathematics from game connections: pure logic enters a shelter allowing direction, edge geometry, capture input and tracking position, output with boundary body deviation and clear state; the game thread authenticates original objects, handle action permissions and restores, and the rendering of lines only consumes non-variable results that have been submitted and that match identity. The specific new file name is determined when it is achieved.
+
+The side probe uses the local right-hand axis of the bunker fixed at the time of capture, and the upper shaft is set up in the world. `Dg` To capture instant body deviations,`Lg` The government has been able to track the coordinates for the moment.`L(t)` As the current coordinates,`A` For this time, the freeze is traced to the bunker local axis map, and:
+
+```text
+D(t) = ProjectLegalCoverRange(Dg - gain * ProjectGrabAxis(A * (L(t) - Lg)))
+```
+
+Initial Default `gain=1`, converted to the ratio of existing millimeters/play units. The right axis is positive, with the left hand moving the body to the left; the upper axis is positive, with the left hand moving the body up. The lawful range is not calculated by retrieving the maximum process per recaption compared to the current bunker.
+
+The formula defines only virtual pull, and does not include head-to-head shifts; HMD applies to each of the left and right eye in subsequent geometry. Rotation maps cannot follow real-time head-in. Postures, body deviations, bunker sub-generations and eyes must be submitted in the same way, avoiding new eye bias and old eye deviations.
+
+Near-access grab distance, capture/release delay, maximum side/uptance process, body and wall residuals, hand-dithered filtering, dilution time for dilution requires scene measurement and actual interactive calibration. Unmeasured pre-measured not coding to " original value " ; HMD raw tracking does not pull filters without a hand pull.
+
+## 9 Order of implementation and conditions for completion
+
+| Phase | Work | Completion Conditions |
+| --- | --- | --- |
+| P 0(This time) | Specifications, independent worktree, current default baseline and input-dependent inventory | Documents are available for review, original work catalogue maintained and source frozen retroactively |
+| P 1 | Read-only observation bunker entry/sink/left/uptrow permission/exit; confirmation of LT/RT assignment and camera offset source | Item-by-line status and actions in the actual scene; script name or single screenshot not sufficient |
+| P 2 | Reuse/access left hand input, complete grab edges, reverse position, hold, recap, lock edge and restore pure logic | CPU checks for direction symbols, rotation coordinates, limit points, no feedback, old samples and life cycle pass |
+| P 3 | Body reference, eye-covering and head free observation in front of the bunker; no automatic search by key | The actual bunker view does not exceed the LT/RT should have a masked topline, does not generate additional camera moves, original adsorption and exit are still working |
+| R (Independent camera repair) | Read only the source of running and moving, then separate the normal motion/sprint camera increment, connect to stop and enter the bunker. | R 01–R 04 Pass, real head moves and normal movements; independent integration after necessary checks can be completed without waiting for all grab-side interaction |
+| P 4 | Real standing/right and left perforation and left/right/top-cap pull access, head/hand/eye unity continuity and collision | Simulator tracks and real games read back to verify true penetration when unheld, double-placed supersing, two-way action, hand-to-hand maintenance, recapturing non-jumping and legitimate edge constraints |
+| P 5 | Arms branch sharing LGrip belonging; aiming/fire permit, gun-face cover, body attack and exposure | Confirm authoritative shooting chains and attack behaviour; pure camera presentation cannot be delivered as complete functionality |
+| P 6 | Life cycle, special status, latest default increments combined and integrated | Access to the current default starter after necessary automatic check; separate records of physical appearance and complete playbook |
+
+P 1 First forensic slice: The same positive scene records the entry/station/targeting/fire-off of high bunkers to their left edge, right edge and upper detectable dwarf shelters; read only links to current Pawn/Controller, cover slot, camera, original action and input. Use these evidence to determine change points and then act Hook.
+
+## 10 The acceptance scene
+
+The following are all outstanding criteria and cannot be considered as adopted.
+
+| Numbering | Conditions and Operations | Results to be observed |
+| --- | --- | --- |
+| C 01 | Walk from normal walk to high/short bunker | The original sorbent is in place, the body is facing the bunker; the short bunker neutral eye spot is indeed covered. |
+| C 02 | Press LT/RT without moving head and hand | Aim/fire response according to weapons rules, no automatic left, right, top scouts |
+| C 03 | Real flat on the left and right edges, then back. | Continuous observation and retrenching; no LGrip, no change in authority orientation |
+| C 04 | Left edge grab, left hand right/ left | Left scout/retract right. |
+| C 05 | Right edge grab, left hand move/right move | Right scout/retract right. Left hand still. |
+| C 06 | Legitimate short bunkers, upper edge, lower/up left hand | Prospect/deposition is reversible; no uplifting of the header per se |
+| C 07 | Left/right/up-to-half and free to move left hand | Virtual body position maintained, hand moves removed from the body |
+| C 08 | Retouch and reverse at the same location. Repeat again. | Recapable, retraceable; multiple grabs cannot break the total process limit |
+| C 09 | The bunker is moving in the direction. 90°／180°, turn around when you're picking up | Local left and right symbols and upward orientation stable, independent of world fixation X or real-time head forward |
+| C 10 | Non-margin, top of wall, back of edge, unreachable grab | No false grabs, no walls, no automatic selection to the other side. |
+| C 11 | Hold on to the steady hand input for a long time, folding head motion | Accumulated drift without frame, no body-to-body feedback and head-to-head horizontal transfer only once |
+| C 12 | Execute side/ back exit while keeping capture or deflection | Exit is still complete. The eye links are continuous, old captures do not pull people back to the bunker. |
+| C 13 | Capture left hand drop tracking, centering, XR space change, pause recovery | No old samples jump; retake before recovery, with a continuous connection at the same valid position |
+| C 14 | Death, heavy load, alter, change of role, bunker failure or special camera takeover | Old objects and old offsets are all disabled, original controls can be restored |
+| C 15 | Left hand-handed gun/ball near edge press LGrip | The left hand operation has a unique attribution, not to pull the body and change the weapon/ammunition status at the same time |
+| C 16 | Eye-detected, gun post behind wall; shot at gun post | The gun was masked and the actual shooting matched; free observation of non-redirective weapons on the head |
+| C 17 | We're under hostile fire as we gradually expose and retrenched. | The range of the attack is consistent with actual physical exposure and cannot be protected by moving images only. |
+| C 18 | Check for double-eye and default return during continuous search, shooting and recovery | The same attitude is used by both eyes, with the independent left eye history, original colours, bunkers, HUD restoration and support logs maintained |
+| C 19 | Stand up real after a short bunker and fall down/wow down to the head without pressing LGrip; lean on the side, side or move across | The point of view moves up/sidetector/backward, and the point of view is not fixed to neutral height; physical exposure, impact and fire shield |
+| C 20 | Enter a single head rotation with fixed positions and a true horizontal head rotation | Pure rotation does not generate additional programmable probes; the rotation and peaceful movement of combined actions takes effect without discarding the real shift of direction/head/side-side tilt |
+| C 21 | And then you pull your left hand and you keep it open, and then you get up, down or you go around and you get back to the physical position. | Virtual pull-off is maintained, real moves continue to be detected and retraced, and remain virtual shifts after returning to their original posture; two are not separate or cumulative |
+| R 01 | Fixed real/simulation head-on posture, flat line ordinary running, impulse, available running along bunkers | Stable forward of point of view along the mobile path without step-in top/ left/right or angle-shaking; still available for one/ three-person VR mode to verify separately |
+| R 02 | Start, stop, run and sprint, sprint into the bunker and exit. | The sight points are continuous, without sudden recovery of shaking, jumping, swinging or generating a shift jump |
+| R 03 | Real turn, side-sliding, top-down and horizontal movement headline in running | Real tracking continues, with identical eyes, without head-activation locks, additional filters or duplicate superstitions caused by camera stabilization |
+| R 04 | Run and turn on the slope/stair, stop and aim. | Legitimate terrain and attitude height, diversion, person/gun animation and pre-existing shooting/backshow behaviour maintained without mistaking them as running noise |
+
+The CPU, simulator input, real game reading back, GPU image and physical header results are recorded by evidence. `render_scale=0.4`, configure only before the isolation instance starts; do not modify normal play rendering settings. Backstage testing continues with validated bend-windows games/simulators,`GEARSVR_TEST_WINDOWS_BEHIND=1`、`GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1` and only test with silent sound; do not focus, do not adjust the user window, do not open the physical controller backstage input, protect and restore existing archive/set.
+
+## 11 Branches and freeze baselines
+
+Workspace:`C:\Users\11\.codex\worktrees\6dof-cover\gearsVr`From `codex/0.0.4` It's... `9ffa710d5428f270a2ee7e6d7c8e9a930dbb7b81` Create precise name `6dof-cover` Branch.
+
+Because of the root directory 0.0.4 Rehabilitation not yet submitted, creating local baseline submission in new branch `85fc2b31c9f294e1726d192dd5c5af365acc3e01`,Reserve 29 A relevant source code, diagnosis, checklist and log file. The tracking file that does not modify the root work directory does not include another Discord tool or personal game path/historical configuration change in the submission.
+
+Copying actual frozen source, construction, source confirmation and limited knowledge base search results by bytes, 1,196 Local files; absolute paths from original sources remain available for retroactive use. Local maps and Hash lists are signed `analysis/6dof-cover-planning-20261024/baseline-copy.json`。
+
+| Default component when branch is created (historical baseline) | SHA 256 |
+| --- | --- |
+| `tools/native-capture/build-support1/GearsCaptureSupport1.dll` | `5e78c2a736526b3bf22a87023959d1635d82d8bcec80ddd05ed24fede4d6fe7a` |
+| `tools/openxr-probe/build-support1/OpenXRPoseProbe.exe` | `df54d17c03068f46cad60f43c5b17114dcc61bf612321efc85611822cd181b48` |
+
+The working area source snapshot and the actual frozen builder are two distinct sets of evidence. `analysis/support-instrumentation-20261024/native-source`／`xr-source` The actual default freeze source is used to minimize the increment, maintain the original build switch, independent left eye history and original colour, and not make a default package of all workspaces mixed with other experiments. The default baseline is rechecked and moved forward before integration is completed if it is newly repaired.
+
+The branch initially established passive bunker candidate from the freezing source and validated with an example of quarantine test; regular list retained at that time 1. The camera stabilization settings have a visible candidate and continuous session cleanup process, which is yet to be checked for running. Copy binary, CPU check and individual scenes have separate evidentiary ranges that are not equal to full playtime acceptance. 0.0.4 Release packages or tags. Achievement and validation continue to be recorded[0.0.4 Development records](releases/0.0.4/PROGRESS.md)The entity ' s head retains the receipt and inspection as a clear follow-up stage.
+
+As of the AN dynamic test, the body has been detected.0.4 9 paragraphs close to the original instance 1 Simulate HMD validation: a fixed position turns/heads up without raising the body, and the real position moves upward to drive continuous bone postures to zero. Left and right horizontal shifts do not trigger an uptick; side props are yet unverified. Unity left hand owner has taken all valid Scene, and only submitted deviations and current HMDs are kept when weapons fail, and this failure is not published.8 Candidates for completion of offline construction are still pending. LGrip grab is not open, surface/crash, mirror and complete 2D posture, Mesh against wall, hit with gun. Current root default has moved to supportport 2／menu-modal 1, above 1 The table retains the history of branch creation and the final integration must recheck the latest source of the freeze.
+
+AO completes the original left CA 3/Right CA 4/ Up CA 7 With the center CA 0 And the four bones and actual slot getter.5, original flip also relates to the upper Master and Pawn mirror requests; local Child 5 Images are still available.1 XR input bench has returned to LGrip by pressing, maintaining, releasing and restoring the full posture.01–C 21 The latest concrete evidence and incomplete items are based on the development record.
+
+Native 12 The complete 3D physical target of the same Scene/XR sample has been frozen, with real standing, crouching, right, left and back-and-forward access independently maintained; virtual LGrip does not require a true stand to start. This module currently provides only solver input, which cannot be considered as full body after it or already has a single axle animated weight. Nutslot geometry is read back in AR's actual session, and legal grabs, final posturing and collisions continue. The final integrated baseline is available for support.3 Native／menu-modal 1 XR, preserves the historical composition table when the above branch is created.
+
+RO 2 The same call would change the Local data of six arm bones, so that pre-call postures cannot be considered final and new animations cannot be covered unconditionally in the next frame.The body and arms are used by the same mative final gesture owner and shared arm solver;The only reading of the Rig interface does not grant skeletal writing permission, nor is the recovery entrance to the PG a substitute for final writing.(a) The limited test saves the original input, the primary output and the current writing values respectively, with withdrawal permitted only if it is clearly in the field of this writing;Any unreconfirmed recovery fields continue to retain responsibility.The current pure IO draft is still dealing with this factual discrepancy and partial writing, stage loss and array symmetry, which is not yet a viable game candidate.Full controllers and hands must also be marked with the location of grip to wrist and full rotation, so original grip cannot be directly targeted for handbone.
+
+Native 24 b Congener Core/Authored wrist target has been advanced to a continuous uuterTick-only, regular game 411 The subbone is updated and read the Core once, of which 394 Four plans completed on a series of occasions; the closure of the old manual Pose incident is sustainable and complete 96 This time, the diagnosis is based on a complete data link, not to mention normal arm lengths, bone writing, bunker body or collision inspection. The shared matrix policy still defaults on strict, and the visible bounded appears to have failed to resolve the deviation of the physical/vision point coordinates. The original person's first name is preview and the eye reference pivot shift, shoulder orientation and natural body stem control continue to be checked; detailed freezing of sources, failures and acceptance borders are recorded in development records.
+
+Native 25 Four sets of actual post-water empty scale/weight read back 1 Output and association with the original control line. The bone is still unmodified.26 b Further current bone.4 Map the continuous reading-only view of native Recoil, end of static scene 32 The rule is no_natural_call, without taking unread zero matrix as a gesture; then the actual natural action will be required to cover the follow-up. The fixed personal upper/lower arm ratio interface is aligned with the weapon session and reset locally, defaulting 1. The above progress does not change C 01–C 21／R 01–R 04 The acceptance requirement; final body of the grab/real search, collision/hit/gunshot and running transition are still incomplete.
+
+---
+
+## 中文
+
 # GearsVR 6DoF 掩体交互与实现规格
 
 2026-10-24制定，2026-10-26更新。功能分支及独立worktree为`6dof-cover`，当前阶段为实现和联调。本规格保留完整最终交互，不以早期隔离试验或CPU检查代替最终掩体验收。共用身体／手部唯一写入端已在正版后台测试中验证自由双手移动和资格交还。装备Lancer后的[Native47 + EP 正版后台验证](6dof-body-native47-ep-runtime-20261026.md)通过原40次／6秒连续主握门，并完成两段移手与实际骨骼读回；画面跟随、权威瞄准和开火尚未据此接受。新来源按[独立主握来源合同](6dof-body-main-mount-source-contract-20261026.md)接入真实Tick追踪、原Scene／设备关联和当前C0基准，不续时或修改旧来源。抓边偏移和共享左手接口已有CPU实现，早期隔离测试也覆盖过上探、低位中立及半探开火；它们尚未组成最终LGrip／双侧身体交互闭环。跑步候选曾在实际SM4中应用，普通跑动、起停／进出掩体衔接、最终双眼和体感仍待验证。旧按键完整替换、身体面墙、实际LGrip抓边、碰撞／受击／枪口一致性、武器合流和头显验收均保留为未完成项。默认native／XR未据这些私有候选替换，详见[开发进度](releases/0.0.4/PROGRESS.md)。

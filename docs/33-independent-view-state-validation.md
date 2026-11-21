@@ -1,3 +1,43 @@
+# Validate the birth cycle of an independent view state
+
+2026-10-12,Pid 11656 Single-person level,20 s. No screenshot, head start or second view is submitted. This round creates only a candidate status object that does not participate in the drawing.
+
+## Operation and Results
+
+Game thread calls verified factory in the main Draw assembly submission back 0x33BDD4. Return object to original view +8 , the table is the RVA expected in the current version. 0x1353918。
+
+Then call on the normal resources to release the package. 0x4CE80C, the engine handles resource release and object cleanup. The diagnostic tool does not call directly to a contempor or free. 0x33BC70, preserve parameters, return values and original behaviour; only digital identities are recorded when the packaging returns, and object memory is not read.
+
+Results:`attempted=1 created=1 release_returned=1 destroyed=1 original_preserved=1 flags=1`. Temporary object is the address of this process 0x95228F80, remove the call point for the package 0x33BC69, with +0x14 The sub-object returns to the normal path of the underlying object.
+
+Delete in Thread 40012, the same thread as the group submiter/renderer. Present and renderer consumption thread is 45532. This clean-up cannot be described as necessarily occurring at the rendering line; creating/releaseing static command branches is not equal to dynamic thread conclusions.
+
+This confirms the completion of a package with an independent state created, normal release and demarked markings on the current path. Neither is release judged by reading released memory nor does it prove that all GPU resources are complete at the time, long-term stability or status for additional eye viewing.
+
+## Peripheral authentication
+
+Records 90,241 Lines, drop the queue. 47 The strip. Present 6,944 Second, both successful. Renderer construction 6,941 Consumption 6,938 Infra, dissecting 6,937 Preparation 6,944 Sub-tectonic. Constructive, life cycle and preparation analysis are passed.
+
+Original View +8 Status pointer remains unchanged. On stop `disable_status=0 active=0`;researching all of them independently 11 The byte of the entrance is restored and the game process still responds. DLL and the springboard remain in memory until the process exits.
+
+## Tools and protection
+
+`--shadow-state` It is a one-time mode that opens visiblely, and it retraces other modified modes. The tool only triggers the call points, single view pools from the observed main Draw; failure to create or inconsistency with the header does not repeat or force the removal of unknown objects. Status destruction observations recognize only first match calls to prevent misidentification of other objects after the address has been reused.
+
+The starter checks the running signature of the plant, resource release package and deletion packaging on both sides of the DLL. On startup, preset the deleted jumpboard without opening; only enters the level to enable it. Add this observation point, complete assembly mode is highest. 11 A entrance.
+
+`CaptureSelfTest.exe --state` Simulates the delay queue during an independent test process: Only once a call matching the context was created, and in another line real release test page checked for recall and parameter retention, original pointer unchanged, entry restored, and read without release. Six original self-measurement and source view copies are also measured as being passed.
+
+DLL:`tools/native-capture/build-state-shadow/GearsCaptureStateShadow.dll`. Data:`analysis/runtime/state-shadow-11656.*`, do not enter Git. Results checker:`tools/native-capture/analyze_shadow_state.py`。
+
+## Next Border
+
+The results of the original matrix and visual mouth structure after the independent status of the certified copying/cleaning of the non-submission source view are now available separately. The two independent experiments are still not equivalent to stereo rendering.
+
+---
+
+## 中文
+
 # 独立视图状态的原生生命周期验证
 
 2026-10-12，原版游戏 PID 11656，单人关卡，20 秒。没有截图、头动或第二视图提交。本轮只创建一个不参与绘制的候选状态对象。

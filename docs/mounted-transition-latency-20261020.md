@@ -1,3 +1,51 @@
+# Short black screen delay on and off machine guns
+
+2026-10-20. User confirmed that the black screen of the selected customs menu was repaired and reported on machine gun 2 Seconds, machine guns.3 black screen of seconds, then normal. This process transition is delayed and the actual head time delay remains to be measured in a new version.
+
+## Positioned Waiting
+
+What a chance. `continuous-stereo-38848-20261020-184757-c3832acd` Use Startupoutput 5 native `28884fa68c55a1536430b3e0e9c7a596a65f7ef32a5e7adadd6103aa34707536`、MenuSmooth 1 XR `5b7051b756725b84545c96494d7af38deeecb12fab32c24b843a35e4db8cff7d`, Game Disk EXE `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`. Log shows the source 1→2→3 Both re-couping were submitted and the new frame restored, without classifying these temporary gaps as permanent cessation.
+
+Three eliminationable waiting points were found:
+
+- The whole world of the homeer found defaults every 2 The old anchor point before the next check is no longer available for use in the new frame.
+- The old candidate is ready for the actual read-only analysis.2 seconds;where camera full registration form found approximate 0.68 Seconds, UI objects found the app.1.08 Seconds. They belong to the CPU Wall clock, not GPU time.
+- normal status release interval for native 1000 ms. Prepare, entering quiescing, Commit could have waited for the next normal state output, and owner would have waited to reply even if it had already sent the event.
+
+## Modify
+
+1. Every 100 milliseconds read up to two points of position for the certified field, with an advance reminder of controlled Pawn or camera changes. The hint only arranges that the full read-only discovery is not anchor, display or input proof. Empty values, reading failures, invalid sessions and wrong identity are not granted; the original full discovery cycle remains in place and failure avoidance is not bypassed by a reminder. Each reading closes its own only sentence handle.
+2. New Resolver still authenticates the full identity of the disk Hashi, module, registration form and controller/camera/local; failure to display a hint is discarded reader, rediscovered by a re-test with existing boundaries. Anchor, UI, parastar, code entry and prior submission are rechecked without delay.
+3. The UI continues to go through the same complete object table. Read objects class first with a page prompt for the same round, sift out non-Class examples and decode candidate names; all selected classes, functions, attributes and final registration forms continue to be read in separate fresh. No type duplicate checks are cancelled, detection ranges reduced or cross-cycled pages alerts are dropped.
+4. `world_status_cadence.h` Watch the session worker only for world submissions, request, reproject, Candidate, phase. Handshake changes are immediately released and remain on a regular basis; call does not add IOs within the rendering hook or change GPU retirement conditions after the Worldgate has been reopened.
+5. The recording of events in the world Prepare observ/preparae/worker took time to distinguish, prepare and wait for a handshake.
+
+## Build and check
+
+MountedLatency 1 DLL SHA 256 `a2d52a9804cb0c3e37e40e749ff3a5dda7c517d99c7cfb188c9b3caa5c798d19`Path `tools/native-capture/build-mounted-latency1/GearsCaptureMountedLatency1.dll`;independent list `tools/vr-launcher/manifest-mounted-latency1.json`。
+
+Original code from delivery Startupoutput 5 Freezing source code copy, only modify status release, add header files/tests/CMake targets; no other DLS experiment with the work tree.40 The primary/starter check is passed. Python World Recovery, C.O.D., Source Identity, UI and Continuous Runner 143 Test passed, registration form found/name read 16 The test is passed. New regression overlay tips cannot create certificates, fail to elude, handle closure, intergenerational changes in the same address instance, filters are configured as original discoveries and error attributes continue to be rejected.
+
+In the actual VDXR process read-only measurement, new versions prepare a candidate for non-publication and non-dispatch of events in machine gun status 761 milliseconds. Prior approximation 2 The second measurement is walking; the two roles are different, not as strictly paired gains, let alone as head-to-head switching to black screens that have been reduced.761 milliseconds.
+
+Private source code and construction:`analysis/mounted-latency1-source/`、`analysis/native-build-mounted-latency1/`. The CPU buildback, the phased read-only measurements and the actual game regression results are all signed `analysis/runtime/mounted-latency*`. No new game inverted or operated IDA database, no distribution package was published.
+
+Backstage returns to the accredited game/simulator back window, only observe micro-output, silent and disables physical rearhand input, backup before running and restore five settings/archives after the game has been quit. This test covers normal world reconstruction and check points without replacing the end-to-end of the machine gun on the real machine. The results are to be added.
+
+## Actual return and local enabler
+
+The first backstage re-entry, the new frame and GPU were repeated on a continuous basis, native was not UI malfunctioned, Prepare went to towner to confirm Commit's completion.0.315 sec. But the old test only takes `world_handoff_card_ended` As evidence of the new world projection. This switch is done during the menu/film retreat, without showing that the World waiting card is missing, and therefore the log is missing.90 Strictly failed after seconds. Full failure report is as `analysis/runtime/mounted-latency1-actual-20261020.json`; exit and five documents have been restored. It is not recorded as adopted.
+
+XR adds a new independent `world_handoff_projection` Reply: original only `handoff_projection_completed()` Current world, identified generation, effective image and successful eye protection `xrEndFrame` Write a record of the following: keep the ticket, sample clock and selection. The list is not relevant to displaying the tipcard, and does not change the rendering or access conditions. `tools/openxr-probe/build-mounted-latency1/OpenXRPoseProbe.exe`，SHA 256 `0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c`, relying on authentication of build and 5 The existing policy check is passed. The relevant source file is snapshotd `analysis/xr-mounted-latency1-source/`。
+
+Second actual session `continuous-stereo-11480-20261020-191327-e865a47d` Completion of 2 site reconstructions, generation 1→2→3 Each of them gets the real XR projection from New World.1792×980 GPU source map,`saved_verified=true`、`stage_verified=true`Two handshakes of the owner.0.3123 seconds,0.3131 seconds;worker total length of time 1.377 seconds,1.163 sec. This is the CPU/Handshake survey for checking point scenes, not the length of the headlight machine gun switch to black screen. Numerical/UI check is non-functional, normal shutdown, downer/XR exit and five settings/archives are passed.
+
+Final reply `analysis/runtime/mounted-latency1b-actual-20261020.json` It's... `passed=true`、`two_reloads_verified=true`、`settings_and_profiles_restored=true`,error/cleanup_error is empty. Only the native/DLL/summary and XR directories/captures of the default list are updated after adoption; personal settings remain unchanged. Backup of the original list and uplifting the receipt is as `mounted-latency1-previous-manifest.json`、`mounted-latency1-promotion.json`. Use a new version after you have normally left the game and restarted from the root directory starter.`headset_latency_verified=false`It is also necessary to repeat the upper and lower machine guns in order to report actual transitions of time or claim that the black screen has disappeared completely.
+
+---
+
+## 中文
+
 # 上、下机枪的短暂黑屏延迟
 
 2026-10-20。用户确认选关菜单黑屏已经修复，另报告上机枪约2秒、下机枪约3秒的黑屏，随后正常。此项处理切换时延，实际头显时延仍须用新版本复测。

@@ -1,3 +1,33 @@
+# Four current unified experiences and pending identification of borders
+
+> Updated coverage: user authorized to continue with an M 4 Fire point, now the tenth bag is delivered. Lancer actually seized the bullet.420→419→405, the starting point/direction of the shot is touched and normal closing; long-stamped, continuous hand-to-hand, accurate hit and headline still await joint feedback.49e 1ce 0,Native/PhysicoXR reusev 9. Below v 9 Records are kept as history, and the three originals remain unphysically confirmed.
+
+Current entrance:[GearsVR Launcher.exe](</J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe>). Functional candidate 6dof-unified-20261028-9 Source 9e 0ad 18; the subsequent document is not submitted for another functional package. The original settings, physical XRs and backside keep.
+
+## Delivery and evidence not available
+
+Basic images of first person/space fixed pause menu; separate hands position with right yaw/pitch, tri-touch switch and actual Lancer hand side shift already available 1 Basic evidence. The profile, integrity, natural touch range and comfort of the user entity have not been confirmed. The simulator handle interface is currently only yaw/pitch, which cannot be considered a complete cross-checking acceptance.
+
+Source code check: free_hand_eye_targets.h:: wrist_from_eye uses full head/grip four-digit numbers, grouping the final eye by axle transformation and not discarding roll; h: hnd_wrist_calibration.h: native_wrist_target keeps its course through Gripx hanger four-digit number; body_c 0_hands.h: :compose_common projectes only over-range positions and rotates uncut; hand_two_bone_pose.h::solves the complete four-digit target to the final wrist, then writes back/ elbow/ wrist and checks for missing parts.9e 0ad 18 No difference. This proves that the chain did not deliberately delete roll, and that physical equipment is exported, the game is finally shown or the hand sense is passed.
+
+## Image correction.
+
+Private simulation preview restarted and scaled to 1920×56- I cut down the lower hand.1920×900 The expression “individual image back-to-the-art” in the old README package should be read together with this correction: the cut-off map and pending count are not sufficient to diagnose the final picture defects; neither does it claim that each frame is stable. The ZIP has not changed, no promotions have been made to the experimental patch, and no tenth package has been included.
+
+## Three moves after I wake up.
+
+1. The same entrance enters Playground, with the right and left hands raised, moved, turned and flipped to observe whether the first person's arms follow his own controller.
+2. Pause and turn, the menu should remain in space; the game should be restored after choosing to continue.
+3. After a real arm show, right Grip takes the actual weapon from behind his shoulder/trouser and then moves back. The missing measurement follows the existing process: hands are raised and held together.2 Release in seconds; free hands and first person say they don’t want this measurement.
+
+The normal log uses the starterExport logs, which is recorded in the J:/gearsVr/candidates/6dof-unified/analysis/runtime。M 4 The basic fire was authorized and delivered; the third action was followed by a right trigger to briefly press/dismissal to observe the firing and button. The switch/shelter/other gun continued to be suspended, amended on the basis of the current four specific feedbacks.
+
+[- The board.](</J:/gearsVr/docs/6dof-progress-dashboard.md>) · [Full video evidence and correction](</J:/gearsVr/analysis/6dof-progress/solo-full-preview-correction-20261028.json>)
+
+---
+
+## 中文
+
 # 当前四项的统一体验与待确认边界
 
 > 最新覆盖：用户授权继续一个M4开火节点，现第十包已交付。Lancer实际扣弹420→419→405、同shot枪口起点／方向写回与正常收尾已触达；长按、连续跟手、准确命中和头显仍待联合反馈。PG49e1ce0，Native／物理XR复用v9。以下v9记录保留为历史，原三项仍未物理确认。

@@ -1,3 +1,40 @@
+# Death HDR Write, Copy and Sample Order
+
+2026-10-17 Independent Hdrtimeline 52 Source Submission 650bd 486814f 89fbc 3311bbeb 59828e 9432704bf，DLL SHA 2566a 09fac 49fe 791da 4dc 02369de 7857bc 36b 2b 66ecf 72e 56ed 10eebf 861e 0af 71. Death_SOURCE_CONTROL is closed, new default closes death_HDR_TIMELINE, only watching the already existing Hook,14 The block CPU test is passed. Default is still retial 47。
+
+Actual 92 Session 40132-20261017-113435-e 5578f 99, select the death ticket 703/704/705/751. The six COM identities are successful, the cache is unspoiled and failure to read; copy, selected quad, HDR Draw and Execute are not discarded. OOM bound to touch 128 The maximum. Four frames to go.135/151/147/10 Items, both supported_observations_complete 0 Clear is unstopped, Barrier Hook is not enabled, other threads and non-first RTV are not covered, state_coverage_complete always 0。
+
+Draws a continuous symmetrical segment of the same instrument, copy, sample, OM, Execute or discards the section; does not copy and merge the same RT writing. Resource identity is checked by real COM objects on site without different points 0x 30 Infer.
+
+Stabilization instruments 751_Other Organiser
+
+| CPU serial number | Operation | ♪ Canonical Resources | Execute serial number |
+| --- | --- | --- | --- |
+| 105 | Early full copy | SRC 1a 4e 1ae 0 → DST 1668cfb 670 | 35686 |
+| 166/168 | 2ab 6d 9 Right and right eye. Right view.1920,0,1920,2160 | Write SRC.1a 4e 1ae 0 | 35693 |
+| 184 | First full copy of the story, coppy. | SRC & DST | 35697 |
+| 191 | A full HDR Draw at once | Write DST | 35697 |
+| 193..199 | Next HDR Draw | Write SRC. | 35697/35698 |
+| 201 | Second full copy of the follow-up coppy | SRC & DST | 35699 |
+| 203 | A full HDR Draw at once | Write original SRC | 35699 |
+| 229/255 | d 80a 7 b Left-and-right eye. | Sample DST | 35700 |
+
+The above operation is recorded in the same DIRECT queue 1a 5c 3640. The four frames show this key order; the last selection is for copy.703/seq 466、704/seq 565、705/seq 518、751/seq 201. CPU Execute is not a GPU completion certificate. No DST HDR Draw between the final copy and two health Passes has been observed, which does not preclude other clear, lias or unovercovered writing.
+
+GPU-source instrument 750/780 All clear unintentioned submission records, right eye close to black.97.86%/97.84%;normal playback and forward paper 288/1014 Eyes are not dark. One check point 1→2 Reactivate observation.5676(b) Normal primary clean-up, normal game closure and the resumption of four archived Hashi.
+
+## Next single HDR pixel evidence
+
+No more UV changes. Only read stable no.49 A death note is in the right and left.2ab 6d 9 The same source is added to the original Copy, using the legal premise of the former Copy COPY_SOURCE. It does not suspect that Draw is in state, does not build an independent Que/list or barrier.
+
+The GPU visible object must satisfy both the record of successful reset/retired and related GPU implementation to Map; only the first fence is not enough to exclude replay. Limit once Execute, crossquee, unknown submission, Signal failure or incomplete stop mark is uncertain and resources are kept, and cannot be released early or read back successfully. Keep original HDR bytes and footprints and decodering again.1c 6033 Rise 128 Byte SHA 2569a 2b 3a 678a 07074110f 5209b 21e 01a 66b 6a 93a 34872b 76c 01eee 70f 2d 30b 2c 86; historical lob identity remains artifact 1, the new process match has not been declared.
+
+Evidence ignores directories analysis/runtime/hdrtimeline92-* and session sessions. native-status.txt, .native-status.hdr-timeline.json, GPU chart. Real head start and entire first edition still incomplete.
+
+---
+
+## 中文
+
 # 死亡HDR写入、复制及采样顺序
 
 2026-10-17。独立Hdrtimeline52源提交650bd486814f89fbc3311bbeb59828e9432704bf，DLL SHA2566a09fac49fe791da4dc02369de7857bc36b2b66ecf72e56ed10eebf861e0af71。DEATH_SOURCE_CONTROL关闭，新增默认关闭DEATH_HDR_TIMELINE，只观察已有Hook，14项冻结CPU测试通过。默认仍Reticle47。

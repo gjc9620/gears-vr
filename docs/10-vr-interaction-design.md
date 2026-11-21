@@ -1,3 +1,107 @@
+# VR Interactive Program Record
+
+2026-10-24 The bunker rule is updated: this document retains an early history of discussion.[6DoF bunker interaction and realization specifications](6dof-cover-interaction-design-20261024.md)Check: Keep the original entry/sorption/side-out/back exit, replace key-pointing with real head moves and LGrip grab pull; keep loose hands and then hold back to reverse pull. The following is "No enter/exit" for "right swing right and left" for "Leave grab recovery posture" and "Spank side only" are replaced by this request. Other early targets such as free-line crotting/flip are not recognized as having been achieved.
+
+The same day, the additional confirmation: Real standing, crouching, bending and left-and-right physical probes can also be directly detected/retracted, do not require keys or LGrip, and may be superimposed with the virtual body of the grab. The following “no actual stand/crop” means only another virtual operation that cannot be interpreted as blocking real body movements; the true head transfer resulting from natural turns must also be preserved.
+
+Date of record:2026-10-11。
+
+Additional observation date:2026-10-12。
+
+2026-10-22 I'll see you at the interactive update.[Weapons 6DoF Interactive Design](weapon-6dof-interaction-design-20261022.md)The right-hand swing of the new program is to cover the left and right, and then the right, L.3／R 3 For re-entry/start filling,6 The DIF mode avoids existing preview combination keys; complete all actions before the end of the original perfect window is perfect and equally valid. The following is a long list of early design and historical observations, which are subject to the new document.
+
+Status: Cross-design records, to be followed. This document does not represent that the function has been achieved or validated. The previous route, “Retention of original version first” was scheduled for technical validation; this record records the end-of-the-life hand controller interaction.
+
+## Targets and Inputs
+
+First person VR, headline provides free observation and 6 DoF moves head, hands control is armed. Players do not need to actually get down, stand up or lift their bodies to complete the internal change of attitude.
+
+| Input | Targeted behaviour |
+| --- | --- |
+| Left swing. | Normal move, along bunkers |
+| Right swinger up. | Virtual stand. Hold it once. |
+| Right swing. | Virtually down. Keep it on the phone once. |
+| Right swinger left/right push | Go in the right direction. Unlock it. |
+| Headlight | Free observation. Dispersion of direction from weapon orientation. |
+| Master controller | Control the weapons position and direction, trigger fire. |
+| Second-hand controller | Auxiliary holding of weapons; departure of weapon during bunker capture |
+
+## Shelter and adsorption
+
+User final determination: There is no "entry/exit bunker" state on the interactive side, only adsorption. Retain the original flushing and adsorbing function, sorption to assist players before they reach the shelter and position them. Roles are in front of the bunker but the point of view is not forced to shift.
+
+Sorbing does not automatically decide to sit or spy. The previous discussion on “Default low ground, high-seat high ground” has been replaced by a subsequent amendment: Stand and duck are controlled by players up and down through right swings.
+
+When you have a low bunker, the player goes down and up and up.
+
+Reusable original station, crouch, adsorbing and suitable movement constraints, but the need for internal bunker status is a question of realization and does not allow for the restoration of a dedicated entry/exit process at user operations.
+
+## The chosen left hand to pick up the wall.
+
+The right pole stands outside, with an optional sensory addition: the left hand grabs the top edge of the bunker, presses down and raises a virtual body. Players do not actually lift up their bodies.
+
+The details of the recommendations in the discussion are left to the prototype for validation:
+
+- The left hand is near the upper edge of the grip, holds hold and grabs and gives a vibrating hint.
+- Records the real controller position at the capture, and determines the height of the probe by moving down the lower level at the relative starting point and limiting to maximum height.
+- Lower body when hand is carried back; restore pre-operational posture after unplugging.
+- The left hand is not armed when it grabs the wall, and the right hand can aim at the gun with one hand.
+- The control slot shift in real tracking space cannot be calculated so that virtual body rises do not change the calculation input, resulting in feedback loops or cumulative drift.
+
+This operation is optional. The roller poles are kept up and down. Repeated fatigue, single-handed targeting, and virtual hand contact with the wall during capture are tested.
+
+## Arms, point of view and unity of battle
+
+- The main handler controls the weapon, and the second is supported by stabilization when held; the head can be seen in other directions.
+- Virtual station crouching and travel require a unified role for viewing points and hands, which is then followed by real tracking.
+- The gun was consistent with the ballistics and the actual bunker could not be shot through walls while covering the door.
+- Role exposure, collision and impact determination need to be matched with virtual postures and cannot be modified by cameras alone while preserving inconsistent protection.
+- The original role animation cannot force players to turn, flip or roll and the real head move continues.
+
+## Rolling to Flying Poop
+
+Users want to flip to Max Payne style instead of keeping the scroll animations only for camera changes.
+
+Target is directed to enter a flight-by-flying trigger, supporting the time of firing and short bullets with your hands on them during the fly. When the world moves slowly, head-to-head tracking and hand-response remain real time.
+
+The role can be performed by flying pouncers, and the player does not follow his side or rotate. The movement of a pounce may still cause discomfort, and the time of the bullet cannot be considered as an assurance of non-stunning, requiring real head-to-head testing.
+
+The attitude, default crouching, trajectory and specific time parameters have not yet been determined.
+
+## First person called Mod Reference Observation (MAD)2026-10-12）
+
+2026-10-21 Update: User requires first toggle first person preview, L 3＋R 3 / E+R Switch, with reference to the horizontal roll and face-to-face behaviour of the bunker, retain rear seating power and remove the connection of the mouse up your eyes. This preview is used first for observing effects and does not require that the following flyup be completed now:6 DoF, hold a gun and stand alone.[Record of current round](first-person-preview-20261021.md)。
+
+Source: User observation of a first person, Mod, has not yet provided a name, link or source code; this project has not been independently validated. The following is an observed performance and is not an acknowledgement of its internal realization.
+
+- When the mouse is lifted up, the lens also moves upwards and can be used to view enemy relationships behind bunkers.
+- The Mod increased the FOV.
+- The camera is a smoother while flipping.
+- When you enter the bunker, the role is directed towards the bunker.
+
+The implications and direction of the programme are as follows:
+
+- The VR programme still separates head-watch from active proxies, without automatically raising bodies by the player's head; it can investigate whether its rise mechanism can be changed to a swing or walling operation.
+- The rolling camera can be used as a reference for stable flash-scrambling points, but it cannot be assumed that the time has been given to fly animated, shoot in a pounce or bullet, nor can it be inferred that VR comfort has been verified.
+- The face-to-face behaviour provides a reference for attitude modification, but it is necessary to distinguish between role directional changes, camera position changes and model changes, with specific mechanisms to be investigated.
+- The expansion of FOV is the move to the first person on this plane, Mod; it does not serve as a direct replica of parameters in VR programs.
+- This time, no changes are made to the identified interaction or starts to materialize.
+
+## To be validated and undetermined
+
+- How adsorption is lifted and whether it can be retained to avoid automatic takeover of original lenses and gestures.
+- Right-hand swings are used for manual diversion after a probe.
+- The original station crouch, the search and the range of the attack were controlled as described above.
+- Whether the controller weapon can drive the actual shooting starting and direction.
+- The site is a space for the air and air-to-air network, which is used to create animated images of the air.
+- The switch, the cut and the close-to-war key are recommended, with a specific map not yet determined.
+
+The recommendation for the sequence of implementation: complete real head start, double-eye refill and stabilize first person view; then verify the weapon trajectory of the controller; then achieve adsorption, swinging poles and props; then verify the wall tap; and finally deal with the time of fly-off and bullets. This is only a record of design, not starting these realizations.
+
+---
+
+## 中文
+
 # VR 交互方案记录
 
 2026-10-24 掩体规则更新：本文件保留早期讨论历史。掩体部分以[6DoF 掩体交互与实现规格](6dof-cover-interaction-design-20261024.md)为准：保留原版进入／吸附／侧面退出／后退退出，用真实头动和 LGrip 抓边拉拽取代按键探头；松手保持身体位置，再抓反向拉动缩回。下文“没有进入／退出状态”“右摇杆左右探身”“松开抓取恢复姿态”和“侧边拉动只是候选”均已被本次要求取代。自由站蹲／飞扑等其他早期目标不因此认定已实现。

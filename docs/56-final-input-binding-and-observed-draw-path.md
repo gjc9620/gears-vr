@@ -1,3 +1,616 @@
+# Final input binding and actual drawing path
+
+Update to 2026-10-14. Desktop header for the same frame, original input impact, real XR-sync scenario, and in Meta XR Simulator 120 The second static game program is verified with a limited number. 33860 Completed 6,746 Release and receive scenes 6,732 Game Image, Submit 8,637 frame protection, restore mono after stopping. 40776 It's... 30 Second-spectrum simulation head starter game projection and independent matrix audit have also been passed; the Raw simulation source is not equal to physical tracking. 43724 Ongoing mode actual output crossed 180 Second and clear stop normal, close tail release/receiver gap 1 Zhang has not yet been accepted by strict count. Real headplay display, physical scale, active TAA is still pending. The receiving-end game image has been read back and the texture of the engine is still unsupported item by item.
+
+## What's the difference in judgment?
+
+PID 48772 In the 10 seconds of this test, both eyes end up quart with the first CPU input state sample successfully: four texture-bound slots are not empty and two eyes are bound to one group of objects. There is a large record of the same line from the current view of the engine directly to Draw on both sides, and the first master pedal can be traced back to `11908c → 27e580`。
+
+Therefore, there should be no more re-corresponding `13cfcc` The empty list assumes that the right eye is not painted in the world. The available evidence supports continuing to check shared texture content, its scope of writing and subsequent processing. The shared object can carry normal SBS, binding the same does not constitute per se false evidence.
+
+## Directed Inverted Translation
+
+Add `DecompileSnapshotTargets.java` Export by visible entry in an independent runtime project, do not perform full program autoanalysis, use headless `-readOnly`The first three objectives and five additional goals were successfully compiled and the compilation was released.
+
+| RVA | Logic observed |
+| --- | --- |
+| `1665dc` | Press View `+3e8` From another mode parameter `1c3b410/1c3b488` Wait for the candidate to enter. `1b4ca0`;the mode parameter for the final caller is 0 |
+| `1b4ca0` | Sixth parameter not available first `13c`, read wrapper `+138` , retake `+38 + index*8` objects; writing subject `(slot+ed)*8`Mark `+a1` dirty state;other path parameters written `+ce8 + index*8` |
+| `1b36f4` | Object slot value and quote count increases or decreases, not GPU copying |
+| `2754f4` | Call after parameter is calculated `1b4ca0`, you can't call it a single SceneColor binding function. |
+| `166960/1b0b14/275638/da2588` | Inert initialization and return to global candidate, exact type not restored |
+
+Key compilation points:`1b4cfb` Read the wrapper index,`1b4d01` Take the object,`1b4d33` Calculate `slot+ed`，`1b4d47` Update the object slot,`1b4d60` Marks the state of the dirty. These support CPU binding slot judgement, COM interface or D for objects that have not yet been proven 3D 12 SRV。
+
+Output:`analysis/ghidra/render-16812-verified/final-inputs/`、`input-resources/`. The address in the dynamic stack is the return point; the `27eb6c` When exporting the entry, the script found it in an existing function and rejected it. No error was made to create a new function. The function that it belongs to is exported `27e580`；`119342` Call it straight. Go back to point. `119347` Same as the field.
+
+## Minimal observation changes and authentication
+
+`final_input_observer.h` Reads the current view, binding slots and candidates wrapper from the existing final Quad Hook. No new Hook has been added, no call to objects is not a dead end, no GPU status has been modified. Only first valid sample is saved for each eye, only subsequent cumulative calls are made; the slot most readable 32 , wrapper index only accepted 0–7. A larger index that is not read cannot automatically be marked as an invalid resource.
+
+Adds a new decoding of the upper limit for the number of cells covered, a wrapper index crossed borders, invalid address rejected, data unchanged. Real MinHook/quad self-measured, prototype parameter forward and reset check. `build-finalinputs/GearsCaptureFinalInputs.dll` Success.
+
+Operation mode: Only access is reserved at the start of the new launch, which will be activated when the observed confirmed level is reached 25 Second collection, double view limited to 10 seconds, background tests, original output bunds and video diagnostics are enabled; no pime description tracker.
+
+## Dynamic results
+
+| Item | Left eye. | Right eye. |
+| --- | --- | --- |
+| Final number of observations entered | 1,744 | 1,744 |
+| First sample | 0 | 0 |
+| First sample candidate global address | `141c3b410` | `141c3b410` |
+| First sample | `931f2abc` | `931f2abc` |
+| First sample wrapper index | 0 | 0 |
+| First sample against bound object | `80d8fe00` | `80d8fe00` |
+| First sample slot 0–3 | `80d8fe00,80d8f380,3e85f5300,1622c51380` | Same |
+| Direct Draw Total Current View Attribution | 691,001 | 684,931 |
+| Of which eventually Quad Draw | 1,744 | 1,744 |
+
+Draw is attributed to current view, via the Renderer array and `D30` step-check;unassigned=0 OverFlow=0. It does not cover other threads, ExecuteIndirect or precludes current view during shared processing. The first non-final indexed path contains both eyes `1acf07 → 1778fb → 17651b → 1a84d6 → 16b4d1 → 1697d2 → f18da → 27eb6c → 119347`。`27e580` The static code does bind to the view. `D30` Through the clock, but these Draw type pass, colour mask and actual pixels are still not confirmed.
+
+1,744 Submission, consumption, preparation and destruction of objects; 10-second span 9.999275 seconds, production shut down, pending/retained/skiped all 0, restore single view. Continue two-view dedicated analyser `analyze_submit_duration.py` Passed, stopped after 23 A match for the entrance.
+
+Misuse Normal Single View `analyze_lifetime.py` Could not be successful because the double view data does not meet single view owned-view; this result is kept in `finalinputs-48772-generic-lifetime-inapplicable.json`, cannot be confused with a successful dual view-specific analysis or used to declare the current target leak.
+
+This round window screenshot actually occurs after the test has ended and cannot be used as pixel evidence during the trial. The following must place the intercept/readback request in the same script and activate, avoiding a 10-second window missing between dialogue and tool call.
+
+## Read-only resource object check
+
+Add `inspect_bound_inputs.py` Verify EXE version and same PID from highest recorded 64 Read each object 256 bytes, compare read twice. Only a pointer and module belong to each other, without injection or call COM.
+
+Four bound objects can read and read the same twice;`+18`、`+60` . The direct level scan does not confirm D 3D 12 System module vtable, which indicates that the engine package will also need to be tracked and not directly `80d8fe00` When ID 3D 12 Resource pointer is called. The object may also be reused after the test, and reading stability does not prove that it still belongs to the same frame.
+
+Local evidence is based on `analysis/runtime/finalinputs-48772` For prefix:`.status.txt`、`.csv`、`-restored.json`、`-lifecycle.json`、`-observation.json`、`-objects.json`. The game has been restored to the normal single view and observes that DLL is reserved for process exit.
+
+## Next
+
+Continue to direct the analysis of engine packaging and actual D for bound objects 3D 12 Resource relations, and recognition `27e580` and later pass write to sharing texture. First create resource identity and status, then select a fixed point reading; do not use "right eye bound non-empty" "two eyes Draw close" or "shared input" as dual-eye success or root cause.
+
+## Follow-up: Resource interface confirmed (PID) 11580，20:11）
+
+Directed Analysis Parsing Function and Packaging Member found that this version contains unpressed 8 Byte-System Pointer. Read-only 8 The byte scale will be missed. `+c/+14/+24`for 4 Byte scale, maximum tracking 128 Node. Root bound object `+60` Point to engine packaging, packing. `+c` Pointing to system D 3D 12 object. Relevant export in `texture-wrappers/` and `texture-wrapper-members/`♪ Read only the trees ♪ `analysis/runtime/finalinputs-48772-packed-tree.json`。
+
+New edition `resource_identity_observer.h` The system module of the two-stage engine and the first three methods at the bottom is still available before the final quad, while the engine is attached to the object, then calls QueryInterface (ID)3D 12 This is different from the PID. 48772 . Do not read GPU pixels or change resource status independently. 17×9 D 3D 12 Texture interfaces and dimensions are self-measured, invalid addresses are rejected, geometry/quad is available.
+
+Fresh PID 11580 First left and right eye sampling returns the ID of S_OK, 4 slots 3D 12 Resource agrees:
+
+| Slot | Dimensions | DXGI format values | mip / array / samples | flags |
+| --- | --- | --- | --- | --- |
+| 0 | 1920×1080 | 26 | 1 / 1 / 1 | 1 |
+| 1 | 480×270 | 10 | 1 / 1 / 1 | 1 |
+| 2 | 2048×1024 | 72 | 1 / 1 / 1 | 0 |
+| 3 | 1024×32 | 24 | 1 / 1 / 1 | 1 |
+
+Interface query confirms resource identification and description, but the actual SSV subresource, resource state, coloror function or pixels have not been identified. The record address is only historical identity after Release and cannot be used as a follow-up GPU to hold references.
+
+Ten seconds of testing. 1,137 View, continuously submit analysis and 23 Reconfirmed pass through entrances, pending/retained/skiped 0, restore normal single view. This time in the same script that starts collecting, wait two seconds to stop the screenshot and catch it. 20:11:21; pictures clearly show left half scene, right half black, correct the previous cutout bug to activate window. Data prefixes to `analysis/runtime/resourceidentity-11580`;photo path recorded in `analysis/runtime/resourceidentity-active-11580.json`。
+
+Next minimum determination experiment: only the u of the final quad of the right eye when matching all calls, right view, target/sampling rectangle and size 960 For 0, keep the right-and-right target unchanged, and for a short time A ⁇ B ⁇ A and synchronize the screenshot. If you have a left-hand map, it proves that the path can write visible content to the right and retain it to show that the failure depends on the original right sample range or related input; if it is still dark, it will still need to distinguish between input/continent, writing status and subsequent coverage. This contrast has not been implemented and is not fixed as a dual-eye.
+
+20:13 Recheck Ghidra MCP: Java GUI process exists, but default 8080 No listening, no handshake for raw tools, no independent protocol probe return connection. `analysis/first-person/ghidra-mcp-20261013-recheck.json`. GUI Opens does not equal to MCP Server started; independent headless projects can still be used for orientation analysis.
+
+## A ⁇ B ⁇ A Sample Comparison Completed (PID) 8760，20:33）
+
+20:23 The MCP protocol is connected after the user has been re-enabled. Currently it is still open with original EXE; two binding functions 64 Bytes cannot extrapolate this rendering path directly from the original item, unlike the validated snapshot. Target transition steps can be found in the document 13。
+
+Add Default Closed `--quad-left-source-control`, reuse the original quad Hook. Only ten seconds double view, original output bunds, video reports diagnostics; excluding mono/dupplicate contrasts. Run on request = caller=`d83b1c`, current view is the second array of trackers 2 And the capacity is valid, all rectangles and sizes are accurately matched. Only the right eye of Stage B `u` From 960 Replace with 0, the remaining parameters are forwarded as they appear. First right eye call is made to create a QPC starting point:0–3 a-seconds 1，3–6 Second B,6–10 a-seconds 2. No new Hook or GPU copying is available.
+
+Stage event returns the right Quad position, which is the CPU phase.`run_quad_source_control.py` After active collection, wait for phase, delay 0.6 Second screenshot, and check the pre-test and post-exit stages and PID; then check that the stopchart starts with QPC being covered by a right eye call. All three are passed, not a single view screenshot after testing.
+
+| Phase | Right eye call | Actual number of changes u | Right eye denied. | Visible Results |
+| --- | ---: | ---: | ---: | --- |
+| A 1，u=960 | 329 | 0 | 0 | Left half scene, right half black. |
+| B，u=0 | 345 | 345 | 0 | The same visible scene as the left. |
+| A 2，u=960 | 450 | 0 | 0 | Right half turned black again. |
+
+Left eye, unknown attribution and all non-B phase modifications 0. Actual academia matches: left eye arguments 1,124 ;right eye arguments 779 ;right eye u =0 Total 345 It is expected that other Quads will be rejected because of their field or caller's lack of match. The average right half-trained greyscale after the FPS word is excluded, respectively 0.145、31.962、0.145; this is the measurement of the window JPEG, not the HTML intermediate resource.
+
+**Conclusion: The current path can write the visible scene to the right and keep it to display; original failure relies on sampling coordinates or associated colour colour reader input.** Fixed right-hand inhibitions and unconditional subsequent blackouts are weakened. The main colour resource is still not shown to be empty, nor does it prove that the second eye geometric color has been rendered correctly; B is a congenial image comparison, not a dual-eye restoration.
+
+Build `build-quadcontrol/GearsCaptureQuadControl.dll` Success.`--quad` Include stage boundaries, individual dates, twelve parameters and authentic ABI forward self-measurement; geometrical and resource interfaces are also self-measured. Independent review does not find a blockage. Entry points are confirmed by the screenshot; the menu auto-feasance assistant only confirms the first two, the subsequent sequence is not matched and the subsequent order expires, and does not form the basis for successful navigation.
+
+Ten seconds. 1,124 View, Range 9.9969041 s, submission/consumption/preparation/destruction consistent, pending/retained/skipped 0;restoring single views and 23 Reconfirmation of the pass at each entry. Observation DLL to exit the game.
+
+Evidence:`analysis/runtime/quad-source-control-8760` Prefixed. `.status.txt`、`.csv`、`-shots.json`、`-control-validation.json`、`-restored.json`、`-lifecycle.json`. The screenshot is `analysis/game-io/frames/quad-source-control-8760-A1.jpg`、`-B.jpg`、`-A2.jpg`。
+
+Next round should be followed by the end-of-production: basis `1665dc → 1b4ca0` The resource selection identified, check which world colour/reprocessing pass the resource and its right range write, clear or process by error area; check with quick back-compilation and fixed pixel evidence on run. Prioritize the location of the first loss of right content before repairing multiple frames view; do not use this u=0 The route is not AER.
+
+## Inverse Sample Contrast to Colour Resource Relationship (PID) 35904，23:44）
+
+When the user opens the running time program and completes automatic analysis, MCP can reverse the authentication snapshot directly. The bytes of binding functions are passed and subsequent analyses no longer use a mismatched disk EXE code.
+
+Add new repulsives to the original test `--quad-right-source-control`: Stage B only takes the u of the final left eye from 0 Replace with 960, the right eye parameter remains unchanged. Still starts the same 10 seconds from the first qualified right eye aquad 1/B/A 2 clock, the original twelve parameter gates, call points, view arrays and life cycle checks are kept. QPC stops and ends in the corresponding phase between the eye and right.
+
+| Phase | Left eye call | Changes | Visible results on left |
+| --- | ---: | ---: | --- |
+| A 1，u=0 | 489 | 0 | scene |
+| B，u=960 | 475 | 475 | Black; both sides black |
+| A 2，u=0 | 652 | 0 | Scene restored. |
+
+Another unmodified left eye call before the clock is created. Right eye, unknown attribution and all non-B left eye calls are all modified 0 All the right-and-right-eye rejections. 0. Actual Quad grouping as left eye arguments 1,142 ♪ Left eye ♪960 Total 475 Sub-, right eye parameters 1,617 Minor. After removing the edge and FPS, the left half JPEG average greyscale is 31.428、0.109、27.989。A 1/A 2 The lens direction changes, so it does not draw the same conclusions by pixel; the visible scene re-emerges after B disappears and resumes u.
+
+**Two complementary contrasts: the final results follow the sample half region and failure can no longer be simply attributed to a right output that cannot be shown.** There is still a need to distinguish the original colour texture, copy/reconciled range and colorer processing associated with sampling coordinates; no original HDR pixels were obtained and no real eye stereo was completed.
+
+The same first left-right eye input confirmed:
+
+- Eventually slot 0:QI succeeded,`ID3D12Resource=11682f380`，1920×1080, format 26, single sample.
+- `global 1c3b420` Colour target: QI succeeded,`ID3D12Resource=16111bb320`, same size/format but with the end slot 0 **Not the same resource.**。
+- Colour target default resolution target wrapper `907a5380` This is the same as the final self-selected wrapper. This only proves a packing relationship, and the actual call can cover the target with parameters that still need to be taken.
+- slot 0 Engine packing `+80=FFFFFFFF`、`+84=169`。`1c60f0` Yes. `+84` bit 0 Yes 1 , and then take another path. `FFFFFFFF` Consider it a D-real 3D 12 state and insert a barrier directly. Engine cache is not equal to the GPU implemented status.
+
+`build-quadcomplement/GearsCaptureQuadComplement.dll` Build and quad/geometry/input-resource custom. 10 seconds 1,617 Consistency in submission, consumption, preparation and destruction, extent 9.9991836 seconds, pending/retained/skiped 0；23 A Hook entry is restored, normal single view is restored. Game window confirms that it has entered the level before activation and this round does not send menu input.
+
+Proof prefix:`analysis/runtime/quad-right-source-control-35904` It's... `.status.txt`、`.csv`、`-shots.json`、`-control-validation.json`、`-restored.json`、`-lifecycle.json`;stopshots in `analysis/game-io/frames/quad-right-source-control-35904-{A1,B,A2}.jpg`。
+
+## Production end-to-end call chain: new evidence and unverified branch
+
+`11908c` It's a phase control; it's... 0–3 Stage is not eye numbering. Earlier, a large number of Draws `27e580` Path bound to empty colour target and depth candidate, color writing mask 0 Recovery, more like depth/pre-treatment.**These Draws are not enough to prove that the colour of the world in the right eye has been generated.**
+
+The actual colour boundary is `11a800`: Tie `1c3b420` And depth candidate `1c3b510`。`11aad0` Called on second argument non-zero `1c5dd8`The source is... `1c3b420`, default destination wrapper takes the source public pointer down `48` Place.`1c5dd8` The CopyResource, CopyTextureRegion or ResolveSubresource. Its active rectangular branch uses the input LTRB; invalid/negative rectangles go to whole resources or all-subresource copying.`11908c` Initial Shared Rectangle is `{face=0,left=-1,top=-1,right=-1,bottom=-1,mip=0,override=0}`, not only left half by default, subsequent writing and actual reproduction scope are still to be verified.
+
+`224ca8` Creates a sample named DefaultColor with rendering packaging; the input of existing sampling texture as associated parameters is not equal to the base GPU resource, and this dynamic identity has distinguished between them. The final output is from `11908c → 2b0a98(stage 4) → d82f58 → 1af42c`(quad return point) `d83b1c`）。`223ab4` After this output, you cannot be classified as a production function that was entered at the end of the previous period. `be65cc` For the DLSS branch, the current setting is closed and cannot be claimed for this execution because of static presence.
+
+There are other specific candidates:`119bdd → 2a7e48` Draws the range based on the width of the first view only. 960/1920 It's going to come in. 0; the function does send a quad, but the depth/colour writing status and actual impact are not verified, leaving it unnamed "Emphasis of Clearing Right Eye" and did not skip it.
+
+CPU Coordinate Review did not find a repeat deviation of the left- and right-rect: constructor sets local target coordinates by source rectangle, current and original 0; ultimately quad calculates the target crip position and source of each UV. Right eye `x=960,u=960` is a different coordinates area, on which the double offset cannot be judged.
+
+Minimal experiment: to observe only the actual resources associated with the above colours within the two-view consumption range that has been tracked `CopyTextureRegion` Parameters, confirm whether the right half is covered. If a copy is fully printed, continue to check for the text and reprocessing of source colours; if a copy only covers the left half, track who constructed the rectangle. Do not add HDR back by guessing resource status.
+
+## Actual copy observation (PID) 18388，2026-10-14 00:06）
+
+The user exits the old process manually.`build-colorcopy/GearsCaptureColorCopy.dll` Saves the entry for a new process, and the user continues to level until the 10-second double view is enabled. The complete QPC section falls between two-viewed structural areas in CSV, with the picture still remaining left scene and right black. No final quad sampling was modified.
+
+First two-eye confirmation of target. `129b02640` With final input `129b01cb0` Both. 1920×1080, format 26, separate sampling of different resources. `CopyTextureRegion` Saved 623 Callback from Return Point `1c6093`Source/purpose consistent with both resources, both subsource 0 → 0 Purpose `(0,0,0)`, source box is nuld: these calls are to copy the entire source subresource and are not restricted by the view.
+
+There are clear coverage limits for this round of records:6,140 The blog is a very popular website.1,535 The first time I was in the country, I was not sure what to do with the resources.623 Sub-subsidiary to polymerization,3,982 Under-Secretary 32 The project capacity was not excessed. This was due to the large number of rotations of command-list addresses also being used as a polymer key.**Only if the call is saved in full, this does not preclude local copies that are not saved in the call.** The next version is aggregated by the syntax of reproduction, with the first list address retained and additional separate classification counts added; not processed through an unlimited expansion of logs.
+
+Resource/parameter reading rejections 0。1,535 Full consumption, preparation, destruction of view, extent 9.9994043 seconds, pending/retained/skiped 0；24 The entrance is restored, the normal single view is restored.`analysis/runtime/color-copy-probe-18388` It's... `.status.txt`、`.csv`、`-shots.json`、`-copy-validation.json`、`-restored.json`、`-lifecycle.json`. The screenshot of the window is `analysis/game-io/frames/color-copy-probe-18388-copy.jpg`。
+
+## Minimal cause-effect experiment for the width branch of the first view
+
+Supplements to the reconciliation of compilation/compilation:`11a800 → 1741d0` Revert the view first to the full colour resource size.`119bdd` Call `2a7e48(float)`, Return Point `119be2`,fload arguments by XML 0 entering;this function constructs four CPU vertex points, x as `{1,1,t,t}`, of which `t = 2 * firstViewWidth / resourceWidth - 1`. t=0, cover the right half of the resource.
+
+`2a7e48` Keep shadow/ texture binding after call `1af054`, submit four-point cap.`11a800` and shader binding function `0ea9f0` Do not disable depth; the depth pass in front has a preset to enable deep writing, but the actual state of this call point and the depth output of the shadow cannot be directly characterized as black or dark.
+
+Contraception: Two views only tracked, exact return point/retroform/resource size/view, original t=0 Change B phase t to 1，A 1/A 2 Hold on. 0. Still calling the original function, keep other bindings, uploading and submitting; four CPU vertex x are all 1 The degradation geometry affects the right-side scene to be validated by a physical screenshot. The experiment has been implemented and results are as follows.
+
+## Causation of mask overlay verified (PID) 34724，00:19）
+
+Execute after user enters the level `run_color_probe.py --mode mask`. The round does not modify the final quad sample, and does not copy left eye maps to right eye. Only A ⁇ B ⁇ A is performed at the above-mentioned original mask call point.
+
+| Phase | Original Call(s) | Number of changes to t | Number of rejections | Window Image |
+| --- | ---: | ---: | ---: | --- |
+| A 1，t=0 | 999 | 0 | 0 | Left scene, right black. |
+| B，t=1 | 1,005 | 1,005 | 0 | There's a scene on both sides. |
+| A 2，t=0 | 1,358 | 0 | 0 | Left scene. Right side back to black. |
+
+The three screenshots are all enclosed in the CPU phase, with a complete screenshot of QPC spaces from the start of the call. The first entry status for the three phases is consistent: 1920×1080# The scissor is `(0,0,16384,16384)`;CPU Depth description of the first three DWORDs as `1,1,4`(Enabling, writing, LESS_EQUAL); request and cache colour mask all as 15. The entry description does not yet correspond to the final GPU PSO, much less to the depth output of the shadow.
+
+**Confirmed: In the current two-view path,`119bdd → 2a7e48` The geometrical cover is causal to the right black screen.** Original code calculated by first view width t=0, submit a mask for the entire target; restore this geometric degradation to the right side and then black out again after it has been covered. The black screen is created by colour writing, depth shielding or subsequent dependence, which is not yet fully differentiated. The correction should be based on an effective coverage of the whole view collection, and cannot skip this function globally or keep the diagnostic hard code permanently.
+
+The aggregation of the copy observation has been modified. This round 6,724 In the second instance, CopyTextureRegion,1,681 It's not about the second time.5,043 Submatch 420→destination 410,full subsource 0 copying;partial/source-only/destinization-only/overflow 0, parameters and resources are both read-nosed 0. This conclusion covers the current co-symmetry CopyTextureRegion observation range, and does not mean that other threads or all GPU operations are overwritten.
+
+Ten seconds. 1,681 Total consumption, preparation, destruction of primary view; pending/retained/skiped 0。25 The entry is restored and the continuous two-view life cycle check is passed. Both eyes are from the same original family view, still using synthetic ±1 Game unit position and original projection; IPD, asymmetric projection, different depth visions or head-over acceptance not completed.
+
+Evidence:`analysis/runtime/color-mask-probe-34724` It's... `.status.txt`、`.csv`、`-shots.json`、`-restored.json`、`-lifecycle.json`. Image:`analysis/game-io/frames/color-mask-probe-34724-{A1,B,A2}.jpg`. These three charts should be reviewed together, and cannot be declared binary VR by B alone.
+
+### B Phase 3 images offline check
+
+`analyze_stereo_pair.py` Use bright zero average NCC, texture/peak differential filter to match right- and left-back; search allows positive or negative horizontal shifts and ±3 pixel vertically. Images divided by half each eye 480×540, the following values are pixels in the retention screenshot and not original GPU texture pixels or physical depth.
+
+| Manual Selection Area | Matchable | Medium horizontal vision |
+| --- | ---: | ---: |
+| Foreground role | 90 | 3.98 px |
+| Nearest Pillar | 42 | 1.87 px |
+| Medium View | 57 | 1.03 px |
+| A far-off door hole. | 11 | 0.057 px |
+
+All-Text 835 Matches;upping thresholds, downscaling the watch and retaining 341 Point, median for each region still around 3.98/1.85/1.04/0.057. Regional medians and absolute values 95 All in. 0。**The scene has a horizontal vision that varies with the depth of the scene, supports stereotypic rendering of different points of view and excludes simple reproduction or constant flattening.** The close relationship of artificial tags is not an Depth measure; matching a patch overlap, JPEG/Shrimp/Fist/Time Order may affect values and decimal places do not represent the respective precision. A single window chart does not prove head projection, IPD, GPU inter-eye time sync or that the card is correct.
+
+Statistics `analysis/runtime/color-mask-probe-34724-stereo.json`、`-stereo-strict.json` CSV; known horizontal/zero offset matching check performed, brightness and results in `-stereo-checks.json`Right-grey mean A 1/B/A 2 About 0.225/31.375/0.223 It's the same as the eye.
+
+Next: Default close, strictly limit the range of view-union calls for current double view, and make 30 SBS; review vision, object life cycle and automatic recovery, re-calibrate two-eye projection and OpenXR access. Do not use AER.
+
+## First run and failed entries (PID) with ongoing correction 12420，00:33）
+
+Add `--view-union-mask-fix`, repeats the same original mask entry. Requesting current tracked family to have two source/target-like, adjacent and full high integer rectangles with a left boundary 0, union does not cross borders, view report is the whole goal; original t must be aligned with the float point of the first view width. Re-engineer t at the entire union right border to keep the original function called once. Default closes, excluding mono, dupplicate, final sampling contrast and old mask A/B/A. Different target sizes, different wide views and partial width union have offline coverage, which does not mean that it has been validated in the game.
+
+`build-viewunion/GearsCaptureViewUnion.dll` Seven self-measured. Real running. 30 Seconds generated 4,620 View, all consumption, preparation and destruction, pending/retained/skiped 0, restore single view and 25 The entrance is restored.13,860 The sub-regulated CopyTextureRegion is a complete subresource copy, and aggregates are not spilled.
+
+This round cannot be considered as an ongoing image acceptance, with two clear questions:
+
+- Screenshot script request 1920 Wide, and the existing WGC helper accepts only 160–1280. The first cut-off chart failed, no valid phase; original failure report retained. Script changed 1280, and pre-screens with PID before activation to avoid re-consumption of the screenshot parameters.
+- Mask Call 9,240 Number of times, of which 9,239 Second acceptance and modification, last 1 I was independent. 30 Second clock is set to end up with a double view that passes another cut-off clock in the middle of consumption. It cannot be modified as an all-out; next edition follows 30 The second production deadline is completed, allowing the trailed consumer that has entered the queue to be executed and the master collection stopped process to end.
+
+It's on the record. `analysis/runtime/color-union-probe-12420` . The file is a status, CSV, shoots, library, and supported.`timing_valid=false`、`correction_valid=false`、`cleanup_valid=true` It is the actual result of their respective checks and cannot be merged to a successful conclusion.
+
+## 30 Second correction is continuing (PID) 31668，00:41）
+
+`build-viewunion2/GearsCaptureViewUnion2.dll` Change the life cycle of the valid tracked consumer to:30 Two-view production closed in seconds, but the team is still finished.45 The real Lifetime model is closed, queued for consumption, destroyed and rejected for testing and independent review. No geometric threshold has been relaxed or the number of Hooks added.
+
+Current round 4,850 Full consumption, preparation and destruction of view;9,700 Sub-mask is accepted and modified, both refusals and geometrical complication spills 0. Construct the width 29.99794 seconds;all life cycles,25 The entrance is restored and the single view is checked.14,550 Sub-relevant CopyTextureRegion All complete subresources are copied without spill.
+
+The screenshot should read 1280×720. Two scenes were seen before, during and after the activation, restoring the screenshot to a normal single view; four complete screenshots of QPC are in active range.`correction_valid/timing_valid/cleanup_valid` This is the acceptance of rare transects plus consecutive CPU counts, not read back by GPU frame.
+
+Sol Mediam independently reviews and runs an existing offline match, saves dimensions per eye 640×720. The median difference between the average and the average before/medium/after role 5.18 px, pole 2.41 px, panel 1.38–1.39 Px, deep door hole 0.12 px;qualified match 1,228/1,224/1,225, trend is stable. The same image supports the persistence of a horizontal difference at different depths at three points; no physical IPD or header calibration can be inferred from this.
+
+Prefix to evidence `analysis/runtime/color-union-probe-31668`including shots/status/CSV/restored/lifecycle and `{early,middle,late}-stereo` JSON/CSV. Pictures are `analysis/game-io/frames/color-union-probe-31668-{early,middle,late,restored}.jpg`。
+
+Next is the original construction parameter `+b0` The impact of the projection should be verified and then re-interlaced with the actual OpenXR two eyes pose/FOV. Current projection corresponds to the original 16:9 ♪ Vision, in every eye ♪ 960×1080 half-SBS, which is later transducated horizontally; these pixels cannot be used as a calibrated headline view. The bridge package continues to be only read and GPU output remains two dimensions short, with each eye data and project player consistent with the image.
+
+## Initiation impact should be validated (PID) 20804，00:56）
+
+Independent Build `build-projection/GearsCaptureProjection.dll`, by default closed `--projection-control` Same family view, extraput bases, video reports diagnostics and `--view-union-mask-fix` Join, reset the old Hook. Only one phase is selected before each attempt to create a pair of source inputs. First time, the source QPC was created and registered as starting point; two eyes share this stage. Only the projection of the source snapshot is modified `+b0`, source remains unchanged,  ⁇1 The eye position of the game unit, the remaining matrix fields and depth parameters remain the same; changes in unknown shapes, non-limited values and no valid values are rejected.
+
+| Phase | Time | Two-Eyed Projection Input | Tracked pairs |
+| --- | --- | --- | ---: |
+| A 1 | 0–5 sec | Original Projection | 830 |
+| B | 5–10 sec | P 00 × 2 | 890 |
+| A 2 | 10–15 sec | Original Projection | 836 |
+| C | 15–20 sec | P 8 + 0.1 | 833 |
+| A 3 | 20–30 sec | Original Projection | 1,684 |
+
+Phase 5 x build / consume_before / prepare_before / prepare_after 20 aggregates are recorded, mismattch=0，projection rejected=0. Expected to be removed when stored with a valid projection in the bounded root metadata; consumption/preparation records prove that original renderer has matching input at these locations, and does not stand alone as GPU execution. prepare_after check for remaining fields to maintain depth and record P-permit changes 8/P 9 Disable.**All stages of this, two-eyed prepare P 8/P 9 Both. 0, therefore no active TAA behaviour is validated while shaking.** B/C Discrepancies A 1/A 2/A 3 The baseline inspection was passed and no fixed engine caps were assumed.
+
+Synchronised Saved 1280×720 Windowshot Every Eye 640×720, five complete screenshots of QPC are surrounded by the corresponding tracked area_before.`20804-response.json` A horizontal imitation match with B, two-eye horizontal scale approximately 2(To be combined to move left) 0 Right 1 px) C both eyes in the same direction +32 px、scale=1, vertically shift=0。A 1→A 2、A 2→A 3 and A 1→A 3 Both eyes are restored.1、shift=0;support `+b0` , the matching is from a window screenshot and is influenced by animation, JPEG, zooming and mask; it does not equal physical IPD, head-to-face or frame-by-gPU simultaneous proof.
+
+Thirty seconds. 5,073 (a) View, total consumption, preparation and destruction;10,146 Sub-mask is all accepted and modified, both rejected and geometric spills 0. pending/retained/skiped 0,source maintenance, independent release, normal single view restoration and 25 All access points are back through. CSV has 214 round dropped, double view life cycle events still meet the analytical door limit; the exact total is provided by consecutive count.`correction_valid/projection_valid/timing_valid/cleanup_valid` It's all true.
+
+Evidence:`analysis/runtime/color-projection-probe-20804-{shots,lifecycle,restored}.json`prefix, same prefix `.status.txt/.csv`and `analysis/runtime/20804-response.json`. The screenshot is `analysis/game-io/frames/color-projection-probe-20804-{A1,B,A2,C,A3,restored}.jpg`。
+
+Current OpenXR registry corresponds to SteamVR 2.17.10 Name, system `oculus`I'd like to recommend two eyes. 4096×3288; this time only confirm that the system is available, and no game program player has been submitted. Next step is to convert each real eye into a raw view and projection, and bind each image to the corresponding two-eye metadata and projection display time, then submit OpenXR program player, verify scale, dynamic head start and running. The desktop still in composite eye position is half-SBS, which cannot be declared VR complete.
+
+## Authentication of the path to real XR static parameters (PID) 39436）
+
+`build-stereoxr/GearsCaptureStereoXR.dll` 30 seconds desktop pair test to replace composite eye slots and game FOV with real XR samples. Each native family freezes a sample once and two-eye matrix, separates the ticet ID from sample sequence; invalid samples are returned to normal Mono. Current scale is 100 Game units/m, physical scale calibration has not been completed and no GPU images are released or game production player submitted.
+
+Total 4,465 The view is all consumed, prepared and destroyed.8,930 The sub-mask accepts all of it, changes it, rejects it or geometrics it overflows. 4,465 ♪ Once, mismatch ♪0、view_error_max=0 Two eyes, P-E-E-E.8/P 9 residual=0. pending/retained/skiped 0;source maintenance, independent release, normal single view restoration and 25 A portal resumes check through. Shots' `stereo_valid/correction_valid/timing_valid/cleanup_valid` both true; original CSV 134 Decorated, count and life-cycle coverage check passed.
+
+First and last samples of the original 1110/4706、ticket=1/4465。`39436-xr-matrix-audit.json` Check with the XR records issued item by item, session, sequence, request_ns, prepared_time, flags, head position and eye at end; boundary sample approximately age 8.27/7.57 ms. The actual IPD starts with 0.0665900205/0.0665899868 M-M-O-R. 66.59 mm. Around FOV asymmetric, by left/right/up/down (radians) `-0.942477763/0.698131680/0.767944872/-0.959931076` and `-0.698131680/0.942477763/0.767944872/-0.959931076`. Left-Eye CSV source to buildt matrix difference 0，P 00/P 5/P 8/P 9 Unlike the original Mono, depth blocks are maintained; eye alignment is provided by the above-mentioned PSI.
+
+**This round only validates the true XR parameter path at stationary, and not the apparent head-to-head acceptance.** User confirmed that the second round did not move much; maximum shift relative to reference during test 0.212 mm, maximum rotation around 0.02848°, is a tracking noise level. Maximum shift during full recording is still insufficient 0.32 mm, insufficient rotation 0.03°. Small input is accompanied by changes in the consumption matrix, but window amplification does not distinguish this movement, much less create a final GPU image response. CSV does not record the frozen XR security/base-matrix ticket, so only the first and last steps can be checked with the published sample, and the middle cannot be linked to each article. Prepare reidual is all 0, and did not verify active TAA behaviour.
+
+Both failures in implementation are retained: first preflight failed because of the existing CSV being monopolized, no original activity, not counted for a valid test; second runner is on 65 Second end waits, time out, then pass. `finalize-only` The original runner timeout cannot be renamed as "no error completed" by collecting and verifying the final shots, lifecycle, restored/status evidence.
+
+Evidence:`analysis/runtime/color-stereo-probe-39436-{shots,lifecycle,restored}.json`prefix, same prefix `.status.txt/.csv`and `analysis/runtime/39436-xr-matrix-audit.json`. This round supports the real two-eyes into the original renderer's CPU path, without proving that the game eye map is visible.
+
+The Frame link module is also available 316 The offline check passed, but has not yet been accessed into Hook or GPU public and cannot be called a live image map. Next step is to check rotation, smoothing and restoration with actual actions with sound tips, then bind the ticket, two eyes/FOV and forecast displays to the actual GPU image and submit it to OpenXR program player; the results of this follow-up action test have not been written in this section.
+
+## Desktop Header Phase of Real Action Passes (PID) 39232）
+
+New process follows `build-stereoxr/GearsCaptureStereoXR.dll`, complete the actual head rotation and peace transfer by sound tip to verify the head-to-head path of a real XR frame with two eyes.`stereo-xr-39232-attempt1.json` Record preflight 60 frame pass, native_stard=true, native and XR process exit_code 0;the current round has been successfully run, finished and restored, as described above PID 39436 The static conclusions and the two scripts remain.
+
+Thirty seconds. 4,226 Full consumption, preparation and destruction of view;8,452 The sub-shade is fully accepted and modified, no rejection or geometric spill. 4,226 ♪ Once, mismatch ♪0、view_error_max=0 Two eyes, P-E-E-E.8/P 9 residual=0. Original source maintained, released independently, pending/retailed/skiped 0;normal Mono recovery and 25 All access points are back through.`stereo_valid/correction_valid/timing_valid/cleanup_valid` Both true. CSV dropped =167;saved 4,221 The constructor source to the bilt matrix is precise and the full count is derived from the original polymer.
+
+♪ The first one ♪1118/4717、ticket=1/4226 Match all XR samples issued by session, poste, two eyes FOV, request_ns, pre-qualified_time and validity flags, border sample of approximately age 5.55/4.97 ms. Maximum head shift relative to reference during test period 9.34 cm, maximum rotation. 53.85°, significantly exceeding the previous track noise. Maximum transfer of the Camera position restored from the left eye consumption V matrix 9.47 games units;current scale=100 In units/metres, this value is not yet equal to the separate physical scale.
+
+The front, middle and post-interception diagram shows a clear response to actual actions by the two eyes, restoring the intercept to normal mono; complete transects QPC are in the corresponding observation area.**The desktop header phase of the real XR-Sync is passed; the headline of the game eye map OpenXR protection player is not yet completed.** CPU matrix matching and thin window image does not prove that each GPU frame is synchronized, nor does it create an accurate GPS frame map. The middle CSV still lacks a record of frozen XR sequence/base-matrix slots, which cannot be linked to all pose by article; prepare reident=0, active TAA still awaiting validation.
+
+Evidence:`analysis/runtime/color-stereo-probe-39232-{shots,lifecycle,restored}.json`prefix, same prefix `.status.txt/.csv`、`analysis/runtime/39232-xr-matrix-audit.json`、`analysis/runtime/stereo-xr-39232-attempt1.json` and corresponding to XR CSV. The image is `analysis/game-io/frames/color-stereo-probe-39232-{early,middle,late,restored}.jpg`。
+
+Next, access the offline validated Frame link to the actual image Hook/ GPU public, bind each ticket to the corresponding two eyes: pose/FOV, prognosis time and GPU images, then submit OpenXR program player, authenticate physical scales, headlights, dynamic synchronization and running.316 The offline inspection of items is not a substitute for the actual image mapping and acceptance.
+
+## First round of GPU frame association diagnostics (PID) 19076）
+
+Independent Build `build-framelink/GearsCaptureFrameLink.dll`（SHA 256 `02BF4EF045892026B113B1352BC043D3F026DC1F64BBF29F3E4DA40D94F17869`) access existing research, RTV/OM, Draw, Execute, Present observation paths and record the actual casery input swapchain/queue at startup.354 The CPU check and the game-link/ prime-handoff/ View/ Quad/view-union-mask ABI check passed. The test still only observes associations, and no GPU images are published.
+
+PID 7680 Starts the first unobserved binary test: game prime watchdog held by banning other writing `target-prime-status.txt`Additional ABI failed to write the file again. Return 142. Not the game render failed. Scripts now copy DLL and self-check programs to an independent temporary directory; original error log is maintained, prime expires and PID is independently verified and restarted after six entry points 19076。
+
+PID 19076 30 seconds to synthesize SBS 2,522 (a) View, total consumption, preparation and destruction;5,044 The sub-mask correction is accepted. Both morning, middle and evening are two eyes to restore the screenshot back to mono; timing/ prevention/clainup passed, and life cycle checks are performed.28 All access points restored. CSV dropped=46, without prejudice to the count of continuous memory aggregates.
+
+**UNISU did not adopt.** Factory accept one game chain, record two buffer; first Present `unchanged` Check failed, binding is permanently marked. Later 4,939 Present is unborn, linked=0，GPU published=0。114,341 Execute was rejected by the associated user; the first window contains an unknown-list, and no valid Present border since then. It is not possible to assert that all submissions of the game are wrong. The current log does not save the first difference size/ buffer details, so it cannot be done by simply drawing a distinction between Resize and other inventory problems after startup. The next round requires a fixed size snapshot with initial differences from the one-tier baseline where the level is loaded on the key; changes are refused thereafter.
+
+Current observations do not cover all Clear / Copy / Research / Book / UAV / RenderPass writing and life cycle, so even when linked, they indicate only conditional CPU call connections. The access release is preceded by full frozen sample, confirmation of actual output and queue, processing of their own GPS copying and unknown writing, and handing images with metadata to the recipient side as GPU fence.
+
+Evidence:`analysis/runtime/color-union-probe-19076.{status.txt,csv}`prefix, same prefix `-shots.json / -lifecycle.json / -restored.json`;failed self-checking as `color-union-probe-7680-start.log`# Recover the evidence as # `frame-link-7680-prime-restored.json`。
+
+## Borders of the buffer zone at the crossing have been amended and additional submissions still need to be located (PID) 21604）
+
+`build-framelink2/GearsCaptureFrameLink2.dll`，SHA 256 `58A2C945DAB02728B7C706BE65DA5BA77C32DEEC467DE8BE423A697B53DF40B2`，7313 The CPU check and the ABI check pass. First level present creates a fixed snapshot; holds chain/ queue reference, Backbuffer only has temporary access; Present recovers old list/ OM slots and requests new Reset, loss of capacity to reject association.
+
+PID 21604 Completed 1,728 For synthesizing SBS, all consumption, preparation and destruction; window screenshots timing with cleanup passed,28 Reconfirmation of the first snapshot to remain at the size 1920×1080, but two backbuffer identities are different from the records of creating swapchain. Anchor changed=0、unbound=0、inventory rejected=0;list high water level 148/512 OM/list/event/target overflow 0. This solves the first round of inventory and observational recovery problems that were encountered.
+
+Two actual backbuffer, each left eye. 864 Right eye. 864 Second, ticket/queue/target conflicts and repetitions eye both 0. But linked was still 0: All 3,657 Present has unknown-list, all 1,728 All pairs are ultimately drawn and unclassified. Only one DIRECT queue was observed, all 82,709 Execute,354,776 Members, of which 3,728 Members do not have this window Restet record.5,584 The next unknown backbuffer Draw is in a field without pair ticket. These numbers cannot be directly interpreted as GPU errors; the next round will distinguish between UI drawings with small call stack and Present nest depth, system internal submission with window boundary omissions, not being ignored.
+
+The review also found that the RTV handle semantic problem was re-determinated when the observer Draw was re-examining: the RTV descriptioner can be reused immediately upon return of OMSetRenderTrgets, and the target must freeze at a time when bound.[Microsoft, official note](https://learn.microsoft.com/en-us/windows/win32/direct3d12/non-shader-visible-descriptor-heaps). There is also a need to exclude zero Draw and include the loss of a specific number. Currently there are no GPU video distributions, and these conditional CPU events do not claim final pixels or headline duales.
+
+Evidence:`analysis/runtime/color-union-probe-21604.{status.txt,csv}` and prefix `-shots.json / -lifecycle.json / -restored.json`。
+
+## Positioned Internal Submission and Extra Drawings (PID) 35864）
+
+`build-framelink3/GearsCaptureFrameLink3.dll`，SHA 256 `FA0AAC8C16E6D37AC98745B80A3CD6DC4B14866AB21E8A31E607C4565A1C9A9A`. This version freezes RTV targets at OM binding, describes the phase-out that invalidates the association, ignores zero workload Draw and adds a field call stack sample.7335 Item CPU check, complete construction and ABI check passed. Actual run is completed 1,686 On the View,3,372 The sub-mask is fully modified; life cycle, time, re-inspection passed.28 One entrance is restored.`linked=0`, no game GPU images were published.
+
+One unknown in each original Present has been observed, as well as one in each of the original Present. 3,457 Number of calls `dxgi.dll+0x20da2`，`inside_original_present=1`. The observer is calling the original Present **Before**Seal, but add the subsequent DXGI internal submission to the next window; this is a clear observation border issue. The next edition should clearly separate the partition and keep all unknown list-related submissions from those outside the area. There are also areas outside which Execute is not yet fully attributed.
+
+Another set of real backbuffer Draw outside consume, call the stack game RVA `0x172741 → 0x19e753 → 0x19f2f3`. Samples are recorded as 120 Indic, full screen view; this may be used in text/UI but has not been confirmed back-to-back and cannot allow for any writing after the final eye map.64 Total, aggregate 16 The stack has reached the ceiling for sampling; unrecorded categories do not mean that they are non-existent.
+
+Evidence:`analysis/runtime/color-union-probe-35864.status.txt` It's... `frame_link_work` and `frame_link_work_stack`;with prefixes CSV, shoots, lifecycle, recorded. Current blocking points are reliable links between images and frozen ticket; this round does not overturn the verified double-scenes of desktops.
+
+## Meta XR Simulator Independent Eye Test Passed (2026-10-14 03:05）
+
+User switch system active Runtime to `tools/third-party/metavr/state/tools/xrsim/meta_openxr_simulator.json`. This setting is not modified. Use existing `build-stereogpu/OpenXRPoseProbe.exe` Implementation 10 Seconds independent `--render` Test, do not connect to the game bridge. Program SHA 256 Yes `8595C47117D2809E1D4D0EF449912C65E061794EDDBC8C7B2003C87C5F3236DA`- Yeah, I'm out.
+
+Access 705 A frame that effectively simulates posture,704 Frame foused/should-render, submitted 704 Frame-eye test pattern. Two eyes each. 512×512 GPU Reread: Left Red Bottom, Right Blue Bottom, all with white crosses, verified for each other `11226527874467850021` / `15146484442681159973`. Simulate IPD approx. 60 mm, with the same head posture as before, no validation of simulation campaigns or real head start tracking.
+
+Run-time `XR_KHR_D3D12_enable`, log backend is `RenderingD3D12OnVulkan`Native `RenderingD3D12` Not enabled. The list format is as `[29,91,10,34,26,40,55,45,20]`;SRGB candidate for current test diagram meets the requirements. This results the emulator accepts the D of the current program 3D 12 Two-eye test diagrams are not equal to game images, cross-process GPU sharing, physical scales or real head experience.
+
+Evidence:`analysis/openxr/pose-20261014-030533-288859` JSON, STDout, Stderr, CSV, Two Eyes PPM and `-validation.json`. Next, fix the above frama-link boundary and identify additional Draws, and then hand over full frozen ticket game images to the simulator receiving end.
+
+## Frame connection passed, additional FPS drawing isolated (PID) 37304）
+
+`build-framelink4/GearsCaptureFrameLink4.dll`，SHA 256 `1491F1613B89E24AF99F566F7B454AA9A114D5D9AB7C48AF209E60C4B96A96E8`，7357 The model check and the real Hook path are self-measured. Upon return, the outer layer of the original Present retires in the previous sorting lock for the independent observation area; Neder does not repeat cleanup, failed/TEST is also processed and capacity failure remains rejected. Execute, who holds a crossline handshake to confirm other threads, can only enter the next window after clearing the area.
+
+Read only Ghidra orientation export confirmation:`[ClientSettings] FrameCtr` Writing `0x141c205bc`, the FPS function check and format it `%2.2f FPS`text is then offset by a shadow, then the original text is drawn, and the vertex and index is generated word for word. `140117430 → 14019e64c → 1401720a0` Submit. The last two are joint batch functions, not FPS special access points, and they are not disabled. Evidence is in `analysis/ghidra/runtime-ui-{stack,fps,text,glyph,batch,producer}` and `runtime-ui-settings-near.txt`。
+
+Close the game and confirm that after the previous round of access is restored, the actual user backup configuration will be as `analysis/runtime/frame-counter-20261014-031349.ini.bak`, only will `FrameCtr=True` For `False`. Next time start PID 37304 . The FPS is missing in the window screenshot.30 Second test complete. 2,599 On the View,2,594 For Successful Link(s)99.8076%），contaminated/polluted=0;former `caller_rva=172741` Draw sample disappeared. Unknown Draw 2,609 Number of times, all normal mono periods without pair ticket `7807 = 2599×2 + 2609`is consistent with the classification.
+
+Present 5,208 ;metala_lost=6(including first achor window), unknown_list=5 remaining capacity, quiue/ticket/target conflicts, repeat eyes, bad rectangles, expired ticets 0。5 The window for missing command list evidence is still rejected. Life cycle, time to intercept, return sheet view and 28 The entry is restored to all access. This round will only verify the CPU command connection, and it will be used for the purpose of checking the CPU's connection.`gpu_published=0`, no game submission player.
+
+Actual final Draw **Fullscreen view**, the half-screen area is from the coordinates of the Quad vertex; no wrong request for a view equal to a half-eye rectangle can be made. 35864 sample 31/34 And PID 37304 sample 3/4 All for DrawIndeced 6、instance 1 Single target 1920×1080、viewport `(0,0,1920,1080)`、scissor `(0,0,16384,16384)`;quad destination area is left/right, respectively 960×1080. The following publicsher should verify this observed combination and request the scissor to overwrite the corresponding eye map area.
+
+Evidence:`analysis/runtime/color-union-probe-37304` The status, CSV, shoots, lifecycle, reported and `-frame-link-audit.json`. Next to complete frozen sample, real queue GPU copy and fence, rerun the simulation game program.
+
+## First game OpenXR programend to end 15336，attempt 2）
+
+`build-stereopublish/GearsCaptureStereoPublish.dll`，SHA 256 `E2A013A910DCBD418F09DA1E942AC9BED04777D354F36989851A56D1B76118E1`. Default closed `stereo_gpu_publish` Only with real paid XR, fame-link and 30 seconds union fixes the connection.Consume save complete frozen sample to TLS, verified final Draw to keep values under sorting locks;Present rechecks the sample and copys the current backbuffer by clicking Linked Ticket.Only actual queue/chain with factory capture and acchor validation, GPU resources created by worker;Your own GPU command is isolated by TLS to avoid counting the monitor again.(a) Single slots ready/done set to pass images together with the document;Notify stopped, callback after dry/close.
+
+Real publiciser receiver ABI integration test,48 Frame Independent Cross-Processing GPU Test and Independent Code Review pass. This is D.3D 12 The debug player is not available, does not provide authentication with it.
+
+First time, attempt.1 Rejected by the starter before active: XR actually produces a valid posture, but pre-checks include unwritten CSV endlines in the final 20 Okay, and just... 8 Starts the second. Fixes to read data only before final full line break, and keeps a strict flags check for complete records, waiting for upper limit 20 seconds;semilineback and existing mocks 10 Item is adopted. `stereo-xr-15336-attempt1.*` Failed evidence, no test diagram is counted as game program.
+
+attempt 2 Normal completion:
+
+- Native Generate and complete consumption/preparation/destruction 1,613 View;mismastch, view_error and P 8/P 9 Both. 0 Physical scale is still temporary 100 units/m, current round simulated attitude static, IPD approx. 60 mm。
+- 1,609 Frame link success; capacity, conflict/target/queue 0。5 The window that is next unknown continues to be rejected.
+- Publish and receive **1,111 Jhang Game GPU Image**, no missing/conflicting ticket or rejected actual View/scissor; GPU receiver convert R 10 Game source writes the format supported by the emulator.
+- Submit **2,158 Frame-Eye Protection**,override **29.9561931 sec**, Max. interval **18.9437 ms**;session, ticket flags, geometry, stale, iage rectangle, regulation fair is not wrong. Producer_unviable/waising_image before startup is recorded separately from post-projecter_stopped and not counted as a game frame.
+- native and XR equals exit 0, screenshot time, life cycle, activity=0、28 Portal restored, GPU drive/close, pending_tickets=0 pass. The game has returned to normal mono.
+
+From the Receiver `stereo-xr-15336-attempt2.csv-gpu.ppm` Yes 640×360, both eyes have a game scene and different; the same name PNG is a non-destructive format conversion for viewing. Rare matching is obtained 1,732 Qualification points, role/column/far-door 83.90 / 80.13 / 78.02 px, supports depth-related differences. Most of the common crossovers come from asymmetric FOV in the simulator and cannot be approximated 78 px is considered a depth vision. The initial matcher uses the search radius as an error to sample margin, excluding specified columns and remote entrance areas; amended to use existing border tailoring searches, keeping old reports and saving them `-gpu-disparity-fullgrid.json/.csv`。
+
+This is the current level, the static simulator posture, the app. 30 Real game projection link in seconds. New game images average around 37 Hz, program with reused image to reach agreement 72 Hz; cannot be compared to frame rendering. This version still has fixed old mono channels 16 ms releases a throttle, the next edition will only remove the stereo and keep consumption fence. Autoimmating head start, running long hours, real headlight/comfort, physical scale and other levels are still pending validation and the target is not yet completed.
+
+Evidence:`analysis/runtime/stereo-xr-15336-attempt2.*`、`color-stereo-probe-15336-attempt2.{status.txt,csv}` and shots/lifecycle/restored; XR exclusive SHA 256 `8595C47117D2809E1D4D0EF449912C65E061794EDDBC8C7B2003C87C5F3236DA`。
+
+## 120 Second static game program through (PID) 33860，attempt 1）
+
+`build-stereopublish120/GearsCaptureStereoPublish120.dll`（SHA 256 `284047BD10C65CA03AD6CC996516A8D3070B5BCBF62124BFD6606400DA0A1486`) and `build-stereogpu120/OpenXRPoseProbe.exe` Completes new long-term tests. This round does not enable Operator, does not send simulation head moves;stereo channel removes the fixation of old mono 16 ms issues a throttle, which is still used to consume the back and GPU fence in single slots. Default strict head/view flags door limits remain unchanged.
+
+- Native Construction, Consumption, Preparation and Destruction **6,746 View**;the four steeo status count is 6,746,mismash,view_error and two eyes,8/P 9 Both. 0. Construct the width **119.9999157 sec**，13,492 The next UNion amendment is fully accepted and modified without rejection or geometric spill.
+- successful **6,741 Number of times**- Yes, it's all right. 0;Execute continues to refuse if the association is not satisfied. Releaseend generated **6,732 A new game image**, the receiver coops are the same 6,732；busy=7、capture_skipped=9、rate_limited=0, ticket_missing/reprojected and rect_subjected 0。
+- Submit **8,637 Frame-Eye Protection**,override **119.942687 sec**,Maximity interval **19.2561 ms**。required_span=119、producer_seconds=120, susted_submission_passed=true, stuccural_fair=fails. 0; unviable/waiting, front frame inactivated and stopped before startup does not count game submissions.
+- Native/XR average exit 0; test for shots is true, complete pre-, mid- and post-recovering intercepts QPC is covered by the corresponding section. Lifecycle is adopted in full, pending/retailed/skipped=0 normal Mono recovery; independent reviewed **28 All access points match**，active=0、GPU drain/close=1、pending_tickets=0。
+
+XR CSV 10,790 All right, raw head_flags/view_frags 15/15. The receiving end saves `stereo-xr-33860-attempt1.csv-gpu.ppm`。CSV ring dropped=49,consume_before less detail 1 Line; continuous protoma and life-cycle overlay check passed, cannot treat limited CSV as a no-lost GPU frame log. Old union status `production_seconds=30` Yes. `view_union_mask_fix.h` , the actual duration of this round is as follows:120, complete construction span and XR coverage evidence.
+
+Split the span of the current cycle by the number of new images divided by actual programtion **56.1 New image/sec**Higher than PID 15336 The appointment. 37 (b) sheets/sec;8,637 Approximate submission 72 Second/second, including image reuse, not known as approx. 72 fps. Different processes and test ranges are not strictly single variable performance benchmarks.**This round proves that the current level, geostationary simulator posture 120 sec has a boundary program and recovery, which does not yet prove permanent running, dynamic synchronization or physical head start.**
+
+Evidence:`analysis/runtime/stereo-xr-33860-attempt1.{json,csv,stdout.txt,stderr.txt}`, the receiver gPU pPM;`color-stereo-probe-33860.{status.txt,csv}` and `-shots.json/-lifecycle.json/-restored.json`. The independent endpoint, matrix, coverage, image and restoration audit is as follows: `analysis/runtime/stereo-xr-33860-attempt1-audit.json`, passed=true. The above conclusions read the original report and status check without overwhelming PID 15336 Historical results.
+
+## Raw flags for Operator and Vivid Simulation Source
+
+Official Meta XR Operation Standardone API player and stdio MCP process installed; only added to own XR subprocesses `XR_API_LAYER_PATH` / `XR_ENABLE_API_LAYERS`, do not change global registration or environment. Real backend initialize,tools/list and get/set schemea found and saved. standalone probe uses LOCAL space, each segment 3.5 sec, in turn yaw+15°、−15°、x +0.06 m、−0.06 m. Initial, about 17.6 Seconds complete.
+
+First try. `operator-motion-validation-20261014-034037-479658` Show Raw view_flags always 15, override after head_flags is 3;values returned to initial pose after tracked two still fallse. Location/direction is not equivalent to actually tracked, cannot 3 Renumber as 15, and can not impersonate physics with a double-eyed tracked sign. follow-up `operator-release-smoke-20261014-034608-231128` Call released `openxr_release_input_devices`original returns the access = true, then get four flags all true, prose back to the initial; CSV middle 1,206 Framehead 3/view 15,release after 410 Frame Restoration Head 15/view 15. The Probe end of the smoke is beyond the horizon of harnes, exit 1, so only confirm the action with release evidence and not that the whole round passed without error.
+
+Adding Default Closed For This `--simulator-operator` Source mode, outer runner only allows it to interact with `--operator-motion --stereo-game` Associated.`RuntimeTracked=0` and `MetaOperatorSimulated=1` matching by pattern;specify 0 Still asking for head 15/view 15，sim 1 Keep Raw head valid bit 3, request view 15, and mark `simulation_not_physical_tracking`。bridge v 2、GPU packet v 3 The source of the transfer with frozen ticket, double-end verification of policy/version/size/PID; programtion uses image to match eye attitude/FOV in ticket, rejecting a change of source, unknown source and mode/source. XR source for Python checking acceded window is not consistent with national TV raw source/ flight; old strict CSV missing column compatible with 0, the new Sim field must fail.
+
+Helper starts a boundary action after the appearance of a digital file; both initial and released resourceed get requested to restore all four values. Tool failure is also finally done; tool, restoration, deadline or cleanup error fails. Clear source does not mean relaxing real headlines.
+
+Eventually. `GearsCaptureStereoSim.dll` SHA 256 `3F50E60DF4B14CC640A2E1843A891366F4670336CF9409B7194E98EA058A245F` Real/sim protection 0 and 8 CLI group check, execute attribution record `analysis/runtime/stereosim-native-ready.status.txt`. Share the results of the running headmaster's run-off CPU date/store in both GPU format/real/sim `analysis/runtime/source-policy-selftests-final.json`,passed=true;showing per group 12 Frame, consumer exit 0、resources_released=true，D 3D 12 Debug player is not available to limit retention. 17 The mock/source door limit test passed and the independent code review eliminated the discrepancy between sim profile acceptance real source. `xrGetInstanceProperties` Measured `Meta XR Simulator`Evidence. `analysis/openxr/stereogpusim-runtime-info.txt`;not using system name `Meta Quest 3` Determines whether the current simulator is in place.**No dynamic game has been run at this preparatory stage; follow-up PID 40776 The results are shown in the following section, and self-measurement is not a substitute for actual games.**
+
+Users also report that IDA headsless is already available, and follow-up can be used as a targeted callintosurvey tool; no new analysis has been added to this round, nor an example of the calculator need be repeated. This section records pre-start preparation evidence for dynamic games; subsequent practical results are presented in the following section.
+
+## Visible Simulation Head Start Game program through (PID) 40776，attempt 1）
+
+Save failed PID first 38112 attempt 1:native and XR exits normally but read Capture CSV encounters in real time `PermissionError(13, 'Permission denied')`,Paired-render waits uncompleted, Operator does not execute set action, yaw/x and primary matrix span zero, rounded = false. native writing end changed to `_wfsopen(csv, L"w", _SH_DENYWR)`Allows to read-only sharing, rejecting second writer and completing cross-process reading/rejection validation; not adding Python to the Operator path. Use new process PID 40776 Retestation does not take the old static output as a dynamic.
+
+PID 40776 Use visible `--simulator-operator --operator-motion --stereo-game`, runtime is Meta XR Simulator; this is the simulation source. Operator slows down after new native paid-render evidence has appeared 15°/−15°、x +0.06 m/−0.06 m. Return to initial, actual action range 20.032 sec. accepted window yaw span approximately 30°, headx horizon 0.12 m；2,161 XR sample source 1, of which 1,432 Row head 3/view 15，729 Okay, head 15/view 15. release successfully and get at the end all tracked/valid and initial values, without changing Raw flags.
+
+- Four native stage each **1,601 Yeah.**,mismash/view_error/residual is zero; GPU issues and receives new maps **1,591 Chang.**。
+- XR Submit **2,158 Frame protection**,override **29.9563728 sec**,Maximity interval **17.7506 ms**structure rejected as zero;native/XR equal exit 0。
+- Independent audit reconstructed by XR time order and value 3,202 Consume/prepare Left Eye Matrix, Max Error **0.0038875 native units**, less than the quantitative CSV tolerance difference 0.006; Left-Eye FOV projector also matches. native CSV does not contain full sequences, so this is time series/value evidence and does not declare the only line-by-line link.
+- The screenshot time series, phase four, frozen endpoint, pose/FOV, life cycle, GPU drain/close and all access points are restored; the two eye images saved at the receiving end have different game scenarios.`simulation_not_physical_tracking=true`, not as a real header game, physical scale or comfort acceptance.
+
+Evidence:`analysis/runtime/stereo-xr-40776-attempt1.*`、`color-stereo-probe-40776` Status/CSV/shots/lifecycle/retored; independent audit `analysis/runtime/stereo-xr-40776-attempt1-audit.json` Full passed = true. Failed experiment holds `stereo-xr-38112-attempt1.*`. The dynamic test is still 30 sec is tested in a boundary, not representing the permanent mode.
+
+## Ongoing access and definitive cessation of contract
+
+Add `tools/native-capture/run_stereo_continuous.py` The game must start, enter and complete the target slide by holding a DLL; this entry does not automatically start the game or the operation menu. The following command has been updated to include the Continuous with own identity 2；Continuous 1 Keeps only the historical experiments binary. For PIDs already ready, a command starts double-eye, GPU releases with OpenXR:
+
+```powershell
+python tools/native-capture/run_stereo_continuous.py start --pid <PID> --build-dir tools/native-capture/build-continuous2 --dll-name GearsCaptureContinuous2.dll --xr-build-dir tools/openxr-probe/build-continuous2
+```
+
+own printing only `analysis/runtime/continuous-stereo-<PID>-<时间>-<ID>.json` and accurately stop commands, print after confirmation of running `continuous_running=true`. At another terminal:
+
+```powershell
+python tools/native-capture/run_stereo_continuous.py stop --session <上述JSON完整路径>
+```
+
+Stopend check the PID, creation time and image identity of owner/game/XR, only sent `Local\GearsVR.Capture.Stop.<PID>`, don't re-injected. Wait for the next five minutes 0、state release/destroy、active 0, publiciststop, dry/close, no retained/timeout and independently verify game entrances; later XR exited by producer_stopped only with its own XR if necessary `Local\GearsVR.XR.Stop.<PID>`. XR properly closes down with STOPPING ⁇ rEndSsession; based on [OpenXR session state definition](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html). Both cleanup failures or forced terminations are reported incomplete/exit 1, does not kill other simulators or games. Ctrl+C also enters the same end-of-pipe path.
+
+Continuing mode is visible `continuous_session=1`，pair_seconds=0;old 30/120 The second diagnostic entrance and duration remain unchanged. Default strictness 0/head 15/view 15, no Autostarter player or automatic head start; simulator-opator dynamic tests are still performed through the independent diagnostic portal. Even if strict flags are used in emulators 15 The report is clear. `physical_tracking_verified=false`. native consecutive mode closes frame-by-scope CSV, retains aggregate/stop state; XR before 240 The frame is complete, and the date is set. 1 Hz sampling, but the door limits are still checked for each frame. The unbounded memory will not be taken by expanding CSV.
+
+Independent sessions mutually exclusive, unique report, fresh native started_qpc to prevent second owner or old status being misaccepted. JSON Atom replacement is only for short Windows Mission Error 100 ms retry; other errors failed. Python 9 Item continuous mode mark with original diagnosis 17 Test passed (26 The active CPU/ABI and XR independent stop/abnormal path tests are completed by the corresponding implementer; no continuous game is declared successful.
+
+XR Final Program `tools/openxr-probe/build-continuous1/OpenXRPoseProbe.exe` SHA 256 Yes `D8E0DE33AD66420B96172842F462DB9BECDF4BA91494046E983B755B4A83D46F`. The independent Meta XR stop smoke displays orderly_stop/shutdown_completed=true, but no game image exit 1; abnormal runtime path is probe_fair/orderly=false/shutdown=false/exit 1 The illegal CLI refused evidence. `analysis/openxr/continuous-stop-smoke-final-40776.json` and `continuous-failure-smoke-40776.json`. Continue owner exit 0 Only the game output is confirmed and structure and joint closing is normal; continuous quality of output and real head count acceptance are still subject to independent inspection. The first actual ongoing output results are as follows.
+
+## Continuous output span 180 seconds, joint stop pass; tail frame count to be checked (PID) 43724）
+
+Use final `GearsCaptureContinuous1.dll` SHA 256 `01BF00A0870C4D912D719B034822E30C6B93011E2C24F26CF9C90BF5564A2CF0`Run only one story source 0 Session, do not enable Operator, do not simulate action. owner from local 04:28:59 beginning; standalone timer starting with UTC after the chart is available `2026-10-13T20:29:32.937012Z`，180 Seconds later `20:32:32.939721Z` Please stop,`20:32:39.448225Z` Confirm joint completion. Scattered images are identical starting_qpc, running/source 0：
+
+| We have a chart to time. | published |
+| --- | ---: |
+| 0 sec | 990 |
+| 60 sec | 4,221 |
+| 125 sec | 7,668 |
+| 180 sec | 10,571 |
+
+It's a direct proof of past. 120 The second period is followed by a new game image. The final four stages are divided into two phases. 10,632 Yes, mismash/view_error/eyes zero; XR 14,401 Frame Protection Overwrite 200.010565 Seconds, maximum interval 28.5519 ms，structural_failure=false。1 The shale_ticket was routinely refused, without declaring that it had not been suspended or rejected.445 Line Sample CSV All Raw Head 15/view 15/source 0 The frame-by-frame limits are still being implemented by the process and the thin logs cannot be considered as complete evidence by frame.
+
+native phase=stopped/reason=event，release/destroy、pending 0/active 0, publicist stop, dry/close, no retained/timeout and intestines_restored; independent 28 Restore all entry matches, stop CLI, owner and XR both exit 0, XR cause producer_stopped/orderly_stop/shutdown_completed=true. All owner processes are out of normal mode. Early and cross 120 The screenshots in the second are: `analysis/game-io/frames/20261014-042941-77986e62.jpg` and `20261014-043207-df27fd06.jpg`# All normal eyes playing. # `analysis/game-io/frames/20261014-043404-4b850a75.jpg` Viewed directly, showing restoration to a pan-wide generic mono scene.
+
+**Independent strict equivalent audit still passed = false: native 10,615, and XR scene_copies=10,614 The difference. 1 Chang; going through coverage and joint life cycle checks.** `tools/vr-common/gpu_share.h` The slots of the programer reject new releases when doing <security; mark_stopped, recapaver's acquire see stopped and refused unreceived slot. producer dry waits for its own GPS in-light, receever shared resources to be managed by its copy/back fence. 1 The same as the syntax of the maximum unconscupled slot at the time of closing, but only root inferences are used for packet end evidence. Keep equals to check false and 1 Second stale refuses, without changing the stop/age threshold for zero purposes, and does not declare that there is no abnormal or real physical trace of the whole item. Real headlines, other levels and long-term stability are still to be verified.
+
+Prefix to evidence `analysis/runtime/continuous-stereo-43724-20261014-042859-b876e567`：owner `.json`、`.snapshots.json`(UTC/ Original Running Status/stop),`.session-status.txt`、`.native-status.txt`、`.restored.json`XR stdout/stderr/Samp CSV, Independent `.audit.json` Record all checks and failed publics_equalitys_received without covering the original count.
+
+## The whole six-axis simulation. 120 Second Validation (PID) 45440）
+
+Add visible `--operator-profile sixdof`, only allowed `--operator-motion --simulator-operator --stereo-game --trial-seconds 120` . Re-use frozen `build-continuous1/GearsCaptureContinuous1.dll`, from the 120/source 1 jobs; XR use `build-stereogpusim/OpenXRPoseProbe.exe`, no rendering. 30 sec yaw/x profile unchanged.
+
+After the emergence of a native paid-render,13 One action to fix the yaw thi of the LOCAL axis in turn 15°、pitch/roll ±10°、XYZ ±0.06/0.04/0.05 m and back to start; each target is calculated by initial attitude, avoiding cumulative deviation. The actual action is timed 59.625 sec. release after raw head 15, position error 0 Four-dollar absolute points. 1. Acceded window 8,641 XR samples are all source 1♪ of which head 3/view 15 Yes 4,281 Frame, head 15/view 15 Yes 4,360 Frame, unsynced tracked sign.
+
+- Four native stages **6,418 Yeah.**Two eyes mismach/view_error/ projection both 0; independent paragraph-by-paragraph audit confirmed 12 axis targets were reached in actual XR samples, error 1°/2 mm and at least three frames, associated to a native consume freeze ticket.
+- From consume/prepare **12,834 Line Left Eye Matrix**The XR position is reformed.0 lines cannot match;maximum CSV quantitative error 0.00391875 Native numbers, FOV projector error approximation 2.17e-8. Freezing the ticket and the first-end complete posture/FOV/raw tags check through. CSV does not record right eye array or sample security, which is still a four-stage comparative evidence; GPU does not packet full dump without exaggerating that each picture is independently recreated.
+- GPU Publication/Receipt **6,412 Chang.**;XR submission **8,637 Frame**,override **119.943487 sec**,Maximity interval **17.9084 ms**The stale, the structure and the tracking refusal. 0 New thong **53.44 Hz**,projection **72.01 Hz**, the latter contains reuse.
+- runner/native/XR exit 0, GPU dry/close, life cycle and independence 28 The entrance is restored; the two-eye scenes and the full width of the recovery are viewed and the game is then properly closed.
+
+Action audit is sent each set to the next actual override holding check, without assuming that the return of the tool will be when the XR plug-in is complete. The first version ends with a tool finished/durbanization due to late target 50–100 ms appears and fails; this initial output is covered by the correct method, which has been recalculated with unmixed original data certainty and saved as `stereo-xr-45440-attempt1.six-axis-initial-window-audit.json`, clearly labeling re-registration. The final audit does not use a sample after the next action has been sent out and the target/matrix tolerance is not relaxed.
+
+Evidence:`analysis/runtime/stereo-xr-45440-attempt1-audit.json`prefix, same prefix `.six-axis-independent-audit.json`、`.execution.json`、`.operator.json` and original CSV;native prefix `color-stereo-probe-45440`. The complete and six-axis audit is passed. This only demonstrates that the six-axis simulator software link at the current level remains a third person ' s reference point, not replacing real headlight, physical scale, stabilization of first person or other level acceptance.
+
+**Subsequent evidence correction (PID) 38784 Back to the middle test found:** This is Python. 3.12 It's... `time.monotonic_ns()` and `perf_counter_ns()`/NativeQPC is not the same time frame, field difference 160 ms. Old Operator action records use the former, and the above paragraph-by-paragraph audit directly compares to XR QPC time, so its "clausely located before next set/release" action window findings need to be withdrawn; original historical reports are not covered. Original attitude ranges, native ⁇ XR matrix reconstruction using the same QPC domain, four stages comparison and cleanup results are not affected by this action window problem. The exact time of the past cannot be filled back with current measured deviations; new experiments will revalid the action boundary after the extra QPC corresponding perf_counter time.
+
+## Continuous 2: Independent clean-up after the starter accidentally exits (PID) 33264）
+
+Before relying on Python finally close, forced end owner will skip it. Continuous 2 Keep own process handle with XR at both ends and check the creation time of PID and FILETIME; downer disappears or Wait fails only to trigger stop requests, continue the original native call release, GUI drive, portal restoration and OpenXR STOPPING process without forcing release of the resource in use.
+
+Continuous mode now required `continuous_owner_pid` / `continuous_owner_creation_time`XR must `--owner-pid` / `--owner-creation-time`;Python owner automatically transmits one identity to both ends and checks the status of the native. Old baseed 30/120 Neither are these fields accepted or required. XR continuous mode still refuses to simulate Operator. PID reuse is excluded by retained handle and creation time; independent record `owner_exit_observed` / `owner_error_observed`, keep the first stop_reason and avoid rewriting simultaneous track failures as another cause.
+
+Freeze binary:
+
+- `tools/native-capture/build-continuous2/GearsCaptureContinuous2.dll`：SHA256 `0976D6F255F3F1D42DE5EEA031C276CD2144907273B14AF42F46FB8E217B4551`。
+- `tools/openxr-probe/build-continuous2/OpenXRPoseProbe.exe`：SHA256 `B57A16ACAD047824F85CAAE0AA98613855F1C6FE6A162C59A85EF972908FE492`。
+
+5 Divisions native CPU ABI, Livetime, FrameLink 7,357 Check.2 XR CPU Self-Detected, Illegal/unmatched Identity Refuse and Python 35 Test passed. PID 33264 The controller waits for the owner running, then it's on. 10.063 secs published from 0 Increase to 389;subsequently only `Popen.terminate()` Self-inflicted owner 34528，**No events sent native/XR stop**。4.328 Cleaning at both ends of the second: native owner_exit_observed=1、error=0、reason=owner_exited，pending/active/retained/timeout=0 release/destroy/drain/close/entry; independent validation 28 All the entrance matches.
+
+XR Submit 522 Frames, reception 399 New map, native last published 400 So this time, we'll also keep the border line closed. 1 XR expressly owns the graphs=true, stop_reason=nown_exited, stucural_failure=false, shutdown_completed=true**exit 1/orderly_stop=false is expected from the downer failure**, does not disguise as a normal user stop. The abnormal recovery test passed=true only indicates that the cleanup conditions are established after the injection of the malfunction.
+
+Original own JSON maintains running status and original bytes when killed; controllers write it separately `analysis/runtime/owner-death-33264-8f5a5a4d5a.audit.json`, does not complete normal completion. The game is still alive and restored to the full width of the mono, screenshot `analysis/game-io/frames/20261014-045348-4ccc1071.jpg` Viewed, then checked the game path and creation time, and closed the game normally. This round does not have a game/ probe/proxy residual, runtime remains Meta XR Simulator, final record `owner-death-33264-final-cleanup.json`。
+
+The test does not cover runtime blocking at xrWaitFrame, disconnect reconstruction, re-activation with process or heavy load; these cannot be due to this 4.328 Success in seconds will ensure that the boundary is restored. Final delivery remains to be completed with a single start-up entrance, a center, stable first person and real head count acceptance.
+
+## Store Unique Start and Stop Pass (PID) 44640）
+
+`tools/vr-launcher/launcher.py start/status/stop` Re-enact frozen Continuous 2 nate/XR, with a session held by the same front desk Python. Start no longer requests hand-filled PID; verify three binary Hashes, rejecting existing games, perform one reserv/prime and then validate that Controller ⁇ WarPawn, Level belongs to CameronCache, which is moving on in parallel. The entrance waits for the player to enter the level; this menu is run by the assistant through the Gamé_io navigation, not the auto-entry navigation function.120 Second player waits to count from the pre-retention call, and does not guarantee that all XR/activation time will always catch up with pime watchdog; stay on site overtime without re-injecting.
+
+PID 44640 , launcher owns and continuous runner owner 12652. Four stages each 2,343 Yes, mismash, view_error and both eyes projection zero. GPU releases and receives all 2,334 Chang, XR submit 3,166 Frame, Overwrite 43.9590107 Seconds, maximum interval 15.7937 ms. stop without PID complete joint ending, owner/ XR/stop CLI all exit 0 Independent 28 All entrances are restored, SBS and normal amono after recovery are directly checked. The game identity check is normally closed without any current/XR/proxy residuals. Full evidence is in the photo at that time. `analysis/runtime/vr-launcher-smoke-44640-audit.json`;The index of subsequent coverage will not cover this historical snapshot.
+
+Configure to provide limited numerical scales and the current game path, range 10..500 It still relies on the repository and fixed bottom start path, not a copyable deployment package. Canceling the launch only proves that collaboration cancelled requests, and when it is not activated, the pime watchdog resumes another check; restarting support after the same game process has ceased.
+
+## Read-only evidence of first person anchor (PID) 44640）
+
+New `tools/package-inspector/sample_player_anchor.py` Each check of the registered object, Pawn/Controller two-way relationship, Level, ViewTarget and reflect type, then surrounds a read-only measure around the CameraCache time stamp. Timetamp is still equal to an atomic rendering snapshot in the engine. First startup period 490 Only accept it in the next time 6 I'm not sure.484 Reverted due to changes in the number of registration forms, with original result retained; independent sampling after restoration of amono 482 Number of times, accepted 448 I'm not sure.34 The government has been able to do so.448 A different time stamped coverage 9.973 sec.
+
+Static sample Pawn.Location=()9879,-35097,-708.8499756)，EyeHeight/BaseEyeHeight=60；POV.Location=(9719,-35049,-632.8499756) All three Rotation is zero. POV is a difference to Pawn (-)160,+48,+76) , Candidate `Pawn.Location+(0,0,EyeHeight)` Yes (Pretty)9879,-35097,-648.8499756. This value is only a candidate point; it cannot be compared to POV (+)160,-48,-16) is written as a fixed offset and cannot be shown to be the same in motion by the rotation of the Controller, Pawn and camera.
+
+The next minimum test requires matching the verified eyepoints with current original renderer and checking role masks; stabilizing to dynamic evidence that still needs non-zero perspective input and action. The first person's rendering of the baseline has not been modified yet. `player-anchor-44640-launcher.*`、`player-anchor-44640-mono.*` and `player-anchor-44640-fp-plan.json`。
+
+## IDA Orientation Camera Analysis
+
+Use verified PID 16812 Runtime Code Scatter `analysis/ghidra/render-16812-verified/section_1000.bin`, 0x140001000 Load and confirm 64 Bits, independent headless IDA analyzed camera subject RVA 0x110878, inside the packaging function 0x3b3bd9 . The evidence, byte check and address collection are stored on `analysis/ida/camera-110878-20261014/README.md`;Home database is saved and closed.
+
+Compilation is consistent with existing reflections: Main uses the PawnLolicing+0x130/Rotation+0x13c by CurrentCamMode (camera+)0x558) Call and local position plug-in values, write to the ViewTarget.POV position, rotation, FOV. There is a subsequent rotational rewriting that keeps the original name of third person as original Basis not being accepted as stable first person. The subject does not see direct reading of EyeHeight+0x310/BaseEyeHeight+0x30c, but the mode/script cannot be excluded. 0x3d4fbc The true function name is still unknown and cannot be named directly as GetPawnViewLawination. The original blob does not contain the full context required to interpret external data, with Hex-Rays ' additional parameters, AVX' inline and jumpout remaining only as unreliable extrapolations; this conclusion is based on bytes and compilations and does not claim that these branches are actually being executed during this round.
+
+## Continuous 3 Back to prepare and fail records
+
+native SHA 256 `F15F375E647B451858376183D7B9C4198CB931DB801DFE7841264BC06FB237B0` Add F 9 The border and naming event returns only before the next eligible view is frozen. The reference position takes the current LOCAL position with Y-up level heading, retaining a real lid and side tilt; it is almost vertically and cannot be stabilized until later. The original source, session, age, flags door limits remain unchanged. Every native FreeTicket maintains a value sample/reference/referment_generation without modification; the log has maximum prefixes to save 32 CPU oracle, life cycle and independent code review are passed. The actual function is based on the following game test.
+
+PID 38784 The center controller was not requested for cross-clock domain comparison, native is requests 0/generation 1, therefore undetermined. The round also has a separate output failure: XR maximum submission interval 3000.6125 ms、67 state rejected, exit 1;native 4 stages 6,461 Yes, GPU publishing/receiving all 6,299 Chang, clean up and... 28 The entrance is restored and the game is then properly closed. The XR/raw post and native paper are still in active reception status and cannot be attributed to loss of focus. 147 The following Present contamination, but without time and caller, cannot be determined.0 The failure of the strict source window check does not allow all tracking flags to be effectively used as bridge release evidence. `stereo-xr-38784-attempt1.recenter-failed-audit.json`、`.failure-audit.json`、`.failure-audit-addendum.json`。
+
+Fix Clock After PID 21208 The controller is still not requested; every time it is analyzed, it is measured 66 Complete native CSV consumption for MB 1.878 Seconds, cause reading to exceed 100 ms. This is a test controller problem, which cannot be declared to have failed or succeeded in returning the active function. The fixation is directed at reading only the end of the log and using the original QPC clock without easing the sample limitation limit; source code for the original controller, failure report and raw data retention, and subsequent new process revalidation.
+
+PID 21208 & File 119.956264 Seconds, maximum interval 28.8403 ms, overwrite sub-section by output; however XR actual PID 43420 Here. 0xC0000409 Exit, parameters for Windows events and Minidump 7 This means that the border zone is not directly claimed to be crossed. Incident matches current freeze EXE, anomaly is EXE+0x18885; output statistics occur before cleanup, and cannot be used as evidence of exit success. The log has gone to Oberator's DetroyInstance subcluded and the specific call chain still needs to be located. Another line of bridge failure failed to release a strict source window check. NATAVE clean-up and 28 The entrance was restored and the whole round of the ship was still unsuccessful. `.crash-metadata.json`、`.shutdown-events.json` With the original runner report.
+
+Then the same PID resumes the mono and then goes alone. 10 Specimen dynamic eye spot sampling:437 Article of acceptance,44 A cross-frame rejection. Only short time is right swinger yaw/pitch entered in reverse, no role moved or XR started; Pawn position and EyeHeight/ BaseEyeHeight=60 Keeps the Pawn pitch constant zero, Controller/POV pitch range -6..232 RU；290 The Pawn/Controller pitch is different from the one that was taken in a sample.23 The latter may contain non-atomic reading and camera plug-in values, which do not allow a delayed model to be established. This results indicate that the three rotation sources cannot be considered equal prices and still do not prove proof of alignment or stabilization of first person evidence. `player-anchor-21208-dynamic.*`, then check the game identity and exit normally without any game/XR/proxy residuals.
+
+## Continuous 3 Six Axes and Two Back Passes (PID) 36212）
+
+Keep above 3 SHA 256, cooperate with the independent XR `build-shutdown3/OpenXRPoseProbe.exe`（SHA 256 `FA1DAD6A707C3C767695498F7988F6FEB8263ADC09DCD518548F7388E3C33EA3`. The new XR version only adds the end-stage/terminate diagnosis of default closure and retains PDF; this round is visible to enable diagnostics. 12 Second+Operator Life Cycle Smoke Survey 0, but the smoke is not proof of a game image.
+
+36212 Use modified QPC, with a border tail controller at yaw+15、pitch+10 Request from each of the target movements, native actual requests 2/committed_generation 3 Three reference events are saved. Second generation submits on non-zero course, third generation on non-zero face; each reference only contains LOCAL Y-upheading, and the true one is not zero. The old frame uses its freeze-intergenerational check without a recent reference to the old frame.12,192 The consumption/preparation of the left eye matrix matches each other 's references and published XR candidates, maximum error 0.00395 Maximum error margin for karate 2.17e-8; four phases 6,096 The action time window uses the actual recorded perf_counter/QPC, without extrapolating the old monotonic offset. Positions are still covered by CPU and not requested back at non-zero scales.
+
+New game image release/receiving 6,090 Chang, projection 8,639 Frame Overwrite 119.968899 Seconds, maximum interval 17.2533 ms, no status or structure failed; XR Bridge is now released zero. Full six-axis range, source/raw flags, GPU dry/close, life cycle and independence 28 Access is restored. Runner/controller/native/XR 0; all endmarks completed, no terminate. Normal mono is returned and checked for normal closure of the game after PID/path/creation status without current round gam/XR/proxy residuals.
+
+The evidence is that `stereo-xr-36212-attempt1.json`、`.recenter-six-axis-independent-audit.json`、`.execution.json` and corresponding to the active CSV/status, libecycle/retored files. `reference_application_independent_audit_pending` It is the state at which it was, and the final conclusion is to be independent audit, without writing back its historical fields. The current result does not erase 38784 Output gap or 21208 exit abnormal; only proof that this round has not been repeated. It is still not physical appearance or stabilization of first-person acceptance.
+
+### Source validation contract and first person ' s next step
+
+`analysis/runtime/stereo-source-publication-consumption-contract.json` Distinguishing XR sampling, successful publication, native acceptance/consumption and GPU release. Runner requests the entire area at the end of a native `stereo_published=1`, this is a zero-jumping strategy for producers; unpublished valid sampling does not amount to negative consumption of native. History has failed hard enough to rewrite; currently CSV's vote-by-vote freeze session/security/received_ns cannot be matched by an inter- or matrix candidate claiming full and accurate consumption set association. If the strategy is adjusted later, add more evidence of the vote-out and keep statistics out of the post, original source/session/100 The door limit for ms/geometry/finance remains unchanged.
+
+IDA further analyze SceneView's successor consumer RVA 0x2718c8 . The identified compendium does not directly rewrite the entry position, but will update the location of the LocalPlayer with relevant rendering/plug-in status; therefore only restoration of temporary coordinates is not equal to eliminating all side effects. See the record. `analysis/ida/camera-110878-20261014/position-consumers-note.md`. The next geometric experiment that can be separated to modify the original reconstruction view is to prove the connection of the same Pawn eye point with source view and then examine the body mask; it retains other renderings chosen by the original camera, which cannot be called as a full first person.
+
+2026-10-14 IDA's fixed point follow-up confirms static connection of the main path: upper layer RVA 0x2c78f4 Yes. 0x2c7bf5 Call SceneView, then 0x2c8904 Call submission function with the same stack; the latter is in 0x3a1590 Bring this family into the renderer structure. Two paragraphs of output are produced together 1,828 All IDs and PIDs 16812 . Scene returns with a direct change of source+B 0..E 0 Conditional branch of projection (in 0x2c80d8..0x2c80f6; can't use the whole 128 Byte matrix always equals the associated condition. 64 The byte is still strictly compared, with three projection-saved observations remaining unchanged. Static export does not cover all cold branches or indirect calls, nor does it prove that this branch was performed in the new test.
+
+Add default closed to verify the player's eye link to actual source `--anchor-observer`. It reads the current Pawn after the original Scene returns instead of reversing previous input by viewpoint callback; checking candidates through reflectur certificates, object registration slots, two-way relationships, ViewTarget, identity and time stamping brackets `Pawn.Location + (0,0,EyeHeight)`, constructed with a single TLS connection to the source/ family. Embedded, duplicate consumption, source mismatch and no cross-line endorsement are rejected. Only the header is recorded. 4 The second and subsequent second, the bunded reply with a further number of rejections and a small first instance; no modification of original camera, Pawn or view to show atomic snapshots, eyebone position or first person effects. Static evidence is available. `analysis/ida/anchor-scene-family-20261014/association-review.md`, see construction and CPU check `analysis/runtime/fp-anchor5-native-ready.json` and `anchor-observer-python-evidence.json`;run results are recorded separately.
+
+First PID 43296 Yes. `GearsCaptureStart` Failed before calling: Python certificate sample encountered `Cross-frame camera timestamp during identity checks`No certificate/ INI, no complete Capture, no game program or roller measurement input; owner/ XR all except 1, XR press stop event properly cleaned. Priming watchdog resumes actual enabled 6 An entry for descriptor/factory, all matched bytes; cannot be written 28 Restore a full capture entrance. The game then closes normally, the old driver automatically ends and the Simulator is not closed. Original failed to remain in `analysis/runtime/anchor5-43296.audit.json`. The subsequent amendment allows only the re-acquisition of an independent, strictly approved sample within a fixed time and number of times, does not accept cross-frame samples or does not repeat failure values.
+
+Revised PID 44200 A rigorous sample is obtained at first attempt (in the case of a 0.743 , there is no actual trigger for retry. 3,727 (a) Rejection of zero;64 Keeps the identity of the reply, single call association, time series and view 64 Byte check passed, where 58 bar links non-zeroregistered ticket. The rest 3,660 The article is not retained because of the sampling strategy and has a full capacity 3 Discarded, cannot claim to have all original proofs taken by frame. 0.25 / 0.25 Second requests successful and zero, but 64 Only one camera is recorded, and the actual shift is unverified. The difference between the original point of view and the candidate eye is about (+)160,-48,-16) native UNits; candidate is still not applied. `continuous-stereo-44200-20261014-065454-782a5b98.independent-anchor-audit.json` and prefixed original status, certificates, driver and executive audit.
+
+The wheel's eye output overwhelms 61.1024666 Seconds,4,401 Sub-project, maximum submission interval 16.4588 ms; in four phases 3,346 ♪ And the mismatch ♪0. GPU release 3,330 XR copy 3,329, strict parity remains false. owner/driver/stop/XR average 0, native dry/close, independent 28 The entry is restored and normal amono verified; the game is closed normally, no residuals of current cycle are saved. The results only support static association and this round emulator output, which cannot be successfully extrapolated by input requests to dynamic association, first person name or physical headline. The full audit is as follows: `analysis/runtime/anchor5b-44200.audit.json`, Independent life cycle audit is in place.
+
+Then we're going to create a camera that's turned in history. 0.35 Enter and do 30 Second-sec, but PID 15204 Trigger before entering level 120 Second player track Deadline, active native capture, no XR started, no measurement input sent. No extension of door limits or maintenance of old certificates; pime watchdog normal restoration of actual enabled 6 A portal. Independent check, full.28 For not applicable. own with driver exit 1, the game is normally closed and unowned. `analysis/runtime/anchor5c-15204.audit.json`、`anchor5c-15204.independent-startup-audit.json`. This is a failure to start the process, not counting failure of dynamic testing or double-eye rendering; the next step is to shorten the external waiting for menu operations before conducting new variable dynamic correlation tests.
+
+PID 38012 Change to a separate menu to coordinate scripts with the screenshot template that has been viewed in this round: maintain distance<12、margin>12 After the offline review, the actual results are based on a number of different types of background interference. 5 Submenu confirmation on appointment 45.35 In seconds, coordonator finish 0,player gate passed; no extension 120/180 Second duration. Original log is `analysis/runtime/anchor5d-menu.json` and `menu-anchor5-offline-replay.json`, the production menu template has not been changed.
+
+But the wheel is... `anchor_config.py` Could not close temporary folder: %s `after=sampler.guard()` Repeats to cross-time stamp refusal; previous bound rechecking only headline sample does not cover this review boundary. native capture is inactive, no first publicization or measurement input; XR has been started and released 3,077 a pose, but the game copies/ protection is zero. XR logs arrive after stop `destroy_instance_returned=0`、`cleanup_return=1`、`main_return_pending=1`♪ The actual process exits `0xC0000409`Can't write natural.1 or exits successfully. owner/driver all exit 1;XR cleanup actions are stop_signed/wait, no termination. 6 Plume entrance independently restored, full 28 Not applicable; game is normally closed and no process remains. `analysis/runtime/anchor5d-38012.audit.json`,Pixil `.sources-manifest.json` and `.source-*.py` Freeze the actual Python source code for this round; old PID 44200 The certificate is stored and the source is marked. `OpenXRPoseProbe.exe.45492.dmp` Offline analysis; old PID cannot be identified with the same number as the anomaly 43420 Same cause.
+
+New transferred DbgHelp `StackWalk64` Got it. 32 The frame is real. It's an abnormal thread. 24296 Aligns with the main thread process log. Matching PDB 's position of RIP to probe `abort+0x35`; calling chain to `main` CRT exit after returning `LdrShutdownProcess` ♪ SIMULATOR's onexit ♪ `SimRpcManager` Parsing. IDA fixed points analyse the constasis function, combining the zero-line process handle in the capture stack with the original C++ abnormal object, and determine whether `_beginthreadex` Back 0 Post-implementation `_Throw_Cpp_error(6)`Throw it out. `std::system_error` and enters the nonexcept term. 11 is C++ general error_code`resource_unavailable_try_again`) is not GetLastError. The reason for the failure of the thread creation has not been proven, nor does the recent export name shift be considered a functional function. This is where the current wheel emulator exits from malfunction and separates from the Scene Render/Black Screen Root; complete evidence and disk command overlay limits are available `analysis/runtime/xr-crash-45492/findings.json`, own IDA case is closed. Next item can be frozen 3 Second default poste mode independently validates normal process exit without loading the game or adding Hook.
+
+The only independent quarantine test PID 20656 Use frozen probe `3 <新CSV> --shutdown-diagnostics`, no games, native Hook, stereo/ Operator or configuration changes. Actual access 209 frame valid and tracked position; program record `main_return_pending=0`♪ the process still takes place `0xC0000409` Exit. Overall process observation horizon 15.2671 The new storage is independent. 32 Frame module/RVA sequence and PID 45492 It's the same. The abnormal thread. 26588 Same as main-lined log; saved thread returns value 0 original abnormal object remains ageneric 11 It's... `std::system_error`. The same direct exit failure is thus re-emerging without any game Hook at all, and there is no need to further increase the side logs to locate it. The reason for the failure of creating a bottom line is still unknown and an abnormal inhibition or forced exit cannot be used as repair. The original audit is `analysis/openxr/xr-exit-isolation-20261014-072950-578351.json`, same path verified as `analysis/openxr/xr-crash-20656/same-path-audit.json`;silent in current cycle, pre-existing Simulator 14472 Not moved.
+
+Python then amends to cover strict guard each time between intial, sample_before/fter, assembly_after and final_bondary; the guard layer only takes an abnormal maximum of explicit cross-cuts 5 Sub-paragraph 200 ms, other identities, types, registry or unknown failures are refused immediately and the good samples that were completed after an extended period of time have been rejected. Guard is depleted and recycled without being swallowed by sample layers, before=after, recategorized and maintained in its own budget. Evidence retains the actual number, time, stage and availability of parts of the layers/raw Values, which cannot be obtained with clear value, not claiming totals but 5 Read with secondary memory.49 Item CPU test passed; use stored PID 44200 Maximum retry structure offline sequence for profile 158,888 Bytes below driver 256 KiB limits, but not any larger certificate. Final correction with CPU evidence `analysis/runtime/anchor-observer-guard-acquisition-fix-evidence-v2.json`; no live activation has been performed yet and tests are not eliminated by the same test as initiation failure.
+
+First person a 1/B/A 2 Pure CPU support module `tools/native-capture/origin_trial.h` The stage is selected and frozen with the ticket by QPC before construction, but not entered or updated to run binary. The first successful epoch is submitted; A 1/A 2 Set a candidate for local copies using the current original view, B. The maximum error in the independent matrix inverse is 0.00476638 # No, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, no, 0.02 Limit value. See boundary, failure to advance, old stage not to be rewritten with late consumption and illegal input testing `analysis/runtime/origin-trial-helper-20261014/`. The continuous mode closes the normal native CSV, and subsequent measurements require a small amount of evidence of the complete freeze matrix and XR receipt tickets that are kept in stages, which cannot be used as proof of vote-by-vote rendering.
+
+## Unified access pass, whole failure (PID) 41704）
+
+Freezing in the same group 3 / XR shutdown 3 Unified access 0, the diagnosis is closed by default and no operator exists. Both PID returns successfully, status checks for current sessions and intergenerational observations are made 1→2→3;in original four phases 3840 Yes, the matrix/show is zero.3748 All release images are received by XR;4981 Sub-project Overwrite 70.7055067 sec, but maximum interval 1431.7773 ms、stale_ticket 73 Second, not considered as a steady export pass.
+
+Runner, record. `xr_cleanup_error=Session process identity changed or exited: 9232`. It first has a Poll and then re-activates the PID query, and two calls between subprocesses will leave the query to fail; old abnormal paths may immediately be short of their own processes. This time there is no mandatory operation record, so it is only an identified code competition that does not prove actual performance or output interval as XR exit 1 Reason: Continuous XR returns code does not use maxim_gap condition. owner/stop/XR actually averages the exit 1, the original result stays with false.
+
+# I'm not sure if you're gonna be able to get a good job #28 Access is restored and SBS/mono image verified, game is properly closed without the current round game/ XR/proxy residual. The evidence is not variable `vr-launcher-smoke3-41704.audit.json`、`.index-initial.json`、`.index-final.json` and `continuous-stereo-41704-20261014-055446-f3ced5d3.*`. The continuous runner passed-up for a life cycle contract, the export health must still be audited separately and not equated with 100 ms No missing map.
+
+The cumulative amount of missing maps is not yet available for positioning time:3840 Tickets. 3760 Lighted 80, with 76 Sub-contaminated and a few metadatas refused to be compatible, but without the QPC being sequentially;3760 Second Capture to 3748 Sub-publishing 12，busy 9 Can't explain all the bypass roads.4254 Next underunknown example 4209 The next one, limited to missing chart windows on the existing Present/capture path, is the age of the associated rejection, ticket numbers, fence and XR cache images without adding Hook or easing doors. The first person is called a delay in integration.
+
+Review of old PID 38784 Complete native CSV: in the established missing image package 151 Maximum call time for the recorded Present 2.7362 ms, maximum interval between adjacent starting points 27.9438 ms，151 The time spent on these calls includes pre-capture, original Present and retire, which is the upper bound of the time for the record Present, without supporting a recorded call block.97 Without time/type classification, locking in fame mutex cannot be excluded; CSV does not eventually Draw or Present reject evidence. `stereo-xr-38784-attempt1.failure-audit-addendum2.json`, do not change the conclusion of failure.
+
+Exiting cleanup has been changed to using the process handles that were created by Popen and no longer re-opening PID after pol; stop events are closed while waiting for natural exit, only real wait allows terminate/kill own child processes, mandatory cause and operation clear records. External stop/recenter identity check is kept.22 Entries continuous and 16 Division launcher offline test passed; this is code correction and offline evidence, not proven 41704 Actual implementation of the old terminate branch.
+
+Directed diagnostic version `build-outage4` Default closes the record, only saves the first more than in the existing outer layer Present 100 ms publish interval, maximum 256 bar; burnt uses a consistent atomic snapshot, Draw follows the existing inter-segregation and closes after no active echo and Hook is disabled. XR saves the head window and maximum spacing boundaries, which do not exceed the total 256 bar, distinguish between new graphs/cachet duplicates and unknown instruments. XR line time after xrEndFrame is not the earlier age of protection date. GPU instrument ABI, single slot, refusal condition and stereo matrix remain unchanged. CPU, single format D 3D 12 Trace/null/busy/Voice Protection and Key ABI Passed; D 3D 12 The test is not yet considered a proof of how to run the game. `native-outage4-evidence.json`、`native-outage4-ready-addendum.json`、`outage4-postproducer-cpu-build-checks.json`。
+
+## Dynamic source linkages to third-person-specified phases (Performance)2026-10-14，PID 42228）
+
+continuous-stereo-42228-20261014-073900-9ae 09592 Use freeze 5 / outage 4 . The auto menu is completed in five steps and measured starting with the first publicized 30.0212 seconds;+8/+18 The seconds are one-time.35. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .5 The right-hand swinger of the second is entered, and both times zero.5 Certificates have all successfully tried first and the current round does not trigger a real re-test.
+
+Scene/family/renderer acceptances 1,912 Once again, all grounds for refusal are zero.36 Article retention of record plus 1,876 sampled-out equals 1,912, no capacity drop; three stages view 64 Full, identity and QPC order are passed.30 The text of the article is available on Flickr.6 Titget 0 For pre-registration samples.4 Original source boundaries independently extrapolate yaw 4.279175°,pitch Range 2.675171°Fill it up. 44200 The static sample is not a demonstration of dynamic change.277 The sampled XR poste appears at the same time 5 Head Quaternion, the largest in relative first appearance 13.411491°, so that all dual-eye changes cannot be attributed to the game only; they are still not physical headlines or atom engine snapshots.
+
+Two-eyes, four stages. 1,551 The difference between the matrix and projection is zero. 2,172 Sub-projection, Overwrite 30.1476066 Seconds, maximum interval 16.5231 ms;native publishing 1,541 Zhang, XR copy 1,540 Zhang, strict parity remains the same. Downer, driver, menu, stop CLI, XR actually exits 0，28 Recovered entry, track-checked and closed game without self-remnant; pre-storage MetaXRSimulator 14472 Reservations. See anchor for original execution, dynamic association and eventual withdrawal, respectively 5e-42228.udit.json, prefix.independent-dynamic-lificle-udit.json, .impendent-execution-supplement.json.
+
+The first person to be closed by default is anigin_trial achieved A 1/B/A 2 Each 10 Second selection: Accurate callback,128 Byte renderer matrix is consistent to generate local baseline views; B uses candidate Pawn+eyeHeight, A 1/A 2 Use their current original view. Select to freeze before construction, epoch for the first time successfully, metadata following the renderer by value. Maximum number of times per stage 12 Two-eye four-stage matrix, original view, actual baseline and complete pose/reference/FOV. First version of the frame-link self-measurement factor 64 Sluts Lifetime increase and stack spill; after moving the self-survey object to a pile, eventually 13 The group has passed the original check. The production of Lifetime is always in the static area.1-native-ready.json、fp-origin 1 This experiment is not yet in play and cannot be declared a first person.
+
+Third-person stage targets by user, current 75% The project estimates, not the proportion of the test received. Priority is to continue output, stop boundary, restore and actually head-to-head chain; the first person claims that it is not a prefix for this phase. XR adds an emage-ticket-diagnostics with default closure only to save actual new copy or first successful submission of a new session/ticket receipt confirmation, stacking up a fixed capacity 4096 bar, after stopping output and reporting spills. Each line retains the real receiver security, ticket and source, which cannot be replaced by producer CSV. Share ABI, GPU waiting and rendering doors unchanged;8 The item XR CPU/CLI check passed. Third person name refers to 1 The old achor will be used 5 NATIVACHSETSET Serial for continuity and end-end cessation; original 1 The map, which is long and lacking in history, remains valid until new evidence is obtained.
+
+receipt 1 Actual completed, prefix continuous-stereo-24396-20261014-075809-a 309b 0 bc. driver observed first time 46 Start measuring. 60.0000479 sec, no measurement input, return or intercept; actual XR output overwrite 61.0634224 seconds,4,398 Sub-projection, maximum interval 16.7439 ms。3,101 A receipt of a lost volume, strict 1 Continuous to 3,101,copy_count by article equals serial, each of which has successfully submitted a reply; header sub-contracted_frames and the total number of cases 4,398。native published 3102 / last_ticket 3108 XR final 3101 / ticket 3107,terminal producer_stopped is still the same ticket; ticket 3108 Not seen at any receever line. 1 Positioning is therefore not a number gap within the received sequence, and the complete sample, done set or precise stop time for final sharing of packet has not been saved. Therefore, it is not extended to complete cessation-of-package serial proof.
+
+owner, driver, menu, stop CLI, XR actually exited 0 no mandatory clean-up;native GPU dry/close, all 28 Access restored, Mono image verified and game properly closed, undisposed, pre-stored Simulator 14472 With game_io service retention. Strict publication/receiving is still false; historical long absence and simulator exit abnormally does not vary due to normality of the current round. Evidence is receipt 1-24396.udit.json and the prefix.indepent-xr-tail-audit-v 2.json. Existing mark_stopped prevents follow-up acquire, whereas producer dry is waiting for its own GPU copy to be completed and the source code is compatible with observations. If the last map at the time of normal stoppage of already existing receiver consumption is allowed in the future, it needs to be shown separately that normal stop identity, resource lifetime, complete metadata and expired pose reject; existing stopped Boer does not distinguish between stopped malfunctions and cannot be bypassed. See xr-tail-receipt-prerun-review-v 2.json。
+
+## Single missing map diagnostic retrofit (PID) 1756）
+
+Query entry to re-use original launcher version, prumming and level player to determine only frozen exit 4 Build and visibly open two diagnostic options; manufacture climate unchanged. driver hangs up before startup, from first observed round >0 Here we go.60.0017217 Call stop after seconds, no intercepts or moves during this period. Two return commands are successful and actually refer to generations 1→2→3. The four phases of the original life 3408 Yes, matrix/show zero; XR submission 4331 Frame, Overwrite 60.1400841 sec, maximum interval 18.0283 ms, no more than 100 ms is the interval between submissions. This means only that the current cycle does not repeat old breaks.
+
+owner, stop CLI, XR actual average 0; closing actions only wait, forted read is full. DestroyInstance, cleanup and plain return mark complete, native dry/ close,28 The entrance is restored and the mono is verified; the game is normally closed without any residuals of the current cycle.306 Sample of CSV source 0/head 15/view 15/published 1 The continuous model is only a sample record and cannot claim to have all XR samples validated. `continuous-stereo-1756-20261014-062542-7b2fcbc1.independent-lifecycle-audit.json`。
+
+Final release of the native 3386 Chang, XR copy 3385 Zhang, strict parity remains false and cannot be covered by runner's life cycle passed=true. native bound windows trigger after request has been stopped and leave two lines unrecovered, while XR's missing window does not trigger; neither can be referred to as a malfunction during running. Stop the exact time series of tails is audited separately without rewriting statistics. The total evidence and indexing is non-changeable. `outage4-1756.audit.json`,Prefix `continuous-stereo-1756-20261014-062542-7b2fcbc1`。
+
+Independent tail audit confirmed: two separate native lines after XR terminal 67.9966/90.8114 ms, old Precent only 0.2518/0.4179 ms; Draw and Capture fields have no valid position to use the list of zero values as a basis for reality. Last release occurs after the service starts calling stop 88.9568 I'm, XR technical. 9.2083 ms. actual physical reservation 3385/ticket 3406/session 13211648185900/sequence 5072, and the last vote for the publicsher is 3407 General 3386; combining single slot source code to support last release not copied/back. Finally packet, done rule and ticket 3407 The complete sample is not saved and cannot be called a package-by-port; the exact QPC of the native event barrier is also not recorded. `.independent-outage-tail-audit.json`, strict equivalence and full result maintained.
+
+---
+
+## 中文
+
 # 最终输入绑定与实际绘制路径
 
 更新至 2026-10-14。同帧双视图、原生投影响应、真实 XR→同帧双场景的桌面头动，以及 Meta XR Simulator 中 120 秒静态游戏 projection 已通过受限验证。PID 33860 完成 6,746 对场景，发布并接收 6,732 张游戏图像，提交 8,637 帧 projection，停止后恢复 mono。PID 40776 的 30 秒显式模拟头动游戏 projection 及独立矩阵审计也已通过；raw 模拟来源不等于物理追踪。PID 43724 持续模式实际输出跨过 180 秒且明确停止正常，关闭尾部发布/接收差 1 张尚未通过严格计数验收。真实头显游戏显示、物理尺度、活跃 TAA 尚待验收。接收端游戏图像已回读，引擎中间纹理内容仍未逐项证明。下文按实验顺序保留证据。

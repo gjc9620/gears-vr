@@ -1,3 +1,33 @@
+# Load capture and re-link rejection details for the root scenario matrix
+
+2026-10-17. The current round continues offline, without starting the game/simulator, getting focus or reading the actual game process. The first version is still incomplete.
+
+## Public transformation of text, icons and materials
+
+Yes.[Root scene route](122-path-choice-native-scene-route.md)Based on this, re-referenced and filled in a small number of original bytes to close the previously unclear gap for Tile 's fifth parameter:
+
+| Route | Historical code evidence | Scope of the conclusions |
+| --- | --- | --- |
+| Tile/ Icon | `1bc308` From canvas `+0x38/+0x40` Calculating Last 80 bytes stack items;in `1bc3cb` Send it as a fifth parameter. `1c0e48` | Compare the inn with Hash; copying matrix descriptions when creating loads cannot simply change the matrix to keep old Hash |
+| Text | The assembly and construction functions are saved to confirm the same selection of the dome, and will 80 Byte description copied to load `+0x80` | Cannot modify copied descriptions in the subsequent popup canvas matrix; does not mean text visibility verified |
+| Material | `3a5548` Copying the top of the inn. 64 Byte matrix, recalculating Hash;`3a56b8` By R 8 Get that description, copy it. 80 Byte to Load `+0x10` | Supports the combination parent to enter SceneView via material load; still does not represent all materials pass or actual cutting is correct |
+
+SQLite export 1 Clear chunks performed, all bytes & SHA 256 Aligns with the index. Original output in signored `analysis/ida/ui-pathchoice-20261017/1401bc308.chunks.json`、`1401c0e48.chunks.json`、`1403a5548.chunks.json`、`1403a56b8.chunks.json`Source still SHA 256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6` History Runshot, Base `0x140000000`, not the current running certificate.
+
+This makes the route “add a parent shift to the certified root scenario and keep the relative position of the subnode” clearer. The actual layout and coordinate relationship of the fork tree is still not obtained; RHI scissor matter `17490c` The presence of this type of device does not prove its involvement in the scene, nor that it will change the rectangle with the root matrix. Therefore, no actual UI offset has been enabled and no forklifts have been declared.
+
+## The next failure on the machine gun issue no longer shows time out.
+
+User session only recorded `Anchor guard acquisition deadline exceeded`, the internal reasons for refusal that the sampler has already been saved have been lost.`world_rebind_monitor._error_detail` It's the longest one. 512 single-line error with the last guard phase, internal cause and number of attempts; only live abnormal evidence is used, without increasing process reading, retrying, log frequency or life cycle action, unserialized identity/POV original map.
+
+If the strict reading of the machine gun itself is successful but exceeds the original deadline, it will clearly mark late to success and avoid a failure in time stamping; the damage/miss diagnosis structure remains the original error. This change is used to distinguish between actual failure conditions for re-bargaining of machine guns and is not proof that black screens of machine guns have been resolved.
+
+`test_world_rebind_monitor` and `test_world_rebind_runtime` Total 33 The number of retries, the number of times you try again, the number of times you try again, the number of times you can't get a job done.200 ms Sample budget, signal transmission and authentication strategy unchanged.
+
+---
+
+## 中文
+
 # 根场景矩阵的载荷捕获与重绑定拒绝细节
 
 2026-10-17。本轮继续离线工作，没有启动游戏／模拟器、获取焦点或读取实际游戏进程。第一版仍未完成。

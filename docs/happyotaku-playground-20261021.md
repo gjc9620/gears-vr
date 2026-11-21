@@ -1,3 +1,57 @@
+# hopyotaku playground test site
+
+2026-10-21, accessed 0.1.0 Develop a default starter. Users request to add a new entry with the same name to the game menu, providing guns, enemy targets, machine guns and unlimited ammunition, and authorizing Astra Max to consult on the direction.
+
+## Achieved
+
+Using Astra Max to find it from the saved package list `MP_WarMachine`The map already contains operational Troika, Player Birthplace, Boomshott, Torque Bow and Hammer of Dawn resources. Use original versions. `WarGameSP` Local load, not dependent on an online match. The menu is reset to the original button style and added to `GameUISceneClient.ActiveScenes` ; the resource template is separated from the running example.
+
+Platform placement behind machine gun 11 Weapons pick-up: Lancer, Hammerburst, Gnasher, Longshot, Snub, Boltok, Boomshott, Torque Bow, Hammer of Dawn, fragmentation hand grenades, smoke bombs. `WarDroppedPickup` The weapons model and the pick-up process; four storage tanks are maintained to replace equipment through a ground gun depot. Six orcs without an AI controller are placed as a still target that can be injured, by the point of the surface ray, and are reborn after death.
+
+The original target conditions and the caloric rules for special weapons are maintained. The model will be discontinued when you leave the world, without modifying the default object, archive or resource package of the weapon type.
+
+## Version and Evidence
+
+Disk EXE SHA 256 Yes `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`. History Code Section SHA 256 Yes `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`, History Base `0x140000000`. The list of scripts/packages that are retrieved and stored as required before development only a small number of call entrances are exported on original IDB private copies, and the holding IDA case is closed.
+
+At the entrance to the current active reflect event 64 Bytes are the same as byte of this historical entry; checking does not equal to a full run-time code. Function parameters, attribute layouts and local players are read again from the current process. Accesses such as the index native Spawn/Trace cannot be called directly as normal ProcessEvent; access to restricted FFrame is achieved and a chain table for Trade's output parameters is created. Special evidence, snapshots, IDA export and running backback are ignored `analysis/playground-20261021` Down, don't enter the distribution package.
+
+## Completed Phase Validation
+
+- Independent backstage process validated main menu button text `happyotaku playground`, you can get focus and enter the map through a game window.
+- Local player, ready to go. Troika,11 A weapon picks up and...6 Full generation of a target is passed, state is `ready`Generate failure count 0. The actual pick-up of Lancer is then entered into local inventory and the gun shed automatically returns an increase in the number of times.
+- Regularly stopped authenticating ProcesseEvent several times 64 Byte reverts, clean-up returns pass; individual examples are used in private archives/sets and audio is restored.
+- Launcher Final 189 The offline inspection was passed, containing additional components, Hashi, path constraints, portable white lists and independent entry back-checks.
+- `build-playground2` The new process validates the upper-down navigation chain (original menu linedown, enter Enter) after it is compiled, without having to run and temporarily relink.
+- Add `-NoPauseUnfocus` Independent Game Process Confirms `MatchInProgress`、`bWaitingToStartMatch=false`、`bMatchHasBegun=true`、GameStatus 3, the game clock is increasing and the image's associated sign is normal. No additional calls are required for StartMatch or force changes made to match tag.
+- Actual Lancer, gun exchange, pinshot, target life value 200→0 Regular reloading, standby ammunition 600→600 This is the actual injury result. The camera direction/HUD cache is not used as proof of a life-line. The third person says that the shooting test is adjusted to the test with real time point, and that short firing backs are maintained before the shooting.
+- By the original version `CanEnterVehicle/TryToDrive/DriverLeave` The Troika machine gun, player/carryer holds a two-way relationship and continues to maintain and return to its original role during the ride. The handheld is not replaced by a rewritten handheld pointer; the machine gun has an unlimited spare ammunition sign.0- As a machine gun launch certificate.
+- After the independent game is stopped, the menu bridge will be closed.64 Byte is back through, test the audio-state recovery pass and then confirm that the game process has been withdrawn.
+
+Independent non-VR diagnostic process due to lack of normal start-up path `-NoPauseUnfocus` Maintains the parameter and the box switch-and-shoot test is not passed, and cannot be used as a combat check. The first complete starter validates duplicate CR-shifting of tested copies before the game is created, has been modified to test pre-set scripts and failed to confirm retention; it is not a game or DLL crash.
+
+Second regular starter connection validated the full scene generation (11/6/ Troika, fail count 0) and enters through the Down/Enter Navigator of the Game window; orientation links are added `build-playground2` The main VR component then stopped at the front frame because of a lack of verified eye images.`draw_mask=0`、`unknown_draws=3`, the video has not been released. The wheel cannot be recorded as VR pass; the stop/entry of the standalone menu component is back on track. Follow-up line-by-line opening, loading and output path without easing the main rendering verification bypassing failure.
+
+Subsequent light diagnosis limits the problem to FXA blued output: same ticket 2 The left and right half eye drawings have arrived down 640×350 Target, quad returns RVA `0xe27709`The source pool is 1280×720 pixel mapping of the source/target eye rectangle is consistent; the old classification does not accept the call. The main menu has moved out of ActiveScenes, opening and loading are normal, and failure cannot be attributed to the front-end interface residuals. Extension tracking does not fully save exit data, and the same evidence is obtained after using eight entries of already existing values in it.
+
+Retrieval by knowledge base first `0xe27500..0xe27772`, mechanically export this segment in private IDB, SHA 256 `31691ed732d3d4a05ecb63ec4a7a03cc1c68f5afc8bf851c9d876c9fafc2f6e5` History 1 In a consistent way, please close. The shadows register the connection to position it as FXA blued path; this is a reprocessing output that does not claim to be copied in pure pixels. Candidates must also check the full section of the function when the actual process is activated by adding the output path only under the current owned renderer/world/ticket and the item-by-line left-eye pixel area without expanding the generic backffer caller without modifying the follow-up check for Draw/Execute/president/HUD.
+
+Can not open message `045ca20a…b9d` ..is created on the frozen source copy, reuse all 72 Build switches, only the above-mentioned repairs and related positive and negative examples; MSVC/Ninja 484 Item relies on tracking validation and `FinalTransferPolicyTest` Adopted. Complete VR results are still based on the following follow-up records.
+
+Full normal starter/simulator connection after FXA recovery has passed round: actual XR two-eye projection successfully submitted, released when exit 18,008 Frame, stop replying normally. `passed=true`、`native_cleanup_verified=true`、`entries_restored=1`、XR exit 0, the menu bridge is also returned. The actual Lancer consumption is also passed.6 The target's life value 100→0 We're back up.360→360 The target is reborn, and the original Troika machine gun goes through.17,917 HUD/material error at frame 0;carrying in the interim achor refuses to keep alone, not as an error 0 Or frame rate comparison.
+
+High Resolution Recheck with verified bend-windowsQuest 3 / VDXR monitored emulator profile, VR ratio 0.5♪ Every eye ♪1536×1632, Game Window Start 1280×720, without adjusting the running window. Actual shooting, reloading, re-entry of target passes; GPU read it back 3072×1632 Two-eye images confirm scenes, guns, Troika and Orc targets are visible.37,157 Frame, native portal revert/cleanup, XR exit 0 The menu bridge is back through. The normal battle original menu continues to be released automatically.6,248 Frames are stopped normally; test site is unrequested, firearms/targets 0 These operations are not a comparison of the FPS and do not claim frame rates on this basis.
+
+Final Launcher 189(a) Check and export-restricted geometrical approvals;721 Documentation,41,920,718 The byte separation portable directory check is passed, and contains a new menu of DLL/loader/runtime, excluding analytical evidence and game assets. Complementing the new PE that injects DLL relies on context, maintaining only recognition of its physical system dependency, not because it has a DLL in the same directory to admit that it can be loaded on the game.
+
+20:48–20:55 Current Default Build Compensation (Independent PID)18840) On a case-by-case basis 11 Models of gun storage, original pick-up/exchange and player inventory are in place for unlimited backup ammunition markings and the armoury is automatically returned 16 The scene is maintained.11 A pick-up/6 Targets/failures 0. By the original version `FinishOnQuitToMainMenu` Exit, re-enter with the menu Down/Enter and recreate the whole new world; stop testing field maintenance during the menu. Troika press original `PreButtonPress/ ButtonPress('R2')` Create a holddown, actually through 0.5 Second heat in. `WeaponFiring`Fire in a row.28 Let go, and come back. `Active`Normal up and down machine guns passed. Previously, only the diagnosis of Weapon.StartFire was not established. `Controller.bFire`, cancelled by the original Turret.Tick; there is also a test script parameter/name scanning error, all of which are retained as game failure or evidence. The correction test triggers the test, and you can then read it back.11 The complete inspection of the weapon and machine gun is again passed without replacement.64 Byteback, audio recovery and process exit. Complete current status audit `analysis/playground-20261021/completion-audit.json` Yes `passed=true`。
+
+Current default list enabled component: native SHA 256 `bf0a8f730d41718cc6002625848f9f8c3f7ef15aaa4bb0a15153dd3498978855`, menu DLL SHA 256 `e1d07405d0b8c3393783d5de549c44d7e20647efcf5bcc2e82b0646e6cd038ee`. The default list `b902bfa3…f6a3b` Update only 7 Relevant fields, new list SHA 256 `fc54cd221bdb61925b1f39a19bb067148840f6da3ac93c218e11403f0c54e3bd`;configuring SHA 256 `3defcd29…e43d` Keeps the same. Once you re-open the normal starter, you can select a new entry at the end of the main menu. The headline display, the physical VR handle operation and the actual experience are subject to user acceptance; this development record is not a new version of the release or headover check, and it has been published 0.0.1 Packages and labels remain unchanged.
+
+---
+
+## 中文
+
 # happyotaku playground 测试场
 
 2026-10-21，已接入0.1.0开发版默认启动器。用户要求在游戏菜单中新增同名入口，提供枪械、敌人靶子、机枪和无限弹药，并授权向 Astra Max 咨询实现方向。

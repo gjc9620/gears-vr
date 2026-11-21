@@ -1,3 +1,35 @@
+# Re-coup world reset double resolution costs
+
+2026-10-17. For waiting before breaking the check point to Prepare, use signored for diagnostic wrapper to calculate the current function; do not change the retry, authentication, input or life cycle at any time when calling the original function.1024 A bar phase event, with the actual source Hashi recorded. No new game Hook, no IDA opening, and no expansion of the reverse database.
+
+## Actual evidence before modification
+
+Session 24912-20261017-060404-b 9bd 5c 4 b Reconstructed two consecutive rounds of checkpoint, generation 1→3. Prepare takes time 3347.32／3306.62 ms, first call_camera_once 913.69／962.99 ms; then acquire_observer_preparation executes the full fresh Researcher.resolve,854.84／747.80 ms. The subsequent Anchor, UI, Crossshair and release were successful. It proved that there was a double analysis, not that the whole waiting period came from this one.
+
+## Repairs and maintenance verifications
+
+Submit 5e 86b 5 c Only the first release of the build_candidate path has been omitted from HookEntryAttestation.After completing the exact PID, creation time, owner, DLL path binding and reverify, you enter it as a comparison using the address in the full local player identity and the base of the certified module.acquire is still trying to create new Resolver and complete the resolve, verify local player addresses/modules base addresses and build all certificates;The returned camera and the certificate are all from this fresh resolution.The subsequent complete local player identity, scripts, attributes, links, source consistency and final attestation review are retained.No cross-cachel, reuse old certificates or change original format.
+
+No description of the path continues for the first complete analysis.78 The relevant tests were passed, covering re-trying the re-establishment of a Resolver, late/old complete identity, error modules, wrong binding/gendering, fresh return values and original path.
+
+## Actual return after modification
+
+Session 8328-20261017-060659-813abb 4 a Default Caption 38／Borderless 1 Original file remains unchanged. Both rounds of checkpoint recovery is successful, generation 1→3;prepare 2152.52／2295.12 ms, no more prepare.resolve_camera_once, fresh acquire and certificates are still valid in the phase records.4 K-Eye GPU receipts, with initial co-payment 3 Chart; native clean-up and normal game close through.
+
+Average prepare value before/after two rounds 3326.97／2223.82 ms, decrease approximately 1103.15ms（33.16%) The sample is only two rounds, different processes and times, which cannot be considered a stable cause-effect gain; the only directly recognized structural change is a complete analysis missing from the original one.0.91–0.96 seconds. Actual buttons are used to resume script observation before modification 8865.29／5990.17 ms, modified 5839.39／6112.28 ms; the latter is a slightly longer second round, so it cannot be extended to all load/end-to-end recovery rates.
+
+The aforementioned resumption of observation is accurately used in keepingdown send_ns and waits for at least 10 The total difference between observation and prepare consists of games loaded, rotated, world observed and moved.0.9–1.3 Seconds and cycles may still have the space to optimize; it has not been shown to cause a headline of Carden, which does not directly reduce observation or relax certification.
+
+Original evidence:analysis/runtime/checkpoint45／46-worker-timing.jsonl, two rounds audit and normal-close.json, summaryrebind-discovery 46 The test does not prove continuity of machine guns, all CGs, long tours or real head.
+
+## Independent Candidates
+
+analysis/release-staging/caption38-rebind5-20261017含5e86b5c，700 Documentation,43,420,731 Bytes, list SHA 256 b5aa01defa729b0c6482425dd5d0e5e2a8b9103a2cbeec050bdc88ea6d8c006b, pre-screening of quarantines is passed. The above-mentioned actual operation uses the warehouse's default candidate and does not allow for new snapshots to be executed; it is not a new package of clean machines/headlight inspection, which is kept in the old snapshot.
+
+---
+
+## 中文
+
 # 世界重绑定的重复解析开销
 
 2026-10-17。为拆分检查点按键到Prepare前的等待，使用ignored诊断wrapper计时现有函数；每次调用原函数一次，不改变重试、身份认证、输入或生命周期。最多保存1024条阶段事件，记录实际源码哈希。未新增游戏Hook、未打开IDA，也未扩大逆向资料库。

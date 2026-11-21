@@ -1,3 +1,37 @@
+# Physical projection of the pistol to star.
+
+2026-10-17. For the user 'Centre Icon Correct, Backsit Outer Circle Wrong', maintain default Caption 38／Borderless 1 And HUD on the machine.45°、1.2／0.8 Close the camera.0.3 Rice, no original code changes or new Hooks. Release 1 UI acceptance is still incomplete.
+
+## Current realization of borders
+
+Freezing source 364 d and Caption 38-source.json confirms that GEARS_OWND_UI_Batch/OWND_OUTPUTANT_TRACKING FF, cannot be used as a candidate for the current candidate to withdraw an unused downed path HUD. The active path is only used when the pure Canvas quasi-geometrically passed through the central door. Purely true stars do not fall on the HUD plane; it may still remain in place at the time of non-adoption.
+
+Plan does not accept security/root/extent, grouping changes access only. Under the same conditions as geometry, target, spect and limited/infinite branch, there is a common videoport simulation of adopted inner and outer circles. These conditions cannot be introduced by “same ticket”; different scissor may also allow the limited-point branch to fail against one draw and then retreat in an endless direction. The current cluster is limited to single payload, with four squares remaining gaps if the four payload are separated. These are coded conditions and counter-examples, which do not serve as re-emerging Caption 38 Fault.
+
+Old Native 36 ticket 2088 It's...16 vertex and 4 The payload at the top is exactly the same as root, actually the right or left viewport/scissor, but does not indicate a pistol nor does it prove texture visible centres or physical integration. Raw’s position around pixels cannot be treated as VR integration criteria and OpenXR eyes should have been different when they were asymmetrical.
+
+## A sample of new pistols.
+
+Actual Session Continuous-stereo-19512-20261017-063430-d 503c 29 c. Game PID 19512/ Create FILETME 134366636578209339. Following Down, the front desk virtual handle confirms the current example of Weap_COGPistol with the existing reflect-only tool;160／160 Sample passed, AmmoUsedCount from 5 Present.6、SpareAmmoCount 60, a physical shooting was recorded. No rear-stage physical handles were turned on or the unknown weapon option retested.
+
+3 Samping GPU during sect LT/RT request: First successful program following start of request 1.277 seconds, so the first two screenshot requests are pre-sequent and may be merged/delayed; the request cannot be kept at the time of the request, let alone the catch seating peak. The valid original receipt is ticket 3／10／274 Source number 1／7／268. Running case=running does not equal the first double-charts, and the next action should wait until a new chart and epoch is submitted.
+
+Original ui_reticle_direction referred/planned/applided 86,center_reged/geometry_missing/projection_projected 0, limited-point plan/application 86 Back in the direction.0. Keep the GPU line as a single-star quad ()4 vertex) This sample does not have a separate inner circle icon pair with the outer circle, which does not prove to be identical.
+
+Save Chartticket 10／source 7，3840×2160: Both eyes have normal scenes, characters with pistols and white outer circles.7 Planning centres (in the case of 1193.248093,886.034927)、(2645.779790,886.034927 It's near each of the centers.91×111 Window, with RGB Channels 235 The tunnel is not good.12 Select near white pixels, surrounding the center of the box in the outer circle (in graph)1192.5,885.5)、(2645.5,885.5) About time from the planning center 0.920／0.604 pixels. Manually check the same frame tailor to confirm that the selected window corresponds to the visible outer circle; this is a pixel-inspiration, not a generic object identification or sub-pixel precision statement.
+
+This result supports “the present frame pistol outer circle does fall in its modified plan position”, excluding the sample from rejection; failure to prove that the planned location is equivalent to a physical bullet drop, does not prove headline integration, does not cover an independent centre icon, recoil peak or all weapons.
+
+## Evidence and withdrawal
+
+ignored analysis/runtime下pistol48-audit.json, ammo.json/stdout, ring-pixel-udit.json, reticle-crop.png and the above-mentioned sessions are original GPU/status/logs maintained. Native cleanup and entry resumes pass, XR exits normally, game identity checks are properly closed, see pistol 48-normal-close.json。
+
+The next minimum check is to wait for a new actual map, then take the same ticket independent inner and outer circle and check the actual view/scissor. If both are identical, the results of the source Canvas transformation, visible texture centre or GPU cannot continue to be changed blindly by door-barreling.
+
+---
+
+## 中文
+
 # 手枪准星的实际投影检查
 
 2026-10-17。针对用户“中心图标正确、后坐力外圈错位”，保持默认Caption38／Borderless1和本机HUD45°、1.2／0.8、镜头拉近0.3米，未修改原生代码或新增Hook。第一版UI验收仍未完成。

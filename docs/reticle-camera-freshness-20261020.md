@@ -1,3 +1,37 @@
+# Accurate precipitation: camera time series check and default integration
+
+2026-10-20. Users confirm that there are both situations in which the desktop preview is above the centre of the picture and cases where the actual impact point is higher. The two cannot be combined to explain as being asymmetrically visible as FOV. A time-series check of a target with a clear focus on the target; users then explicitly request that the restoration of the direct integration default version be completed, with a focus on subsequent header recognition, without retaining separate manual testing processes for each recovery.
+
+## Identified gaps
+
+The limited focus available is from `WarPC.UpdateHUDActions` , not once `InstantFire` Final hit. Check to verify the same player, gun, camera object and maximum 50 ms is time-barred, but does not compare the camera position, direction and subsequent freeze of the original rendering camera. The change in camera such as recoil may occur between these two; the same camera object cannot replace numerical consistency at a very short interval of time.
+
+Keep running logs `continuous-stereo-38884-20261020-115455-8c810931.native-status.txt` The Axisity Row 15 / ticket 121 Used to be marked `finite_query=1`, the direction of its query is about to be different from the original source view 2.428°Camera position is about to be different. 6.918 Game units. Total with another existing run record 64 Group offline re-playing. New check denied.19 This is the replay of historical CPU data and current check functions, not proof of this game running, GPU pixels or bullet drop point.
+
+The circle of the desktop screenshot is about (727,291. Left-Eye Asymmetrical FOV and 3072×3264 Eyemaps fit.1280×720 Window calculates, with eyes directly ahead of (722.17,290.45. These parameters are not bound to the same frame as the screenshot, but only explain that it is above geometrical centres and cannot be used to negate the impact deviation reported by users.
+
+## Candidate changes
+
+`crosshair_finite_query.h` Compare the results of the original identity, time limits and geometry check at world point to trackDir under a source view that is not close by lens or has been changed by HMD. Location differences include 0.05 Game units and floats off error margins; directional slope tolerance differential 0.001- Yeah, I'm sure.0.057°allows small Rotator/ View quantification and frame differences. Visible change cameras reject old limit points and record independence `camera_rejected`。
+
+Refuse to follow the current original image centre orientation policy. Keep the original world target and limited projection of eyes when matching; no fixed down-slashing is added. The close-range horizontal vision of the camera that does not match the branch remains physically validated, which cannot be called complete impact site repair. The gun mouth, auxiliary aim, dispersal, collision and injury codes are unchanged and do not add random targeting functions.
+
+## Validation and inbound entrance
+
+RecicleFresh 2 From the current default 5 Freezing source code copy, replacing only limited target eligibility header files, corresponding tests and logbooks.33 entry;for results see `analysis/runtime/reticle-fresh2-build-tests.json`. Cover camera overturn and shift, value anomalies, legal world origin leveling, quantitative matrix, and existing 729 Group sit-down projection returns. DLL SHA 256 Yes `99d47a83c0652c8f9508aa3ebff46769c2cfcd859fba71a1c28b087b68836006`。
+
+Backstage game test found a game session PID while waiting for free time 38848 And its starter ownser 12648, exit by occupation protection.0,Input 0, does not enter the archive or set back-up/writing phase. The session is not stopped, taken over or restarted. Read-only shooting effects carrier sample obtained 1 A baseline, which was subsequently stopped by a change in the identity of the object; no new firings were recorded and could not be compared to impact points.
+
+ReticleFresh 2 is the early independent check builder.1 Freezing source code into the same three-cardiogram changes to build IntegratedFixes 1, has been retained 5 The machine gun switchback and the world's back to change. XR continues with the latest MountedLatency 1. Total required start and focus check 40 item. `GearsVR Launcher.exe` By default `tools/vr-launcher/manifest.json` using consolidated versions;temporary `GearsVR Reticle Test.cmd` Removed. Previous naming list is only kept as internal historical material.
+
+Default integration build, depend and access checkup signed `analysis/runtime/integrated-fixes1-build-tests.json` and `integrated-fixes1-stage.json`This default integration is not equal to a true shot or physical head recognition.`actual_game_regression=false`、`headset_verified=false`、`release_ready=false`. Users will focus on validation later; it would have been necessary to self-measure and default the retention of manual audio behaviour.
+
+Build, source-code freeze, historical entry Hash, mechanical offline replay, early test failure and correction, read-only sampling and unstarted backstage records are all kept in neglected locations `analysis/` . No new original back-compilation, opening of the IDA database or generation of ZIPs.
+
+---
+
+## 中文
+
 # 准心偶发偏上：相机时序检查与默认集成
 
 2026-10-20。用户确认既有桌面预览中高于画面中心的情况，也有高于实际弹着点的情况。两者不能合并解释为头显不对称 FOV。完成一项准心目标时序检查；用户随后明确要求已完成修复直接集成默认版本，集中进行后续头显验收，不再为每项修复保留单独的手动测试流程。

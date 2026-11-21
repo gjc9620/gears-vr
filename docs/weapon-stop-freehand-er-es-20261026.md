@@ -1,3 +1,61 @@
+# ER/ES Stop post-freedom dual formalities are more common: differences in the preservation of evidence
+
+This round compares only the existing ER records through failed Stop/quiescent. Game, XR, test, compile or IDA was not activated and neither the gun/bones matrix nor the shared Native was recalculated. Original report, original and file summary are retained; ES is still out of line, Finalizer succeeds with normal recovery.
+
+Minimal machine reply: signed `analysis/lancer-component-readback-20261026/stop-er-es-saved-review.json`;producing scripts `compare_stop_er_es.py`. Nature source explanation only uses actually frozen Native 47 `source2/native-capture`/ The summary is also being sent back.
+
+| Item | ER'S THROUGH. | ES failed |
+| --- | --- | --- |
+| Actual Game PID | 23040 | 31188 |
+| Actual Game Created | 134374834037771066 | 134374841811689415 |
+| Native session／started QPC | 2694171951921 | 2701965669072 |
+| Native DLL | Same two. `78705ddd…3148` | Same two. `78705ddd…3148` |
+| Stop Return Sequence | 4 → 5，quiescent | 4 → 5，quiescent |
+| Quecent Read perf_ns | 269433361781300 | 270212703751800 |
+| Baseline Participants | cookie=0，revision=4，callbacks／transactions／pin=0 | Same |
+| Baseline_closed/stop_requestd/unknown_faault | Both. 0 | Both. 0 |
+| Baseline observed stream/reference/head/ left/right algebra | Both. 1 | Both. 2;preserving record as 1 |
+| Native reference epoch／flags／reference_failed | 2／1／0 | 2／1／0 |
+| Continue the check. | Pass. | `No post-quiescent continuing free-hand commits / stable held counter` Timeout |
+
+All increments are calculated only in their own processes and within the Native session. The independently run line numbers, ticks or cumulative counts are not matched to the same event. The ER check window differs from the length of the ES timeout observation window, and the following table is not a frame rate or performance comparison.
+
+| Increase after Quescent | ER: Baseline pass physical check | ES: First post-event follow-up |
+| --- | ---: | ---: |
+| Endpoint Read perf_ns | 269434365172800 | 270215429410400 |
+| continuous_hand_ticks | +34 | +78 |
+| body_native_captures | +34 | +78 |
+| body_goal_attempts | +34 | +78 |
+| body_goal_plans | +34 | 0 |
+| body_goal_rejected | 0 | +78 |
+| body_goal_view_held | 0 | +78 |
+| body_main_mount_attempts | +34 | 0 |
+| body_main_mount_not_ready | +34 | 0 |
+| body_main_mount_commits | 0 | 0 |
+| body_hands_attempts | +34 | 0 |
+| body_hands_commits | +34 | 0 |
+
+ES, this... 12 The first article of the follow-up to the Article is the same cumulative value as above for the post-quacent baseline. A separate summary at the end of Native also shows that Goal tried/ rejected each of the + from the baseline 120, Goal plans, Main Mount queries and hands attempts remain unchanged. The final summary is in the later recovery/exit phase and cannot replace Stop Time; the final algebra for both rounds becomes ER= ER =2、ES=3 Especially ER=2 The late summary that appears after the check has been renewed cannot be used to reverse ERs during the check.
+
+The earliest evidence of a disagreement is that the complete baseline after ES quixcent has been read into the observed algebra 2 Then Goal layer continues and refuses, but does not enter the new Goal plan/Mainmount query/hands attempt; ER maintains algebra for the same period 1, and continue to plan and submit. ES previous live log reading time is 270212611437200, algebras still shown 1;first reading of algebra 2 The live log is 270212846876200. This is the time when an observer reads a pre-existing state summary, which may be delayed and not an atomic source event, so that it does not precisely fit a continuous change into a call area in Stop, let alone assume that Stop has caused the change.
+
+Freezing source code gives a specific candidate path:`body_c0_goal_policy_live.inl::same_source_basis` Require neutral base key to be consistent with the current observed array/reference/head algebra of source;`pose_begin` In origin initialised and `same_key` Settings when failure `origin.poisoned` ES's observed count is compatible with this path.**The originals did not contain origin key, poisoned values or actual reasons for early withdrawal, so the branch was not confirmed and other pre-planning conditions such as captured/current/standing/cover were not excluded.** `body_goal_view_held` The freezing source code counts the continued use of expired cache views, not the player holding the gun, nor can it be shown as a single error path.
+
+No sign of “remaining registration without renewal” on the side of participants: both boards have cookies =0、callbacks／transactions／pin=0, so the problem cannot be classified as incomplete. ES `body_native_apply_gate_9`(freeze enum is context) Increases after moving phase to baseline 1; it is not a sequential record of every subsequent rejection.`prepare_code_12` At ES Final Move 1 And not as a new stop-only error.
+
+The following are clear:
+
+- BMS only keep the rest 1–32: ER last submitted earlier than the Quecent baseline 4625.04 ms, ES 4519.46 ms. This time only confirms the truth, Header.64／Record 8616, PID/Native, Sequence and leaving committee time, unrecosted source associated, and no extension of prefix to stop source.
+- Single `C0FAIL01` The first-fair session and the Header 280 Consistent with the definition of freezing;ER records predate Quecent baseline 8145.20 ms, ES before 7867.91 ms. They're not records of the first Goal rejected by Stop.
+- Stop export 4→5 and triminal/thread-exited, but no precise timescale for dispatch/complement. Its deadline is not the source event time, does not push it in the order of the competition.
+- The specific publicization rejection cause for the observed algebra changes is not saved. Unlike external observers, ER/ES 's PG cannot be attributed to new sampler time using independent operations.
+
+The minimum verification action is assigned to the only entry owner in Body:**- Yes.** `pose_begin` Stop has added a borderline record to the first refusal, keeping specific failure terms, origin initiated/poisaned, actual old/current observed key, PID/Native session/tick/compoce. First confirm whether neutral baseline key changes are early and then decide on amendments. Keep all eligibility, restore and write constraints; no new Hook/writer, no automatic removal of Poisoned, no relaxation of continuity doors, and no old first-timer 32 Fills the current source. This comparison does not start the validation.
+
+---
+
+## 中文
+
 # ER／ES Stop 后自由双手续更：保存证据的有界差异
 
 本轮仅比较既有 ER 通过与 ES 失败的 Stop／quiescent 记录。没有启动 Game、XR、测试、编译或 IDA，没有重算既有枪／骨骼矩阵，也没有修改共享 Native。原始报告、原件与文件摘要保留；ES 整轮仍不通过，finalizer 成功只表示正常恢复。

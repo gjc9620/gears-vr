@@ -1,3 +1,35 @@
+# V 1 Local tests ZIP and new rifles paired for check
+
+2026-10-17. The first version is still incomplete; local candidates are not equal to official issuance or real machine acceptance.
+
+## Locally tested compression packages delivered
+
+Add Development Tool tools/vr-launcher/package_portable.py. The ZIP is created only on unchangeable documents and inventory.json, without re-enacting the directory after the collection of the test. Verify path, core document integrity, duplicate item, size/hashi, exclude pathways such as anallysis/play/scraper/ repository, rejecting the re-decomposition point; re-open each member and list after writing a temporary file, without overwhelming it.11 The test is passed to overwrite the new log exclusion, tampering/missing payload, path/link, existing output maintenance and failed cleanup.
+
+Actual input of return Caption for completed independent package run 38-rebind 5-20261017，700 All of the payloads still meet the original list.analysis/release-zips/GearsVR-V1-development-Caption38-20261017.zip All right, all right.701 Member (including inventory.json),43,420,731 Bytepayload, compression package 13,634,630 bytes;SHA 256 c7204e0ae2625d56b011fd81dbc66c835e86c3fec66356f2ab25506200669d2d. Additional original GPU images, absolute game path logs and logs are not included in the post-run status.
+
+Repressure to New Caption after Validate ZIPHashi 38-zip 6-extracted-20261017;Python quarantine precheck in package passed without starting game or GUI. The original stage actual game returns to docs 82, the depression copy does not start the game again. This package keeps a description of development candidate/release_ready=file; it is not uploaded or made public.
+
+Use is already in the package in English README: Full depression, open GearsVR Launcher.exe, select GoWDE-Steam.exe; Quest/VD users connect VD and choose VDXR before starting VR. Set resolution within game, DLSS/DRAA locks off. This package is still by default close to camera 0、HUD 65°Not the machine.45°／0.3 Mi-debug.
+
+Original Reply analysis/runtime/portable50-zip-receipt.json,zip-tests.log, extracted-preflight.json keeps. Compressor package tools are development processes and do not depend on running as players.
+
+## A sample of the rifle waiting for actual binary readiness.
+
+New SessionContinuous-stereo-14348-20261017-064240-b 072663e，Caption 38／Borderless 1. Check first at least 10 Submits, releases images and first actual programming records within each epoch, then starts. Read only confirmation examples Weap_AssayRifle. LT is two seconds before another LT/RT is requested for three seconds; every common controller requests finally to be returned and the handle of the rear entity remains closed.
+
+The sub-sampling machine has 94 Valid sampling, AmmoUsedCount from 4 Present.35、SpareAmmoCount 600, then stopped because Registry Header Changed. The coordinating processer error cannot override the subsampling device and is therefore not fully remembered 8 The second is steady. The reservation is refused, and the registration form is not relaxed by testing.
+
+Six.4 K receipts, ticket 117／138 Before the request for firing;174／184 After request 0.30／0.58 Seconds,203 About 1.06 Seconds,263 About 2.64 sec. The actual image has a front-stage opener, a short exit mirror, and then the process of opening the lens; it is re-integrated with the center/reopening sequence between the two requests without forcing an early frame without visible light into internal or external circles. Source/ thumbnails and actions are kept at all times.
+
+Native-natured/planned/applid 390 Centered, Geometric, Projection Rejected 0,Sufficient application 390 Back in the direction.0. Keep the ticket 92／93／94／95 Each one of them has the same root/list/target.16 Top Point 4 Scope and 4 Top Point 1 The range pairing, which is word for word for each eye view/scissor, commands completion/content matching marks to exist. It proves that these recorded ranges apply the same deviation and cannot be confused with the respective document's intercepts, nor does it prove texturealpha, stand-alone visible centre, bullet impact or physical integration.
+
+Evidence analysis/runtime/rifle50-audit.json, ammo.json, pair-audit.json, before-fire-centres.png, normal-close.json and speech original status/GPU/log. UI questions remain open; there is no only one 390 User feedback is declared resolved through count-times.
+
+---
+
+## 中文
+
 # V1本地测试ZIP与新步枪配对检查
 
 2026-10-17。第一版仍未完成；本地可试候选不等于正式发布或真机验收。

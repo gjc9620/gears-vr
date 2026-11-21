@@ -1,3 +1,41 @@
+# Unity of candidatures 3 Playground error 34
+
+Version:**6dof-unified-20261028-3**. The fixed entrance is still `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。
+
+## User Actual Failed and Source fixes
+
+User 2026-10-28 Both manual startups are in place. `playground_reservation` Stage back `Playground initialization failed: 34`. Steam EXE has passed; Native is not active and XR is not started. The old candidate and two first-fair logs have been fully saved to the working tree ignore directory `analysis/6dof-unified-startup34-20261028/previous-candidate/`, the original log with personal path/account configuration is not placed in the new distribution package.
+
+`reserve_playground_hook()` Enabled `HAND_ANIMATION_CALL_PROBE` , Call Unconditional `handanim::test_environment()`, requires three automatic test environment variables. This prevents normal manual start-up and is a condition for explicit rejection of this location.
+
+Production source code only modified `tools/playground/playground.cpp` This one: only explicitly compiled `GEARS_PLAYGROUND_UNIFIED_MANUAL_PROFILE=1` **and**Use `GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL` The single Native calls the owner of the environment without this automatic test door. The old test file remains limited. It does not inject test environment variables into the starter, nor bypasses the entire Playground.
+
+Original EXE/Procedure Identity, Modules/Registration,64 Byte-entry check, relay distance, book creation/activation, life cycle and normal restoration protection reservation. A neighbouring manual path is followed by a code: Reserve, Initialize, Enable, WebponHandStart, VrFireEnable;R 2 A visible manual sputum branch exists, and the test limit on animated snapshot/incident collection and other experimental buttons is retained.
+
+## Compile and Configure Retention
+
+Only compile and link affected `GearsPlayground` Target, exit 0. No Game, XR, Simulator, Test, Self-Detect, Replay or Acceptance Pre-Check. The actual compilation configuration has confirmed that it contains the unified manual, Native subscriber, and uniform muzzle consumer definitions. Keep the original build and amend the build record; no claim has been made that the next manual start or play is passed.
+
+| Component | SHA 256 |
+| --- | --- |
+| New Playground | `4f8a5dfaab0d191d45f2867fb084a6f414172933d43d1f1487844a14620b1036` |
+| Reuse Native | `458cdf929da1df7d6263c75f2adcac042cd7f4dbce077eb347b668e8322ba36b` |
+| Reuse XR | `6db1b9bc72a42c4ef5a2b3d0fe99858c794e16f7206620ec4e25fe35ca53d727` |
+
+Current User `config.json` Saves and brings new candidates with original bytes, keeping all settings and path history. The actual selection is `J:/SteamLibrary/steamapps/common/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe`,FOV is 65;do not overwrite it with the original J working copy path that does not exist. Read the current configuration again before posting, whichever is the latest file if changed during user time. The release record keeps a separate summary check value for the configuration.
+
+Old candidates, logs, old Native/XR/PG and Backpackages are retained. Update does not stop the user-manual process; if still in use, release new candidates is left pending a secure update of the fixed access.
+
+## Current Scope
+
+The first person in the previous version, free hands, shoulder/pants rounding guns, Lancer start and base course line remain limited. The HUD-asylum independent query does not receive new rays; the opening of fire is suspended when the left hand tracks unknown; socket local +X, actual impact, hand feeling and normal cessation still await feedback from users. This time there are no additional reloads, bunkers or other weapons functions.
+
+The next step is to be started normally by the user from the same entry point, confirming whether this rejection has disappeared; in case of new actual malfunctions, amendments continue to be made according to the new log without requiring additional automatic testing.
+
+---
+
+## 中文
+
 # 统一候选 3：修复手动启动的 Playground error 34
 
 版本：**6dof-unified-20261028-3**。固定入口仍是 `J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe`。

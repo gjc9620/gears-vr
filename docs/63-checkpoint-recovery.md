@@ -1,3 +1,112 @@
+# Checkpoint Restores modified log
+
+2026-10-15. Prioritization: 1 with process check point restored and initial access delayed; 2 pistols are on the same planet; 3 HUD size/position; 4CG and play black screens.
+
+## Implemented
+
+- LOCAL does not publish empty samples and exits from continuous sessions. Press OpenXR `changeTime`Update space generation after entry into force; original camera re-creates reference and the receiving side rejects old generation images. Only new generation succeeds`xrEndFrame`The record is restored.
+- Camera readiness check is consistent with the original anchor check; only read certificates are retrieved when temporarily switching from the pre-activated camera, without retrying the injection or activation that has taken place.
+- The initial report distinguishes between XR pre-screening, camera waiting, birth preparation, running state and actual first intervention.
+- Protocol companion version: Stereo Bridge 3 GPU share 4. The new binary must be used in conjunction with the new binary;`manifest-game-recovery1.json`It's the current round of experiments, and the player defaults to keep the original version.
+
+## This is the evidence.
+
+Local 16 Passed certification orders (in-gen door/bridge, life cycle, OpenXR CPU and shared map checks, Python launcher/runner/menu monitoring); prepared for re-targeting 12 Item passed. No real headshot acceptance.
+
+Practical game PID 10940,Runbook`analysis/runtime/continuous-stereo-10940-20261015-171139-11827aa4.*`: Autorecovering readiness after two cameras are not Pawn rejected; XR pre-screening 0.817 sec, menu/cam waiting 17.682 Seconds, originals.15.278 Seconds, first eye submission range. Runner.36.776 sec. Cumulative 10099 Sub-image copy,19813 Sub-submission, then stop.
+
+Opened the pause menu with game status read and orientation window messages to confirm`ConfirmCheckPointLoad`, same PID reload check point. Test failed: native continues running, anchor refuses 0, but the new image was not restored.
+
+Freezing log identifies another direct defect: swapchain first taken from 3840×2160 Change 1920×1080 The inventory monitor is permanently re-projected, and the target of the computer is reconstructed.`changed=10918`This is the number of subsequent rejections, non-resideze; shared texture and XR eye textures that support only initial size. The image cannot be restored with process running or simulator FOCUSED. At exit, native resources are drained, hook restoration, XR exit completed.
+
+## Resize Recovery Increase (GameRecovery)2 / SpaceRecovery 2）
+
+DXGI ResizeBuffers/ResizeBuffers 1 The border has now been upgraded with inventory and retirement old bills, and the GPU shared resources and two XR eye exchange chains have been re-established by consumer visible release.5 Failed reisize to re-validate old stocks; successive reisze reserves the same restoration rights as publicsher. Actual GPU tests cover lift and drop size, failed call, unconsumptioned end frame and continuous reconstruction;17 All authentication orders passed. Report.`analysis/runtime/game-recovery2-validation.json`。
+
+Actual PID 12832，`continuous-stereo-12832-20261015-175419-4048fc7e.*`：1080 p Continue with the process to confirm the reload check point.1920×1080→1280×720→1920×1080→3840×2160 Resource successions 3/5/7 Successful xrEndFrame; first time two generations submitted a distance window operation 121/150 msec,4 K-Choose 1.112 sec.8 Sub-bottom resize succeeded, inventory was made/reprojected 0 All GPUs are re-establishedprepare successfully. Original emptiness, restoration of the book, XR exit pass. This record is still not stable: subsequent VISIBLE status is mistook as inactivated and continues to be withheld; users report repeatedly short and black.
+
+♪ The first time I was in a shortage, the old ticket age was by 90 milliseconds have increased to 590 msec, by 100 millisecond age threshold rejected frame by frame; new images are returned immediately. CSV is XR_SESSION_STATE_VISIBLE () during continuous black screen 4)、shouldRender=1, the existing dual-purpose control only accepts COCUSED (5 This shall not be considered a failure of reesize, nor may it be declared that item 1 or item 4 has been fully resolved.
+
+Another limitation: PID 23276 Use non-standard window client size 5094×2809、1894×1009 And then the game was still set.1920×1080 Output, add the final scaling of draw outside consume and no ticket. Rebuilds a successful but uncertified final output, which requires orientation to track the zoom input; it cannot be supplemented with an updated instrument.
+
+Initial delay still around 17 Second-native preparation; four one-time count times have been added for self-measurement, initial resolve, certificate acquisition and activation. The player defaults with GUI are not yet in the process of building this experiment.
+
+## GameRecovery 3 / SpaceRecovery 3）
+
+Double-eye rendering now accepts VISIBLE and FOCUSED; Focus still indicates input focus, add a new visible field to display permission, should render and track check keep. Protocol is supported by StereoBride 4 GPU share 6。
+
+Allow maximum number of continuous receipt of completed new images 1 Second age, complete copying of images can be preserved to the maximum 2 Seconds. Each submission continues to use the image ' s original rendering/FOV and rechecks the session, spatial generational, menu recovery time and eye area; no new head attitude may be posted on old pixels. New images can continue using valid old maps only if rejected for expiry; structural errors are still invalid.100 The millisecond threshold remains unchanged. This only alleviates the frame of shortage and does not resolve the lack of new scene output for a long time.
+
+17 Passed local authentication command (`analysis/runtime/game-recovery3-validation.json`; the additional VISIBLE test is passed. 39 Item, preparatory phase 12 The project is adopted, the GUI is re-structured and self-measured.256 `ce00b4e1c3b682c64e9d198b0e34cba850a1b1fe73589f3ffd9b7c54bda7d983`，XR SHA 256 `86d0b092a6f32e97f52dfb44f814a06cbb53c0bf7b203ff605bd2e38a611868f`。
+
+Practical game PID 11236，`continuous-stereo-11236-20261015-183342-4e82a424.*`: directed WM_ACTIVATE to actuated XR CSV after the VISIBLE preview report =4、shouldRender=1, native continues to publish and fully inactivate=0. Stabilization segment cumulative 5856 Repeat, no startup without player records.1080 p checkpoint reloads to continue the figure but there is a lack of player; no blackness can be claimed at all.4 K and back 1080 p After new resources are in place 3/5 First time distance engagement successfully submitted 160/159 milliseconds.4# The reisize is successful,5 Subprepare succeeded, inventory was made/reprojected 0。
+
+4 K still has an unresolved gap: last new ticket 6497♪ I'm gonna be a little bit more than a little bit too late for that 679615352700 Next, new ticket.6977 Yes 690448683100 I'm sorry, sir.10.8 No new images are available for seconds. The maximum XR submission gap is available after the time is spent 8.878 sec, then recover. Generous cumulative contamination frame 1836、missing-pair 495、metadata-lost 27、unknown-list 13; only the reasons for the candidacy are such that existing early stocks cannot link specific HUD drew to this gap.7410 Shortfall frame submission 3113、late-images-rejected=0. Resources are drained at normal stop, the book recovery and XR exit pass; the overall test was not passed due to long gaps.
+
+First access to runner.37.839 sec. native ready 14.931 In seconds, self-measurement 4.235 Second, first call 0.852 seconds, certificate acquisition 9.369 sec (4- A few attempts, of which 3 Second non-Pawn, activated 0.365 seconds. This delay has not been optimized.
+
+Current`manifest.json`and`manifest-game-recovery3.json`Unanimously, GUI and SimulatorVR.ps 1 Use it uniformly; keep the game-resolutory list rolling back. Still locking down DLSS/DLAA at game resolution. It is an experimental check point, not a complete releaseable version. No real header acceptance.
+
+## GameRecovery 4 / SpaceRecovery 3）
+
+Add a fixed capacity window that works only when theoutage diagnosis is open:500 nms no new release triggers recording unknown draw, material release, existing overlay query results and inter-zone left-and-right eyeticket; no additional image admission rules, no rendering path allocation or documentation.9 Targeted inspection passed, list`manifest-game-recovery4.json`Freezing Independently, still default to Recovery 3。
+
+Actual PID 14480，`continuous-stereo-14480-20261015-184923-98084e66.*`: Automatic 1080p→4K、4 Reloading of K Checkpoint 1080p。4 Subreside/5 subprepare all successful; XR copy 3540 Zhang, cumulative 8821 Sub-proceeding, maximum submission gap 59.055 Seconds, whole failed.4 K-to-K, first time you submit a resource until the pause menu is open 3 The cause and effect mechanism is not yet defined.41 All accesses are back through and the game is closed.
+
+The last three short gaps provided direct source evidence: first_unknown and Trigger share of left-and-right ticket, Precent refused the position 128(pollotted); first unknown draw from RVA 1af 345，4 vertex non-indexed Materal, then 172741 The normal UI query becomes missing_pair.4486 All the Materal candidates/consumer/quad have been completed; metoral_kind=0、invocation=0 This means that no specific script HUD classification can be obtained and that it cannot be declared a quasi-star or a new gun UI. The current branch of the game-resolution only observes this type of material without being exported by eye, so these frames are conservatively rejected.
+
+Current round 19 Early records in each gap are the last of the rings.4 Entries are covered, the longest is lost 4 K window cannot directly attribute the specific draw identity of short gap to long jap. Additional maximum windows are retained and directed to complete the upload, IA, active projection, eyeticket and consumer authentication.`analysis/runtime/game-recovery4-audit.json`。
+
+Another follow-up UI recovery gap: the operating anchor has accepted new Pawn (family/renderer)2065(a) but the cumulative rejection of PostRender UI scope is 2065- Second.`ui_observer.h::quick_environment`The Pawn and Inventory addresses are still required to be activated. They are highly relevant, not yet called for matching; the level of the UI certificate needs to be re-linked and cannot be restored by de-identifying it. It may result in the loss of HUD classification after loading and fall within the scope of subsequent UI restoration.
+
+## Material-Element Incremental Output (GameRecovery)5 / SpaceRecovery 3）
+
+Independent Default Closed`GEARS_GAME_UI_MATERIAL`Requires a game-resolution and Materal observation that still prohibits fixed downed targets. Only the full verified functions of Hash are added 1af 054 Uploads the book, reuses actual non-indexed quad, native list, stride 32/topology 5 The original consumer and uploading are performed once; only the certified GPU drew is replayed, restoring the video/scissor.0 Keep it ordinary overlay, not claiming it's HUD;kind 2/3 with HUD;kind 1 The star is not supported. Present refuses to be a window when consumer has not finished, and if he fails, the window is contaminated without blocking; registration failed after re-playing does not replace the original.
+
+GameRecovery 5 Freezing of compilers and 13 Check passed, list.`manifest-game-recovery5.json`;doing not replace defaultRecauver 3. Add a maximum gap to the independent reservation, which will not be covered by subsequent short gap. The actual first round of PIDs 17836 Completed 505 Minor eye re-painting (averagekind)3) Upload 508、3 No, I'm not.1505 Contamination.5= stocked/subjected 0、pending Present=0. The stabilizer simulator does not have a startup and defaults the player event. Test in cut 4 K was stopped before reading MenuReader found changes in the object list and therefore not complete 4 K/reload pass; normal closing of game after exit. Diagnostic control scripts are allowed to read the competition at most before any input is sent 3 New reader re-sampling, without retrying.
+
+### Full scene retrospect and current entrance
+
+Same GameRecovery 5 Run PID again 30400，`continuous-stereo-30400-20261015-190433-c56864c6.*`,Auto complete 1080p→4 K (staying)55 s) Reload with process check point (suspend)25 sec 1080 p. native release 6724 XR copy 6723, submission 13427 Range of scene submission 150.613 Seconds. Materal redraws the eyes.2305 Number of times (kind)3 HUD 1925、kind 0 Normal Overlay 380），21 Once a pair does not reject, pending Precent =0;contaminated frame from the top 3483 Down to current cycle 15(The two rounds of work are different and not directly considered as a percentage of performance).4 Subresize and 5 Subprepare was successful, inventory changed/projected=0，4 K and back 1080 p New generation first time submitting distance engagement 126.6/193.5 milliseconds.
+
+Previous 59.055 The second-long submission gap has not been repeated, with the maximum XR submission interval down to 733.834 milliseconds; continuing criteria are not met and the report is clearly incomplete, which cannot be said to have all black screens repaired. The maximum primary release interval is approximately 2.023 Seconds occur after confirmation of check point, containing load interval with temporary eyeless pair; old diagram is kept short 186 No date-image rejections occurred.42 The entry point is independently restored for clearance, the native resource is drained, XR object destroyed and then the game is closed.
+
+First time in the cycle, double-eye runner.36.484 sec. Natural self-measurement 4.300 Second, first call 0.773 Seconds, certificates ready.11.704 sec (5 A few attempts, waiting explicitly for Camera.ViewTarget to resume as controlled Pawn, active 0.364 sec. The initial delay cannot therefore simply be attributed to the GPU slow; support/show strategy for non-Pawn camera phases still needs to be investigated and anchord verification cannot be cancelled.`analysis/runtime/game-recovery5b-audit.json`。
+
+Current`manifest.json`Upgrade to`manifest-game-recovery5.json`, GUI/Script read it directly;3 With original GameResolution 1 Keeps the list rolling back.256 `eebe351a8de54c363446caa1b0dbfc8f81eabcecf3c8ed3c3633320b2aa98127`XR is still SpaceRecovery 3. Item 1 still needs to address initial access delays and transition shortfalls; Division 2/3 is not complete with the HUD and Block 4 CG.
+
+## UI Re-locking Level (GameRecovery)6/7）
+
+The UI static function/ attribute/class certificate remains unchanged. Each matching script UI entry takes the current Pawn, HUD, Inventory binding of the same level, verifys the full object/class identity and two-way relationship, freezing the private configuration to that call. Embedded UI reuses the frozen value, and then rechecks after.512 The slot fixed receipt book retains the original call binding; the queuing of the draw consumption only keeps HUD/Astrostar classification when the original binding has been completed and is still valid, and sends, overwrite or change roles down to certified normal overlay and does not remark old records. The consumption end check again, the semantic window that has not yet been completed is not published; no new hook is added.
+
+GameRecovery 6 / PID 29844 Reload and stopover of two check points completed with the same process 4 K and back 1080 p. UI calls for access 5469 Number of refusals 0 New Pawn reconnection 4108 Number of times; queued 28915 Adopted, pending/retified =0、changed=1 End of rejection 3 Time-tamp competition 4. Materal draws HUD-by-Eye 1842 No degradation tokind 0 Normal overlay. XR submits 11943 Sub-reproduction 5185 Zhang, the horizon 134.453 Seconds, maximum interval of submission 867.687 milliseconds; still incomplete.42 The entrance is restored and XR exit completed, followed by normal closure of the game.`analysis/runtime/game-recovery6-audit.json`。
+
+The review and the round record found that new binding failed to be merged`ui_hud_sequence_fault`, causes the temporary change of role/time stamp to permanently close the Tile HUD route (the round is divided_fault=)1）。GameRecovery 7 Amend to allow permanent fault to be triggered by only the original GPU sequence/return value structure error; binding failed only by rejecting the current window and retaining subsequent recovery. Legacy owned route also passed binding to its original strict cessation mechanism; this project configuration does not enable downed route, nor claims that it is supported.
+
+Freezing of the data.6、Recovery 7 Separately adopted 12 local check of items;Recovery 6 First time misuse self-test parameters`--owned-prime-handoff`Back 2, to actually support it.`--prime-owned-handoff`, the original failure record is kept and not considered to be a malfunction.7 DLL SHA 256 `964ec52a8a23c3b9b22e2a13dd5845e3ba78c667eead6ec1a8f03757f5127aa7`XR maintains SpaceRecovery 3. This does not claim that the star depth, HUD size or subtitles have been completed.
+
+Recovery 7 / PID 26920 Reloading, reloading and reloading of two additional check points with the process 1080p→4K→1080 p. New Pawn UI reconnect 4339 Access 5637 Repeated refusal 0; queued and tied 28430 Adopted, pending/retired all 0、changed 9 End of rejection 4,timestemp.11. Tile HUD 10571 Second`sequence_fault=0`, Materal HUD-Eye Drawing 1259 Number of times, not down tokind 0. Four reeses were successful, stocked =0 Contamination.18 Frame. XR submits 11866 Sub-reproduction 5338 Zhang, the horizon 133.540 sec, maximum submission interval 866.434 milliseconds; shortage frame still in, report maintains incomplete. Clean-up, clean-up,42 The entrance is restored and XR exited, the game is normally closed.`analysis/runtime/game-recovery7-audit.json`。
+
+Current Player`manifest.json`Update to Recover 7，Recovery 5/6 The list is separate and the DLL reservation is frozen.70°/2 The rice parameters have not been declared integrated or supported by the CG. Two successive rounds of physical testing cover repeated reloading and restoration of UI binding; the remaining opening field, CameraActor, continues to operate with a start-up plane transition and short black screens continue along the subsequent stability/CG route.
+
+## Next
+
+The follow-up check found that the old Runner's incomplete may also have been from a succession mode error: it required one_way=true, while the XR that enabled the menu to be restored was clearly false. The exit reporting condition has been modified according to actual configuration. See[Notes to the withdrawal report](64-reticle-and-ui-capacity.md). The original running report and spacing measurement on this page is retained; the black frame cannot be determined by the old incomplete label alone, nor can the report correct the measured interval.
+
+### Initial waiting camera identity (PID)4776）
+
+GameRecovery 5 Keep binary and only keep the full object/class identity of non-Pawn objects and the last reread result in a read-only record of anchor failure.`continuous-stereo-4776-20261015-191911-0fc4a160.*`The first and last refusals are the same.`CameraActor_1`(Category`CameraActor`) Camera time stamp 8.85 to 13.73 Seconds,`consistent_read=true`. The wheel is therefore waiting for the transition of independent CameraActor, which cannot be explained as an overlap of left and right eyes or a GPU outlay, nor can Pawn constraints be lifted without certification.
+
+The launch plane has been submitted, about 36.275 sec first successful projection; short observation segment after continuous dual-eye 13.247 seconds,1195 Second submission, maximum interval 24.13 milliseconds. Natural cleaning,42 The short observation does not cover CG switching and complete stability check.25 Enochor and 12 The block is ready to be tested.
+
+The 2nd physical pistol opener permanently ceased to function after the UI batch was fully positioned, resulting in a quasi-star correction and the HUD layout being disabled.8 Repair and re-detection, current player list upgraded; evidence and remaining scope available[Pistols are on the star side with UI capacity.](64-reticle-and-ui-capacity.md). Existing w=0 The third re-alignment of guns UI, subtitles and the fourth CG/load display and shortfall frame are confirmed. First reloading has been repeated several times; the waiting CameraActor identity for first access has been confirmed without eliminating all start delays. The unknown Delaw acceptance or indefinite extension of the old map remains unrestricted. The VDXR event has not yet been proven to be back on track.
+
+References:[OpenXR Sessions Visible and Input Focus Status](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR Reference Space Change Event](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers Resource Release Requirements](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。
+
+---
+
+## 中文
+
 # 检查点恢复修正记录
 
 2026-10-15。优先顺序保持：①同进程检查点恢复与首次接入延迟；②手枪准星；③HUD尺寸/位置；④CG与游玩黑屏。当前未完成第一版验收。

@@ -1,3 +1,45 @@
+# 0.1.0 First completed: continuing to shorten the waiting period for recovery of upper and lower machine guns
+
+2026-10-21, achieve and autovalidation complete, with Python source code used for normal startup. Users then do a single header and top-down machine gun experience check; this round does not measure the total black screen duration nor is it an entire time frame 0.1.0 Published.
+
+## Achieved
+
+The cost of the UI-type discovery scan continued to be reduced based on a previous full collection, rapid handshake and re-use of the same attribute chain.`Resolver.discovery_class_candidates()` Sort current registered object address by maximum 64 KiB reads the discovery hint directly, extracts a class pointer and uses the type judgement in this scan. When large pieces cannot be read in full, they are returned to the original page for reading and to the exact object for reading.
+
+Batch content is used only for candidate searches. The UI builder will reread the full identity, name and register of the selected object, leaving the reflection field, relationship, script, code and native to be finally validated. Once discovered, the new identity will be used `internal_index` Reorder the original certificate and check that identity again remains unchanged. Atomic release, monopolization path and synchronized drop-off remain in place.256 Same check.
+
+Normal starter loads these modules directly without additional test entry. The default native is still `build-ads-anchor2-spin0`，SHA 256 `fe928d7bab650b7672bd92b0d9ce7193ee2c9762a36250319ebcae4971729e8a`;XR still MountedLatency 1，SHA 256 `0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c`. Keep existing FPS, ADS and aim for repair.
+
+## Intersectional measurement
+
+Control and optimisation groups retain attribute chain re-uses, with the difference between UI category detection scans only. All four complete candidates expressly reject the same authoritative INI summary before publication, have no change in their authentic composition/request/committee, do not own an error or a number of times. The following are fully prepared CPU timers:
+
+| Order | Programme | Successfully collected ms | Re-extracted | Include total time taken for re-mining ms | UI build ms from successfully collected UI |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | Original Scan | 708.5109 | 0 | 710.8315 | 353.9288 |
+| 2 | Batch scan | 584.8287 | 1 | 1437.2407 | 228.6614 |
+| 3 | Batch scan | 701.2542 | 1 | 1560.9584 | 225.2222 |
+| 4 | Original Scan | 802.5909 | 8 | 7620.8020 | 348.8241 |
+
+Medium number successfully prepared by **755.5509 Reduce ms to 643.04145 ms**Saved. **112.50945 ms, about 14.9%**. The median of the successful capture of the UI construction is approximately 351 Reduce ms to 227 ms, decrease approximately 35%. Failure attempts and total time-consuming retention caused by strict cross-scope protection; this limited sample does not create a stable distribution of the total waiting time.
+
+Testing requests TargetFramerate=60 Desktop 1280×720 Render ratio 0.7. This is compared to the CPU configuration, not the FPS. When five protected files are returned by original bytes, the normal starter does not increase frame ratio limits. Tests await exit of other FPS workers before they are started without sending messages across a task or interrupting tests.
+
+## Automatically verify with boundary
+
+- native-capture 267 Item Python Check, package-inspector 22 All checks passed, all in. **289 Item**. Cover fields chain rechecking, batch/page/accurate readback, cross-section objects, complete configuration and sequence, duplicate class and old identity rejections, and discard candidates when changing intermediate identities.
+- A checkpoint recovery was completed against the test and independent XR projectors were submitted for endorsement.
+- The default source code after integration is again finished checkpoint restoration with XR projection. The wheel does not replace builders or disable optimization, report `passed=true`。
+- Both rounds owner exit 0,native cleanup pass, independent 79 The entry check is all matching, the game is properly closed and all five settings/archived protection files are restored.
+
+Automatic return is the resumption of protocols and XR submission validation, without world-by-world GPU pixels or physical header recognition. The upper and lower machine guns are finally visible for waiting time after user verification.
+
+Original report is signed `analysis/runtime/mounted-latency4-stages-actual-20261021.json` and `mounted-latency4-default-actual-20261021.json`;summary of results `mounted-latency4-outcome-20261021.json`. Source with SHA 256 Save in `analysis/mounted-latency4-source-20261021/`. This evidence and game-derived content does not enter the distribution package.
+
+---
+
+## 中文
+
 # 0.1.0 首项完成：继续缩短上下机枪恢复等待
 
 2026-10-21，实现和自动验证完成，已接入正常启动器使用的 Python 源码。用户之后统一做头显与上下机枪体验验收；本轮没有测量头显黑屏总时长，也不代表整个 0.1.0 已发布。

@@ -1,3 +1,43 @@
+# GearsVR 0.0.2 Start repair.
+
+2026-10-22. Submit the current source code to the full extent required by the user `codex/0.1.0`, Submitt `963d965b8590555bae31d047bef6ccc27d3e6469`;from public again 0.0.1 Source Submission `4b621fc430fa5f96eba3bf70399810d3fd51e202` Create `codex/0.0.2`. Release tags and existing ones 0.0.1 Packages are reserved.
+
+This branch only collects cost-starter repairs, EXE auto-identify, log retention and 0.0.2 Version description. Original DLL freezes as AdsAnchor 2，SHA 256 `94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304`;XR frozen as MountedLatency 1，SHA 256 `0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c`. Do not move 0.1.0 First person, Playground or Rendering Change.
+
+This machine is depressing.0.0.1 The earliest failure was caused by the execution strategy intercept of PowerShell scripts with download marks; reading multiple account graphic settings also independently reproduced problems with old versions allowing only one setup file. Fixes the execution policy, retain system policies and download tags for Powershell processes owned by the starter only; select the current Steam account number and provide the correct Steam App ID subprocess environment. Start a script output for visible capture, and press UTF-based.8, keep original details when you fail.
+
+The same set of startup scripts that were repaired has been authentically PID in the project 47884 The first time I saw the news was when I was in a state of emergency.35 Frame pre-screening,229 Submits the menu plane with a second start. owner exits 0 Plume entrance, audio and 11 Resumes the pass of a protected file. No level entered; XR exit code cancelled before startup is 1, the sequenced stop/object destruction metadata is normal and the boundary is kept, not called complete VR acceptance. Evidence is ignored `analysis/retail-portable-startup-fix-20261021/`。
+
+This branch 88 Item debug-launch inspection and 144 All units are cleared for start-up, diagnostics, temporary storage and packing.232 entry; of which the PowerShell script with download source tags is actually created, confirming in PythonCheckOnly mode that the starter's sub-process policy can be executed and does not create games. GUI has compiled and by hiding self-checking, overwrites the EXE directory, a layer of Mod subdirectories, irrelevant work catalogues and save paths first.
+
+The final package is kept in the packing records of this catalogue for clean decompression, isolation dependence and inventory inspection.
+
+The final depressurization check revealed additionally that the GUI Python locator does not assign a visible output code, and that the package of Python in the Chinese directory is misjudged invalid and instead uses the developer Python. The GUI and PowerShell locator are now both detection subprocesses setting UTF-8 Output and reading encoding; ultimately QA must assert that GUI actually chose Python in the depressurized directory, not just self-check exit 0。
+
+Local 0.0.2 The package is finished.718 Members, approximately 13.69 MiB. Final pre-separation check after the Chinese/space directory depresses, with Python selection, download tag scripts,23 The item is initiated self-check and log export is passed. The project root directory normal starter is synchronised to 0.0.2，0.0.1 The original package is retained in both branches.256 See[Pack up the records.](PACKAGE_BUILD.txt);not yet uploaded on line.
+
+Root directory original starter window is running; the old EXE moves into an neglected backup directory and installs the GUI through the final QA, with a file Hashi matching ZIP. Next time you reopen the root directory, use a new version to install the reply as `analysis/release-0.0.2/root-gui-install.json`。
+
+2026-10-22 User-Rystal 0.0.2 Feedback: “No problem measured.” Recorded as the user who initiated the restoration passed, and this is the recovery portal.
+
+2026-10-22 Supplements by user requirements 0.0.2 Starts the diagnosis. Each time a separate storage of a limited range of JSONL is reserved, recording the game validation, self-checking, startup script, loading dependency, DLL load, preset, entry check, target production and preparation time; log at startup version, interpreter, GUI/script SHA 256 The initial checkout is actually sent to SteamAppId, SteamGameId of the game/quietbootstream. Only these two environment fields are kept.
+
+Keep the only search handle for the new game and check identity by creating time; watch whether or not the same process exits and actually exits when failure, separate from remote line return codes without returning 1 Automatically recognize Steam as restart or crash. The pre-readiness only draws the result of the current plume call, graphic access failure number, rejectes old files and other PIDs, does not export an address, original entry bytes or complete native log. The diagnosis failed without changing the startup error or existing cleanup process.
+
+Export logs add bueld-info.json, startup-attempts.json and startup-summary.txt; keep a stint summary of the last three times that VR sessions, failure/timeout and semi-line logs are not yet available to be processed, read path local extrapolation, and export process without querying game processes.88 Debug-launch and 189 Vr-launcher check passed, total 277 entry;includes normal Python processes with real exit codes 1, PID identity mismatches, log failure, old prime state, semi-lines, privacy/link boundaries and export check without VR. The new version of the module is added to the portable white list and passed with a --I/-B pre-screening package of Python (Python)718 The old ZIP verification value does not apply to log enhancement packages that are about to be re-brided.
+
+Checking the true failure path before entering the game with the CLI: Pre-set an existing EXE and expect to return 1, write original anomalies at the game_validation stage; then export them with Python-I/-B 10 The file diagnostic package, version, bookted_python and failure phase are all in line with expectations. The new module is revised during the check to import in isolation mode. Final offline pre-check confirmation is as `analysis/release-0.0.2/startup-diagnostics-verified-stage-preflight.json`CLI/ Export Reply As `analysis/release-0.0.2/startup-diagnostics-verified-smoke.receipt.json`Two single logs are the same directory `startup-diagnostics-debug-tests.log` and `startup-diagnostics-launcher-tests.log`. The stage for CLI check contains QA run files and must be recreated when published.
+
+2026-10-22 Officially released completed: by running code`4693593`Recreate cleanstage with the final package of startup log enhancement as 719 Members,14,357,748 Bytes, SHA 256 `37476ff5b12e3ceb06e4e7158674e15411de6c91184ab51bf4fe882b62f14352`. The old local package has been backed up and not uploaded. Finally, the Chinese/space directory decompresses, the Python-I/-B prechecks, the GUI actually chooses to carry the Python, download tag script, and then you can use the user's folder to get a copy of the file.23 The entry self-checking and enhancement logs were exported; no real EXE failure path was recorded at the game_validation stage, then exported 10 File diagnostic package. No new game is running.
+
+English, Chinese[CHANGELOG](../../../CHANGELOG.md)Open source is submitted independently from existing main.`88136d82a664112f5c6671c57685e3584fdf5193`，53(a) A running module is consistent with the ZIP syntax;88+189 Total 277 The check and open source GUI compile/hidden self-check pass.733 One document was checked through a remote inventory and no local history, personal configuration or analysis of derivatives were published.
+
+GitHub [v0.0.2 Release](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2) Published and set to latest, with complete ZIP and SHA 256 SUMS. Uploading the server summary is consistent with the verification values that were re-downloaded without authentication after release.0.0.1 Label, Release text and assets remain unchanged; local 0.0.1 Original and 0.1.0 It's...963d 965 Checkpoints are kept. The new log does not extend header/gaps/gPU acceptance. See details[Pack up the records.](PACKAGE_BUILD.txt)The machine releases a letter that is ignored.`analysis/github-publish-0.0.2/publication-receipt.json`。
+
+---
+
+## 中文
+
 # GearsVR 0.0.2 启动修复
 
 2026-10-22。按用户要求，先把当前开发源码完整提交至 `codex/0.1.0`，提交 `963d965b8590555bae31d047bef6ccc27d3e6469`；再从公开0.0.1源码提交 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 创建 `codex/0.0.2`。发布标签和既有0.0.1包保留。

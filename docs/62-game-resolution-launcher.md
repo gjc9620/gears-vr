@@ -1,3 +1,46 @@
+# GameResolution 1 Test starter with in-house
+
+2026-10-15. The user reports a left eye flash on the desktop and simulator, requesting to remove Low/High first, render it by game resolution and test it with the starter. The blinking cannot be attributed at this time because of custom resolution or either right or left eye folding. This round does not start the game, does not continue the fixed target test.
+
+## This round switch
+
+- New `build-game-resolution1/GearsCaptureGameResolution1.dll`;The game currently has backbuffer and its real size drive frame SBS, closing all fixed down targets, resize access, owned Canvas/Material paths and stand-alone desktop mirrors. The desktop may display SBS without guaranteeing a single eyeglass image.
+- CMake `GEARS_GAME_RESOLUTION=ON` Unequivocally reject any fixed target-related options at the same time, raw state output `resolution_source=game`. The old research codes and lists are left back rolling and diagnostic, not entering the current player path.
+- Delete Unconnected Start Access `vr_quality.py` . The player configuration is not accepted `vr_quality`;The new GUI does not have a slot control.
+- Keeps the frame twines, original HUD plane, acoustic corrections, Materal observation, menu display and restoration, DLSS/DLAA startup/runtime/menu lock. Fixed target UI path is closed along this path and cannot be counted directly as currently constructed acceptance.
+- Game 1920×1080 ♪ Eyes of the hour ♪ 960×1080；3840×2160 ♪ Eyes of the hour ♪ 1920×2160. No game resolution configuration changed. The recovery of the actual output size from startup is not verified, setting changes and exits normally before starting a new session.
+
+## This institution is being established
+
+Default `tools/vr-launcher/manifest.json` And visible `manifest-game-resolution.json` identical content;as originally saved by default `manifest-legacy-continuous3.json`。
+
+| Documentation | SHA 256 |
+| --- | --- |
+| GameResolution1 native DLL | `e51040fe5a3f30896d4126ee32c46184ad057a18d9dae511ad6e1aec1fb1250c` |
+| MenuRecovery1 OpenXRPoseProbe.exe | `9c9eb058ea0411509d71f8f26f16e1e2ba30ba3d6903567bd582022c1cd98e68` |
+
+Use MSVC x for native 64, Release, NMake, opens the new build directory:`GEARS_GAME_RESOLUTION`、`GEARS_GRAPHICS_LOCK_OBSERVER`、`GEARS_GRAPHICS_RUNTIME_LOCK`、`GEARS_GRAPHICS_STARTUP_LOCK`、`GEARS_GRAPHICS_MENU_LOCK`、`GEARS_UI_MATERIAL_ROUTE`、`GEARS_UI_RETICLE_DIRECTION`. The remaining test options are OFF. This machine command is saved in the ignore directory `analysis/runtime/build-game-resolution1.cmd`, CMakeCache and the actual switch to verify the report record. Do not overwrite the build that has been tested by the player; re-compile a new directory and list of new Hashes.
+
+GUI is C# WinForms, Source `tools/vr-launcher/ui/GearsVrLauncher.cs`, build script `ui/build.ps1`. NET Framework csc. Copying to the repository root directory `GearsVR Launcher.exe`;no tools or new operating library are installed. This access is based on the machine's own warehouse, Python, primary construction and Runtime, not a portable distribution package.
+
+## Operation
+
+Normal exit from an existing game, double click on the starter, select a local OpenXR emulator or system Runtime, click to start and enter the level. There is no automatic navigation or automatically close the clock. Stop buttons only request normal cleanup of the current owner; active owner when closing GUI will receive stop requests first, and windows will remain waiting. The request will be kept at long notice until the stop interface for PID/create time is ready.
+
+Simulator is used locally prepared `analysis/runtime/simulator-focus1/openxr_simulator.json`;system Runtme option to remove subprocesses inherited `XR_RUNTIME_JSON`, do not change the system registration form.`SimulatorVR.ps1` Cuts to new build and cancels the autonavigation. The game path is still validated by version Hashi.
+
+## Verify Border
+
+31 A native CPU/ABI command is passed, with actual new DLL pre-screening and continuous sessions self-measured,1920×1080 Non-fixed rectangles, standalone left and right views, FrameLink, HUD/Astrostar and graphic menu protection. Launcher 36 Item & Menu Release Monitor 7 Test passed; GUI compiles no warning, path/replacement/downer handshake/Python detection self-detection. Game, native, XR file Hashi complete check. native compiles the original MSVC warning without declaring it unwarranted.
+
+Original inspection report in `analysis/runtime/game-resolution1-validation.json`. The first monitor test misused an unknown filename and the test found a return 5;reused `tools/native-capture/test_menu_display_monitor.py`Actual 7 Item was adopted and the original call was made in the report.
+
+No game, screenshot or real head start is started. This description only confirms that switching paths, building and offline checks; flashing, right eye updates, the actual display of menus/UIs and normal exit are judged by the true results of the newly constructed operation.
+
+---
+
+## 中文
+
 # GameResolution1 与本机测试启动器
 
 2026-10-15。用户报告桌面及模拟器左眼闪烁，要求先撤下 Low/High，按游戏分辨率渲染，并自行使用启动器测试。当前尚不能把闪烁归因为自定义分辨率或左右眼叠加。本轮不启动游戏，不延续固定目标试验。

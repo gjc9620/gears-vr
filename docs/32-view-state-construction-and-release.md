@@ -1,3 +1,55 @@
+# Linkage of each eye: creating and releasing clues
+
+2026-10-12,Preliminary Process PID 17824, read only. No state plants are called and no additional status created or released.
+
+## From Player to View
+
+Normal Player scene function 0x15cf08 Yes. 0x15d974 Place Player Object +0xCC As R 8 Pass to Source View Full Construct 0x15e428. Constructing 0x15e495 Put R in.8 Write Source View +8。
+
+Player Initialise Path 0x3ec5a8 Yes. 0x3ec63c Call the factory. 0x33bdd4，0x3ec641 Write return value to player+0xCC. The factory is... 0x280 bytes,8 Byte Alignment Call 0x1c03c8, and then call the single parameter to construct 0x33be04。
+
+Current Player +0xCC Yes 0x8d3c2900, with the current round 6,910 The link pointer in the secondary render preparation log is consistent. 0x1353918, also appears in the table position of plant construction and resolution. The stacking address only applies to this process.
+
+This is more than just taking view +8 As unknown pointer more specifically, but with no symbolic information, it is still called "Copient View State".
+
+## Historical field check
+
+The + of the current object 0x210 Location 16 Float point values, maximum absolute difference with last set of source view matrices in the sample 6.15e-5；+0xE0 Maximum difference with the last source projection matrix 0.0021605. Read the whole of it twice instantaneously 0x280 Bytes are consistent, and all comparative fields are limited.
+
+Previous read-only survey of preparatory functions found view matrix orientation +0x210/+0x230, Projective data orientation +0xE0/+0x100 . The current result corresponds to the candidate for saving historical data. Old CSV is not the same frame as current reading, and the margin cannot be used as a simultaneous check or as an official name for all fields.
+
+## Create and render resource registration
+
+Construct 0x33be04 Create header, +0x14 and +0x1C . The tail ends 0x33c074 Call 0xF007C, received by +0x1C Sub-object address.
+
+0xF007C Thread/ Mode Branch: A dash can be called directly to resources +0x28, and can also be written 16 Byte Rendering Command. Command Form RVA 0x1339468 +8 Access 0x19fc50 Read the resource pointer saved by the command and then call the resource table +0x28. This means that the plant contains a replica of resource registration, which cannot be modelled on the normal data structure and distributed only 0x280 And clean up.
+
+## Why can't you just release?
+
+First Table Entry 0x4ce80c Separately handle non-empty objects +0x1C and +0x14: The former is handed over to 0x282930 The latter is to be handed over. 0xCB198。
+
+0x282930 Directly call the resource table +0x30 or via a command sheet RVA 0x133CEB0 +8 Access 0x1590f4 Delay call.0xCB198 You can put +0x14 Pointer adds a global array of to-dos, and the other branch calls the first false function of the sub-object.
+
++0x14 First entrance to sub-object list 0x33BC54 Deduct the pointer 0x14, and then pass the object header +8 Call packing with demarked 0x33BC70. Packaging first 0x33BCA4, the minimum mark is 1 Time-Crite 0x280 Size release storage.
+
+The above is static control stream evidence. No dynamic confirmation has been made of which branch the current operating mode takes, when the array to be processed is emptied, and whether the GPU resource has been released. It cannot be called resolution or free directly after the factory returns, nor can the false header entry simply be called immediate removal function.
+
+## I'm gonna need a visual.
+
+Source View Construct to Write From Parameters +0x48、+0x4C、+0x50、+0x54 Four floating point values; complete construction subsequent branch also takes integer sizes through the output target's default function of the pool and writes +0x60/+0x64, and calculate with these values +0x3D0 to +0x3DC . The source view does not have two arrays, and the adjustment of the left-and-right eye-view is accompanied by a synchronized spin-off parameter, which cannot be changed to just one width field.
+
+## Next wave of controlled authentication
+
+First, you look at the independent status plant and its normal resource release interface, confirm that the refilling thread has been completed and then assigns independence to a copy of the unsubmitted source view. Then you verify the matrix, visual mouth and state independence of both sources' views before you try to submit two views.
+
+Helper `find_native_rip_refs.py` Press 1 RIP relative to LEA/MOV references in the MiB block scan normal code; approximate of current cycle scan 19.1 MiB, excludes the protection segment. The function starting point given by nearby fill bytes is a candidate and continues to check key entry using a bounded traffic control tool.`inspect_view_state.py` Fluidly read old CSV and read only 0x280 Byte state, without whole sampling to memory.
+
+Local evidence is here. `analysis/native/`：`view-state-construction-17824.json`、`view-state-factory-callers-17824.json`、`view-state-registration-17824.json`、`view-state-command-consumers-17824.json`、`view-state-destruction-17824.json`、`view-state-history-comparison-17824.json` Wait.
+
+---
+
+## 中文
+
 # 每只眼的关联状态：创建与释放线索
 
 2026-10-12，原版进程 PID 17824，只读调查。未调用状态工厂，未创建或释放额外状态。

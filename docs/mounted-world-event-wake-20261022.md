@@ -1,3 +1,39 @@
+# Machine gun recovery: wake-up to the original work-line incident
+
+The "no delay-on-machine gun" continues to be advanced. This round of fixed rounds of inquiry for resumption preparation, submission and handover are awaiting change in the code, without starting games, searching for machine guns, operating current user sessions or conducting headcount measurements.
+
+## Behaviour
+
+Fixed end of the original consecutive session line `Sleep(20)`Prepare/Commit has to wait for the next round of consumption even if it is already there. Now waiting for the original Stop, Prepare, and Commit events, the waiting thread can be awakened by notification; no new rules have been added to control the event publicly or change the message authorization.
+
+Prepare/Commit is still an auto-reset event. Only one pending response after the waiter consumption signal is retained and removed from the original Poll logic; no further waiting for the same handle before removal, followed by a signal remains in the core. Commit is still ahead of Prepare to perform the original processing check. The incident awakens itself without any candidate: original unmovable document, process/downer/creation/request/generation, identity and code validation, old renderer/UI/GPU platoon, world door ban and post-closure time rule.
+
+Effective Commit, nominal waiting interval after contact is short 1 ms. Fastest period 250 ms, retain the remaining time after submission for the first new image and fence round; duplicate signals of the same request will not extend windows. Restore when due 20 ms interval, a new request can only open a new window.
+
+Stops the use of existing ones during clean-up. 20 ms sleep to avoid a constant trigger of the cessation causing an immediate awakening. Waiting for API failure into existing proof-failure stop paths. Aborting diagnosis increases preparation/submission/stop awakening numbers in the domain and waiting for failure markers to be checked when they are then used properly.
+
+Here. 1／20／250 ms is a dispatch policy, not Windows schedule accuracy, complete recovery time or physical headlight measurement. The processing of the work-line process itself, certificate preparation, GPU emptiness and frame generation may still take time.
+
+## Inspection
+
+40 New. `WorldControlWaitTest` Use actual Win 32 Anonymous event, execution 1000 The wheel Prepare/Commit check the auto-reset signal without loss or duplication between waiting and pol; also cover both notifications arriving simultaneously, following signals remaining when the previous endorsement is not taken away, sending between lines, manual stop priority, waiting for failure, clock back, fast limit, end of submission and cleanup interval. No game or simulator has been created.
+
+World gates, StereoGate, complete frame chain, aim, first person, UI, resource life cycle and off screen D.3D 12 Two-eye pixel components checked through.490 Item Python check passed, where 348 The relevant check uses the actual WorldWake 2 DLL，142 The item starter/package check is passed. They are not equivalent to the current machine gun scene inspection.
+
+First WheelWake 1 Protection and use of the example of “no more consumption of similar signals without taking back confirmation” has been re-used to generate WorldWake by using a completely new frozen source and build directory 2. The first round is not set as default, the evidence and binary are kept and it is not used to build a cache.
+
+## Integration
+
+As the latest,1 Freezes the source-source baseline, with original only changing five files: Capture.cpp's waiting and header file contains, world_rebind_prepare.inl's incident adaptation, CMake test target, and new waiting header files and tests.50／100／150 ms Time stamped for sampling, machine gun recovery, first person sniper shooting, aim, renderer and Playground repair.489 The actual compilation of the items relies on a check to freeze the source ' s construction before and after Hash.
+
+Normal starter `tools/native-capture/build-world-wake2/GearsCaptureWorldWake2.dll`，SHA 256 `180595f8969ad6c2ddab931997e827204374a2bba83d9c29a0294d4d0c36870b`. Only three native fields of the default list are updated and saved `manifest-world-wake2.json`；83 The file is required for the package. XR, Playground and user configuration are maintained, new game sessions load new build.
+
+The final evidence is in signed `analysis/world-wake2-20261022/`, freeze source and build as `analysis/world-wake2-source/`、`analysis/native-build-world-wake2/`. The first round of corresponding directories is also maintained. This cycle does not constitute a release or head-over inspection, and the “no delay on board machine gun” still lacks complete proof of the current version's transition and the target remains in progress.
+
+---
+
+## 中文
+
 # 机枪恢复：原生工作线程事件唤醒
 
 继续推进“无延迟上机枪”。本轮针对恢复准备、提交和交接期间的固定轮询等待修改代码，没有启动游戏、寻找机枪、操作当前用户会话或进行头显测量。

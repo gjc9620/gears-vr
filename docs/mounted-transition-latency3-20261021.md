@@ -1,3 +1,41 @@
+# 0.1.0 First: continue to shorten the waiting period for recovery of upper and lower machine guns
+
+2026-10-21, the user requests this as 0.1.0 The first feature, complete and autovalid access to the normal starter, is unified after the user has been identified. Users request to continue waiting for other FPS workers without sending messages to another job.
+
+## Reuse attribute chain in the same collection
+
+A previous preparation runs through the same type of reflection field chain over and over again. Partly function plugs data recorded to `fields()` About 1.96 10,000 words, total 3.3 10,000 process readings, individual anchor build phase approximately 220 ms. The plug also interferes with strict cross-frame protection, so this failed sample is used only to locate hot spots and does not take time to prepare for effective completeness.
+
+`Resolver` Add a new visible, limited-to-take field chain hint: retain visited `struct_children` and `field_next` Values, other fields, object identification, code and relationship prove to continue with the original reading and verification. Read these links again article by article after all certificates have been completed; any changes are thrown out `DiscoveryRegistryChanged`, this certificate is discarded together with reader. The hint is empty before authentication, without going beyond reader, trying or keeping in the world.
+
+Only hints by world recovery `_preparation_camera()` Enabled,`acquire_observer_preparation()` Finish verification before returning. Maximum number of reservations per visit 65,536 The previous cycle, owner, attribute type/diversion, complete identity, code and native final recheck are still valid; candidate release retains atomic replacement, monopolistic path and synchronized drop-off.
+
+## Check completed
+
+263 Item %1 16 Items package-inspector check passed, all 279 entry. Add a new check to cover the head, middle link, end-end change of chain, final reading failure, back-up capacity, non-repealing of old values for the next collection and complete independent UI certificate content. Start preparation process also validates field chain final validation before returning to close with reader, and whole capture and partial certificates are discarded when failure.
+
+The first actual new code returned to complete the new world after checkpoint, owner worker 899.8533 Ms, Prepare to committee 211.9200 ms; XR program has independent endorsement, native cleanup and 79 The entry is back. This is the same as before. 1378.9826 Ms preparation samples are not paired with controls and cannot be used as a stable improvement ratio or headlight black screen for long periods.
+
+The follow-up reading control capture complete pass, time 850.9441 ms; the test was subsequently discontinued because of the "no new scene" condition. The overall report was retained as a failure. The diagnosis confirmed that XR is using movie fallback, without an urban or world Quiescence. CPU certificates measure whether the recording scene is now growing and maintain the first New World projection certificate, without continuing scene frames being used as a condition for passing the CPU only.
+
+The same cycle is normally closed for the first time pending overtime; after the coordination end has reconfirmed the original game creation status, send another normal closure to the current window and the game exits independently. `mounted-latency3-stages-close-retry.json` Record five protection files back; the original failure report was not rewritten. Follow-up tests add a window to the same identity and close again regularly.
+
+## Matching Measurement
+
+`mounted-latency3-stages2` The same process, world and input state is used to collect four complete candidates in the order of control/ field hits / field points / control; each is expressly rejected before release. Control only allows new field chain tips, while the rest is achieved. The conditions for adoption include full identity consistency, consistent authoritative INI summaries, constant authority summary/request/committee unchanged, no owned error/quiescence, and exit/reversion completion.
+
+When using a stage function, avoid reading strict time stamp protection for the disturbance/function plug. The phase is time-consuming and contains nests that cannot be added; successful capture is recorded separately from total time-consuming times containing retraction. This round temporarily requests TargetFramerate = in protected and backed up ClintSettings 60, end the reduction. It is not a comparison of FPS or a headline delay measurement.
+
+Four successful collections of the data are for control. 786.3622 ms、hints 749.5833 ms、hints 812.5276 ms、control 803.2533 ms. The median number of successful collections is from 794.80775 Down to 781.05545 ms, savings only 13.7523 ms, cannot report steady improvement in experience. Second hints occurs 9 Sub-strictly protected re-harvesting, including total time taken to re-polytize 8522.0221 ms; it is a read-only test that was rejected before the release, and cannot be interpreted as a black screen test or removed from the results. The four certificates in this cycle are identical in summary form, first checkpoint projection of the new world, native cleanup, and then you can't remove them from the list.79 The entry was restored and five protection documents were returned, with the full automatic report being passed.
+
+Continue to measure the more timed UI category discovery scan; re-use of the field chain is only a partial optimization of this round. Source code and evidence are stored in signed `analysis/mounted-latency3-*`, do not enter the distribution package. This round follows the latest default rotation optimization native SHA 256 `fe928d7bab650b7672bd92b0d9ce7193ee2c9762a36250319ebcae4971729e8a` And MountedLatency 1 XR SHA 256 `0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c`。
+
+Subsequent batch UI discovery, four pair measurements and default source re-entry completed. [0.1.0 First completed record](mounted-transition-latency4-20261021.md)。
+
+---
+
+## 中文
+
 # 0.1.0 首项：继续缩短上下机枪恢复等待
 
 2026-10-21，用户要求以此作为 0.1.0 第一项功能，完成实现及自动验证后接入正常启动器，头显体验由用户之后统一验证。用户要求继续等待其他 FPS 工作者，不向其他任务发消息。

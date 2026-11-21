@@ -1,3 +1,25 @@
+# New Weapons Development Session This Round
+
+Date:2026-11-09. User explicitly authorized creation and startup 5 individual;modelgpt-6.1-sol，high。
+
+All work-realization usage C:/Users/11/.codex/worktrees/6dof-single/gearsVr（codex/6 Dof-single; latest user coverage using README, comon and gasp-and-snap.
+
+| Session | ID | Models/thinking |
+| --- | --- | --- |
+| Gnasher shotgun. | 01a 1bf 64-8512-72d 2-b 3b 4-490dfeb 3baa 7 | gpt-6.1-sol／high |
+| Boomshot grenade launcher | 01a 1bf 64-8796-7d 83-9aea-aa1e9297154c | gpt-6.1-sol／high |
+| Torque Bow sprained bow | 01a 1bf 64-8a 83-7ba 0-a 56c-7feb4094370f | gpt-6.1-sol／high |
+| Hammer of Dawn | 01a 1bf 64-8db 6-7a 20-9953-0e 4a 76532222 | gpt-6.1-sol／high |
+| Troika fixed machine gun | 01a 1bf 64-910c-7863-93b 6-8e 608582836b | gpt-6.1-sol／high |
+
+Smoke follows the existing grenade session.01a 1bb 34-1592-7e 72-8e 1a-ab03d9dd6553. New sessions are registered at the end of the current running team; do not use this table order as the current game window to assign them.
+
+The old shared access points are maintained as a single responsibility, with the necessary direct coordination; no proactive effort is made to synchronize daily progress.
+
+---
+
+## 中文
+
 # 本轮新建武器开发会话
 
 日期：2026-11-09。用户明确授权创建并启动5个；模型gpt-6.1-sol，high。

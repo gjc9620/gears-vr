@@ -1,3 +1,33 @@
+# Reticle 47 Three points of recovery and transition indicated gaps
+
+2026-10-17. Actual session `continuous-stereo-10640-20261017-095902-3ef8fd8a`. Game PID 10640／creation 134366759290115025，XR PID 22572／creation 134366759420633581. Use the current defaultReticle 47／Borderless 1, visible simulator runs and original archive continues the process. The handle of the back-office entity is not enabled. No changes to the memory or mandatory role position of the game have been made.
+
+## Restore evidence
+
+Selecting the checkpoint three times in a row by actual death menu and focus; world establishment 1→2→3→4 And then they'll see the new generation.43、42、40 Subsubmission. Sending to observation time 5521、6576、6578 milliseconds, containing load and sampling, cannot be considered as the full black screen time.
+
+Finalally Issued 4215 Frame, capture_attempts 4224、busy 3、capture_skipped 9,ticket/rect refused 0 The same water level as the FrameLink and the bound table.337 More than old 256 cap;capacity spill, decript_actions 0 Four.3840×2160 GPU snapshots with non-black content for each eye; file by document and average value per eye stored in `analysis/runtime/reticle84-summary.json`。
+
+Normal stopcase = stopped, passed = True, native_cleanup_verified = True, independent restoration and game normal closure passes. Four players file backup before start-up, keep copies after testing, restore the baseline after all processes exit and verify evidence for Hashi. `reticle84-audit.json`、`reticle84-normal-close.json`、`reticle84-save-restored.json`。
+
+## Outstanding issues of continuity
+
+The simulator final synthesis test retention 7 Full event:5♪ I'm gonna be a little bit more like a man ♪2 ASYMMETRIC_Bright_BREAKTHROUGH. Incident was not completed when exit was also made 13397, missing incent.json, explicitly excluded and not treated as an analysed event. The complete event record and selected original image are stored at signored `analysis/preview-evidence/reticle84-complete`A summary of the review maps and brightness is available. `reticle84-preview-audit.json`／`reticle84-preview-contact.jpg`。
+
+The selected image of two bright events is visible with the fire and impact; no full eye screens are confirmed accordingly.3♪ The next time you're gonna be ♪0、2♪ The next time you're gonna be ♪1. The event saves images that do not cover all the missing moments and cannot be inferred from these non-black images that there is no black screen in the window as a whole.
+
+Part of the subsequent composite diagram shows a black rectangular hint area. The CPU tipcard source chart contains text, but `transition_card_source_preview` Clearly gpu_readback=false does not support the contents of the GPU that is uploaded. It is necessary to distinguish between the separate issue of uploading a static card/openXR submission and the simulator preview, which has yet to be proven to show the true head as if it were black rectangles.
+
+Unempted xrEndFrame diagnostic record maximum gap 632.427 msec and restored: first_missing is stale_ticket, menu_mode 1、layer_count 0;threshold_crosing for waising_image, Mode 1;last_missing becomes menu_requested, Mode 2; the diagnosis is based on a test set of values. The time series corresponds to the entry into the death menu and cannot be claimed to have completed frame-by-synthesis attribution.7 A subsequent window is not kept line by line. Image notes 4096 Okay, throw it away.115 All right, provision_complete=file. Keep these limits and do not use limited records as long-term zero screen proof.
+
+## Machine gun cover
+
+The search database and actual records available only confirm that there are two Triikas without Driver in the original yard. Previously, close to a bunker, no evidence of normal occupation, Controller/Driver relationship or GPU image after machine gun is on board. There is no reliable “chapter menu recent machine gun” map, so no blind jump or repeat untargeted movement.
+
+---
+
+## 中文
+
 # Reticle47 三次检查点恢复与过渡显示缺口
 
 2026-10-17。实际会话 `continuous-stereo-10640-20261017-095902-3ef8fd8a`，游戏PID10640／creation134366759290115025，XR PID22572／creation134366759420633581。使用当前默认 Reticle47／Borderless1、显式模拟器运行时、原存档继续流程。后台实体手柄未启用。没有修改游戏内存或强制角色位置。

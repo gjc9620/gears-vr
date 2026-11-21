@@ -1,3 +1,105 @@
+# Independent game/simulator example (2026-11-10）
+
+> **Current status: Reconstruct using a synthetic hidden version, following the user's latest “Check and fix” instruction.** The old backstage/no focus conclusion is still withdrawn. The only entry currently is the GLOAK model in the last section of this paper; the old prepare example cannot be restarted directly. Suspends records filed, continues to be developed and run independently, no longer awaiting consolidated approval.
+
+Users explicitly request: remove the limitations of their own game list, manage the sessions themselves after success and no longer wait for one simulator from each other. Keep a full logical adsorbing/Volume ⁇ GrabPose sequence; do not proactively notify integration.
+
+## Verified Borders
+
+- Game still uses user-specific `J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe`, the original EXE was not modified.
+- Demographic startup call in RVA `0x294FB0`, return address `0x294FB6`, Create `Guardian_UnrealEngine3_1`. Local code and IDA inverted when declassified on runtime; the disk is encrypted bytes of EXE, which cannot be used to pretend running time codes as false disk codes.
+- Original `tools/quiet-startup/build-instance5/GearsQuietStartup.dll` The product lacks the current source code example name separability logic and the related Guardian/examples environment variable constant in binary. The separation cannot be considered effective solely on the basis of the bueld directory name.
+- First-page multi-products (replaced by the backstage restoration set below)`tools/quiet-startup/build-instance-multi1110/` Build independently from the current source code, keeping old directories. Only visible private examples map specified game revealing names as `Guardian_UnrealEngine3_1.GearsVR.<instance>`. Normal start-up and other systems/drive cross-repeated objects remain unchanged. The original quarantine check is actually passed.
+- A game 55508/XR 57304 With B game 56556/XR 29068 And then we're going to play ground, real epoch.1 Projection successful, independent head shift  ⁇0.12 m is reflected in each XR CSV; both independently ordered were consumed by their own example and the back was successful. Both sessions were signed = True; launcher was both 0; Native normal recovery, XR normal exit and game normal closure;11 The bytes of the public configuration/archived are unchanged.
+- Evidence:`analysis/coordinator-multi-20261110/report.json`; the early failure and the results of the diagnostic version are kept in the same catalogue attempt file. This is proof that only two short-term examples operate and enter a separation base, which does not represent the passing of weapons processes or head-over acceptances.
+- This is the date.32 GiB RAM. Double instance verified, not extrapolated 12 Examples can run simultaneously. Physical memory is insufficient when other sessions and two test games are available at a time 0.5 GiB. Check the actual memory available before the new entrance is launched; there are no other instances of looting/closure without sufficient resources.
+
+## Access
+
+The workspace is always the same. `C:/Users/11/.codex/worktrees/6dof-single/gearsVr`。
+
+Add a separate tool:`tools/multi-instance/isolated_sim.py`. Re-use `start.py.prepare`Current Source 1 `sim_entry.py`, original production of Native/Playground and normal stoppage; no longer subject to a full-scale solo free-time check or 8720 Free assertion. Current actual input of private files that are taken cannot be controlled by a global interface between Operator/MCP.
+
+Each session uses its own prefix plus time, for example `lancer-1110-183000`、`boom-1110-183000`. Every new operation uses a new name and keeps old evidence.
+
+```powershell
+& 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -X utf8 -B tools/multi-instance/isolated_sim.py prepare --name <本次唯一名字> --manifest <自己已编译候选的manifest绝对路径> --config <自己的配置绝对路径>
+& 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -X utf8 -B tools/multi-instance/isolated_sim.py start --name <本次唯一名字>
+& 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -X utf8 -B tools/multi-instance/isolated_sim.py stop --name <本次唯一名字>
+```
+
+`prepare`Copy and check each of the Native, Playground, XR products, as well as private configuration/archiving;`--seed`You can specify your own example of a stable private person, defaulting on the frozen one. Do not replace this new candidate with a default historical weapon; pass in the candidacy and confirm SHA by item.
+
+- `analysis/instances/<name>/launcher-session.json`: This is the only status of owner/game/session.
+- Same Directory `manifest.json`、`config.json`、`native/`、`LocalAppData/`、`GameLogs/`。
+- `xr-input/LocalAppData/OpenXR-Simulator/`: his head/controller command, back, settings.
+- `isolated-worker.json`: Commence a reply and an accurate stop command;`isolated-launcher.log`、`isolated-done.json`: Self-start and closing evidence.
+
+## Small-scale connections for sessions
+
+1. Write your own actions/video scripts to die.`solo-m1-1028d`Share`stop-basic`, share launcher logs and then enter your own root of example directory, your own stop-entry and output directory.
+2. You cannot continue. `solo-m1-1028d`, share the PG output or other example. Use your own example name when running a mutually exclusive retrace; do not repeat the StaageToRestore lock of default solo.
+3. Maintain all identity, time stamp, inventory, physical institutional endpoint, source 1 Mark, backstage/quiet/physical input quarantine and normal clean-up rules.8720 The check is replaced by a rigorous examination of the identity of his or her case, rather than simply deleting protection.
+4. The original common example of recovery responsibility is not available.
+5. Keep other examples of memory shortfalls as they are, continue offline work and check resources later. Not waiting for the Shared Simulator Window, without adding a new queue/checking chain and without blocked.
+
+The new entry point is the operation of a quarantine tool, without any modification of weapons mechanisms or acceptance conclusions for production games; public v 71 And the original game EXE remains unchanged.
+
+## Backstage repairs after front desk feedback (this section covers initial start-up products above)
+
+User feedback still has windows at the front desk, and there are examples of all sessions having been suspended and properly closed.
+
+Found and amended: The original guard is not stopped after the front desk of this process; prohibition protection from activation of main/internal start-up windows is incomplete; the simulator has two preview creation paths, with the initial patch covering only one. New private start-up components are protected under automatic backstage mode, creating/activating the main GUI threads with CBT protection, a top window that prohibits activation and roofing and visibly activates the original bottom front desk requesting interception. Only private setback tips are known to automatically select “retention settings” without showing the bullet window; other errors have not been forged or swallowed. Two create paths and old windows of the emulator retain NOACTIVATE.
+
+Current entrance remains `tools/multi-instance/isolated_sim.py`, but changed `tools/quiet-startup/build-instance-background1110b/` and `tools/multi-instance/background-runtime.json` Fixed-to-enforce `GEARSVR_QUIET_NATIVE_FOREGROUND=1`. The old prepare product cannot be started directly, the entrance will reject the old quiet_build; each session will be reprepare's new unique name with the current candidate Manifest/config. No binary in operation is replaced and no public v is changed 71 Or game EXE.
+
+Actual validation `background-1110-1794306775`：game 3052/XR 37952 Entering Playground and successfully exporting epoch 1(a) Projection;5755 Sampling, sub-opportronal sampling,579 Subvisible window check, violation of all 0 Sample is invalid 0；session passed=true，launcher 0, Native recovers, XR exits, game disappears, but not killed. Muteguard enabled=true, mute_failed=0 It's normal.0. Specialized windows/blast window fixture is also passed after the bottom intercept is enabled. This conclusion limits the short process that is controlled in this round to record previous failures and does not refer to all long-term/multi-case focus combinations as complete acceptance.
+
+Validation records `analysis/coordinator-multi-20261110/background-check.json`Source and product identity `background-source-provenance.json`, the old failed result is kept with directory. The sessions only resume independent background operations as this restored version is used; if you show up front again, stop acting and stop doing so, keep the actual window/identity record, without covering it by taking back a user focus or moving a user window.
+
+## Current official test entrance: synthesis hidden windows and isolation of abnormally identical processes
+
+The user has recently instructed that the session should continue to be queued, repaired and restored.
+
+**Weaks caught:** The original check compares only the current Foreground window, and cannot launch all monitors without playing. Put the window outside the screen in a practical attempt to get the game started layout back with the window`[-1023,-2160,2821,60]`. Backstage/NOACTIVATE/location control is not sufficient to ensure that the display is not shown. Also Windows application log confirms actual 48756（0xBE74 Here 18:38:50 Incidentc 0000005/RVA 45357 c Crashed, with observation of the same name process during the same period 55420. The anomaly path is the original blind zone; without a full historical window event, it cannot be claimed that the crash was the only reason for each user report.
+
+**Current:** `tools/quiet-startup/build-instance-cloak1110/`Use DWM CLOAK in automatic mode from the start of a window; all simulators display/use windows path is also CLAAK, with windows retaining size, rendering and GPU recording capabilities and desktops not synthesized. The desktop is not active/no roof protection. Worker maintains CLAAK only for its own game/XR window, which does not move/activate/minimizes. Windows bug reports are only this test process set NO_UI; directed to the EXE sub-process`GearsVR.HiddenChildren.<parentPID>`Inactive desktops, do not switch to the user desktop and do not change other applications or authorization processes. Record sub-process identity, and normal closing of sub-windows after the parent process has ended with precise identities; no killing is carried out.
+
+`isolated_sim.py`Current reference is to the above-mentioned products and`background-runtime.json`Hash bound a private simulator. Each session must pass its current manifest/config new name and no longer use the old Background 1110 b/offscreen example. The front desk stop tag for the old independent action script only removes this "waiting backstage repair" reason and does not change mechanical/identity/fresh check.
+
+**Practical evidence:** `cloak-check-initial54frames.json`Correspond to game 57684/XR 40496 The project is now being implemented in the United States and has been launched.6833 Sampling, sub-opportronal sampling,675 See also the CLOAKED status of the window, invalid 0、uncloaked 0 Visible desktop intersection 0。54 frame actual projection successfully, without recording error; viewed 00030, the real scene and the visible hands are not black screens/wait cards. Original launcher 0, session passed=true, game/XR/Native. This cannot be said to mean that a gun action or physical head is passed.
+
+`child-desktop-result.json`Also proves that the same name subprocess succeeded in creating windows on inactive desktops with desktop names`GearsVR.HiddenChildren.56100`, the father starts still without switching the desktop. The new child process path is control tool validation and does not trigger another real game crash.
+
+This is the machine.32 The resource check/worker identity register uses msms-locking, which is a key to the search.**Do not hold common emulator locks during run-time**, two examples can run independently and simultaneously; prevention 12 This limit is the resource boundary, not the re-introduction of candidate receipt/subordination.
+
+Continue to apply the full logic of /Volume ⁇ GrabPose, silent, not using global MCP or Computer Use, and do not send a single active start/appropriation/release message. Each one keeps its original recording; if some HWND record is not available under CLOAK, no CLOAK can be recorded with an existing private GPU projection, without desktop screenshots.
+
+Physical observation after recovery: Smoke grenade-smoke-1110-193549 With Boom Boom-1110-193550-55800 The CSV is still growing, and the CSV is continuing to grow.1818 Disable hidden by a window CLAKED 0 Front desk.0;and at the same time workingrker highest 2 Evidence is resumed-observation.json and clak-final-summary.json. Additional check-ups were then rejected before start-up because two examples are already available, the one unborn game, and the new rendering failed; initial 54 The frame was retained separately through evidence.
+
+The last review: the above-mentioned two original versions of Smoke and Boom are both native_stard=true, phase=stopted, passed=true, not pending. The observer's running_observed to Boomfalse was unable to recast it as already observed at that time because the sample window ended; the final remains of the remaining cloak-final-summary.json/resulted_teminals were saved.2042 Once, Unhiding 0 Front desk.0。
+
+## Mute statistical interpretation and explicit reading back evidence
+
+HB 47004 Feedbacked 1/muted 0/read_failed 0/mute_failed 0 Unacclaimed silence: Old Polity kept it directly when GetMute was TRUE without adding muted to the count. Shared_rejected scans all sessions, not only target-specific. Read live Bow 39312、Gnasher 56500 Read all 1 Target is unique and GetMute=TRUE, shared denied 0, other global share rejected 11. No volume/silence written.
+
+Add test unique to the helper and GEASVR_TEST_AUDIO_EVIDE=1; records that successfully set up the same message/PID. Old Helper does not have any evidence to identify the name of the document.91 C++ Policy and 11 The Python life cycle/evidence check is passed, and the return of a successful return but unheard-of-sing refusal is maintained. The system and other applications are not modified in volume, previously Engineering Music/FX/Dialogue and SoundCue functions, and the shared session is still rejected. Evidence is audio-vience-review.json; this item is not a sound recognition for each gun or full time period.
+
+
+## Backstage worker and audio ready independent fix
+
+User confirms that the game image window was previously in front. The window hides the conclusion using a real projection of the clak-final-summary.json, a front desk sample and a CLOAK check; cannot use Focus=0 Instead of invisible. 12 The sessions were notified to continue the independent backstage validation and did not resume the overall suspension.
+
+HB Example hb-clak-1110-203109 Specific start-up failure: tasker reads the updated bird JSON, PermissionError is not captured, workr has quit and has no finality, normal closing is not performed.Add a new runtime_receipts.py to reread the lock occupancy/incomplete JSON, cache the exact PID/create time/image from the first private record and refuse subsequent changes;All windows still require strict consistency in current identity.Unreadable to return unknown, without pretending that the game has been withdrawn.(a) WM_CLOSE ' s own game and record private sub-processes;No tough killing.No successful reply is written before identification/complete completion.
+
+Audio Plain 3 seconds ready budget and deadline boundary unread deficient; now read default 15 sec, max 30 The second is waiting and the deadline is read once; error target/ downer and exited helper refuses. Helper adds a new Boot/service-ready/guard-ready entry to the next real malfunction location, without claiming that COM has confirmed root cause.1110 b Separately constructed and written in source hash, followed by new examples, the old run process is not replaced. Ready still does not represent silenced voices, and must use target session mute readback; all volumes and systems of private games remain unchanged.
+
+Offline authentication:6 Record/normal stop identity check,15 Entranch Life Cycle Test,91 The C++ rule check is passed, Python resolves pass and new helper compiles successfully. New worker functionally abnormal branch has not yet been accepted for a new game run without pretending to be fully run through; existing CLOAK actually works as evidence to remain independent. analysis/coordinator-multi-20261110/startup-worker-repair.json。
+
+---
+
+## 中文
+
 # 独立游戏／模拟器实例（2026-11-10）
 
 > **当前状态：按用户最新“查清并修好后继续跑”指令，使用合成隐藏版本恢复。** 旧的仅后台／不抢焦点结论仍撤回。当前唯一入口为本文最后一节的CLOAK模式；旧prepare实例不能直接重启。暂停记录已归档，继续独立开发和运行，不再等待统筹批准。

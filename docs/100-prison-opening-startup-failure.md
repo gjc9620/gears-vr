@@ -1,3 +1,33 @@
+# The actual startup of the opening level failed
+
+2026-10-17. DefaultReticle 46／Borderless 1, no DLL changes. To supplement the CG cover, enter a single person to load the first act of the chapter by actual UI status. Each step creates identity, window, two consistent menus, block and expected focus; no engine functions or writing memory is called.
+
+## Level Identity and Archive
+
+Current Index in DeltaSelectMap 0 UIComp_ListPresenter.Listitems, a first item that was obtained by reflecting DatasourceProvider from UIDataProvider_WarfareMaps 1. Actual FridayName is '14 YEARS AFTER E-DAY”，MapName=sp_prison_p，ChapterPointID=LoadChapter=0. The order of listings is not taken as the list order, nor is there any speculation about the original TMP layout.
+
+Read and verify the backup of four SaveData files twice before entering, total 1896 bytes, inignored analysis/savebackups/menu79-before-chapter. After the game shows CheckpointWarning, check and confirm the exact title/textmarkup; after testing has ended, owners and XR have exited, games are normally closed, a copy of the test is kept, four baseline files are restored and Hashi is verified one by one. The original player ' s progress is not retained as this test chapter.
+
+## Evidence of failure
+
+Session 10348-20261017-091047-3aef 62e 0. Game PID 10348、creation 134366730348098669; full owner/XR identity available in person 80-monitor-ready.json。
+
+During loading, Movie Progress Reader actually observed play frame propulsion: first 89 Short frame clip, then there's 1674 Frame segments. The play count is not pixels or double-eye proof. The simulator MCP screenshots are limited to a very narrow preview, which does not allow for the judgement of the headline film.
+
+The failure of the plan took place in the final inspection of the site: CrossshairConfigRejected, a group of people who were killed by the police.`Certificate changed before completion: address=0x20dceabc size=8`. The change in the classified registration form/camera is only provisionally considered, and the non-registration form changes are directly terminated. The specific role of the address to which it relates has not been recorded in the original failed reply, and cannot be named Pahn.Weapon by a lateral deviation alone.
+
+Final case =incomplete, native_cleanup_verified=fales, resumes the callback without independence. The owner and XR confirm that they have withdrawn, then create an identity-based ordinary closed game. This round cannot be recorded as clean check; normal closure releases the play process. The failure log, film progress and archive return confirmation is inignored analysis/runtime/prison80-* Documents with the same name as the session.
+
+## Recovering direction
+
+Checks whether a variable role link can be classified separately from the non-changeable object identity/script/code evidence. If only the controlled character pointer is switched, the entire candidate should be discarded and rediscovered and fully verified within the same restricted lead period; no inconsistent old certificates are accepted or all memory changes will be released by wrong string. The default proof of the role must be added and this actual level must run again.
+
+menu 79 The navigationer used to customize the Armistice Service menu, but the bottom controller used it as a reading error and eventually reported timeout; this failed. Subsequent readouts and one-step authentications were executed in the current state without sending " Go on games " repeatedly.
+
+---
+
+## 中文
+
 # 开场关卡的实际启动失败
 
 2026-10-17。默认Reticle46／Borderless1，未修改DLL。为补充CG覆盖，通过实际UI状态进入战役→单人→加载章节→第一幕→首项→休闲难度。每一步输入前校验完整进程创建身份、窗口、两份一致菜单状态、输入阻塞及预期焦点；没有调用引擎函数或写游戏内存。

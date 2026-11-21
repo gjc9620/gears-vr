@@ -1,3 +1,27 @@
+# Independent GPU check for transition tipcards
+
+2026-10-17- Take it. docs/103 . No changes to the release card code, installation tool or global OpenXR running time; use existing RenderDoc 1.46 And the visible simulator Runtime.
+
+## Experimental identity and coverage
+
+ignored `analysis/transition-card-probe84/TransitionCardProbe84.exe` The original contains the project TRANSIONCard. Create real OpenXR/D independently 3D 12 Sessions, binding and running with the specified adapter are only two eyes VIEWQuad, without a loaded game, and do not generate projection layers. EXE SHA 256 `17b0315f59ff1c2f060a431ff83db82715d9275c20af1e55f45c99c8ebe2b759`. The original header file and tool Hashi is available in the same directory as the build-hashes.json.
+
+Official renderdocmd access from startup; only the program queryes the bound D that has been loaded with RederDoc API 3D 12 Device, starts scratching frames before the card is first uploaded.29960／creation 134366765692637630;isFrameCapturing afterStart=1、EndFrameCapture=1、active_after=0. Generate new `run1/probe.log.capture_capture.rdc`, not historical capture. Programs run 40 Seconds, all 3463 Second-Eye quad submission/one upload, successful requestExitSecession, card gpu_unsafe=0,space/session/establishment destruction 0, final=0。
+
+Controls the CRT log that is still occupied twice. No re-start or force kill program has been performed; verify this result as an independent process, the CIM process disappears and the complete log after withdrawal. The failure of the original observation script was kept separately from the actual probe.
+
+## GPU Content
+
+Open new grab frame and return to the event using official replay API 38 Textures 350 Yes 768×256 BGRA, read back.786432 bytes;and CPU source maps after converting to RGBA**All bytes Same**I'm not gonna be able to get a chance to get a chance to get a better chance.255, complete text. Original read back to SHA 256 `d639c4eb5804af55229956a4175041fb4b0349e4c7f3b493bf3b4860967fd0da`Evidence. `run1/gpu-card-audit.json`、`gpu-card-350-bgra.bin`And PNG.
+
+The frame also contains two six-point drawings (event)26／30 Finally.1280×588 Output Texture 337 The actual GPU is read back with both eyes having a normal tipcard and text; not only the upload source is checked. `run1/replay-composite.log`、`after-composite-337-1280x588-bgra.bin`And PNG.
+
+This proves that the same tipcard code completes CPU ⁇ GPU's eye synthesis in a stand-alone frame. It does not reproduce the transition between the projection of the game and multiple menus/static quads, nor does it read the original Reticle 84 The actual GPU resources at the time of the black rectangle cannot be considered as simply a CPU preview error, which does not change the product upload strategy or declare all transitions normal. Next steps should be to locate the actual input texture/synthesis output/readback three times when the mixing layer is switched, or to supplement the smallest sequence that can reproduce the difference.
+
+---
+
+## 中文
+
 # 过渡提示卡的独立 GPU 检查
 
 2026-10-17。承接 docs/103 中实际检查点切换的黑矩形疑点。没有修改发布版提示卡代码、安装工具或更改全局OpenXR运行时；使用现有RenderDoc1.46和显式模拟器Runtime。

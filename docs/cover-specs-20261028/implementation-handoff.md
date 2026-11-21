@@ -1,3 +1,235 @@
+# Implementation of handover: order of implementation upon receipt of commencement instructions
+
+## Current Native Callend Difference Reconciliation (Presentation)2026-10-29）
+
+Four files were rechecked this time on the current checkout.16 The only source anchor, recorded in the `analysis/offline-preimplementation-20261028/reports/cover-native-seam-audit.json`;in the same directory superior `audit_cover_native_seams.py` Recollectable Line Numbers and Full Files SHA 256. The anchor does not fail directly when it is unique or non-existent, and does not output a new successful report. This record supports the source code difference, does not prove that the runtime defect or access has been completed.
+
+Existing Production Call End and Offline V 6 Interface is incompatible, not replacing only common header files:
+
+| Organisation | Current behaviour | The migration that must be completed |
+| --- | --- | --- |
+| `cover_input_live` Participant construction | No examples of Autocity/ledger | Single Native owner holds a Portability, Motion Ledger, re-constructs participant; life order is clear and test issuer cannot be used |
+| `cover_shared_input_live::prepare` The blog's Facebook page is also available. | Import weapon bool | weapons services successfully separated from geometry; failure or action Race is true; supply current reality |
+| Two prepare-view consumptions | Read view_valid directly after return | Enter end of unpublished view; use current valid Tick, occupancy and viewmapting evidence alone public_view; old Scene ticket does not cross the Tick authorization |
+| `cover_input_live::publish` | Publish target to old cover_body_live | Change from existing C 0 owner submit, consume, restore; release goals and apply return cannot replace body/view/hit reply |
+| Lock range for shared prepare | Caller holds stereo_mutex | Do not insert original collision query here; check to move to appropriate owner Tick, recheck after query and maintain real impact snapshot/lease before consumption |
+| ♪ I'm so sorry, I'm so sorry, but I'm so sorry, but I'm so sorry. | Clear as zero scope and empty | Keep the grab disabled until a Reach/edge/path/occupancy is accessed with real evidence and cannot open the grab only by filling in the range |
+
+Specific migration sequence: First achieve Native Evidence Issuance/Query and Life Cycle Management, then exemplify Ledger/Participant; move Legacy and Shared Callers, respectively; and submit body to C 0 It's... `pose_begin`／`apply_with_view_marker`／`pose_end` And get real consumption facts, and finally access separate view publishing and caches.`read_view` It is an existing consumption portal that needs to be reviewed and cannot be inferred from the name that it supports the new bunker certification.
+
+Five time lines are required to keep the callend: normal release imports submitted positions before requests are cancelled; waiting for a moment to be processed; weapon commit failed to cancel hand-input but does not extrapolate body rollbacks; repositioning/world/role changes invalidate old requests and resume debt; read only caches with Scene rework, without repeating weapons. A pure internal nuclear check cannot replace the compilation and subsequent validation of these Native synthetic paths. This wheel does not migrate production transfer ends, does not compile Native, does not execute games.
+
+This document sets the direction for moving forward without modifying the production source code. All proposed new types/files are D-level designs, which do not represent already available API calls. Original identity, freshness, single writer, C 0 Submission/consumption/restoration of protection continues; no new Bool field can be used instead of actual reply.
+
+## I 0 • Baseline and scope
+
+Yes. `C:/Users/11/.codex/worktrees/6dof-single/gearsVr` Continue main line; press [Index](code-locations.json)Checks symbols and Hashi, combining subsequent changes to the main line into the context of implementation without returning old source snapshots. The current modification of Native/Playground still has only a coordination session. The old observer, pure core and diagnostic reader are reuse materials, the old body writer and preview are not final execution ends.
+
+First full access range: Local authority battle/Playground, role skeletons already certified by the main line, common and stateary bunkers; retention of original special actions. Left-side perimeter, legitimate topline, real head move, unhanding, retakers are all within delivery scope and cannot be completed with a full cover declared complete after an uptick. The movement/destruct geometry must be explicitly disabled; online authority and other skeletons are not supported in separate columns.
+
+## I 1 • New bunker context access to the only body
+
+_Other Organiser`continuous_hand_owner_live::{passive,owner_current,tick_begin}`、`body_c0_goal_policy_live::{no_cover,pose_begin,pose_end,read_view}`、`cover_shared_input_live::prepare`、`capture.cpp`。
+
+Proposed new `tools/native-capture/cover_context_live.inl`, read only the current context of typed actor/slot/surface. `cover_body_live::enabled`old neutral-eye writeer and native head getter; current `weapon_hand_scene_binding`, Rig metadata/Tick source object identity and main line C 0 neutral。
+
+`CoverContext` The full identity of the session/world establishment, World/Controller/Pawn/Mesh/Link, slot and endpoint plug-in, CoverType/Action/Diraction, State/Circular, left/upt access, special move, break, menu/entry status, skeleton signature, percentage, CoverBasis/ViewBasis/neutral with its source, release/space epoch, and recitations for real calls.A Controller pointer cannot be considered context identity.
+
+Put the old one on. `passive()` The new strategy still rejects two cases of conflict, re-entry, error and unsolved recovery. The non-shelter path and current M is not a policy branch of the current owner.1–M 3 Default behaviour remains unchanged; new capabilities are not fully certified before they are closed by default.
+
+## I 2 • Production collisions with recoilable edges
+
+Proposed new `tools/native-capture/cover_collision_live.inl`; pure data and decision-making `tools/vr-common/cover_motion.h`. Re-use `cover_trace_query.py` and `cover_surface_query.py` , the parameter layout is not to start Python in Native or geometry by playing ground external diagnostic teams.
+
+Tie the field chain required for a single time scan to save the selected chain and prefix witness; record the history of the logbook single-twice number every call to review the selected identity/field/code. Allocation/capacity changes, shrinks, watchable growth rollbacks, cycle, cross-border, slot rewriting. Use visible boundary capacity to cover at least the history WarPawn 933＋Actor 360 Case; the report cannot be cut off to “success”.512 The capacity is moved directly in.
+
+Query only after the real outer layer mesh Tick has been created to own and source; short locks for copying necessary metadata released, not yet entered C 0/Bones write to the consumption critical area. Any engine query can be re-entered, using the current call depth protection; the original function is returned with normal context check. The query failed, abnormal, effective and non-hit, with a separate code that blocks four types of results.12 Sub/Tick, soft-time budget 1 ms(D, adjustable): Stop new queries over budget, output wait, record count/time; cannot interrupt the active native function or meet budget by skipping final necessary queries.
+
+The edge candidate can be multiple Tick searches, all results being geometrically available. Final occupation and route sweeps for body movement must form a complete set of evidence to submit; the "complete result" cannot be spelled across different geometry versions. Dynamic objects must search or render their current area ineffective, not just trace the lost wall. For diagonals, thin walls, beams, lowtops, moving doors, destruction bodies and arms, separately defined queries are available.
+
+**Time to decide.**: Final motion and occupancy evidence are generated within the actually submitted GT Tick, and consumed in areas where there is no uncertified engine call/world propulsion intervention. If engines have parallel physical updates, then current versions of actual collision snapshots/read lease or equivalent guarantee are required; only repeat Actor changes are not enough. This assurance must be A.04/A 07 Authentication, return unviilable without assurance, not granted `collision_verified=true`. This is a native connection authentication, which cannot be assumed to have been established in offline documents.
+
+## I 3 • Input, waiting, cutting and hand-off
+
+Modify `cover_interaction.h`、`cover_input_owner.h`;reserve `cover_controller_adapter.h` And the only `left_hand_interaction_owner.h` The epoch/press/incument syntax. Scene is still a single arbitration  ⁇  weapon committee  ⁇  participant complete; not a broker noce,`CoverInputOwnerTicket` Or call back to sign for the next Tick.
+
+Adds the following log data contracts. They are copies of records; certificates are issued and checked by real owners, not callers fill out true:
+
+| Records | Required fields and duties |
+| --- | --- |
+| `CoverEdgeCertificate` | Contact/basis/geometry promotion, Actor/Component/surface, Edge kind/id/intersection, proximity/accessibility, original permission, query receipt |
+| `CoverMoveIntent` | Unique intent id, currently listed postversion, context/basis/ref/space, hand sample identity, left-hand logic case id (link only), from/requested input, locking axis/take point version |
+| `CoverMotionCertificate` | From/requestd/acceded, sweep volume and path, end-use, geometric version, current physical posture, real Tick owner, experienced/clipped/wait/unaviable/rejected status and causes |
+| `CoverCommitReceipt` | Only id, inent id, pre- and post-session version, actual version of the present, body posture/view/hit consumer; original action adaptation status; only real submitr generation |
+| `CoverExposure` | Head/torso/arms for the same post version geometry, mask and exposure determination, evidence required to come in for assault/gun search; unknown inappropriately |
+
+Existing `CoverInputOwnerCandidate` Adds read-only candidate data without revealing a written internal pointer. Existing bool completed interface extended to clear results; cannot be used `complete(false)` Used as “walls under search”.`wait` Finish arbitration transactions, retain legal leases and certified leases in this ticket; if received in the same round, release is effective immediately, not to be asked. Hard failure still requires next real release.
+
+New to-go request for cross Scene/Tick `CoverMoveIntent`, separate from the instant input ticket. Up to one valid version can be cancelled/replaced later. Tick regains the enforceable eligibility from the current owner and reviews the current logical lease without using the old line id of inent as an authorization. Writes the only group ledger after successful query/body submission; Next Scene syncs the kernel with the selected input file, which does not revive the cancelled request. Rendering only the completed body release without reading the undeposited request.
+
+`CoverInteraction` Increase in clear campaign recognition/weight baseline capacity:
+
+- Accepted: Update submitted atofset; normal absolute hand differential continues.
+- clipped: Updates physical security atfset and reset lock axis starting with current hand position and security atfset to eliminate block transfer accumulation.
+- wait: do not change infoset, do not advance the grab starting point and do not duplicate press; retain the lease but receive it on an ongoing basis.
+- current occupancy lost: not re-certify old or zero; enter I 4 Restore.
+- Project sustainability/lifecycle: End capture, cancel indent, interlocking; do not recover across the world.
+
+Every result check is from-version, avoiding an old clip covering a newer release/restore/recapt. Normal release only hands, virtual ifset remains at the committee ledger, maintained by subsequent occupation inspection.
+
+The second round clearly adds: Before a round of capture/move/dismissive input, the group ledger that has been successfully consumed is synchronized and the indent is cancelled. The body moves and enters unpacked, it must retain the actual position; submissions that have taken place cannot be discarded as late to old queries. Receipt also carries tailor marks, locking axes, capturing samples from the counterpart so that the next round can be accurately reset. The original consumer anomaly only indicates failure to release, and does not assume that the body has returned; the status remains unchanged and space re-emption will not amount to debt cancellation.[Second round of replenishment](research-followup-v2.md)。
+
+## I 4 :: A submission of body, eyes and transition
+
+Discrepancies in gun queries (%)2026-10-29: Saved `Engine.Weapon.CalcWeaponFire` Call Actor. Trade with trackActors=true, zero extent, HitInfo and ExtraTraceFlags=1. Existing `cover_trace_query.py` Accept only 0 or 8(Blocking) So a successful diagnosis of the collision cannot replace the geometric authentication of the gun. Current cache Trace packaging is in bit-1 The branch has a back-compilation JUMPOUT gap that does not yet prove it will necessarily consume the above updated shape of the entropy. It must first analyze the collision branch of the actual component, and cannot directly expand the diagnostic flag list or use the updated retrospect as sufficient proof.
+
+The calcWeaponFire  ⁇  impactList  ⁇  ProductionInstanthit/Internal  ⁇  GetFirModeDamage  ⁇ HitActor.TakeDamage;WarPawn. TakeDamage calls AdjustPawnDamage and Game.ReduceDamage when it is!bDontModivyDamage, then retains the original injury effect.CalcWeaponFire has penetrating and portals are re-carried, and it changes bProjTarget;It cannot therefore be reruned as a read-only probe, nor can it be assumed that one shot would produce only one Trace/Impact/harm call.Future evidence needs to be linked to shot, query/impact, target/component, propose version and real damage invention.Six scripts and a verification record of the native cache are private `reports/cover-bullet-query-chain.json`; does not represent that all weapons, projectiles or current operational cover is in place.
+
+Practical update branch supplement: private `reports/cover-physics-branch-audit.json` Extract from two verified historical caches 6 Single anchor. After the main candidate's transformation check, select recipient's false list according to conditions `+40` or `+104`；`0x1402151e4` Only call in another flags branch, and use different object fields and select again internally `+40/+104`. The primary update path is therefore missing from the only support function. The offset itself does not prove the function name, much less immediate/delayed; no native calls are added accordingly.
+
+The following observations are specifically limited to: full identity of mesh/physics insity/body index/receiver and post version; expected assembly of components and each reason for skipping; main/supportive route; deconstructed target of a false function and code identification; actual completion and querying visible scene status. Single widget success, P-filtering.1 Normal returns, the presence of targets in queues or compulsory tepleports are not a substitute for complete Hit_geometry responses. This is still an access gap and is not completed by guess.
+
+Physical update entry trail (historical evidence, uncertified access): available `cover_pose_phase.h` PHYSICs_rva is `0xf26d4`, the monitor has been packaged for main calls and later (return to position) `0xf9aeb`、`0xfac69`) does not require a different location. The knowledge base is directly called in the respective locations. `0x1400f9ae6`、`0x1400fac64`, different from the two returns 5 bytes; three associated caches have been documented against KB Hashi. See private for details `reports/cover-physics-update-lead.json`。
+
+This clue cannot yet be issued for the hit_geometry: candidate for aset/instance/body/bone/frags branch, etc.1 Normal return may also not update the body required; its indirect call to target, shape used in actual rays and visible timing of queries still need to be identified. `PlayDying` Call when skipping distance driven kinematic update `UpdateRBBonesFromSpaceBases(true,true)`, but this is a death process that cannot be moved to the living bunker with the telev/unfixed-body parameters. The native statement produced is even lost and the cache of pseudocode prototypes is not credible, which prevents the generation of mandatory calls for ABI. Next steps are limited to updating branch and physical query visibility tracking along actual body instead of continuing to search in a generic function name.
+
+Consumer source orientation checks:`reports/cover-consumer-source-audit.json`(relatively private offline preparation directory)5 Source anchors and 3 A copy of the historical script identity.`full_body_c0_native_live::before_original` Map consumer_marked to Consumer_verified before the original call, which cannot be considered as physical/scene geometry; atom overwrite reply clearly does not prove FK/Space/physics. `weapon_grip_damage_metadata` Select Only `GetFireModeDamage`It's a weapon-related injury calibration probe, not directly. `WarPawn.AdjustPawnDamage` The entry station was hit by the adaptor.
+
+The time-series contract is clearly divided into two layers: evidence of actual hit search consumption of geometry before moving submission (the candidate is now named) `hit_geometry`The first one cannot wait for the latter, otherwise the bunker movement will never be complete without shooting. Conversely, a backlash or bone position on the screen cannot be matched by the former. The real hit roadway is still in place to locate the physical synchronization mechanism.
+
+History `AdjustPawnDamage` At least two separate branches of IsProtecedByCover and Human Blindly Shooting Cover-only; only IsProtecedByCover returns may still be cleared in the next branch. Subsequent entry station injury adaptation must address both cover syntaxes, with other special actions, type of injury and subsequent harm rules. Save scripts contain undefunct token/types that cannot directly write native deviation or assume current ABI.
+
+2026-10-29 Private realization supplements:`analysis/offline-preimplementation-20261028/staging/tools/vr-common/cover_consumption_bundle.h` Convergence of three consumer evidences for body, view, and geometry of the hit has been achieved. Requesting is with rest/intent/from/pose version, complete contact, call time number, collision snapshot, body samples and actual atfset; each role is verified by real registry separately, and finally registry atoms is rechecked and group confirmation saved. Failure does not modify output or infer that it was not written or automatically re-engineered; sent out requests to continue with the original recovery process.
+
+The code is only the core of evidence convergence, and the real Native registry/read/seal has not been realized. `body_c0_goal_policy_live::pose_end` Check for callback, caller returned, anomaly and protocol debt to release, but `pose_begin` and `read_view` Still no_cover; its existing Publicisation does not amount to a three-consumer certificate of the new bunker contract. The publicization_security cannot be copied directly into Hit_version, or only no_cover check may be deleted.
+
+`cover_consumption_bundle_compile.cpp` ..and the compilation period check complete matches,10 Speculation, missing/mispert evidence, containment failure and owner rejection; output retention is also checked.4 /WX passed, not linked or executed; synthesis registry is used only for these checks and not for Native. The report is located in `analysis/offline-preimplementation-20261028/reports/cover_consumption_bundle_compile.json`。
+
+Reuse `full_body_c0_transaction.h`Now, current period,`apply_with_view_marker` and main line C 0 model;do not add a second SpaceBases/Root/ Camera Writer.`cover_full_goal_live` . The old version of the entry can be changed to fit, but not as a post_applied echo. `cover_camera_live` the yaw+thirty and old camera cover does not enter the final path.
+
+Current Normal SM 0 Fixed Zero in Policy `CoverOffset committed{}` Change to a clear strategic assignment: maintain the status quo; cover only provides cover goal when valid contact, movement/occupancy evidence, damage/action device is ready. [Interacting contracts](interaction-contract.md); position formation first gets legal neutral/body target, again adding virtual deflection and real tracking. Maintaining a fixed bone length without counting the next frame of deformed skeletons.
+
+Body Submission Using Current C 0 ; cannot use old C after the original function is consumed 0 Force rollback. Only the results of a successful consumption and the same model/context/pose conversion are published.`capture.cpp` Select only one final owner; without using old cover view before being C 0 Or run view again. Eyes, free right hand, gun and head protection cover consumption is the same as publicisation.
+
+The target for capturing the left hand is a confirmed point of contact, and the real left hand remains as a drag input; IK limits virtual motion/end capture without stretching. Visual left-hand releases short transition back track, without applying a second physical shift.
+
+The transitioner records the world eye/body root of old publication/ViewBasis and the new original moving benchmark. The grab is finished when you change the wall, projecting the old security position to the new benchmark and querying the interface path; then updates the bridge path after completion. The original movement remains available at exit, with virtual retention digested through the baseline. Recenter/snap-turn does not create pull; World/Pawn replaces attitude evidence that has been dropped directly across the world. Wall crowding or query failure uses a legal path to recover, tracking the mask separated from game movements.
+
+Run steady consolidated at the same reference level.`run_camera_stabilizer` Current station calibration, SM 4 and fixes the upwards only as an old candidate; achieves a continuous running, stop, stabbing and adsorption benchmark without being insulated from images that eventually carry HMD. Keep real down/up slopes, controller shifts and differentiated back-sitting.
+
+## I 5 :: The adaptation of original action to injury protection
+
+Proposed new `tools/native-capture/cover_gameplay_live.inl`, reset the example/call for existing dispatcher, without installing competition hook. First step press [Original entrance table](original-entry-map.md)Authenticate two state-based updater copyback  ⁇ PlayerMove local chain  ⁇  matter to avoid uncertified out pointers. Only real `PlayerMove` The appropriate output is to be submitted on CA/CD; all other side effects are to be retained and the original process is to be executed only once.
+
+Action rules: Legal real/virtual exposures can be determined by side/upside action, with the original ailing/firing request still deciding to aim or blindly; CA/CD no longer automatically drives point of view and body position shifts. The original protection function cannot remain zero, otherwise the exposed person will be re-protected. The branch of the CA is also covered by Stateary after writing. Reload, switch, special move, menu and input paused to return to the existing context without the bunker adapter holding up the weapon.
+
+- And we're dealing with F.19：`DoingAnimationTransition → ShouldDelayFiring → ShouldRefire`, and Pawn Tick/CanReleaseFire consumes. The stabilization semi-prompt cannot be considered incomplete for long; only this certified case of cover transition is suitable, mirroring, changing guns, filling, real special actions and no-firing restriction. No no Anim DelayFiring or the entire return value of Should DelayFiring is fixed to false.
+
+Damage adapter is the same example: when a real life hits an exposed place, bypassing cover-only protection or blind-fire early injury-free branch and then continuing the original harm process. The harm that is actually blocked by the wall remains in its original language; the DamageType, blast/fixed shelter exception, other ex-altation, armour, difficulty and head multipliers are not covered. Retain direction relative to location of the real wall, without relying on Pawn, which rotates as a wall, for guess protection.
+
+Can't change the whole of the CA to a short time.7 To bypass all harm protections, and not to restore the original Damage directly, without a legal correction before it was made. If the original branch boundary cannot be certified, stop extending access and report accurate gaps; do not deliver “normal but invincible” alternatives.
+
+## I 6 :: The flow of arms with hit consumers
+
+Intercept [Weapons are being handed over.](../weapon-specs-20261028/implementation-handoff.md) The bunkers are not rewrited.12 Weapons of all kinds. Unified interface belts are divided between the web entry, owner/Pawn, prose version, muzzle origin/direction, shot security and original validity results. The hit track, the projection birth and HUD display must be recorded separately; HUD cannot re-write authoritative targeting.
+
+Specific reuse `weapon_unified_fire.inl::prepare_current/source_matches_shot/typed_result/normal_return`: Preparation only for normal GT preparation; no new Trace, enginegetter or locks are added to the original return notification. Fill in the list of reference to cover base aim, track origin, Pushed origin, Physical origin returns. The existing Frame/shot source does not match the bunker space consistency; maintain standard M 4 Branch semantics. See more on[Second round interface table](research-followup-v2.md)。
+
+The minimum coverage is: outside the eye/gun mouth; legally blind-fired head/gun; long-shot through walls; close range target; left and right mirror image; right hand shot when left hand grabs a side; unhanded support/takes bullets; no lease for changing gun/ammunition. The projectile cannot be born on the other side of the wall; it is subject to ballistic collision with the original wall.
+
+If you change only the bone and philsics/harm is still used, you must match the same caral when it's consumed in the original hit and receive a reply. `CoverAction` The new model will only require hand-held markings/positions and a skeleton map; the map bunker remains from geometry.
+
+## Final time series and degradation
+
+```mermaid
+flowchart LR
+    S[Scene 冻结输入与单次左手仲裁] --> I[关闭本次 ticket，保存不可变 intent]
+    I --> T[实际 GT Tick：重新验证 owner 与当前资格]
+    T --> Q[无自有锁的边缘与最终碰撞查询]
+    Q --> P[C0 生成并提交同一身体目标]
+    P --> C[原消费完成，发布 commit receipt]
+    C --> V[同版本身体／双眼／命中／枪口]
+    C --> A[下一 Scene 确认 offset，拒绝旧 intent]
+    Q --> W[等待或不可用：无新移动，release 仍可用]
+```
+
+Edge slow query can cross Tick; input transactions, engine calls, C 0 Writing a lease cannot be saved over the life cycle. Suspended/out-of-focus retention and release is based on existing input rules, while old paces cannot refresh time impostor as new evidence. All non-matched, re-entry, registration forms abnormally and clearing debts are protected from failure to swallow into effective inert.
+
+## Start-up list and delivery status
+
+1. Check for latest sign and unsubspect changes on main line, complete I 1;the new policy is by default closed.
+2. Finish I 2 ; typed backend, original call authentication, certificate occupancy assurance; implementation of waiting/no available result.
+3. Finish I 3/I 4 ♪ And hand over and do I ♪5/I 6 The original action, the hit and the gun was intermingled.
+4. Press an A 01–A 20 Select the pure logic check that is affected by the change; perform short basic game checks as validly authorized at that time, with specific failure to direct recheck and not restore the old big matrix.
+5. Separately record source code completion, compilation, controlled basic results, candidate delivery, entity head start; retain rollback.
+
+The start of work does not require the selection of interactive programs; the non-jumping operation certification is: the original call parameter/copyback, actual impact snapshots and the syntax of the intial-overlap/dynamic object, and attitude to hit/weapons consumption. Their check points, failed behaviour and attribution are fixed on this package.
+
+
+### 2026-10-29 Follow-up: Trade Packer bit 1 Actual decode
+
+History Actor. Trade Packer Gaps are now filled with real functions chunks:0x1400cdf29 BTS bit 17 / TEST extra / CMOVZ indicates ExtraTraceFlags=1 Add Internal Query bit 0x 20000；0x 1400cdf 83 The blogger says:0x 1400cdf 8 f Call 0x 1400cf 8f 8. Two real chunks Hash is the same as the original record. Former "packer bit"1 The branch is uncoded. The status of the component/form consumption and physical attitude search visibility remains unresolved.analysis/offline-preimplementation-20261028/reports/cover-trace-bit1-decoded.json. Commands the integer model 11 The compilation period was confirmed and no validation was performed.
+
+
+### 2026-10-29: Gunshot search mask downstream transferred verified
+
+Private IDA Actual Command Confirms 0xcf 8f 8 After reading the input mask, in 0xcf 952 Set Bit 10（0x400），0xcf 96 e Written and 0xcf 977 Call 0xcfa 40; the latter is in 0xcfa 9 c Obtain R 14 D, by way 0xcfd 33 Conditional check, from outer +0x 178 Get the receiver and call its false watch+0x20，0xcfd 6 d Still transmits full R 14 D. So bit 17 No clearances on these two layers.
+
+IDA's in 0xcfd 58 Error unbuttoning of the continuous function segment:0xcfd 55 And then the mov goes on.0xcfd 58, using the same group of repositories and palladiums. The independent sub-call view of the cache code cannot be used as a real callable ABI. All chunk has verified against history 's blob and originally exported to cover-query-helper-chunks.json; for an evaluation see cover-query-mask-formating.json. The recipient ' s true type, false target, shape filtering and attitude query visibility remains unknown, without assuming it is PhysX or CollisionHash.10 Models,14 The compilation period is confirmed. No changes to the white list are produced or diagnosed, no experiments are run and snapshots are frozenv 1 Can not get folder: %s: %s
+
+
+### 2026-10-29：+0x178 Query receiver creation chain and specific slot targets
+
+History bytes scans are available 74 Organisation 0x178 Check after mechanical check cache 0x 1401f 1150: Practical Directives 0x 1f 117 d Read global 0x 141c 20890, with Trace 0xcdf 60 Real RIP addresses are consistent; distribution 0x 120 bytes,0x 1f 11b 2 Call 0x 1f 14a 0，0x 1f 11b 8 Write parent+0x178. Construct the actual LEA in 0x 1f 14 Ad to get vtable 0x 14133d 140, write object+0. Save the slot of the section+0x20（0x14133d160) Point to 0x 1400cfef 0. The query that creates the path therefore achieves a specific goal, which is no longer just an unknown call.
+
+This is a historical tectonic chain that does not prove that the current example has not been replaced or is currently ABI; dynamic object identity/fiction table/code still needs to be certified.0xcfef 0 Cache (SHA verified) Status written and 0xe 6a 10 Recursive thread, not re-placed into a read-only probe;bit 17 The specific component filter is still to be filled. The old private library opens the initialisationror 4/empty, save failed copy without finding a surviving IDA process; re-read the original repository SHA and copy the new private v 2 Copy, actually export successful exit 0. Report that the cover-query-receiver-resolved.json and cover-query-concrete-vtable.json do not access production, run without games.
+
+
+### 2026-10-29: Search mask to reach candidate component's false check
+
+Actual command confirmed 0xcfef 0 Readincoming Mask 0xcff07) and write about the text+0x3c（0xcffa3），0xd 03b 9 Enter 0xe 6a 10. Walk through the candidate from the node array, check +0xf 4 Go heavy, get Candidate+0x 78 associate objects, and read +0x 108. Then you can check the vectors for a range.0xe 6c 9 d Call association object emptiness table+0x330，R 9 D from context+0x3c;as adopted 0xe 6 ccc entered Candidate Fiction Table+0x2e8，0xe6cd8/0xe 6 The same mask is being passed on again by cde.0xe 6d 46 Call R 10 Zero back.0xe 6 The path to the follow-up record of fcb cannot be explained successfully by normal bool.
+
+This is more specific: except for bones/carbs, the boundary of the candidate range and search index must be confirmed as consuming the same attitude or may be excluded before a narrow examination. This is still called the bunds-like vector without mandatory naming engine fields based on deviation. The original query was written in the context and deweight status, and could not be reset to passive probe. Report cover-query-component-route.json and original cover-query-compont-chunks.json; not proven bit-qent-chunks.json 17 The final geometric syntax, the specific slot target of the player component or query can be refreshed at a time. No production changes or games are running.
+
+
+### 2026-10-29:SkeletalMeshComponent Basic Impact Check and Bit 17 Branch
+
+Positioning Plant by Class Names 0x 1404fd 1e 8 Actual 0x 4fd 25 a Pointing to UTF.16 SkeletalMeshComponent（0x1415bf86a); plant registration architecture recall 0x 3d 9d 90♪ That's the thunk in 0x 3d 9d 99 Call instance construction 0x 3d 9da 4 The latter is actually the real LEA.0x 3d 9 daf gets a false watch 0x 14137ac 50 and write the example header. Save data+0x 2e 8 Slot Pointing 0x 140339294, the base type hit inspection is therefore targeted.
+
+Physical check command 0x 339307 Fetch input mask to R 12D，0x339332 BT bit 17 And conditioned to jump.0x 3393b 1; branch relative to associated data+0x 130- Do a positive check.0x 14090bdf 6,Incorrect Return 0x 339339, which reads RSI+0x 248 And conditioned to call 0x 131e 80. The polygon/bones/PhysX branch cannot be named in the light of these deviations; specific geometric and transformation sources still have to be analysed. Whether the current player is born to cover this slot is not certified either. Report cover-skeletal-hit-route-resolved.json records full identity chain, command and limit; no production or running changes. Next step 0x 90bdf 6• Parsing data consumption and aligning it with body updates.
+
+
+### 2026-10-29: Direct connection of the hit branch to an existing skeleton matrix
+
+Actual cold zone 0x 90be 4 d First to name-nameindex query 0xf 9d 80，-1 Skip;0x 90be 76 Set RCX = mesh,0x 90be 88 Output matrix, R with RDX 8 D Index Call 0x 1d 40b 8. Returns the matrix to copy and use 0x 137a 60 Change processing, follow-up asset+0x 138. This is direct evidence that the bone was transformed to participate in at least one hit path and all Hit geometry can no longer be generically updated.
+
+This time, it's exported.0x 1d 40b 8 Two real SHAs, and now.tools/native-capture/cover_bone_getters.h的两段认证值逐项一致, can be re-used for existing contracts owned/thread/mesh and SpaceBases without creating a skeletal getter.(a) The current publicsher explicitly rejects MasterPose, invalid indexing fallback and checks the matrix/array/code currentity;These restrictions are retained.The PerPolyCollisionBones/PerPoryBoneKDOPS exist in the package statement, supporting only subsequent assumptions and not being able to supplement their indexing with running deviations.Geometrical auxiliary functions, physical player asset branches, SpaceBases/world transformation and scope index synchronization remain unproven.Report cover-hit-bone-transform-reuse.json;Original bank/production source code unchanged, no operational validation.
+
+
+### 2026-10-29: Full Snippet Identity List of the located search chain
+
+Add a new cover-hit-query-code-print.json, repeatable offline verifier and private charge_hit_query_code_spans.h: Reorder from the existing actual commands, and reorder the instructions to the current commands.14 A non-overlapping code segment.7828 Bytes, which are validated by the historical code section SHA on a piece-by-piece basis; contains known query aids, vagrancy, bonehead hit main/cold clips, shared matrixgetter and name index. C++ List range/Hashi format/overlapping inspection /W 4 /WX /Zs is passed. It allows code identification before future access, does not contain original functions and does not authorize call-back, rather than complete re-entry to a closed package.
+
+Cache-observer codes appear to distinguish zero-extent from two geometric paths, which have not been named. Private ID v when trying to export the auxiliary function 2 Initialize error again 4, no new export is generated; log/copy is maintained without repeated repair and re-checkability of existing evidence continues. Deeper geometric Helper, actual example/ABI/Puts and bends/index authentication is still missing; no changes have been made to the production or execution of game/test procedures. Report cover-hit-code-preparation.json. Freeze snapshotv 1 Do not include new list header files.
+
+
+### 2026-10-29: Geometrical Assistive Functions Actual Export and Code List v 2
+
+New Private From Original Libraryv 3 Copy, limit the export of five auxiliary functions at a time 0, the original library/tool configuration does not change.0xdb 120 A zero comparison of the tri-points supports zero-extent diversion determination under limited input, but cannot be omitted from this.0xdec 0e 8 Press 80 Byte entry from asset+0x 138(a) Prepare queries;0xdebe 0 c Add an extant-related treatment after reuse of this preparation.0xded 060 The long run.0xad 8464 Enter 0xdecae 8；0xdec 81 c Accessed with scope adjustment and same pre-checking.0xdec 154. The specific leaf-level geometry method and asset recording type is still not proven.
+
+Add 5 new paragraphs to unchangeablev 1 Outside code-spans-v 2 List, now 19 A non-overlapping segment.9002 Bytes, all swaggers of history codes; private C++ list compiled and translated offline verifier for visible v 1/v 2, Defaultv 2, separate reports. No original geometry function called or rewritten, no diagnostic white list modified. Report cover-skeletal-geometry-helper-route.json, actual player assets, component derivatives, and same version attitude/border index are missing and target not completed.
+
+
+### 2026-10-29: Leaf-level 3 index vertex data verified
+
+Actual Recursive Query 0xdecae 8 The leaf section.0xdecfd 9.decfec 8 Byte Records Forward, Take+6 It's...16 Bit-added and call 0xdeba 24; the latter 0xdeba 70..debaa 4 From Asset+0x 138 It's...80 Byte Entry Read+0x 40 vertex base address by record+0/+2/+4 Three.16 Index formation 12 byte top point address. Volume query 0xdec 154 Yes.0xdec 699..dec 72 a Three points are transmitted using the same vertex source, three indices and value added.0x 1b 697 c. The subsequent hit results are compared to the existing fray and no leaf is returned as a whole.
+
+Group III 3-Float vertex and original vector check supports trigonometric extrapolations, but does not prove full-visual grid moisture or complete tree formatting.16 Bitvalues do not automatically name the material/bones. The application retains the original asset vertex/index to match the current bone-world transformation with the scope/index visibility of the same version; it cannot be updated by changing the top point of the shared asset instead of attitude. Normal line diagnosis does not cover volume queries. Report cover-skeletal-indexed-geometry-route.json is exported from the original command; the current player branch, other physical route, range refreshing and actual impact association is still incomplete. No production, no running game has been changed.
+
+---
+
+## 中文
+
 # 实施交接：收到开工指令后的执行顺序
 
 ## 当前 Native 调用端差额核对（2026-10-29）

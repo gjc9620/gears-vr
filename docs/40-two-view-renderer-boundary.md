@@ -1,3 +1,36 @@
+# Object boundary of the double viewer renderer
+
+2026-10-12，PID 20420, read only the normal code survey. Continue the document 38 , the result of which is to de-cipher the view and sort it around the next double view check.
+
+## Observed Reproduction and Destruction Relationship
+
+`0x116250` Yes. `0x1162df` Call `0x3a4c54`, copy input collections to rendering object `+8`. The group copying is written to the last 32 Bit Fields `+5c`, therefore the current observation covers 0x60 bytes, not just copying 16 The byte array header is assembled in full.
+
+`0x3a4cd8` Allocating your own storage to the array of cluster view pointers, copying them again `count * 8` bytes. It copys needle arrays, not every source view object at this step.
+
+Rendering Structures set aside by the input pool `root+68` Storage, in `0x11643f` Loop Render View Copy Construct `0x193d50`and implement:
+
+- `0x116447` Write every one of them. `+d24` is the current serial number.
+- `0x116451` Replaces the pointer in the pool with a new rendering view.
+- `0x116455` Write Render View owner as `root+8`。
+- `0x11646b` Compares the circulation serial number with the number of input pools.
+
+This means that the construction code has multiple paths, which does not mean that the entire rendering process has been dynamically passed on two levels.
+
+Parsing `0x15aab8` Yes. `0x15ab74` to `0x15ab8e` Press `root+70` Number of times, `0xd30` Step Call `0x15bda4`and then released `root+68` Quantum, zero and release. `root+8` A group of indicator arrays. Source view 0x430 & Render View 0xd30 Different clearance paths must continue to be used.
+
+## Next Experiment Limit
+
+Double view input must keep the full set context, specify a separate state for each eye and check that both source views are copied into two independent rendering views. The original collection cannot leave a pointer pointing to a local temporary array; the association status cannot be released while the rendering view is still in use.
+
+The verification of the non-submission of a double view object is only used as a border check for the object before it is actually submitted. The final acceptance is still to render two different points of view into two image areas, and receive the left or right OpenXR eye instead of considering the tectonic cycle count as a stereo success.
+
+Evidence:`analysis/native/two-view-renderer-boundary-20420.json`、`family-copy-boundary-20420.json`、`family-array-copy-20420.json`. Three files save only the machine, without modifying the running-time entry. This round of DLLs is disabled and the game is still running.
+
+---
+
+## 中文
+
 # 双视图渲染器的对象边界
 
 2026-10-12，PID 20420，只读普通代码调查。接续文档 38 的偏移视图结果，围绕下一次双视图验收整理，尚未调用两视图渲染器。

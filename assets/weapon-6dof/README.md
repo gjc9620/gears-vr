@@ -27,3 +27,37 @@ Rebuild deterministically with `py -3 tools/weapon-models/build_gnasher_round.py
 and verify the committed bytes with the same command plus `--check`. A local
 preview can be generated under ignored `analysis/` with `--preview` when
 Pillow is available. No original package geometry or textures are included.
+
+---
+
+## 中文
+
+# 原VR武器部件原型
+
+`lancer-starter.glb` 是一个新的 704-三角,三节点拉动启动器由
+`tools/weapon-models/build_lancer_starter.py`插座留在兰瑟号上;
+小T型树脂跟随左手,绳子沿着当地(Q)延伸.
+其形状和材料为原创,并非从零售武器中提取.
+现有 `b_AR_Chainsaw_Handle` 保留作为枪械的一部分。
+原型尚未被游戏装入; 套接字定位、 手伸手、 绳索
+长度和黄色指导需要游戏和头盔检查。
+`py -3 tools/weapon-models/build_lancer_starter.py` 并验证
+已执行字节 `--check`。本地预览可能被忽略
+`analysis/` with `--preview` 当枕头可用。
+
+## 纳舍尔圆形
+
+`gnasher-round.glb` 是一种由
+`tools/weapon-models/build_gnasher_round.py`。这是一圈密封的圆形
+未来左手物理重装,而不是游戏开放弹出壳的复制件.
+临时信封是 33.7 直径和 113.5 毫米长, 匹配
+仅是所检查的零售废壳资源的测量范围。
+折叠、底线、颜色和材料都是新的。它的局部+Z轴从
+坐标是米。
+
+这是资产原型,游戏尚未装入, 和密室
+适合,手握,视觉尺度和最终艺术需要游戏和耳机检查.
+以确定性的方式重建 `py -3 tools/weapon-models/build_gnasher_round.py`
+并用相同的命令加验证已执行的字节 `--check`本地
+可以在忽略下生成预览 `analysis/` with `--preview` when
+枕头是可用的,不包括原始包几何或纹理.

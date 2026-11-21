@@ -1,3 +1,66 @@
+# Steam, positive baseline and archive migration
+
+2026-10-21. The user requires a comparison of the file, processing current Mod start-up compatibility; then confirms that the existing archive will be moved to the original version and will be developed/tested only in the original version, and explicitly discontinues additional compatible game running tests.
+
+## Document identity
+
+| Install | Location | Full inventory |
+| --- | --- | --- |
+| Copy of the working part of the project | `J:\gearsVr\Gears of War Reloaded` | 3,609 Documentation,76,345,902,085 Bytes |
+| Original installation registered by Steam | `J:\SteamLibrary\steamapps\common\Gears of War Reloaded` | 3,609 File, all with working copy SHA 256 Unanimously. |
+| Old historical installation | `J:\gearsVr\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\Gears of War Reloaded` | 4,601 files;shared with original 3,609 Documentation |
+
+Full calculation of SHA for each regular file on all three counts 256; not only compare file names, lengths, time stampes or samples. The positive and old directories of the project complete their inventory before testing; the original Steam Library installation is independently completed after confirming that the switch has been restarted.3,609 Files are all identical. Old common files installed 3,607 Exactly the same, except for:
+
+- `Binaries_x64/steam_api64.dll`: Old version 980,576 Bytes, SHA 256 `7149e2681604f00b310c6749512c8c0c2b83d86a3052596de5f566823776b00b`;real 298,856 bytes,`a44e5537939ae4eebc69000589aa9b2437a667813a1657cc779198bae9b815a9`. The original DLL with the old directory `.rne` original backups are the same; old directories exist separately `steam_emu.ini` The distribution of tags is sufficient to explain the different start-up environments for old installations.
+- `WarGame/Config/Steam/Cooked/Coalesced.ini`: original Hash `6cf7a0c3a59d85ae6fedf5fc49d8bb406edda9adda7429448d27510e729a8f16`;old directories `799723628b465552bc2f1847f91370c10c35e98dbd9460695e5f369956da70de`. Offline recalculation confirms that the difference is precisely equal to the restartable patches already available for the project: delete four opening Logos, and enable in-house construction to skip online tuneables waiting.
+
+The old directory is unique.992 documents, of which 973 The other are the distribution of accompanying documents and historical analysis projects. They are not the missing game resources in the original version.2,518 The CookedPC documents are all the same as the original version.
+
+Three cores. `Binaries_x64/GOWDE-Steam.exe` It's all versions. `1.0.381.6947`、26,278,928 Bytes, full SHA 256 Is:
+
+```text
+bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4
+```
+
+The current work based on this disk EXE and the same version of the resource is therefore still valid. History is running with a snapshot that retains its independent Hashi and Module base, so it cannot be compared to the memory of the whole process, Steam service, GPU or headline behaviour. `ev_bc9cd5e918caa519f8fd7e24584cfb19e665f2b5c7856c58df2f49527e431ed0`。
+
+## Actual detection and rehabilitation
+
+The first time you run the original project, you can see it in the original version.22 Prestart raw self-measurement, game PID 46548 Created successful, but returns in the preparatory phase `Target priming failed (1)`. The game exits without producing a valid current cycle prime status file; this number is the remote line exit code and cannot be interpreted as Win alone 32 Error or particular Hook malfunction.
+
+Steam Log clearly records the original API request at the same time `steam://run/2523720//-NoPauseUnfocus`, and then Steam creates the library `Launch_GOWDE.exe` PID 48564. This corresponds to the mechanism described by Valve for “restarting registration in Steam Library when running directly”.[Steamworks API Document](https://partner.steamgames.com/doc/api/steam_api#SteamAPI_RestartAppIfNecessary)This resumption and the withdrawal of the original process are described.
+
+Getting right in the test subprocess `SteamAppId=2523720`、`SteamGameId=2523720` , and then the project's original PID 25228 The government has been able to protect the people.13 The byte check at the entrance to the game is passed and no more folders are handed over to the library. This fixation has been written `game_install.launch_environment()`, for silent start-up, common front-stage start and visible RenderDoc start; environmental variables only function in subprocesses, handle Windows case sensitive variable names, and do not change the parent process/global environment. Steam DLL and account authorization processes remain as they are.
+
+The original version was first run and created its own settings for active Steam account, making the old test account and the original one two sets `*EngineUserSettings.ini` Co-exist. `graphics_policy.locate()`The request is exactly one and will be rejected later. The multiple files are now only from the current user's Steam `ActiveProcess/ActiveUser`Reads the account number, matching exactly the settings file for that account; does not read login documents and is not guessed in the order of the latest time or directory. The account number mismatch is still rejected, and sets the existing behavioral reservation for a single document.
+
+85 Debug-launch and 76 The line launcher offline check is passed, covering the subprocess environment, parent environment preservation, back-office window policy and multiple account selection. Current normal native is still `GearsCapturePlayground1.dll`（`bf0a8f730d41718cc6002625848f9f8c3f7ef15aaa4bb0a15153dd3498978855`XR and Playground also maintain the original frozen identity without having to re-compile the original module for this path/Steam environment.
+
+## Run evidence boundaries and close
+
+The second round automatically continues without entering the level because of the first opening/title process. The round of independence is cancelled/entry and the menu bridge is restored, with five protected files restored after normal closing; failure reports are retained.
+
+3rd round of integrated Steam environment rehabilitation, test-driven without additional supply of Steam App ID, original set-up and normal `DeltaMotD` Welcome news pages. Users are clearly stopping subsequent testing at this time, so they do not continue to confirm menus, activate level or enable binary access. owned-prime portals, menu components and test audio back through. WinError occurs when closing secondary windows 1400, preserving original failed; confirming normal game exit and resumption after reading cleanup reply alone 10 A protected file. No killing game or retest injection.
+
+This is the full disk identity, original selection process start/prepare compatible and welcome pages that can be reached. No new regular level GPS drawings, FPS, continuing chapters, physical header or complete acceptance are added, nor are games started because users stop.
+
+## Archive and Default Path
+
+Both original versions are installed under the same Windows user `%LOCALAPPDATA%\Coalition\WarGame\SaveData`. The migration is made by the name of the game book file, and the archive is not copied into two installments.
+
+Old account is currently `.ue3profile`、`.ue3profile.local`、`.ue3profile.Narration`、`.ue3profile.WarfarePLS` Four files have been copied to the corresponding file name of the current Steam active account. Source old files are kept; source four and target four files are fully saved before migration. The zlib data verification and declaration length of the main/local file is valid, no compression load or sequenced content changes, target 4 SHAs 256 Same as source by source. No replacement `steam_autocloud.vdf`, modify the Steam cloud switch or edit cloud cache metadata. As requested by the user, no more games are being opened to verify that the archive is read.
+
+Backup directory ignored by this machine `analysis/retail-compatibility-20261021/save-migration-20261021-222503/`;complete migration map, SHA 256, save copies before recovery and return confirmation in the directory and `save-migration.json`. The public document does not record the personal Steam account identification.
+
+The current default path for the normal list, common user configuration, DLSS list, basic startup scripts, backstage collection/GPU tool, resource export tool has been switched to `J:\gearsVr\Gears of War Reloaded`;no longer using old P for new tests 2 The list of historical experiments and records are maintained to maintain the source. The original installation in the Steam library can still be selected by GUI without changing its game file. Current users' first name, dead area, rendering ratio etc. is retained;`v0.0.1`The label and the package that has been released remain unchanged.
+
+Local original evidence is located in `analysis/retail-compatibility-20261021/`Three complete inventories, two comparison results, REA resource records, Steam start failure/success prefixing, cleanup and audio recovery, archive format checks, archive migrations and default path migration returns. All proprietary derivative data and personal files are not submitted or released into source code or release packages.
+
+---
+
+## 中文
+
 # Steam 正版基线与存档迁移
 
 2026-10-21。用户购入正版后要求比较文件、处理当前 Mod 启动兼容；随后确认将现有存档迁移至正版，今后只用正版开发／测试，并明确停止追加兼容性游戏运行测试。

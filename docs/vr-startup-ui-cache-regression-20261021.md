@@ -1,3 +1,23 @@
+# VR Start Return: UI set caches were wrongly rejected
+
+2026-10-21, the user feedback integration first person is not able to access VR after preview. Checking the real startup log, OpenXR prechecked and original self-check verified; UI configuration before active UI profile dropped out `UIConfigRejected: UI assembly identity limit exceeded`. Failed game PID 44044 Counterpart `analysis/runtime/continuous-stereo-44044-20261021-160309-9dd3ba96.native-start.log`. The old start log or other process count is not used for attribution.
+
+The machine gun has been re-enacted to optimize. `ui_observer_config.py` Add subassembly cache, maximum 256 bar. The UI function finds that many members of the class who will not eventually write to a certificate can be more than scanned 256 And the final certificate is still far less than it was.96 The old code wrongly invalidates the optional cache as a certificate, thus suspending startup before first person is enabled, right-hand-bar strategy and VR rendering. The previous small-scale synthesis input did not cover this condition and cannot replace this player with its result.
+
+Fixing to keep cache caps 256, the cached object continues to be reused; the new object is fully read in real time after full amount and no more dropping abnormality. Final object/register/name, parent, script, attribute and entry review is retained, final certificate 96 An identity restriction is also maintained. No changes to the native/XR construction, no cancellation of first person ' s name, dead area or other machine gun restoration changes are carried out; and the new Python subprocesses for ordinary starters are directly used for repair.
+
+Add 300 Synthetic level structure of unselected functions, where the original error is accurately repeated in a private memory version; final after repair 52 The configuration and integrity of the bar identity is exactly the same as the disabled cache path. The cache remains 256 Article,347 Read back in real time; changed identity at the final border after full cache is still rejected.247 Item Python returns pass, as evidenced by `analysis/runtime/ui-cache-startup-regression-20261021.json`。
+
+The actual normal startup of the repeat is using default lists, current user configuration and archive, run by standard backstage test portals without any private additions to the front wheel for the field 160 Second delay. Use validated bend-windows start/ emulator, observe-only, test silent sound and protect current archive and settings; no system OpenXR settings have been modified.43256 / creation_time 134370440511479300 New session via previously failed UI assembly, cache 256 Article and actual occurrence 1743 Repeatedly, native is activated.
+
+The round is normal.180 Second observation; after the show 90.38 Seconds.8136 Second Bibliography,7948 A new image of the secondary is published.0,Hook Independent Access is back to pass. Audio, dead zone.5 The location data, archive and settings are restored; no legacy test games are available at the end.1 Sub-cam cross frame sampling failed, navigation appears 1 The movement response is inadequate, and the two are retained as test facilities and navigation problems respectively, not attributable to the start-up repair failure. This results in a physical game+ emulator start/submission/cleanup validation that does not replace physical header acceptance.
+
+Full running record:`analysis/playtest/vr-startup-ui-cache-fix1-20261021/report.json`、`analysis/runtime/continuous-stereo-43256-20261021-161439-1446b6ef.json`. Final UI Source SHA 256 `a720e454b1150625d547edc323dcda88541cc99ab6f4fa48d9cb1ae9e7ff5708`Default native continues to be the first person that has been integrated `045ca20a…b9d`。
+
+---
+
+## 中文
+
 # VR 启动回归：UI 组装缓存满后误拒绝
 
 2026-10-21，用户反馈集成第一人称预览后无法进入 VR。检查该次真实启动的日志，OpenXR 预检通过，原生自检证明通过；native 激活前的 UI 配置组装抛出 `UIConfigRejected: UI assembly identity limit exceeded`。失败游戏 PID44044，对应 `analysis/runtime/continuous-stereo-44044-20261021-160309-9dd3ba96.native-start.log`。不是把旧启动日志或其他进程计数用于归因。

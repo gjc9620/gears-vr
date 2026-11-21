@@ -1,3 +1,100 @@
+# Rendering the structure review and local geometry observation boundary
+
+2026-10-13. Leave the current chat as requested and complete the architecture review first. The right black screen has not been repaired, because root is not yet established. The second round of observation codes have been compiled but not enabled and cannot be used as operational evidence.
+
+## Diagnosis
+
+The current double view does not simply repeat Precent or the final quadrilateral: two original structures have entered into the consumption, preparation and cleaning process of the rendering object. However, CPU multi-view processes do not create the right world geometric pixels with both eyes.
+
+`13cfcc` This function is not complete, Scene Render. The functions are entered around the latest observations, the step-by-step dynamic list is empty and there are a large number of Ds in both right and left rectangles in the same experiment.3D 12 Draw. This means that local observations are not sufficient to cover the mapping of the scene, and cannot be interpreted as “no object in the right eye” or “no Draw in the right eye”.
+
+The next most valuable evidence is the same middle scene colour, final processing of input and backbuffer content and reading/ writing relationships. Continue changing or increasing the ultimate quad parameter `13cfcc` Access logs, not answering directly which border the right colour is missing.
+
+## Levels and Key Functions
+
+The following are all working names; the address is the current validated version of RVA, not an official symbol.
+
+| Level | Access | Evidence available and restrictions |
+| --- | --- | --- |
+| Source View and Pool Submission | `3a148c`、`116250` | Construct two views to enter the original rendering object; not only copy the final image |
+| Render object consumption and destruction | `15a7f4`、`15a80c` | The object is cleaned after consumption and cannot be called simply repeatedly to the same object |
+| Phase of the scenery | `11908c` | Preparation of view, selection to draw branch, post-implementation processing; 0–3 Not the right-and-right eye index. |
+| Optional Drawing Branch | `170948`、`e1d004`、`e1e0f8`、`e1ff64` | Selected by sign of renderer; no current developments have confirmed the actual performance of branches |
+| Current View Bind | `173170` | Writing Context `+14c0` and process matrix-related data; does not prove the GPU constant to be ultimately correct |
+| Local Object Drawing | `13cfcc` | List of static candidates and phased dynamic; observation ranges only partially mapped |
+| Final processing per view | `2b0a98 → 虚表+8 → d82f58 → 1af42c` | Existing running stacks and parameters evidence established; source pixels still unverified |
+| Present / OpenXR | D 3D 12 / XR Submit | The right-hand malfunction of the desktop occurred before XR; XR test diagrams successfully do not prove a double-eye success |
+
+Document 53 The road map is only open. `170948`, does not mean all drawing branches. Run a snapshot back-compilation `e1ff64` And all over the place, renderer. `+68/+70` View array (stepping) `D30`) set the rectangle, call `173170`Let's go. `13e49c`、`13e3ac`、`13e340` . The view data it uses contains `+480` Area. The actual branch needs to be identified, and it can't be assumed that all the worlds have been drawn. `13cfcc`。
+
+The source view structure adjusts the position and re-uses the original tectonic process, but the eye deviation is still experimental in the game unit and maintains the original projection. Even if it is restored on the right side, it requires a correct width ratio, IPD/unit conversion, per eye projection and geometric visual differential verification.
+
+## Completed observations
+
+PID 48208：10 Two-second view test,2,014 Life cycle analysis is passed and stopped. 23 A single view is restored by checking the entry match, without reservation or skipping. These are the result of the object ' s life cycle and not the acceptance of a stereo image.
+
+| Observation | Left View | Right View |
+| --- | --- | --- |
+| `13cfcc` Phase 1/2, Mode 0/1 Total Call | 8,056 | 8,056 |
+| Number of phased dynamic lists observed | Both. 0 | Both. 0 |
+| Line during Function Execution Directd | 0 | 1 I'm not sure.69 An element |
+| View Rectangle | `0,0,960,1080` | `960,0,960,1080` |
+
+The exact right-and-right rectangle of the same test. Draw count is for each of the two 729,735 / 728,418; rectangles are only the drawing of regional evidence, not the world geometry classification and do not prove that the drawing results are not black. `+1a0` It's... 64 The byte matrix summary is the same, and cannot be used to determine that the full view or actual GPU projection is the same; the exact semantics of the field are still to be verified. Visibility summaries do not support the validity of visible data either.
+
+This time no prime descriptionor tracks, so the target in the record cannot be used 0 The judgement game binds empty RT. Observations only count the same thread `DrawInstanced/DrawIndexedInstanced`, does not cover ExecuteIndirect, other threads or complete resource dependence.
+
+`geometry-active-48208.jpg` The actual photo taken after the end of the two-view window cannot be used as pixel evidence during the test. The analyser output `engine_view_draw_summary` empty;context drew value 0 This means that the observation data are not available and not actually not drawn.
+
+Local evidence:
+
+- `analysis/runtime/geometry-48208.status.txt`: Original polymerization record.
+- `analysis/runtime/geometry-48208-lifecycle.json`、`geometry-48208-restored.json`: Life cycle and access recovery.
+- `analysis/runtime/geometry-48208-observation.json`: This read-only analysis is adopted, clear `pixels_verified=false`、`stereo_verified=false`。
+- `analysis/ghidra/render-16812-verified/decompiled/`: Scattered transcribed and compiled while running in direct direction.
+
+Another prime start PID 25604 The exit is pending for a reason, and no clean stop evidence exists. It cannot be recorded as success or directly attributed to the new observation function. 44960 Only pre-encumbered versions were loaded and the second round of capture was not initiated; the game process still exists at the time of review.
+
+## Disk means different from running time code
+
+The original Ghidra MCP project analyses disk images. The run-time snapshot obtained after normal start is different from the byte of the drive entry; this means that the object must be aligned first, and not simply by the bytes in which " a lot of Hook" is written. The operation of the protection code may cause differences, loader processing or patches to be validated by address. This round of independent headless projects can analyse the snapshots, not equal to the fact that the original MCP project has been switched to the run-time code.
+
+## API and the failure of the frame
+
+Actual device, queue and Draw path support D 3D 12 Judge. Historical device import calls include D 3D 12 CreateDevice Reference `373dd7/3742ef/417dd7`，CreateDXGIFactory 1 References `417e3e`; import references do not in themselves equal the number of branches that have been run.
+
+RinderDoc smoke successfully only validates the tool base. The game does not record successful registration of API, and the old way to replace imported pointers collapses without repeating the program. There is insufficient evidence to distinguish between creation times, object packaging or injection conflict.
+
+PIX has a home-grown smoke capture; the game log failed foreground framer and is not sufficient to prove that the game is incompatible. The start, time of device creation and effective capture files should be verified in the process of closing the original Mod injection before double viewing.
+
+## Assumptions with the next minimum experiment
+
+| To verify assumptions | Support or weaken its next piece of evidence |
+| --- | --- |
+| Right world geometry does not produce a valid color | The main colour of the same frame is missing on the right; continuing to locate Draw, constant and visibility that generated the resource |
+| The scene colour is valid, but the post-processing input, screening or shared resource coverage is incorrect | The scene stage is valid on the right side, and one subsequent writing or reading is invalid |
+| Final sampling binding error | Final input resource is valid per se, but final output is still dark; actual SSV, subresource and shadow constants need to be checked |
+
+The current priority range is between the scene colour generation and final processing input, for which it is not possible to state the cause.
+
+The next round will only answer "Where did the first blackening of the right side of the same frame":
+
+1. The original process performs a controlled PIX capture validation to confirm that you can access files with real game GPU events. Record the specific failure phase; do not try the old RenderDoc hand replacement.
+2. When captured, saves the scene colour, final shadow input and backbuffer, and links resources ID, subresource, video/scissor and event sequence in a two-dimensional view experiment that keeps cameras, visions and quad parameters constant.
+3. If the frame is still not available, first specify the queue, status and fence of the identified resource and then design a fixed-point reading back; do not copy texture directly in unknown condition. The existing Draw context/first call stack observation can help select specific functions but cannot replace GPU pixels.
+
+Receiving and inspection requires that the frame-to-peer image contains correct world geometry, with a credible mask and visual difference in its position; copying the left chart, the final call equals or Hook does not have enough self-measurement. Desktop SBS is then reconnected to the OpenXR output after the game has been passed.
+
+## Code Status
+
+Geometric observation versions have been compiled, self-measured and completed the above-mentioned in a defined game by real MinHook parameters/return values/entry. The current Draw version of the current engine view has been compiled, is measured by geometry but no new TLS attribution logic or enabled in the game has yet been validated. The current view may remain during the shared and reprocessing phase, which cannot automatically be equated with the true owner of Draw.
+
+This review only re-analyses and supplements the files, does not enable the second round of probes to continue changing the rendering behaviour. All changes are still pending and interactive design modifications already available to users are retained.
+
+---
+
+## 中文
+
 # 渲染架构复审与局部几何观察的边界
 
 2026-10-13。按用户要求留在当前聊天，先完成架构审查。右侧黑屏尚未修复，根因尚未确定。第二轮观察代码已编译但未启用，不能作为运行证据。

@@ -1,3 +1,60 @@
+# Tick／C 0 PG Equipment Observation Program for Hang-up Query
+
+This is the minimum interface proposal for PG/Clit, which will be implemented after body side sharing typeped head and accurate Hash.1、`copy_frame_on_gt`、`source_game_on_gt`、PG f 85 This is a read-only source code and sorting document without building, case or Game/XR. The scheme is based on the side of your body.`analysis/body-c0-producer-after-eo-review1.md`, does not define or publish a new ABI.
+
+## Actual Reading Dependence
+
+| Current entrance | Actual dependency | Processing of new paths |
+|---|---|---|
+| `HandClient::copy_frame_on_gt`／`source_game_on_gt` | actualGT、Client Gate、active epoch／published、key、`fresh(frame)`, Aadapter Game Watch; the former is more than a pair of listed_games | Keep V whole 1; new equipment operations only take the exact selected key/five objects/reference generation as historical links in the same Gate, do not output Frame, do not call old fresh and do not use history committed_game as current observation |
+| `weaponhand::observe` | Enabled, actualGT, restore health and mutual retrial; object registry/complete identity/type/fatherbag; PC ⁇ Pawn/World, Pawn ⁇ Mesh/Weapon, Weapon.Instigator; de-cut/shooting/prohibited shooting marking; practical software hold with help_binding; former schema/property/link/flag/table | New typed object context directly provides the same price metadata to read and keep all original actual and final readings; no ad hoc frame call old observer. Its current realization does not read HMD/controller pose, but its V 1 Call eligibility does depend on these data |
+| `lancermain_asset::read` | Key.theread, weapon/pahn/mesh identity, WarWeapon and Lancer type, Instigator, Mesh typed descriptor, Visibility, SkeletalMesh full identity and COGASSaultRifle; all selfer/schema/policy/table | Add typed metadata portal, maintain two full asset readings and repeat them all for each time, comparing the complete identity of the coponent to the full identity of the asset; not just duplicate an address or skip an internal one |
+| `read_attached_frame` | Webpon/pawn/mesh address, quoted campaign, current Instigator, sole Attachments members and right hand bones, visibility, membership structure, limited position/scale, array and entry last reading, Waapon.Mesh last reading | Provides the same read-only core for new typed object context; its outer layer`attached_frame/current`Keep original V 1 The new path calls the metadata core in a new client observation, and without that it will re-enter the outer layer of the client Gate. |
+| `eligibility`／`source::bind`／`weapon_rig_binding::match` | Old Frame Active/Reference Transition, Old Right Grip Usable, Same old Rig/hand and World_grip Recalculation, Current Held/Generation/Busy/ation/Firearm, C 0 profile | V 1 Keeps as it is. New path verifies the right Grip qualification of Raw Tick and 40 ms; PG only validates the current body-profile identity of metadata and Native.0 Basis, PG doesn't export world gestures. |
+
+Accurate source position:`tools/vr-common/weapon_hand_client.h:214`、`:234`，`tools/playground/weapon_hand_client.inl:114`，`weapon_lancer_asset_read.inl:23`，`weapon_equipment_backend.inl:90`，`weapon_equipment_main_mount.inl:17`／`:87`，`weapon_main_mount_candidate.h:35`，`weapon_rig_binding.h:34`. These read without calling engines, without equipment action, without changing held, without applying for downership. Follow-up will be possible only by reusing already existing metadata slides/providing independent typed entrance; no changes to old V 1 Qualification for new behaviour.
+
+## Proposed local interface boundary
+
+Below are the job names, which are not the type of name, byte layout or function signature that is frozen. The header is only created by Body.
+
+`observe_equipment_on_gt(expected_parent_association, query_correlation, dedicated_metadata_reader, out_equipment_witness)`。
+
+`expected_parent_association`This is a request from typed, which has been accessed by Broker: full original FrameKey, five complete object identities, access promotion, registration cookies/Native incarnation/session/realGT and parent lifecycle.(a) Publicization/binding promotion by the original requested Scene connection;Hand ' s company Frame does not contain these two fields, and PG cannot claim to have taken them from Clint, but must match the actual source of its reservation with Broker.Former Scene maintains historical values with original observation time and executes the remaining Scene-observation separately 50。
+
+`query_correlation`Only this call, real Tick source/current C 0 Basis and queryid; it is not eligible. The original private espoch of Clent was captured and checked by this Gate, and the request for epoch proof was rejected.
+
+`dedicated_metadata_reader`It is a fixed read-only realization for PG compilation, executed in the same time within Gate. Only the Key/objectability view and local current check are received from this extraction, and no old Frame, Native writer, engine action or external variable callback is accepted. It can use existing reflection profiles and query-local resolution scratch but cannot be returned`copy_frame_on_gt`、`source_game_on_gt`、`snapshot_on_gt`Or the outer layer.`attached_frame`The request is not given any additional pointer.
+
+`out_equipment_witness`It is a zero-start, successful and end-value-entrusted data set for the carler-downd: Benquery connection, original parentent association, time frame for two real Game observations, stabilization of holdoutGeneral, full-fledged webport/asset identity, current held/nonbusy/nonimation/firearm results, current profile link to the Basis version. Return only to real observation times, not to reset start or old Scene/raw tracking times at return times;50 Ms observe age from the earliest practical need, and now reverse/future/expiration. Whether or not to include two times with which fixed-profile is marked and wherebyBody ends up.
+
+## Synchronize the sequence of operations and review
+
+1. Enter the original file callback list/PG callbacks and obtain a new provider scratch; continue using parent pin, unregister/drain. Verify that typeed requests Shape/version/reserved, parent, actual GT, current registered session and domain.40 With C 0 capture 40、Scene-observation 50 Each of them is verified by the corresponding real timescale, without replacing the other.
+2. Clinent single-time unblocked access to the original Gate; capture active epoch, requiring that publicised be identical to epoch, cookie/Native/session/actualGT/completed key and object. Only extracts historical identity, does not copy/manufacturing/publication of Frame, does not modify the condition of the committee_/committee_game_/participant_/hold. Gate bus handles it in accordance with the original fail-closed rules without waiting.
+3. Confirms that this actual non-zero Generalization is frozen; implements the full read-only observation of Gamed-before and requires that held_binding be consistent with the world/PC/Pawn/weapon/cookie/Native/world_gender, model status and establishment, and notbusy/animation.
+4. Execute the entire and more complete command/asset identity of aset-first, actual only right hand attachment, anset-final. Keep all independent final readings within each reader. Then execute the full Game-after observation and`same_game(before,after)`, make two Game observations to include aset/attachment; this is the clear sequence of the new path and the old path remains unchanged. If Body’s final interface requires different order, it must remain all original and prove that the metadata did not eventually bypass history snapshot.
+5. Read the holdGeneral and hisd_binding, domain still ready, no action barrier changes; check epoch/publicized/cookie/actual GT/committee act unchanged, real observation still remains 50 ms;new raw/C 0 Countercheck still works.40 The identity and status/conversion remain unchanged. Constructively, the witness is rechecked before you exit Gate. Provider checks registration/domain/typed connections and time limits again before final release; Native receives independent verification of Query and current source/basis/metadata, and re-tests them before each actual writing.
+
+Current`domain_ready()`Only the function of a plan is to provide for the use of the system.Therefore, the “existing actionGeneral has been checked” cannot be asserted in a blank in the new Witness.Body needs to specify the syntax of the parent action-generalization/barrier that it authenticates;PG uses the former domain fence and makes an exactive connection to the actual state of correspondence when sharing header requirements.Maintaining callback readings of engine-free and avoiding the reentry of midway engines;Cross-line invalidate was blocked through the original atomic epoch, and even if it recovered immediately after that event, the effect of epoch change could not be concealed by back-and-back bool.
+
+The new operation has to be rejected. The end-of-service witness cannot be reused. Only 'old traching is over'50"not pretend to be a new raw expired or rewritten/empty V in this special metadata operation 1 status;old V 1 Consumers refuse to follow the usual pattern.1 This does not allow new registration, re-post old Hand, replace tracks and introduce crossquey caches.
+
+## Minimum demand for headers sent to Body
+
+- The original name of the original Hand Key/V is linked to the real Scene publication/binding identity; there are other authentications for the former Scene observation time.
+- Practice Tick/thread, non-rewritten sampling time, active/focus/producer consultation/session/space/project/input/reference_epochs and original right-hand Grip fields; available for PG 40 These are independent checks on eligibility.
+- Current C 0 The company/capture-start/actor/mesh/conference-config/geometry/uniform scale/units and basis version; PG validates the association of the fixed Lancer program with the object, Native is responsible for actual coordinate conversion and reconstruction.
+- Query is associated with parent lifecycle/action barrier, responding to real metadata time frame and holdGeneral/completecomponent/asset education; using former parent pin/drain independent typeped attch/callback ABI. Status distinction between Tracking, parent, metadata or policy refuses to avoid old source 50 The failure was renamed a new success.
+
+The PG realization range is expected to be an independent typed projecter/sender/candidate path, the above-mentioned local equipment observation and metadata overload for HandClitent.1 The old method, the old binding/eligiliity and the old provider cannot be replaced by a new time mark.
+
+Minimum authentication only for actual new boundary: old tracking>50 Original Scene observation 50 New Raw/capture<40 And with the same hard identity, V.1 Still refusing, typed can be observed with the fresh equipment; changes between query and writing remain rejected, and stop is still in line. The actual timescale and each writing connection must come from a real call path. No weapons/situation matrix will be expanded until then taken by Body alone 40／6 Second action validation.
+
+---
+
+## 中文
+
 # Tick／C0挂点查询的PG装备观察方案
 
 这是PG／Client侧的最小接口建议，等待身体侧共享typed头及准确hash后再实现。现有V1、`copy_frame_on_gt`、`source_game_on_gt`、PG f85和EO封存文件均不改。本次只读源码和整理文档，没有构建、case或Game／XR。方案依据身体侧`analysis/body-c0-producer-after-eo-review1.md`，不自行定义或发布新ABI。

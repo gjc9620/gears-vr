@@ -1,3 +1,25 @@
+# Optional UIScene Layout Collection
+
+2026-10-17 Yes.[- I'm not sure.](122-path-choice-native-scene-route.md)Supplements the status collection method for fewer screenshots. It does not adjust UI, does not call game functions and does not write process memory.
+
+`tools/game-io/menu_state.py --layout` Implicit `--tree`: In the same consistency reading, cross-border subtrees that run through the current top scene and read reflect properties for each node `RenderBounds`. The output contains quadrilateral values, original bytes and reflecting field metadata; the result is found every time the field is resolved without using cross-sampling fields. The static array accepts only FloadProperty, four four-byte elements and limited non-reverted values to read into existing final reading lydger. The order is available from the existing idger. `UIRoot.EUIWidgetFace` The declaration was identified as left/top/right/bottom without speculation on the negative RenderBounds bias.
+
+Example for subsequent coordinated game testing:
+
+```text
+python tools/game-io/menu_state.py --pid <当前游戏PID> --layout --samples 1 --out analysis/runtime/path-choice-layout.json
+```
+
+The default sample and menu restoration monitor does not enable this option, does not add a permanent reading, does not change the input or startup behavior. The layout is requested but the layout is rejected if it is unknown, the layout error or the repetition of the error is not consistent, instead of an incomplete old value. Output clearly marks `consistent CPU layout snapshot; not actual draw/scissor proof`: Even if the field is read again, it does not provide proof of synchronization with the threading atoms, GPU cropping or actual visibility.
+
+Then, when the fork shows, confirm the top level. `DeltaChoosePath / UIScene_PathChoice`. This round does not read the actual process or start the game.
+
+Validation: Menu status/control/navigation/visit monitors 155 Test passed; field ranges then tightened to `0x10000-16`, the corresponding border test is passed. Overriding the default path does not add to the layout, root and future generations node, error type/array dimensions/element size/field deviation, non-limited and inverted borders, and rejection and reacquirement of changes in fields or boundaries when they are eventually read over. The test does not constitute a physical forklift layout or GPU authentication.
+
+---
+
+## 中文
+
 # 可选 UIScene 布局采集
 
 2026-10-17。为[岔路原生绘制路线](122-path-choice-native-scene-route.md)补充少截图的状态采集方式。它不调整 UI，不调用游戏函数，也不写进程内存。

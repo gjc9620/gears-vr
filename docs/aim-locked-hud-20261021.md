@@ -1,3 +1,41 @@
+# Aiming state-specific star and HUD anchor
+
+2026-10-21 User follow-up acceptance feedback: the problem of a superstar has been resolved and access authorized 0.0.1 Packing process. This feedback is recorded as actual user-tape inspection; the scope and limits of the automatic testing at that time are retained below, without extending user recognition to a certificate of consistency per bullet, all weapons or all chapters.
+
+2026-10-21. The user reports on the star-heading and UI follow the head, requesting that the aim be fixed to the line of sight. This change shows anchors and state transfers directly into the general starter; does not alter the firing, dispersal, auxiliary targeting and injury.
+
+## Positioning and Modification
+
+Common HUD/ Weapon UI `ui_hud_plan.h` The owned Canvas path may also be used after the quasi-star location has failed, resulting in the loss of the original targeting benchmark.
+
+New version authentications the current WarPC inheritance chain by a read-only mirror certificate for each start/world recovery `bIsTargeting` BoolProperty. Authenticate object identity, attribute class, dimension, size, offset, single bit mask, Bool original release and accessor relationship with existing Bool code SHA evidence. No old process address or fixed copying of this field value is used. HUD query grant copy/checks the status, freezes it with the same player, weapon, tick, clock and image to transfer it into normal and owned geometric storage.
+
+The government is not going to be able to get a better chance of getting rid of the problem.`ui_aim_locked_plan.h` Put HUD centres on the projection of world targets like the star; when limited points are not available, they share original game views in a direction that does not lead to reconstruction from the latest head. UI maintains readable panel size and shapes, layouting around this point of anchor; it achieves an anchored billboard for world points, not a rigid 3-D panel with real veils. Head rotation/vertigation changes only the projection of anchor points in the right or left eye.
+
+Normal Canvas, owned Canvas and Material HUD are all drawn into the same panel selection function. Non-target status is maintained as a HUD method. Accurate pure sequence shares the same sight map at ADS; geometric missing, aiming in an eye or other unvisible situation uses empty scissor to hide the drawing and avoid returning to the head panel. Deciding reset from the saved source scisso calculation without losing the area that should be displayed by pacing the front board.
+
+The aim point is still in the current HUD query/ original game orientation. This certificate shows that the same benchmark is used, and it cannot be called a tracking of every final Impact bullet, nor completes all acceptances between the auxiliary aim, random distribution and actual hit.
+
+## Authentication
+
+- 43 Required start-up and primary check passed, including pre- and post-target change denial, Bool metadata/accesser error, freeze ticket conflict and existing 729 Sit down and project.
+- Add 1,215 Group head position, pitch, yaw, roll and target distance combination. Pitch covers approximately  ⁇34°♪ Yaw around ♪23°,roll--17°; checking HUD centres for consistency with independent world point projection, parastar center.
+- Python Configuration 25 Item, commencement 30 The World Recovery 12 Check passed, all 67 item.
+- Backstage Session `continuous-stereo-16004-20261021-001834-e0b2c352` Use AdsAnchor 2 native SHA 256 `94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304`MountedLatency 1 XR and the certified rear window simulator. Open mirror/FOV, open fire/munitions response, pause recovery, general site reconstruction and new world map are all passed;76 State sample,15 Sub-actions.`ui_ads_anchor planned=180 finite=70 direction=110 head_locked_fallback=0`; this is the number of drawings planned, not the image frame or pixel acceptance.
+- Test records record two object-identity denials, with details kept in playtest report; they are not hidden or reported as zero. owner/XR exit code 0, primary clean-up and re-entry pass, normal exit of the game, five protection files and test silent recovery.
+
+The non-neutral simulation head position was submitted at the end of the session, only with a reply from queued and no validity observed when active; then it was submitted for neutral attitude recovery. This attempt does not count as actual head-to-head cover. The head-to-head regression evidence is the CPU geometry test mentioned above.`headset_verified=false`、`gpu_pixel_alignment_verified=false`. Users will then focus on real head start and play-checking.
+
+## Build and Access
+
+From Current IntegradFixes 1 Freezing Source Build AdsAnchor 2 Maintain integrated black screens, menus, machine gun switching and camera time-series repair, XR continues to use MountedLatency 1. Only this UI/Astrostar/Find State change is superimposed, without bringing in other DLSS experimental source codes. Early AdsAnchor 1 The test failed to be kept as a historical record.
+
+Normal `GearsVR Launcher.exe` By default `tools/vr-launcher/manifest.json` Selection `tools/native-capture/build-ads-anchor2/GearsCaptureAdsAnchor2.dll`;no new manual test entry. The old session running will not be hot-switched DLL, and next time the game is restarted with VR. Configure, source code, build, dependencies, self-measurement, game testing and default integration validation saved in signored `analysis/ads-anchor2-source/`、`analysis/native-build-ads-anchor2/`、`analysis/runtime/ads-anchor*` and `analysis/playtest/ads-anchor2-20261021/`, do not enter the release package.
+
+---
+
+## 中文
+
 # 瞄准状态的准星与 HUD 锚定
 
 2026-10-21 用户后续验收反馈：准星问题已经解决，授权进入 0.0.1 打包流程。此反馈记录为用户实际游玩验收；下文保留当时自动测试的范围与限制，不将用户确认扩展为每发子弹、所有武器或所有章节的一致性证明。

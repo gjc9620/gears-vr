@@ -1,3 +1,47 @@
+# Right Drawing Call exists, main cropping area over right
+
+2026-10-12, the original level, first person, Mod is restored and the user requests to permanently close DLSS. The actual eye pixels are still missing: the left half of the window shows the full scene, the right half black.
+
+## Add new observation tools
+
+Passing through HBD 3D 12 The false list of the real command list gets the Reset, RSSetViewports, RSStScissorRects, DrawInstanced, DrawIndexedInstanced portal. Optional `--viewport-diagnostics` Keeps the original parameter and return value, records only calls; submits a combination with a border view and does not combine with lens motion experiments.
+
+Command list is fixed 256 A tracking slot, Reset emptys its rectangle; draws statistically distinguished full screen, left, right and other areas. Additional savers of the second edition actually save/scissor pairs within the line range of the experimental consumer function, maximum 64 scub, not to write disks in order, and not to allocate memory indefinitely. A tracked list exceeding capacity will clearly report overflow/untracked_draws, and therefore is not a complete GPU call audit.
+
+`phase=1` Only means that the call is made in the original consumer function of a registered double viewer, within the same thread. Other threads or delays in RHI work may fall on case=0, can't put the case=0 Use as a pure single view baseline. Draw counts are CPU API calls, not vertex, GPU completions or final pixel certificates. ExecuteIndirect, target resource, Clear and final synthesis is not yet covered.
+
+## Two rounds of live evidence.
+
+First round of PIDs 30160，10 Double-Sec 1,722 Sub-submission, consumption/preparation/destruction 1,722; state released, pool empty.17 The entrance is independently validated. Left/right view within the test range is recorded separately 407,036／410,875 Draw directly again, but the scissor is all classified as " Other " , which is not sufficient to judge the cropping.
+
+Second round PID 7276，10 Double-Sec 1,760 Sub-submission, consumption/preparation/destruction 1,760 The government has already released the pool, and it is empty.17 A single view is restored once again. The original source view is maintained and stopped. No spills in the actual rectangle records:
+
+| View, x/y/wide/high | Scissor, x/y/wide/high | Draw Call within Test Range |
+| --- | --- | ---: |
+| 0/0/960/1080 | 0/0/16384/16384 | 505,067 |
+| 960/0/960/1080 | 0/0/16384/16384 | 505,925 |
+| 0/0/1920/1080 | 0/0/16384/16384 | 7,248 |
+
+There are also a small number of smaller cropping areas corresponding to the right and left positions, as well as different sizes of reprocessing/support areas; specific rendering passs only without naming them by size. Command list tracking capacity overflow 262,460 No, no, no. 1,438,608 The error of all uncaptured paths cannot be ruled out on this basis.
+
+The large right-hand cut-off range described above covers the right half screen, and refutes the assumption that “these right calls are blocked by the left scissor.” Nor does right video itself prove that it is sufficiently broad to bind the target, that the resources are correct or that the synthesis ultimately retains the right half.
+
+## Validation and local evidence
+
+- Independent rectangle tests cover left and right recognition, non-limited values, right view with left scissor, Reset emptied, command list capacity cap, actual rectangular accumulation, non-test range not in histogram,64 A rectangular description cap.
+- D 3D 12 Self-measured real equipment and command lists to verify the transmission of new entry points and recovery of the additional entry after their cessation; no PSOs were constructed, and no delineated self-detection was claimed to have been performed.
+- Eight tests were passed for both submission and continuous life cycle analysis.
+- `analysis/runtime/viewport-combined-30160.*` and `viewport-rects-7276.*` Maintain field statistics, life cycle analysis and entry validation.
+- `analysis/game-io/frames/20261012-174634-7e1a53fc.jpg`、`20261012-175602-cc214a78.jpg` It's a test midway game window.
+
+## Next
+
+Record right/left drawing of tied RTVs and associated resource dimensions, followed by tracking removal and synthesis. Distinguishing between " inappropriate targets " and " subsequent over/out " , then changing codes; not directly forcibly changing view/scissor. Ultimately, it is still necessary to correct eye maps, project/IPD/unit calibration, OpenXR independent eye texture and interactive realization.
+
+---
+
+## 中文
+
 # 右侧绘制调用存在，主要裁剪区域覆盖右侧
 
 2026-10-12，原版关卡、第一人称 Mod 已恢复，用户要求永久关闭 DLSS。实际双眼像素仍未通过：窗口左半显示完整场景，右半黑色。

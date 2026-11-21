@@ -1,3 +1,31 @@
+# Mounted Authentication: Locally Repeated Read & Temporary Error Classification
+
+2026-10-17. For[Machine gun feedback.](120-v1-headset-mounted-feedback.md)The offline changes were not the receipt and inspection records of the actual black screens of the machine gun.
+
+`MountedContextCertificate._capture` The same type of inheritance chain is used repeatedly in a collection. `_capture` The internal re-entry of the detected identity and inheritance chain; the original final identity fresh reading, registration slot, parent pointer, reflect layout, links, POV and time stamp check is still in place.`LiveRegistryAnchorSampler._strict_guard` . The complete front-end dictionary is kept unchanged, and the time stamp or POV field is not deleted.
+
+For the same MountedFixture, single-take reading from 1,598 Down to 473 ;sampler with initial guard constructed from 4,984 Down to 1,609 Number. This is only the reading cost of synthesizing memory, not time-consuming or frame rate data for actual processes.
+
+Throw out only when other final border checks are fully passed, the time stamp itself is limited and changes `MountedTimestampChanged`. The sampler is five times older/200 ms re-trying in the budget without using old results. Identity, parentage, field layout, counterrelationship or POV change is still rejected; valid header changes are used `RegistryHeaderChanged` and saves accurate information back-to-back to the upper level for re-analysis. No extended type of load supported.
+
+Coordinated cwd `tools/native-capture`）：
+
+```text
+python -m unittest test_mounted_context test_anchor_config test_cinematic_anchor test_world_rebind test_world_rebind_runtime
+```
+
+88 Item is passed. The time-stamping recovery, continuous scroll-to-trip attempt/time limit, final identity duplicate authentication and the time stamp is rejected when accompanied by an identity/paternity/field/link/POV damage. The initial round of separate import of the original order of the exposure test path has been re-approved after the first entry order; not to hide the error by adding a retry.
+
+No games, simulators or real appearances in current cycle. No freeze VRDof replaced 60/61 DLL, nor changes to the old ZIP. The existing root directory Python will use the change at the next start; this is not the validation of the completed real opportunity.
+
+## Fork in the road, UI. New evidence.
+
+Saved from same user session `continuous-stereo-24696-20261017-150718-1be1dbc1.menu.jsonl` I'm sorry. 14 Number of entry 1670、observed_ns=82538877186100 Top floor `DeltaChoosePath / UIScene_PathChoice`，input_mode=4，mode=0,constent_reread=true. This creates the actual scene identity without any batching or geometry of drawing, without directly modifying UObject coordinates or global HUD deviations. The subsequent location should link the scene identity to a public UIScene drawing/croping and then adjust the same group elements as a whole.
+
+---
+
+## 中文
+
 # Mounted 认证：局部重复读取与暂态错误分类
 
 2026-10-17。针对[机枪真机反馈](120-v1-headset-mounted-feedback.md)的离线改动，不是实际机枪黑屏已修复的验收记录。

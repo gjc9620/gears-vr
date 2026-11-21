@@ -1,3 +1,178 @@
+# Reloaded Camera Survey (Roomed)2026-10-11）
+
+## Current conclusions
+
+A candidate for camera type, visual cache and primary calculation has been found from the actual game package. No binary rendering function, running-time object address or available hull have been found. The current result is static analysis without modifying the game or injection process.
+
+## Verified environment
+
+- Game:`Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded`。
+- EXE：`Binaries_x64/GOWDE-Steam.exe`，PE x 64, preferred ImageBase `0x140000000`(Not the current process load address).
+- SHA256：`bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。
+- Engineering.u, WarfareGame.u: package version 835/76，EngineVersion 3340，CookerVersion 111. UElib Builds an identification named GoWUE, which does not make it possible to recognize the game as Ultimete Edition.
+- Compression sign 32 Actual LZ 4 Depression success: Engineering 55 Block, WarfareGame 364 blocks, each sub-block and the length of the whole piece have been verified.
+- The depressure analysis copy is the same. 58,588,993 and 429,444,378 bytes, original game packages remain unchanged.
+- Object Export Table: Engineering 37,299 Entries; WarfareGame 149,763 item.
+
+## Evidence and call relationship
+
+The following relationships are derived from inverted functions; still need to be run to confirm which branch the player actually passes through.
+
+```text
+Engine.Camera.UpdateCamera
+  -> WarPlayerCamera.UpdateViewTarget（默认风格且目标为 Pawn 的分支）
+     -> WarPlayerCamera.PlayerUpdateCamera
+        -> Pawn.CalcCamera：成功时应用 CameraModifiers
+        -> 否则 UpdateCameraMode + PlayerUpdateCameraNative
+  -> NewPOV = ViewTarget.POV（切换视点时另有混合分支）
+  -> FillCameraCache(NewPOV)
+     -> CameraCache.TimeStamp = WorldInfo.TimeSeconds
+     -> CameraCache.POV = NewPOV
+
+PlayerController.GetPlayerViewPoint
+  -> PlayerCamera.GetCameraViewPoint
+     -> CameraCache.POV.Location / Rotation
+```
+
+All specific files are located in `J:/gearsVr/analysis/packages/`：
+
+| Evidence documents | Meaning |
+| --- | --- |
+| WarfareGame/Class_WarfareGame.WarPlayerCamera_.uc | native class, inheriting Camera; default FOV 70 |
+| WarfareGame/Function_WarfareGame.WarPlayerCamera.UpdateViewTarget_.uc | Default, Watch, FaceCam, etc. |
+| WarfareGame/Function_WarfareGame.WarPlayerCamera.PlayerUpdateCamera_.uc | CalcaCamera and Numerical Calcora |
+| WarfareGame/Function_WarfareGame.WarPlayerCamera.PlayerUpdateCameraNative_.uc | native function declaration; no original function |
+| Engine/Function_Engine.Camera.UpdateCamera_.uc | Viewpoint Update, Mix, Cache Writing |
+| Engine/Function_Engine.Camera.FillCameraCache_.uc | Final POV Cache Writing |
+| Engine/Function_Engine.Camera.GetCameraViewPoint_.uc | Read position and rotate from cache |
+| Engine/Function_Engine.PlayerController.GetPlayerViewPoint_.uc | Player Reads Camera Viewpoint |
+| Engine/objects.tsv、WarfareGame/objects.tsv | Index of packages objects for classes, functions, properties |
+
+WarfareGame Object Table WarPlayerCamera Index to 27485♪ PlayerUpdateCameraNative ♪ 27389;in Engineering. UpdateCamera is 6036, Camera. GetCameraViewPoint 6028 These are...**Package Object Index, not an RAM address or EXE RVA**。
+
+## Meaning of double-eyed rendering
+
+CameraCache.POV is the first central viewer candidate to be tracked, but changing this cache alone does not prove that a stereo rendering has been achieved. It also requires finding the location of the camera view into the scene/show matrix, creating an eye-and-eye view within the same logical frame and processing eyes depth, reprocessing history and retrofitting targets.
+
+The list of objects for Engineering.LocalPlayer includes Viewstate, LastViewLawcation, Origin, Size, ViewportClit; WarfareGame has WarLocalPlayer, WarGameyViewClient as a clue to the original scene view. CalcSceneView or other original entry points have not yet been verified.
+
+## Tools and limitations
+
+Unreal-Library 1.12.0 is the source code; dotnet does not exist in the current PATH. Use NuGet officially issued same version of the net 48 A small static export tool is built by the DLL and system C# compilers.
+
+UElib returns on the compressed package with a header only, and zero objects do not mean that there is no script.`tools/package-inspector/decompress.py` for observed 835/76, the nete folder header layouts write a special depressor program and only output copies of analysis. It cannot be used for any Unreal package or write back to the game directly.
+
+Partially inverted output `@NULL`、`__NFUN_*`, missing parameters, empty function statements and default attribute errors. The clearly visible calls in a function can be used as a thread, and the complete signature, structure layout and byte code still need to be checked.`errors.txt` Keeps an understanding of the diagnosis with load.log.
+
+The EXE static import table did not find D 3 D/DXGI import, which does not make it possible to judge that the game is not using them or directly confirming D 3D 12. The actual graphic call is still subject to validation of the module/chart frame.
+
+Next: After the user has completed the resolution adjustment, confirm the current operating environment and then read only the location of the player camera object and Cameron Cache to check whether the point is moving or shifting; then track the original view build entrance.
+
+Tools reference:[UElib Official Note](https://github.com/EliotVU/Unreal-Library), where the description of UE 3 Compressor packages need to be depressed first.
+
+## Read-only location results running this level
+
+Users provide a pause menu screenshot that is already contained in chapter I. PID 35088, the game process is loaded properly dxgi.dll,d 3d 12.dll、D 3D 12 Core.dll; this supports D-A-B-E-D.3D 12 Runs the path, but has not yet been framed to support specific call.
+
+Export the base address of the table of points with the same name through four separate name entries, and index `0x4880000`Check it out. 60,193 Indexes and contents for individual entries. A neighbouring name is also reasonably relevant, such as WarPlayerCamera and Default__WarPlayerCamera。
+
+Scan the candidate for the object, and further screen through name, type pointer, Outer and class inheritance relationship, find an example of WarPlayerCamera:
+
+| Item | Current Operational Observation |
+| --- | --- |
+| WarPlayerCamera UClass | `0x18e01180` |
+| Example of a camera | `0x8071c040`,name number 3 |
+| Outer | PersistentLevel `0x8bf60be0` |
+| Camera inheritance chain. | WarPlayerCamera → Camera → Actor → Object |
+| UObject Name / Class / Outlook Fields | `+0x48` / `+0x50` / `+0x40` |
+| CameronCache Properties Metadata | `0x1fe3c560`,Outer is Camera, TypeScructProperty |
+| CameraCache instance field offset | `+0x3ac` |
+| TCameraCache.POV Offset | `+0x4` |
+| POV Address | `0x8071c3f0` |
+| TPOV.Location / Rotation / FOV Offset | `0` / `12` / `24` |
+
+properties offset from running-time reflection metadata;offset_Internal candidate field `+0x94` Crosschecking with the three TPOV member layouts and CameraCache/POV structural type pointers match each other. Camera caches are visible `(273.8499, 920.5922, 294.6194)`, rotation `(Pitch=-1173, Yaw=23464, Roll=0)`、FOV `80`- That's a reasonable number.
+
+Pause Sample 3 seconds,291 A sample, time stamp. `9.257865`, location, rotation and FOV are all unchanged and are in a state of pause. The game has yet to be restored and the input is linked by a controlled camera rotation; this cache cannot yet be shown as the final original rendering reading/writing interface.
+
+Read-only fields are available extra 828 Fields/functions: Camera. PCOwner `+0x224`、DefaultFOV `+0x234`、ViewTarget `+0x3cc`、PendingViewTarget `+0x404`, for subsequent relationship verification.
+
+The above address only applies to the current PID run of this wheel, and must be re-deconstructed after restarting. The evidence file is in `analysis/runtime/`Name-table-candidates.json, camera-object-candaidates.json, camera-metadata.json, camera-fields.json, camera-paused.csv/json. All tools only request QUERY_INFORMATION and VM_READ permissions, without process writing, debugging or DLL injections.
+
+### Camera Input Relationship Validation with Local Player
+
+Still sample after restoring game 5 seconds,486 Sample: Game Cache Time Pumping Propulsion 5 Seconds, position, rotation, FOV all stable.
+
+Sample during user-execution camera operations 40 seconds,3,872 Sample:1,533 Different POV;Yaw range -1893 to 24827 RU, Pitch Range -1557 To--212 RU，Roll 0，FOV 80. Proofs that the cache response lens is entered. Because a third person claims that the camera will rotate around the person, the change in the position of the lens cannot be inferred from the movement of the person alone.
+
+The round has been stamped on an appointment. 3.611 The non-push interval of seconds. Users have specified that the game loses focus automatically; there is no sync between Present and focus records, and that it is not possible to get a record of the game.**No, I can't.**The identification of this section as a VM pause in the guide does not prove that the final rendering camera stops.
+
+The reflector relationship verification is closed:
+
+```text
+WarPlayerCamera 0x8071c040
+  PCOwner (+0x224) -> WarPC 0x8cd12ae0
+    PlayerCamera (+0x37c) -> 同一个 WarPlayerCamera
+    Player (+0x374) -> WarLocalPlayer 0x811f4bd0
+    Pawn (+0x224) -> Pawn_COGMarcus 0x7c140100
+```
+
+So local player cameras are located, not default objects or other Actor cameras. Evidence: local-camera-viation.json, camera-focused-stille.csv/json, camera-look-test.csv/json.
+
+### Original entrance candidate
+
+UFunction `WarPlayerCamera.PlayerUpdateCameraNative` Run-time field `+0x114` Read to `0x1403b3af4`(Continue module RVA `0x3b3af4`. The same field points to several script functions together `0x1401d6ca0`, supports the explanation that it is a function-executing entry field.
+
+The candidate is on an average executable read-only page (protected) 0x20) Small inverses show it presses `FFrame.Code +0x28` Parsing VM parameters, then presenting RCX =this, RDX =Pawn, XMM 2=DeltaTime Candidate, R 9=OutVT candidate for call `0x140110878`. This is a combination of script calls and compilations of ABI inferences that have not been confirmed dynamically. There is no reading or processing of the ...themida/.boot area, nor is it unpacked to protect.
+
+This entry is still a VM-native packaging layer, which cannot be directly referred to as the final rendering of a VM movement. The actual caller and view consumer are analysed later. Evidence: camera-native-entry.json.
+
+## Auto-resolution without a fixed stack address
+
+The GObjs data array was found by cross-checking the internal index of three separate categories objects and object array slots; the name sheet is also checked by four separate names records. Then looking for Tarray head in the normal module area, you get two anchor points corresponding to the current EXEHash:
+
+- GNames: Module RVA `0x1c34800`。
+- GOVAC: Module RVA `0x1c24730`。
+
+Current Head Display Name 61,871 Item, Object 212,688 entry. The location tool searchs for the actual module base rather than using fixed `0x140000000`;RVA bound to the structure metadata layout to EXE SHA 256, the version does not match and refuses to continue.
+
+Parsing process: Verify examples from the EXE  ⁇  module base  ⁇  GNames / GObjects  ⁇  WarPlayerCamera class 'Run-time reflection field and TPOV layout array  ⁇ PCOwner / PlayerCamera two-way link  ⁇ WarLocalPlayer  ⁇  Current POV.
+
+`resolve_camera.py` Do not read any old running time surveys JSON; enter only current PID and version matching information. Start-up approximation 0.578 Seconds, stand-alone back to the current camera. `0x8071c040`、POV `0x8071c3f0`, which corresponds to the previous input of validation and player relationship verification. It rejects multiple local cameras, illegal arrays or fields, error versions, group reallocations and changes in camera links.
+
+Entry:`tools/package-inspector/Resolve-Camera.ps1` Automatically select the current only game process;results:`analysis/runtime/camera-resolved.json`. Evidence found:`analysis/runtime/global-anchors.json`。
+
+The results of the validation are repeated at the cross-relaunch and process check points below. Tools have not yet been continuously listening to the camera life cycle; real time Mod integration also requires a frame-by-scope check on object relationships and re-defunct.
+
+### Cross-relaunch results
+
+Automatically parses the game after user reopens, PID from 35088 And become 32532；EXE SHA 256 Same.
+
+| Object | Old Process | New Process |
+| --- | --- | --- |
+| Player Camera | `0x8071c040` | `0x24d893a0` |
+| CameraCache.POV | `0x8071c3f0` | `0x24d89750` |
+| WarPC | `0x8cd12ae0` | `0x8d782ae0` |
+| WarLocalPlayer | `0x811f4bd0` | `0x914b8bc0` |
+
+Time used for new process resolution 0.563 s, reflect properties are consistent, player/camcade two-way relationships and numeric validation are passed. Prove that the location path is repeated between these two startup times; does not mean that all versions or any random life cycle changes have been tested.`analysis/runtime/camera-resolved-reopen.json`。
+
+Suspended additional sampling 60 Timetamps and POVs are identical, FOV 80, matching the status of automatic pause during user chat. Evidence:`analysis/runtime/camera-reopen-paused-check.json`。
+
+Users indicate that each time you talk to an assistant, the game loses focus and automatically suspends. In future, read-only positioning can be completed in a pause; when games need operation or update, users must be explicitly advised to cut back and keep focus. Freezes during chat cannot be considered VM schedule abnormal.
+
+### Reload results with process check points
+
+Re-declassify the user after executing LOAD LAST CHECKPOPIINT, PID is still 32532;time-use conventions 0.593 Seconds. Cameras. `0x24d893a0`、POV `0x24d89750`The addresses of WarPC and WarLocalPlayer remain unchanged; reflect layout, player two-way relationship and numeric validation are passed to read position changes, FOV still is 80。
+
+This address does not change the number of cameras that are being rebuilt, nor does it prove that all reloads will keep objects. This is proof only that independent positioning remains valid after the current version and the check points at the current level have been reloaded.
+
+Three basic tests were passed, both in original operation and across reboot and overloading with process check points.`analysis/runtime/camera-resolved-checkpoint.json`、`analysis/runtime/checkpoint-comparison.json`. No memory writing or injections are performed.
+
+---
+
+## 中文
+
 # Reloaded 摄像机调查（2026-10-11）
 
 ## 当前结论

@@ -1,3 +1,43 @@
+# First person to repair a sniper gun when he's armed
+
+2026-10-22. User clearly reports that the first person said that a sniper gun would be returned to the third person; when the third person said he was in possession of a sniper gun, E+R could not enter the first person 's name. Sniper FirstPerson who has been repaired and is now bound for normal starter by automatic inspection 1 Build. New game process is effective; no actual games or entity header acceptances have been added this time.
+
+## Reason and evidence
+
+Original `first_person_live` I'm getting a visual. `Weap_SniperRifle` After the class, without conditions, skips the first person's preview without distinguishing between carrying a gun and actually opening. This allows the first person to claim that the switch is still active, the retrofitting camera of the sniper gun returns to the original third person, explaining that holding the gun with an E+R is ineffective. The problem is the camera selection rules for the current preview.
+
+Working copy and unmodified Steam copy disk `Engine.u`、`WarfareGame.u` Bytes Hashi, SHA 256 Yes `8d6ad508162609482656fd892cdadc30e0438c8ce2c44fc87163a99c0601666a`、`cd6d9a98c809d5520783a732f955916111e20bb6bf3155fb8b15dea86d7d0538`In these two packages, no residuals of the replacement package were found from the former third party first person.
+
+Retrieving and re-establishing the knowledge base first 2 Saved `Weap_SniperRifle.UseFirstPersonCamera`、`SetZoomed` Script. The former returns. `bZoomed`; this supports distinguishing the camera from the actual weapon opener, instead of replacing the open mirror with FOV threshold or weapons category. Saves a script for SHA 256 Yes `e096866710f95fbb1a798dfe921c8dea19581bb9743fe90c519fc6b44b78f67d`. The source is the available solver evidence, separates it from the current disk compression package Hashi and real-time memory access, without adding an IDA analysis.
+
+User Session already exists `continuous-stereo-32628-20261022-033835-3d51cc56` Use MountedRememe 2 It's on the record. `owned_material_reticle_draws=5211`、`owned_material_reticle_suppressed=0`、`owned_error=0`、`owned_ui_first_fault=0`. This indicates only that the previous frame path has been run and no corresponding malfunctions recorded; the session is ultimately incomplete, recording the exit/identity failure and cleanup of the game process which is not complete and cannot be accepted as a whole or as the new first person code for this time.
+
+## Achieved
+
+- Unopened snipers use the same first person preview as regular guns, support options when changing guns and support E+R / L when holding guns 3＋R 3 Switch.
+- Only certified `bZoomed` Keeps the original mirror camera for real, while preventing " lens close" from superimpose. The first person says that the switch remains selected and then resumes the preview after closing.
+- Read a chain from the current Pawn weapon and find it in a verified reflect layout `bZoomed`, verify its name, class of belonging, BoolProperty type, array dimensions, element size, field position, single bit mask and the Bool accessor and distribution address matching EXE.
+- The attribute address is saved to reduce the repetition of a history. Each time you recheck the object slot, name, chain, attribute layout and physical marking; read before and after checking the opening position and current weapon pointer. This preview option is rejected when changing guns, invalid objects or metadata, keeping the original camera in preference to the user.
+- No new validations are made for the visualization of a machine-shot, ballistic or sniper-scope magnification.
+
+## Build, Validate and Default Integration
+
+From the latest MountedResume 2 Freezing of source code candidate, baseline native SHA 256 Yes `e89ff571364c6afde938d558ab2860405b6bb13ad813c95e91546abed7c774fe`. Only six documents changed: five first person-delivering/testing files `capture.cpp` The medium-toy camera selects the variable name; no whole copy of the workspace source file containing other experiments is available. The machine gun recovery, sniper mirror material, bunker targeting, renderer, XR and Playground are maintained.
+
+37 The primary/pre-start inspection is passed, which includes first person view, weapon status, lens closeness, camera observer, parastar, sniper mirror material, image frame storage and world recovery. New examples are used to cover sniper guns, sniper weapons by E+R, open/receiver retention selection, sniper subtypes, wrong attribute belonging/ layout/type, failure slots, loop discovery chain, opening position changes, metadata change and end-of-check re-entry. 45 Group view combination checks continue. The return of the offscreen shared output does not equal the receipt of the actual GPU image of the sniper gun.
+
+485 The compilation relies on checking, freezing of the source code and review of the data,109 The item starter Python returns check passed. The starter file confirms that the candidate matches the supported retail EXE.
+
+Normal Starter Selection `tools/native-capture/build-sniper-first-person1/GearsCaptureSniperFirstPerson1.dll`，SHA 256 Yes `9a43860f0adaa047314f4b676683c15ada1ef5027662a75f241361c37bbdde75`. The list of names is: `tools/vr-launcher/manifest-sniper-first-person1.json`. The integration changes only three native fields, the user configures Hash to remain unchanged and does not update the release label or distribution package.
+
+No new game process has been started or operated, no files have been changed, no renderDoc is performed or the head of entity is shown. The actual possession of a gun, the continuity of the switch mirror and the header experience are still cumulative to the receipt order without having to be tested separately.
+
+Audit, freeze source, build and test returns stored in signed `analysis/sniper-first-person-20261022/`、`analysis/sniper-first-person1-20261022/`、`analysis/sniper-first-person1-source/` and `analysis/native-build-sniper-first-person1/`; proprietary scripts and run logs do not enter distribution packages.
+
+---
+
+## 中文
+
 # 狙击枪持枪时的第一人称切换修复
 
 2026-10-22。用户明确报告：在第一人称换到狙击枪会退回第三人称；第三人称持狙击枪时，E＋R 无法进入第一人称。已修复并通过自动检查，合入普通启动器的 SniperFirstPerson1 构建。新游戏进程生效；本次没有新增实际游戏或实体头显验收。

@@ -1,3 +1,62 @@
+# Native View Call Validation:2026-10-11
+
+## Conclusions
+
+Confirmed via temporary Hook in current game process: RVA `0x15cf08` The current WarLocalPlayer constructs and returns objects containing view/ projector matrices. The location, rotation and matrix of the original output changes with the player; the same round is also recorded as DXGI Presten. This is further than static candidates but has not yet been rewritten or rendered any view.
+
+Player reports that the "normal, no apparent anomalies" during testing. The original code entry patch has been withdrawn, collecting DLLs remains in process and is released as the game exits. After stopping, the camera locator is successfully run again, and the original entry bytes of both games functions are restored and verified.
+
+## Experimental conditions
+
+Target is SHA.256 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`，PID 32532. The collection starts with the Hook enabled, all 120 sec, which contains chats, focus pauses, reset games and players moving / turns lenses, not complete 120 Seconds continue the game.
+
+Use this machine 2026 MSVC x 64 and Windows SDK compiled. Third party MinHook v 1.3.4 . The DLL loads the process through a starter and temporarily rewriting the function entry using MinHook. This round is not a read-only memory survey, but does not modify location, direction, matrix or original function parameters/ return values.
+
+The independent test program before access validates the alignment of parameters and returns with real trampoline, event nesting records and matrix copy. Additional enhancements are made in `build-next` Compile, self-measured: add entry byte after stoppage, re-call the original function and keep a static CRT thread notification. Enhancement is not loaded for the current game, and the run-time result is the original `build` .
+
+## Call Results
+
+| Category | All records | Record with game focus | Main Object / Thread |
+| --- | --- | --- | --- |
+| scene view 0x15cf08 | 4115 | 1071 | WarLocalPlayer 0x914b8bc0; threads 4960 |
+| Player Viewer Event 0x15c968 | 10068 | 3978 | PlayerController 0x8d782ae0; threads 4960 |
+| DXGI Present | 4165 | 1120 | Same swapchain 0x107229ad0; threads 17824、31100,Slight 4960 |
+| DXGI Present 1 | 0 | 0 | Method Hook was created successfully and no call has been recorded in this round |
+
+The above address and thread ID is used only to describe the experiment and cannot be a positioning configuration for the new process.
+
+All 4115 The secondary scene view calls match the LocalPlayer independently located before startup;4115 We've read two candidate matrices successfully. 32 Individual elements, all of which are limited. 351 It's different.57 A different rotation and 352 Groups of different matrices; Cameron Cache time is also advancing. The small matrix differences at stationary times are not attributable separately.
+
+The caller for the scene view returns all positions to `0x2c7bfa`..with static investigations. `0x2c7bf5` Call command corresponds. Player point event caller includes `0x15d0ca`, directly validates the path it is built from a scene view; there are calls for other uses, so the player point-of-view event count cannot be used as a frame rendering.
+
+Median number of scene views to call interval for focus periods is 16.65905 ms; two main Precent workspaces are each approximately 16.6634 and 16.6645 ms. The interval between the unfocused view and the main Present caller is approximately 33.33 ms. The different groups contain focus switching, thread switching and preparation times, do not extrapolate the continuous frame rate using large intervals or aggregates, nor does it prove that view corresponds to Precent. All Presents are not DXGI_PRESS_TEST and have failed HRESUT.
+
+Queue to be abandoned 1 Logs are not no-loss tracks, and counting should not be used to strictly prove that each frame is called exactly once. View original functions take about the time of focus (excluding back-to-back expenses). 0.0085 ms。
+
+## Observation when camera cache stops updating
+
+There's a continuous agreement in the record. 5.5866 Seconds, game has focus but CameraCache time holds 129.227142 The footage of the event. 286 Subscenes View Call and 335 Second.
+
+This proves that the primary path can continue at this observation when the cache is still running. However, users may have focused on the pause menu, not yet restored to Esc or there are other reasons for the pause; no menu status and VM remote sensing so this**No, it's not.**Evidence of “repeated and resolved script VM pauses”. Players also reported no apparent freeze.
+
+## Stop and restore evidence
+
+Status file termination act:`disable_status=0 active=0 dropped=1`. Revalidation of RVA with read-only locator after stop `0x15cf08` and `0x15c968` Original entrance bytes are restored in both locations; the current camera relationship is still valid and the game process responds. Present Hook's revocation is confirmed by MinHook returning to successful status, without saving and checking its original entry by byte.
+
+Starts scripts to throw out reading errors because the captured status file is locked in CRT; DLL and the collection thread are actually started. Confirming operational status by naming a collection event created only after Hook is enabled, successfully reading the full log after collecting. The starter has joined the processing of this file lock situation, does not equate failure with failure of injection or blindly overloading.
+
+Local original evidence:`analysis/runtime/native-capture-1.csv`、`.json`、`.status.txt`. These do not enter Git; repository save code, validation conclusion and version candidate configuration. The current DLL is still in process and the original entrance has been restored; a new round or build needs to exit and reset.
+
+## Next
+
+The next step is a very small, reversible view change test: the field view takes back the player's view point and before generating the matrix, verify that a controlled angle changes affect the image while retaining original person input. It must be limited to the current rotation user and current player identity, avoiding any modification of other GetPlayerViewPoint calls such as Aim, Audio or other.
+
+This step is used to control the entry by using a primary lens. Then you can take OpenXR position and study left-and-right eye independent view and projection; already existing matrix reading capacity does not equal to having two eyes or 6DoF。
+
+---
+
+## 中文
+
 # 原生视图调用验证：2026-10-11
 
 ## 结论

@@ -1,3 +1,86 @@
+# Final deployment delivery target
+
+## Current range (%)2026-10-16）
+
+User has subsequently revoked the first Low/High standalone eye map slot, requesting current resolution rendering of the game; each eye below 2K/4 K. The stand-alone target and the old percentage table are kept as historical records, not being used as a basis for current first-version delivery requirements or calculation of progress.1920×1080 and 3840×2160 Game source path; eye map sizes are determined by actual SBS, and square texture does not constitute a condition for VR correctness.
+
+The first edition still requires third person to be a pair of eyes and head.6 DIF/FOV/Runback, start VR and menu/gauge/checkpoint transitions, complete UI categories listed by users, DLSS/DLAA disabled locking, ordinary play and pass stability, and player deployment and recovery without the need to develop environment. First person ' s interaction with hands weapons is still on track.
+
+Current Status With `docs/39-mainline-progress-and-acceptance.md` The most recent evidence quoted is: local GUI default has been switched to Native 23/XR 16 The blog is a study candidate.1080 p and 4 See you back at the K Checkpoint/Main menu.docs/70，Recovery 8 Keep rollback; the graphical lock is connected when running, and cannot follow the old conclusion below " Not yet reached." The six-axis virtual image evidence for simulator docs/71, real headscale and comfort remain to be accepted. Chinese studies on GUI and path selection/HUD size/stop/state portal are available but still relying on warehouse and Python, not all of which are ready for hand-held; UI coverage, CG and short-term flashes have yet to be completed.
+
+## Historical requirements and experimental records
+
+2026-10-15 OwnedXr 1/2: The experiment has already completed the separate Law Texture and freeze the paper ticket access to shared publicsher, which is actually done separately 120 Frame/119 issues;Xr 1 Receive the full eye map back to the end. But both rounds are equal 0: medium age of producer at time of publication 147.10 ms, more than reservation 100 ms door limits. Build/queuing and scene consumption still need to be addressed, not being able to upgrade the default list or claim independent resolution VR availability.39 Experimental return and 6 The test was checked for compatibility.58 The entrance is restored and exited normally; Owner remains here until exit.`analysis/ui-position-runtime/owned-xr2-42588.audit.json`。
+
+2026-10-15 OwnedSequence 3: Independent Low Goal accomplished 16 A continuous scene picket, with two copies of the first and second GPUs.2048×2048(a) Eye maps, which are not dark and change over time;34 Return, return.58 Access is restored and normal exits are passed. Only the boundary scene output is verified, Canvas/XR has not yet reached this resource, High and long-time travel are unknown. Owner and creation list references remain available until process exit, starting with inlinecomplete, cannot be used as deployable evidence.`analysis/ui-position-runtime/owned-sequence3-45772.audit.json`;list of experiments`tools/vr-launcher/manifest-owned-sequence3.json`, does not replace the default release list.
+
+2026-10-12 Users are clear: ultimately, a deployable version is needed.
+The compiled successful sampling tool cannot be used as the final Mod delivery.
+
+The final delivery shall include:
+
+- A centralized, clear Mod catalogue and replicable deployment package contains only the codes we have prepared and the dissemination dependencies.
+- A startup entrance, which automatically recognizes games, versions, players and headers, does not require manual designation of a PID or running sample script.
+- Version check, editable configuration, centering/stopping access and logs for easy positioning.
+- Repeatable installation, start-up, recovery and unloading instructions do not cover the unknown original documents.
+- Complete validation in restart, reload and ordinary play processes, with actual support scope and known problems.
+
+2026-10-14 Users are clear: Release 1 first releases the third person ' s two-fold frame VR Mod, which is activated and tested in the user ' s presence.
+The first edition includes a reliable head.6 DIF (rotation and right, left, front, front/down, direction, ratio and near view correctly), start-up i.e. VR access, display switch to the menu to level, correct acoustic/show UI/subtitle, and DLSS closed and run without re-enablement.
+Maintains the current available third-person double-eye baseline; first-person, controller and VR special bunker/fly pounce interactively to be left for subsequent version. Normal operations such as original game mouse/handhold bunkers, roller are still within the basic play compatibility of the first edition.
+Follow-up interactive design still reference docs/10-vr-interaction-design.md, does not use all its contents as a threshold for publication in the first edition.
+The first version is deployed in the direction of an independent portable starter (planned, not achieved):
+
+- Player downloads and depresses the Mod package, selects the first location for the game installation; the starter saves the path and checks the supported EXE version.
+- Player connection headlights, starter recognizes OpenXR environment and allows selection; runtime selects only for Mod process without unauthorized changes to the system ' s global settings.
+- Click Start VR, load Mod by the starter, display menu and then connect to the double-eye of the level. Provide stop, center and export diagnostic log portals.
+- The release of packages is ready to distribute the operational dependencies; players do not need Python, Ghidra, IDA, compiler tools or develop warehouses.
+- The original game file is not covered by permanent patches; settings are set to save backups, close/offload the actual change record and not overwhelm other settings that have been modified after the player.
+- Updates the list of files that replace the Mod application and maintains the user profile; unmounts to stop the Mod, restore changes in its settings and then deletes the Mod directory.
+
+Initial support ranges only for actual validated game version/issue platform/headprint runtime, and cannot extend the test of the current build to all Steam or other store versions. Unknown version is clearly not supported and does not test writing deviations.e 80aad 0 It's all in line. `config.game_path` The portal still relies on the warehouse Python and build directory, relying on seals, life-cycle interfaces and unmounted recovery to be delivered.
+Specific infusion packages and final EXE/DLL documents to be deployed are finalized.
+
+2026-10-15 User requests to align progress with the full first edition and expand UI screen-up to a full game interface.UI compatibility list includes: main menu/sets/stopping/loading and bullet windows;(b) Normal and open-scope, weapons-enabled;(a) The replacement of gun icons and text;Ammunition, active reloading, life/injury tips;Operation/pick-up/tip-through;Mission, teammate and landing rescue markers;Real subtitling, chapter/checkpoint/extratext;Death/failure and retest interface.The list is the range of delivery, and the actual mapping paths and displays must still be recorded on a case-by-case basis and cannot be replaced by an ordinary HUD sample.(a) Public Tile/Text/Material/UIScene path priority batch processing;The quasi-star and world markers are to be kept in their respective targets, depths and eye-to-eye projection, which is not uniformly moved to the centre of the screen.
+
+Estimated progress of the current first-page project **45–50%**. This is estimated by functional weight, not test coverage, accepted function ratio or projection of remaining time. The following crude particle completion factor is weighted:47.75%Only about half of the external reports are available; independent helper and static back-compilation is only prepared, not operational.
+
+| Functions | Weights | Estimated completion of work | Evidence available and remaining threshold |
+| --- | ---: | ---: | --- |
+| The third person is a pair of eyes. | 20% | 90% | Real headlights are available for playback, multiple-wheel simulator stable output; more status/level still is steady |
+| 6 D.F., F.V., middle and distance. | 10% | 60% | Position and eye-to-eye FOV entry matrix; horizontal direction/scale/nearview differential and lens distance require real machine verification |
+| Start VR, menu and level switch | 10% | 60% | Starts the full cycle of plane level double-eye and XR sessions; paused/returned/re-introducing incomplete |
+| Full UI | 20% | 25% | Partial icons/text links and HUD plane are running; acoustic, real subtitles, Materal, UIScene and world tags are still missing |
+| Every eye.2K/4 K-Independent Rendering | 10% | 25% | Two test charts and independent XR eye links passed; original game scene target not yet independent |
+| Locking on DLSS/DLAA running | 5% | 25% | Start configuration shutdown and CPU route strategy completed; actual hoops and menu changes stopped not enabled |
+| Stability and normal play. | 15% | 50% | Normal stop/entry recovery of evidence available; reese, load, menu cycle, bunker roll still to be covered |
+| Player Deployment and Recovery | 10% | 15% | Research starter and version check exists; path selection, reliance on sealing, loading and unloading and portable packages are not completed |
+
+Current priorities: Independent scene output and desktop mirror separation, parallel to UI public channel inventory; then complete class-by-category UI revision and real subtitles; access graphic lock and full life cycle; end with regular machine games, packing and restoration validation. First person/controller gun is still in the range of subsequent versions.
+
+The preparation code for locking on the graphics is located at `tools/native-capture/graphics_lock.h`Yes.38 The CPU test, covering menu requests, parameter collections, queue consumption and maintaining the call behaviour when failure occurs. It has not yet accessed native books or had a real-time menu switch-off validation, so it is still not possible to declare "DLSS locked." The current startup setting policy only ensures that the DLSS is closed before the pre-start durable configuration. The actual line/ABI and parameters are validated as independent boundaries. `graphics_lock_routes.h` The direct part of the line is distinguished from the queued part of the lined entrapment, which requires explicit verification of caller/thread. CPU route testing has been passed but was not accessed and validated at the time of running.
+Game and third-party raw tools, game packages are not included in the release package or Git.
+
+2026-10-14 Resolution requires update: VR paints only provide the Low / High two tranches, per eye 2048×2048 / 4096×4096 Design. The resolution of the game menu and the size of the desktop window does not determine VR scene resolution; the desktop is a stand-alone mirror. The slot starts with the selection, switch and restart VR. The default Low, High is an optional slot. DLSS/DLAA continues to be disabled; texture, shadows, etc. do not change without permission from this resolution slot.
+
+This is a goal to be completed, not a current state of achievement. 3840×2160 Backbuffer issues SBS, which is every eye 1920×2160. Real Low/ High requires independent engine scene retrofitting targets (SBS) 4096×2048 / 8192×4096, matching scene color/dispth/postprocess size and final output verification; cannot be called native after magnifying existing images 2K/4 K. The XR receiver end should use a stand-alone image, runtime before startup, with an eye and single size limit, without assuming support 8192 Large combined XR diagrams. If the slot is selected beyond the limit, it is clearly reported and the slot is not down in silence.
+
+2026-10-15 Create validation of actual game original target: both SBS sizes create expected RGBA 8 Single-sample colour texture and release the reference held in this probe from the original line; no target is bound to be drawn or the above actual display size changed. The visible two-tier boundary of the source view has also returned through CPU. The scene/Canvas redirection, target holding period, GPU status/queuing connection and desktop mirrors remain gaps. The native pool may be delayed for recovery, and emptied does not amount to immediate destruction of physical distribution as proven.
+
+OwnedMetadata 1 Further validates the independent profile/gang height/show parameters and normal releases in actual games. The displaying parameters removes dependence on the long-term survival of the original view object. The login is still called from the paragraph-by-paragraph validated original logic, retaining the current gamma; no copy was made of the original viewer.299 CPU Checks and 13 The block GPU status wire test passed, with existing binary and 40 The entrance is restored. New textures have not yet entered scene/Canvas/GPU, so independent resolution remains to be completed; actual queue holdings with GPU fence retirement, complete barrier coverage and desktop mirrors cannot replace the probe. `analysis/ui-position-runtime/owned-metadata1-49524.audit.json`。
+
+Follow-up, OwnedScene.1 Already point a single Low picket coppy-family target at this adapter: two eyes fixed 2048×2048, two final Draw matching 4096×2048 Independent resource, and return once in line with the same DIRECT; renderer is normally destroyed without a failure. Current evidence stops when orders are submitted, pixels, GPU fence, Canvas and continuous output remain unverified. Experimental raw references are reserved to process exit, and the full-cleaning of the starter is judged as incomplete;40 The entrance is independently verified and the game is normally out of play to finish the experiment. This step does not change the resolution evidence available to the player. `analysis/ui-position-runtime/owned-scene1-37624.audit.json`。
+
+The image projection continues to use every asymmetric FOV and bits returned with square texture that does not mean square or symmetrical view field. High resolution means pixel budget, AVP compatibility with other high-end header displays must also be verified separately for their PCVR streams/OpenXR paths, running time limits and actual displays, without prior commitment of support.
+
+OwnedPixels 5 The GPU, which has achieved the actual single-frame Low Independence goal, reads:4096×2048 The continued independence of Low/High, the intermediate scene buffer size, desktop mirroring and normal retirement are still incomplete without updating the percentage of the player's resolution or overall project.56 The entrance resumed and the exit was normal, but the experiment Owner intentionally retained the process to exit and the starter remained incomplete. `analysis/ui-position-runtime/owned-pixels5-40520.audit.json`。
+
+Historical status test correction: the source Barrier interface was wrongly tied to the slot 24, now corrected to SDK slot 26♪ And join in 30 entry compilation period offset check; previously "13 The conversion conclusion of the GPU state connection test has been replaced.13 Downed-output,8 The debug layer is not available when the scene-GPU and WARP pixels check is passed.5 The actual target is maintained at RT from creation to reading back, without covering the side state conversion branch.[Recent evidence and limitations](00-roadmap-and-learning.md)。
+
+---
+
+## 中文
+
 # 最终部署交付目标
 
 ## 当前有效范围（2026-10-16）

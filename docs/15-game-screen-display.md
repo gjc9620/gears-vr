@@ -1,3 +1,51 @@
+# Game Image into Top: Show the path prototype
+
+2026-10-12 Short, short.30 The seconds show the test and the user header confirmation passed.
+
+Add run_pose.py-game-screen. Python reuses game path checksum
+HWND Selection, C++ Revalidation Window/PID/EXE Name; Windows Graphics Capture
+CreateForWindow only captures the target game and does not retreat to the desktop.
+Only the latest frame is maintained, no continuous screenshots are written and no computer operating model is called.
+
+1920×1080 After the client area is cut down, sample to 960×540- Yeah, I'm sure. 15 Hz update.
+Prototype read back to BGRA, then transferred to D 3D 12 Upload buffer; this is not the final low delay GPU straight-up.
+OpenXR swapchain toggle resource state before and after copying, release the image when GPU fence is completed.
+The first upload of an additional GPU return, pixel-to-peer check for RGB with opacity alpha and save two PPMs.
+
+OpenXR submits a single 2D quadd at the VIEW space front of XR_EY_VISIBILITY_BOTH 2 Mimi,
+Kwang 1.6 Rice, keep the game wide. The panel follows the head, this wheel does not drive video games,
+No mapping of each scene, nor the repertoire of the same image is called stereo-stylish.
+Failed to report when the source window is closed, minimised or size changed; capture exceeding 1 Do not submit the panel if no new frame is available for seconds.
+
+Short 1：3 seconds,346 Subquad Submission,42 Subtextual upload,41 Sub-image content changes.
+Short 2(add GPU validation):3 seconds,344 Subquad Submission,41 It's uploaded,40 The second change,
+gpu_pixels_verified=true, quit the game properly. 28720，VDXR/Quest 3。
+Second round of evidence:analysis/openxr/pose-20261012-002210-205308.*；
+Source frame.csv-game-source.ppm, actual swapchain return.csv-game-submitted.ppm.
+These certificates capture, upload and submit paths; whether or not to see, colour and perception still require user confirmation.
+
+```powershell
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $py J:\gearsVr\tools\openxr-probe\run_pose.py --seconds 30 --game-screen --runtime 'C:\Program Files\Virtual Desktop Streamer\OpenXR\virtualdesktop-openxr.json'
+```
+
+Only the pairing process covers OpenXR runtime without changing the system registration form. Automatically closes and closes WGC/OpenXR sessions.
+The next step is to assess the original rendering image sharing, matching the point of view/show and the time series of the images before making a real eye render.
+
+## User confirmed 30 Second Test
+
+Evidence analysis/openxr/pose-20261012-002408-134913.*。
+3,572 The second time you have to go,411 Second game texture upload,410 The second change in content,
+GPU frame pixel verification passed, the program exited normally. Original OpenXR position 3,572 (a) Limited and tracked regulations;
+Can not convert Quad submissions to game image update rate.
+User clearly confirms: "Accepts the level, the picture is continuous and the colour is normal."
+This round is marked by a head-over and submission record, showing access, without opening the inside of the game.
+The current ceiling and target achieved remains a 2D diagnostic panel, which does not represent either an immersion VR or a dual sighting.
+
+---
+
+## 中文
+
 # 游戏画面进入头显：显示通路原型
 
 2026-10-12。短测、30 秒显示测试及用户头显端确认通过。

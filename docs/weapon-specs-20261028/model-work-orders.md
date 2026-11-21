@@ -1,3 +1,81 @@
+# Models and Activity Sheets
+
+2026-10-28 Offline delivery v 2. Counterpart[12 Speculation Cards](weapon-cards.md)and[Review report](interaction-review-v2.md). This list identifies the source, results and subsequent identification of liability;[5 GLB delivered](../../assets/weapon-6dof/offline-v2/README.md), does not equate the extraction of a grey model or GLB to a loaded game asset.
+
+## Treatment principles and delivery contracts
+
+The original independent component is given priority for reuse; the structure of the gun has priority for retention of the original bone, skin mask, material and animation level; local independent components are created only if it needs to be taken out of hand without a confirmed separate piece. The subject does not rebuild. The transbone weight or cross-bone triangle is kept in a skin coating that is not removed by the maximum weight.
+
+Each asset is delivered: the only ID, source package/grid/Hashi, license attributes (referenced in game/local extraction/original), parent and local reference systems, units, primary grabs, insertion axes and entrances, activity unit hub, closed/open posture, contact volume, material slots, LOD, visible interface, creation/destruction/GC liability. The following unmeasured coordinates are maintained.
+
+The original is unified in rice modelling; the complete munition is based on a local +Z base to the warhead/seat direction. The importing layer bears the sole conversion of coordinates, units and axes with the original engine. Originals are maintained at source coordinates, extra log conversions, which cannot be hidden from each weapon by a single time. The contact size is independent of the high-detailed grid; the hint mask covers only the current component, depth masks and eyes show the actual 3D scene path using the main line.
+
+"Strength specter" means that all the points concerned have a single bone weight and do not cross the group to produce bones for physical use, game impact, contact position or original joint running process.0 Face, and not to the extent that reference points are not available.
+
+## Weapons-by-weapons mission
+
+| Tasks | Original resources against this check | Scheduled | Marked/showable content to be delivered |
+| --- | --- | --- | --- |
+| M 01 Lancer | `COG_AssaultRifle.Mesh.COGAssaultRifle`；Magazine 156、Latch 276、Receiver 1184、Receiver_Spin 116、Chainsaw_Handle 1089 triangle; existence of chainsaw mixed weight areas | The former independent MagazineMesh is used for handheld; the original bone drives on the gun. Chain saws keep skinned and not all guns split | Box master shake point, fixed entrance and insertion axis; box in hand/gun mutually repulsion; LATCH+Receiver conic; chain saw tip area |
+| M 02 Hammerburst | `Locust_Hammerburst.Locust_Hammerburst`；Root 7462、MagLatch 2232、Mag 272 Triangle | Original standalone box reuse, original lock-in drive, no whole gun added | Chains of chains, closed end points; path to the box after a combination of original father-son space; handheld and gun-capped |
+| M 03 Gnasher | `COG_Gnasher.Mesh.COG_Gnasher_Skel`；Main 5060、Lever 1260;Root without independence | Original leverage bone drive, full ammunition with M 13 | Front support point on left hand, relative movement of right hand grips, leverage closed/open posture; local reference system for filling mouths |
+| M 04 Longshot | `COG_SniperRifle.LongShot`；Root 9962、Bolt 894;LensCap/Scope unowned LOD 0 Noodles. | Original bolt drive, full live. M-min.14-L; mirror view is optically fulfilled without faking the defaced head | Gun-breeding complex motion, vents, live bullet entry axis, closed-lock endpoint; lens surface and inner-scope observation reference |
+| M 05 Snub | `COG_Pistol.COG_Pistol`；Root 2166、Slide 445 Wing_L/R 60、Magazine 314 | Magazine has been removed independently, original UV/mode/material index maintained, private OBJ input for component; slider/side wing with primary bone | Actual component creation/discovery and near-sighted mass; space silo slide, pull and release back; side wing movement |
+| M 06 Boltok | `Geist_Pistol.Boltock_Pistol`；alow_poly 4325、Object 01–11 Total 2417;allcords | Original Gun and Object 03/08 re-use the support frame;Object 02 Close the bomb nest with M 16 Replace.14-B live ammunition produced. Do not set all Object to grab | In situ assembly and design joints already in place; actual opening orbit, scale, display of six slots and partial filling still need to be marked with examples |
+| M 07 Boomshot | `Locust_Boomshot.Mesh.Locust_Boomshot`；Root 5824、Magazine 1236、Barrel 1802;specific categories MagazineMesh 0 Point `Locust_Boomshot.Mesh.Locust_Boomshot_Magazine` | **Original self-filled component is directly reused**;barrel original bone driven. No new generic grenade fillings are added | Open barrel, original vehicle handle/entry, one-shot visual interface; not mixed with actual flight cartridges |
+| M 08 Torque Bow | `Locust_Torquebow.TorqueBow`;independent handheld confirmed as `Locust_Torquebow.Locust_Torquebow_Rocket`；Bow 05–08 Exists cross-group | **Original Arrow Reuse**; bow arm prostobity/monster; uncomposed traditional string | Original arrow grab point, fixed chute, locked in; holding the position of the bow arm and following firing |
+| M 09 Hammer of Dawn | `COG_HOD.COG_HammerofDawn`;subject 9368、Trigger 156 | Original subject/string and original beam effects; unfilled bomblets | Gunshot/target query origin, trigger connection, target mark; original target legitimacy feedback |
+| M 10 Troika | `Geist_TroikaCabal.TroikaTurret`；root 1531、latitude 124、longitude 7160, spinner_L/R 600, muzzle_L/R 864 | Reuse original turret level; no shoulder slot/new cartridge | Fixed pivotal axis, persevering/cross-scope, double handle and double-gun; handle/playerref et al. without face but available for reference |
+| M 11 Frag | `COG_Bolo_Grenade.Frag_Grenade`；root 270、Counter 572、9 The chain bones are split. 88、end 3552 | original subject and chain; not incorrupt whole chain, no new zipper | Handheld, actual drop reference point, preparation/release of animated intersection; readability of chain endpoint heart |
+| M 12 Smoke | `COG_Bolo_Grenade.Smoke_Grenade`；root 498、Counter 1372、9 The chain bones are split. 64、end 1428 | Independent Smoke Grid and Smoke emitter; not just changing material for Frag | Independent handheld and release deviation, chain appearance and smoke life cycle, not re-used without checking |
+
+The exact bone name, original triangulation, each bone envelope and material profile are available in private `all-12-mesh-parts.json`; the upper part of the table is prefixed for reading, checked with machine index and physical sample bone sheet when accessing. The source grid has entered the offline specification index.
+
+## List of new and partial supplements
+
+| Tasks | Number and current status | Production Range | Receiving and Inspection Object |
+| --- | --- | --- | --- |
+| M 13 Gnasher Full live ammunition | v 2 The blog is also available on Facebook.960／320 Triangular Double Lod | Continuously closed external, sealed/undersealed/underfire, UV, PBR,3 (a) A reference node;33.7 mm × 113.5 mm still as reference package | Document geometry check completed; original filling space, game ratio and hand position measured |
+| M 14-L Longshot, full live ammunition. | The blog is also available on Facebook.1248／416 Triangular Double Lod | Original warheads/blasts/underground, UV, PBR,3 Reference nodes; identification of shell references for original particles, to be used as initial production scales by their envelope | Closed geometry checked; original shell particles are scaled and not impersonated as certified world sizes |
+| M 14-B Boltok, full live ammunition. | The blog is also available on Facebook.960／320 Triangular Double LOD, exemplifiable 6 Grandpa. | Original live ammunition, UV, PBR,3 Reference node, matching the six-pore; no new fast loader | Offline hole co-operation; the only remaining occupation/repossession of six slots is done by adaptor |
+| M 15 Lancer pull-starter | 704 Triangle,3 Node checked and copied to offline directory | Reuse original created main line directory socket, handle, stretch rope, this wheel does not cover the original root directory | Generate consistent results; main installation, actual stretch and recycle after wireing; not normal pre-ball condition |
+| M 16 Boltok Six-Five-Hunted Blast | Confirmed as necessary to complement, produced 3648／1296 Triangular Double Lod | Six real entanglements, angles/inner walls,6 Independent entry marks, UVs and PBR;replace closed 02 Not on the original cover | Closed entity and pore file checks;Object 03/08 Stamp and Object 01 The original is still quoted on the rear disk |
+| M 17 Current step yellow hint | A common performance, local area configuration | Use original mask/contract or independent light tips geometry; only current steps, not produced 12 Substitution material | Depth correct, eye-like, original mask correct; step toggle and old hint clear |
+
+3 complete ammunition, 6-hole bomb nests and reuse starters 5 A GLB is independent `assets/weapon-6dof/offline-v2/` Delivery, without covering the primary root directory prototype. Snub is kept only in private anallysis and does not include a fourth new munition. Boomshot and Torque Bow use original stand-alone versions.17 Continue to configure common running performance without needing a supplement 12 grid; current round does not connect game material or tip lines.
+
+The original box also needs to be closely examined for quality: saved Lancer `COG_AssaultRifle.Assault_Rifle_Magazine` Yes 40 Triangle, Hammerburst `Locust_Hammerburst.Hammerburst_Magazine` Yes 158 Triangular, originally loaded by Boomshot 124 Triangular. Their "independent component presence" is confirmed, but cannot be expected to allow VRs to look at the details in a near-time manner enough. Preferably maintain their original operational behaviour; build high-detail local components/refilling original details on the same sourced rifle upper bone group when insufficient and do not change guns.
+
+## Boltok Institution Corresponding Results
+
+Early[Private Part Chart](../../analysis/weapon-specs-20261028/boltok-parts-private.png)Self-sizing of components, which cannot be certified for assembly.v 2 Generated by parent bone and position[Package](../../analysis/weapon-specs-20261028/review-v2/boltok-assembly-private.png)and[Reference coordinates/design joint data](../../analysis/weapon-specs-20261028/review-v2/boltok-rig-authoring.json), and fix the old guess between the disc and the axis.
+
+| Original Group | Static assembly conclusion | Design processing and evidence boundary |
+| --- | --- | --- |
+| Object 02，116 Triangle | The bullet nest column, the envelope. 6.07 × 7.47 × 6.08 parent unit; two ends solid closed; father bone 03 | Replace this area with six-holed components; six-hole marking loads for reinsertion |
+| Object 01，270 Triangle | Backside fixedend with root, and object 02 Different branches | Stay in the gun, not with a bullet nest, or as a six-hole parent node. |
+| Object 09，190 Triangle | The position is below the barrel, not on the hub. | Not as recognized shell-release pole; not added to be independent interactive |
+| Object 03 With Object 08 | Object 03 side-scaffolding;Object 02／08 It's all his own. | The exit plan for the two-skinted stretcher is set; designed along the original axis 80° The initial value is not equal to the original animation authentication |
+| The remaining Object Group | All of them are hard-core triangulations. Keep the original assembly. | Default Non-Independent Capturer; Decoration not removed for complexity of action |
+
+Default object does bind `COG_Pistol.COG_Pistol` . Scanner in two specified packages 21 AnimSet, with no track matching the object ' s bone name, does not create "the Boltok open-door animations have been recovered." Offline assembly, hole and design joints have been delivered; real case motion and hand positions remain uncertified. Recovered shell moves along with the utilisation show that live ammunition is kept without reliance on unproven independent backsliding poles.
+
+## Access contracts for the original component and new assets
+
+The original filling follows the motor StaticMeshComponent/ Original Resource Path, identifying the sole owner. Handheld phase replaces the fixed animation of the former "hand-to-hand" socket; when in place, the gun is restored to the upper hand and the hand-held component is untied; and the shadow palm, light environment and hidden relationship is restored to the exterior Pawn component at the time of cutting or death cleanup.
+
+Originals are fixed using the same engine for 3D components and resource life cycles, GLB being a production source.13 Gnasher Full Live Bomb is the only first load sample. The new geometric static resource route has been positioned to the original object structure, initialization of the LOD and vertex, original components, root reference lease and release of the file, with input; the first one still needs to be validated for current calls ABI, material, actual display and cleanup. It cannot be replaced by a new rendering or Quad for each model. Specific evidence and gaps are available.[Asset backend](../offline-tech-prep-20261028/asset-backend.md)。
+
+All original package extraction grids, stickers, grey models, animation and back-compilation files left behind `analysis/`. The asset directory only saves original game references, instructions and originals; this new GLB does not copy original toppoints or paste. No game candidate packages are created or replaced.
+
+## Checks completed without taking the game
+
+Check source Hash, parent-child relationship, Lod.0 Triangular attribution, UV/material slots and stand-alone pieces are closed; original inspection units, axial orientation, naming, legal lines, seals and envelopes; output of clearly defined capture point/motion configuration fields and uncorrected items. Final capture distance, movement comfort, physical filling port availability and headline proximate quality are left to the corresponding machine stage, not passed in this fake paper.
+
+---
+
+## 中文
+
 # 模型与活动件工作单
 
 2026-10-28，离线交付 v2。对应[12 张规格卡](weapon-cards.md)与[复核报告](interaction-review-v2.md)。本单确定来源、制作结果与之后的标定责任；[5 个 GLB 已交付](../../assets/weapon-6dof/offline-v2/README.md)，没有把提取灰模或 GLB 等同于可加载游戏资产。

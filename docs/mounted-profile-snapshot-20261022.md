@@ -1,3 +1,31 @@
+# Machine gun to switch configuration for read at a time
+
+Continue to shorten the duplicate work in recovery path. This round is from the consolidated WorldPrepare 2 Freezing Source Build 1, no game or simulator started; real machine effects are accepted by the user.
+
+## Modify
+
+Previously World Ready, Anchor, UI and Crossshair Parsing Field Call `GetPrivateProfileStringW`Synthetic machine gun configuration has 939 Fields, the median of the initial five Python call measurements is about time-consuming 43.5 ms. Then use the primary component to exclude Python from call-up costs, with five rounds of mid-level queries taking about time 39.0 ms。
+
+The full candidate is now read from the same handle, protected by the existing read-only file lock. Snapshot, a part of the workspace, provides field values for this preparation and prepares to be destroyed after completion; there are no caches across the candidate, across the world or replaying. Metadata, Anchor, UI, Crossshair share the reading results, and all processes/owner/gendering, identity, code, real time memory and submission of discharge/GPU/world gate interdiction continue.
+
+Accelerating the instruction only for current generator UTF-16 BOM files and ASCII fields. The original Windows API is used in the format of quotation marks, blank ambiguity, notes, repetition keys/nodes, Unicode values; missing fields, case and buffer block cutouts maintain the existing syntax. Reading and memory tables have size/entry caps, loading failed to empty old states. Normal startup resolution continues using the same path.
+
+## Inspection and measurement
+
+42 The new components are used to provide a true synthesis of machine guns, current Level, pass-through machine guns and general state. 36,340 API contrast, case sizes, different buffer lengths, special format retreat, writing/deleting locks and disable clearance checks. Machine gun components are also configured with the original API and new readable path and memory verification is performed. 233 entry check passed; existing offscreen D 3D 12, life cycle, first person designation, targeting and worldwide interface component inspection maintained.495 Item Python check passed, where 353 The entry is relevant to enable the actual new DLL,142 Division starter/package check.
+
+Same original component 939 Field configuration: Middle of original API query 39.0304 ms;Snapshot first loaded 0.2489 ms, median for query 0.2249 ms, total 0.47 ms. This describes only the configuration reading of this machine cache file, which is not a full world preparation, GPS, FPS or headlight black screen time and does not create complete “no delay on board machine gun” acceptance.
+
+## Default Integration
+
+Default starter use `build-world-profile1/GearsCaptureWorldProfile1.dll`，SHA 256 `01d2823fcb4d6ad87ade125e91497037c2bdb7d238f54104644047ae87b6d6a1`. With the latest WorldPrepare 2 8 change of relevant source documents to the parent baseline;490 The actual compilation of entries relies on the source Hashi check.83 The package file exists, keeping XR/Playground, user configuration and previous restoration. New game process loads new build.
+
+Maintain build, check and component measurements in signed `analysis/world-profile1-20261022/`, freeze source and construct as `analysis/world-profile1-source/`、`analysis/native-build-world-profile1/`This is the round. 0.1.0 Development rehabilitation.
+
+---
+
+## 中文
+
 # 机枪切换配置的一次读取
 
 继续缩短恢复路径中的重复工作。本轮从已集成的 WorldPrepare2 冻结源构建 WorldProfile1，没有启动游戏或模拟器；真机效果由用户统一验收。

@@ -1,3 +1,53 @@
+# The machine gun is close to the star-crop.
+
+2026-10-17 Release 1 is still incomplete; the current round is practically unoccupied.
+
+## Actual Navigator
+
+Caption 38 Session `continuous-stereo-28480-20261017-070418-89b899ac`. Game PID 28480／creation 134366654448946138. Read-only scans found two Troikas without Driver, read and stabilized by character identity and field; scans retained 6 Item is not a complete world snapshot because it contains an error. The coordinates are only for navigational tips and do not modify the memory, transient or archive of the game.
+
+The first time you run the navigation is already in the Death menu, and no movement takes place. After confirming the focus of the menu, select and read the check point at a time, send another digital arrow, make limited shifts and move forward.20373 And become 22562 Again.25595 RU, the error in direction is about to be.33.63°Zoom to 5.39°The virtual shift after this VR injection was confirmed.
+
+Two forward observations.1261 and 475 Game units, only about the next move 1 Unit, script is closed.640×360 The window chart shows the person behind the bunker; this does not mean that navigation paths have been found, nor can they be used to assert that the game moved out of order. No machine gun was sent interactively and no evidence of possession by Controller/Turret/Driver, so the actual dual-eye compatibility of the machine gun remains open.
+
+After normal stopover of VR, primary cleanup and regular game close-off pass. Evidence is in signored `analysis/runtime/mounted53-*`Includes two navigation audits, menu action check-outs, read-only scans and `mounted53-normal-close.json`. The normal level image cannot replace the GPU image after the machine gun.
+
+## The code-level issue for the quasistar cut.
+
+A targeted review of the current legacy UI path found that if limited distance-to-scissor is not returned because an eye was completely cut off, callers try to plan for unlimited distances. Different segments of the same set and geometry may be used only on different scenarios as scissor.
+
+This is a mathematically constructed reverse. The limited projection refunds recorded for the actual pistol/rifle are:0 The amendment should retain a limited projection and legitimate space cut, so that the original derelict content is not re-discovered by changing the projection. The original illegal state and invalid geometry must still be rejected.
+
+The modified planner: the alter-intersection retains the original projection for empty hours, continues with zero area scissor; does not expand the visible range. The example of return fails before amendment, and the revised version is recompiled and run through UiRetictionPlantest; covering the left-and-right eye is empty, the upper-eye two eyes are blank, the replay forwarding and restoration, the integer rectangle conversion, and the second eye geometry illegal and raw illegal tailor still refuses. The co-ordinater independently runs the test.
+
+Source Code Return, Freezing DLL and Actual Game Validation Records; Default Caption 38 Updates automatically with the ZIP that has been generated without changing the source code.
+
+## Independent Candidate Build
+
+Source Submission `ab91ecc` Export As `analysis/native-source-reticle39`;MinHook re-numbering Caption 38 Freezes a copy, and maintains the same build options to exclude all unsubmitted UI bypasses in the working area.137 A build step is completed. DLL is `tools/native-capture/build-reticle39/GearsCaptureReticle39.dll`，SHA 256 `f1865f70c0f50ed367e28e7fb2800ee09f7231a13ddb08ea8c6bafae73f60dbb`。
+
+19 The first Mounted ObserverTest failed because the implementation directory did not have amounted.ini/memory test kit; changed to existing `analysis/tests/mounted-stream-levels` , the determination is not changed or reduced. Build, source-by-source document Hashi and self-detection are stored in reticle 39-build.log、reticle 39-source.json、reticle 39-selftests.json。
+
+The actual game returns to the visible list of experiments `analysis/runtime/manifest-reticle39.json`;This does not modify the default list, player configuration or previous ZIP.
+
+## Return and use of physical checkpoints
+
+Reticle 39 Session `continuous-stereo-8828-20261017-071258-2e45ae03`. Game PID 8828／creation 134366659655727649. Start preparing 3795 milliseconds, camera ready to actual first projection.6771 milliseconds. Read check points in the death menu twice in a row, world generation 1→2→3;sending from actual keys to script to observe new generations at least 10 Sub-submitted 7487、7937 ms. This time includes loading, authentication and script observations, which do not equal the full black screen time.
+
+Four.3840×2160 The ticket for GPU Images 279／2233／2997／4014♪ As if I'm not a man ♪277／2228／2988／4000. Every eye has a non-black scene, and the restoration is visualised. After normal stopovers, primary cleanup, XR exits and regular game closes pass, reply `reticle54-audit.json`、`reticle54-normal-close.json`. This does not verify the special payload, the apparent integration or the outer circle deviations that are described by the user during the continued firing.
+
+After the above-mentioned return, local defaults are changed to `manifest-reticle39-borderless-vd.json`。Caption 38 The name list is reserved back to the previous test ZIP, and the player configuration is not covered. The new source code defaults that no change was made to the previous ZIP content; release still requires real machine and residual scene acceptance.
+
+## Updated local test packages
+
+`analysis/release-staging/reticle39-20261017` Generate 700 List of documents,43,420,731 bytes, pre-separated check; inventory SHA 256 Yes `041f4eeb46f21d15ab610b4ae9ad7442e3e0c3fb82b170517e0236d80cf9dade`. Generate only by List `analysis/release-zips/GearsVR-V1-development-Reticle39-20261017.zip`，701 Members,13,634,556 Bytes, SHA 256 `316aa851c694524d376f8852144603cdc14e9bd6b0d3a20beea9ed22876e0187`。
+
+ZIP uncompresses to a new directory, and Python in the package is cleared by-I/-B running quarantine precheck; no GUI or game has been started, release_ready=file. The new package does not have independent actual startup or real machine check; the previous practical game evidence comes from the repository visible list and cannot replace the new package's actual deployment check.38 ZIP is unchanged, not uploaded or made public.
+
+---
+
+## 中文
+
 # 机枪接近与准星裁剪一致性
 
 2026-10-17。第一版仍未完成；本轮实际接近没有占有机枪。

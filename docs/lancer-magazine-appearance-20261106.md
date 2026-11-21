@@ -1,3 +1,65 @@
+# Lancer cartridge: Load/hand-held appearance consistency
+
+User in 2026-11-06 Note: The cartridges inserted in the weapon appear to be different from those taken out individually. This item is included in the current Lancer repair.**Current: Code and compilation completed, private simulator appearance review passed, not yet incorporated into publicv 71; entity headcount is pending.**The “current documented facts” below are the cause checks for the pre-repair period.
+
+## Reason reconciliation before restoration
+
+- Private Game 17984,created 134384286309817617. Read only the files that are analyzed from the current controller ⁇ pawn ⁇ weapon ⁇ mesh and reviewed at the end of the review process, object and description; no longer borrows a historical capture file with PID.
+- The current gun body and bone assets are `COGAssaultRifle`The main material is `COG_AssaultRifle_Delta_MAT_MIC`; there is also a piece of saw blade.
+- The actual handheld is from `MagazineMesh` Another StaticMesh:`Assault_Rifle_Magazine`. The current component `Materials` Overrides arrays with empty, using default materials for your own assets.
+- The stored original static package points the independent cartridge to `COG_AssaultRifle_PH_Mat` and PH stickers; this is evidence of the preservation of assets and does not amount to proof of actual GPU material/postmark sampling for the current round.
+- The current code does not harmonize the two original versions. The dynamic light/shade restoration of the stand-alone cartridge is not equal to textures in both states.
+- Old 55076 The black side of the gun is withdrawn when it is lent directly to a separate cartridge. It cannot be replaced by a direct replacement tank and assumes compatibility with the UV, legal line, material parameters of different models.
+
+Evidence:`analysis/solo-m1-20261028/lancer-live-materials-17984.json`、`saved-magazine-material-evidence.json`;source code is `weapon_lancer_magazine_visual.inl`. The former contains the full process identity; old evidence with the same name PID is not consistent and is currently running.
+
+## Repair and validation requirements
+
+1. Compare the contents of a cartridge with the actual geometry, UV, legal line, material segment and skin cover of the individual cartridge.
+2. The uniform appearance of the gun, pull out, hold and insert cannot be achieved by unifying into blackness, unlighted materials or concealing visible defects.
+3. The physical identification of the items, their inventory, their silo state, hand attachment and smooth insertion are maintained and cannot be replaced by a physical switch or create a second visible cartridge.
+4. In the same series of consecutive videos, compares the load, pull out and plug in the same cartridge in a close direction/light. Separate record code, compile, visible results and entity header feedback.
+
+This item does not expand other weapons.71 New UI/Sorption repair is still in the private version.
+
+## 17:50 Private realization, pending video reconciliation
+
+- Compared raw geometry: cartridges in the gun 120 Top Point/156 Triangle, stand-alone props.112 At the top, the two are different in scope. The gun cannot be placed on a stand-alone props alone.
+- Add local source preparation: from the same verified Lancer Lod 0 Draws rigid cartridges, retaining all four sets of UVs, vertex colours, original triangles and cut-line orientation. The data is generated only by local private caches of the user, without distribution of original models or stickers with packages.
+- When you are free, the engine resource manager is preparing a temporary grid using the actual primary material of the current weapon.`MagazineMesh`The grid of the component continues to be modified by existing hand attachments and insertions; no re-stocking or reloading determinations have been completed.
+- The operation cannot be counted as a visual pass without holding the actual capture, keeping the old look and recording the fallback clearly when it is ready to go incomplete.
+- Original 120 Maximum error in top point conversion back load`3.65e-7`Original units, all UVs and colour bytes are identical, source files are rejected for manipulation. Source code is compiled; startup preparation, damage cache quarantine and package paths are combined 34 Check through.
+- Private Freezing`equipment-controls-prepared-20261106-175050`Playground Hash.`349f9660e4aa90d8c65926c664074d9d64e7790ce807a81cc9121ecee294cdff`. The extraction/handheld/plugin is being recorded, no textual matching images have been obtained and the result adopted without replacing the open v 71。
+
+## Results of the private review in this cycle
+
+- Game 29064,created`134384323052173085`;backendorsed and source/binal identity actually accessed in the new grid stored in`analysis/solo-m1-20261028/lancer-magazine-appearance-29064-review.json`。
+- Full capture time axis viewed 8 Two-window overview,2 The box is continuously transitioned and partially amplified.51 Second load state,60 The second to pull out the hand.69 Seconds of puncture visible on the same side of stripes, frames and metal wear; old not repeated 55076 The black side of the program. This record is not " frame by frame, look at each sample image" or head pixel validation.
+- The whole original cartridge is loaded with plugs, the replacement box is plugged back into Grip, successive shots are fired to the actual airlock, no advance fire can be opened from the empty warehouse, and the actual E pull/release/return re-entry is returned by movement. All Lancer completes is still false.
+- Game is stopped. Native, entrance, virtual handle recovery and XR exit confirmed. Combined video coded and performed properly 48 Hours/update 3 Session media keep rules without deleting source code, archive or text/value evidence.
+- The video was supplemented by the return of the exterior resources at the time of destruction; this non-activated destruction branch was not counted as part of the coverage of the video.
+- Fixed start-up entrance remains V 71. C automatically adsorbed to the real Grip connection, hand-to-hand position and perfect UI reloading remains pending in the same fixation batch.
+
+- 19:11 End of media retention: by user 48 Hours/update 3 The rules of the session,29064 Original video and comparative maps have been cleared; this record, source code, numerical endorsement and resource identity are maintained. History pictures/video paths are no longer used as attachments to open them.
+
+## Latest review:58076
+
+- Private Freezing`equipment-controls-prepared-20261106-205451`，Playground `35cfa19340f4d7f1d33830c336f921355d6bb7b2ba5892136b76cd284ffc4acb`;real games 58076,created`134384433440617506`Three rounds of change.`ready=1 installed=1 same_original_uv=1 vertices=120 triangles=156`No look fallback.
+- Checked for handheld unpaved, aligned and plugged back in the same video:`game-00837.jpg`、`game-00860.jpg`、`game-00877.jpg`Keep the corresponding transition, with a lineline, border and wear on side, without the black side of the old scheme. Seven pages of full time span two-way overview have been reviewed; this is not all pixels/all angles or physical header acceptance.
+- Current round 11 The physical action confirmations are passed, including the full-scale insertion of the original/replacement cartridge, actual emptying, and resumption of firing after the airlock E pulls/releases/returns.
+- Combined video:`analysis/solo-m1-20261028/menu-firstperson-58076-startup-20261106-205532/dual-output/paired-output.mp4`- Yeah, I'm sure.200 Seconds.51 Seconds for loading, about 58.7 The second to pull out the hand, about.62.5 Seconds for plug-in. Press 48 Hours/update 3 The session rules are kept, and only text/value records are kept after expiry.
+- This item remains as follows:**Code/compilation/private appearance review passed, not yet published, user-realism confirmed**. All Lancer, five parts finger-fixing and complete perfect switchover of UI is still incomplete.
+
+## Follow-up appearance taking over amendments and media updates
+
+- 69680 The video also found a bad image of the gun/hand returning to its original posture, leaving the cartridge in place for a short time; this is a matter of taking over coherence that cannot be covered by texture. Separately, the comparison of the candidate status of the already held components has been amended and the proposal submitted for the first time within the same frame has been kept; the next frame remains open without extension or relaxation of the initial authorization.
+- Private 63508／freeze 221712 Complete original cartridge hold back and resume firing. Unrecovered cancellations due to changes in candidate markings did not occur; all the plug-in slots were checked for grab 45 A preservation frame, without seeing the original shape/floating moment. The whole angle is still on hold and walking; this does not push the result into total stability.
+- Updated by User 3 Session/48 Hourly Cleanup 58076 Media. The last video path is now a historical record and no longer an open attachment. The latest corresponding video will be replaced by`analysis/solo-m1-20261028/menu-firstperson-63508-startup-20261106-221806/dual-output/paired-output.mp4`;text, numerical confirmation, source file and build identity remain.
+
+---
+
+## 中文
+
 # Lancer 弹匣：装入／手持外观一致性
 
 用户在2026-11-06指出：插在武器里的弹匣与单独拿出来的弹匣，纹理看起来不同。本项纳入当前 Lancer 修复。**当前：代码和编译完成，私有模拟器外观复查通过，尚未并入公开v71；实体头显确认待定。**下方“当前可证事实”为修复前的原因核对记录。

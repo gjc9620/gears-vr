@@ -1,3 +1,68 @@
+# Original D 3D 12 Queue Tie and Single Frame Read Back
+
+2026-10-12, mainline is restored. Test condition: installed user downloads First Person 1.0,show existing skipping headers/ tuneables with `-NoPauseUnfocus` Starts the parameter. This condition differs from previous original camera tests and does not mix camera positions, FOV or bone performance conclusion.
+
+## Queued: proven
+
+Only the exchange chain was previously observed returning to the same device as the queue. The round created the entry for Hook three chains at startup, recording the D input created 3D 12 Direct queues match the returned exchange chain and then match subsequent Precent by regularizing the IUnktown interface address. Different COM interfaces may differ from naked addresses, which cannot be assumed to be equal directly.
+
+Successful Game Sample PID 46712，45 sec:
+
+- Game Use `CreateSwapChainForHwnd`, the game caller returns RVA `0x45355f`。
+- Swap Chain Size 1920 × 1080,Format 24（R 10G 10B 10A 2_UNORM）。
+- Capture a valid binding, associated exchange chain then emerges 10,799 Sub-TeST Present.
+- Ties the window to the game process, queue type Direct; this is evidence of the creation of input and actual display of the exchange chain.
+- Logs are abandoned 0;active after stopping=0, four entry points are restored in DLL and external independent memory verification.
+
+Address is only used for matching the current round, and the queue address of the exit process is not written into a location configuration each time you start rerecording.
+
+First preloading observation DLL at startup failed to confirm success and the game remained functional; then a separate module list confirmed that there was no DLL, later controlled load successful. New startup process is waiting for dxgi.dll/ d 3d 12.dll has loaded, re-accessed the observation code and does not yet require a window or entry level. This modified startup successfully captures created. It cannot be asserted that the first failed Windows error code or only root cause has been established.
+
+Independent self-measured actual calls are made to CreateSwapChain, CreateSwapCainForHwnd, CreateSwapChainForCommposition to check the entry bytes after creating parameters for forwarding, returning interface matching and stopping. The creation path of CoreWindow or other interfaces is not covered.
+
+## Single frame GPU Reread Design
+
+Add Optional `--readback`, only a frame is taken on the record-created game window exchange:
+
+1. Keeps the exchange chain and queue COM references when creating, prepares a readback buffer, command list, allocator and fence for work.
+2. Tie at least 15 Second, get the current back buffer before matching the exchange chain's Precent.
+3. The same queue that was bound at the time of creation is submitted to PENENT  ⁇ COPY_SOURCE, copy, COPY_SOURCE  ⁇  PRIRESENT.
+4. Present does not wait for GPU to write disks. The work-line confirmation is done after the fence is completed, Map, Convert and Save.
+5. Releases a buffer after the game is completed. Do not impede subsequent ResizeBuffers.
+6. Cancel the access patch on the stop and confirm that activity is being reversed; if synchronisation fails after submission, retain the GPU resources that may be used to exit the process without mandatory release.
+
+Supported this round 10-bit RGB and test 8-bit RGBA/BGRA。10-bit→8-bit does a weight-dismantling package and rounded, which does not contain HDR PQ/ colour space transformation. It is an amplogram diagnostic, not a final GPU texture sharing scheme or eye render.
+
+GPU self-measurement 19 × 13 Non-regular width, actual screen is known colours, copying / fence / Map, check all pixels, overwrite 8- Bit and... 10-bit two formats and row pitch fill, two through.
+
+The real game first read back to PID 44240，45 sec:1920 × 1080, format 24, Current Post-Buffer 1,GPU fence complete and saved 640 × 360 PPM，HRESULT=0. Picture check confirmed as the game start interface, containing normal red and white Logo and hint text; this confirms that original GPU images read links but are not marked by a level or continuous VR display. This is observed when creating binding 10,857 - Yes, Present. Drop it. 0 The old sample has not been recorded as a failure count, and it cannot be asserted that Present was successful each time.
+
+Add `--manual-readback`, create a game PID-based event with this opportunity. Enter the level and check the game window screenshot, use `request_readback.py --pid 当前PID` Request next one copy matching Present to avoid fixes 15 The requester only takes the start menu. The requested checker only sends a message on behalf of the event and ultimately reads back the log and the picture. If you do not quit, keep the resources and report that the call is unsuccessful and does not release the person you want to use.
+
+Then PID 10720 Use manual request mode to confirm the message from the window orientation gradually into the Continue Campaign, and check the low-cleansing window screenshot before checking each time you enter the level. Request to read back, save images to be confirmed as actual stone columns, corridors and candlelight scenes, consistent with the location collected by the window, without desktops. The wheel does not move a person or modify a camera. Camera reflector position is still successful, CameraCache=0x3ac、POV=0x4、PlayerCamera=0x37c When the layout is consistent; a sample instant CameraCache FOV=80, cannot place the Mod default attribute in 105/120 Considers it as the actual FOV at all times, and does not prove the ultimate rendering of FOV.
+
+Round 180 The second final log: Create binding confirmation,54,394 The next TEST Present, Present failed 0, logs are discarded 0,Read successful (1920 × 1080, format 24、index=1、HRESULT=0) Resource release success, activity=0 This only proves that the round has a single frame diagnosis, and no continuous copying or head-over shows tests.
+
+Compliance achieved [Microsoft Swap Chain Description](https://learn.microsoft.com/en-us/windows/win32/direct3d12/swap-chains)and [Readback head description](https://learn.microsoft.com/en-us/windows/win32/direct3d12/readback-data-using-heaps): Present queue from creation parameters; Map itself does not wait for GPU, and must be followed to confirm copy completion.
+
+## Rewind
+
+```powershell
+& tools/native-capture/build.bat build-binding GearsCaptureBindingUnused
+& $pythonExe tools/native-capture/launch_binding.py --seconds 45 --build-dir tools/native-capture/build-binding
+& $pythonExe tools/native-capture/collect_binding.py --pid 当前PID --build-dir tools/native-capture/build-binding --output analysis/runtime/binding-当前PID.json
+```
+
+GPU Single Frame Read Add to Start Command `--readback`. The starter rejects the existing game process and does not force killing; the game is started by the current debug starter, with a pre-approval of Hashi, an independent validation of EXE within DLL.8 Observation can be concluded earlier.
+
+Use to change the scene to read back `--manual-readback --seconds 180`Run before observation. `request_readback.py --pid 当前PID`. The collector also requires the creation of binding, rereading success (if enabled), resource release and independent resumption of verification at four entry points; return to non-zero when failure is not considered a successful start.
+
+DLL / trampoline takes off when the game exits. The process does not hot-hot replace DLL. Original JSONL, picture and home address are saved in Git ignored `analysis/`, the warehouse saves code and text conclusion.
+
+---
+
+## 中文
+
 # 原生 D3D12 队列绑定与单帧回读
 
 2026-10-12，主线恢复。测试条件：已安装用户下载的 First Person 1.0，保留现有跳过片头 / tuneables 与 `-NoPauseUnfocus` 启动参数。此条件不同于先前原版相机测试，不混用相机位置、FOV 或骨骼表现的结论。
