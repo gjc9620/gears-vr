@@ -515,12 +515,12 @@ void identity_boundaries_and_mapping(){
         CHECK(f.update(frame).event==E::safety_required);
         CHECK(f.model.inventory().count==3&&f.model.pending_request().action==A::preserve_original_on_interrupt);
     }
-    for(unsigned mode=0;mode<4;++mode){
+    // Translation is independently covered below; rotation still cancels.
+    for(unsigned mode=0;mode<3;++mode){
         Fixture f;f.grab();f.prepare();auto frame=f.frame();
-        if(mode==0)frame.mapping.game_base.position.x+=1;
-        if(mode==1)frame.mapping.game_base.rotation.yaw+=1;
-        if(mode==2)frame.mapping.game_base.rotation.pitch+=1;
-        if(mode==3)frame.mapping.game_base.rotation.roll+=1;
+        if(mode==0)frame.mapping.game_base.rotation.yaw+=1;
+        if(mode==1)frame.mapping.game_base.rotation.pitch+=1;
+        if(mode==2)frame.mapping.game_base.rotation.roll+=1;
         CHECK(f.update(frame).event==E::safety_required&&!f.model.pending_request().tracked.predicted_time);
     }
     Fixture stale;stale.grab();stale.prepare();auto old=stale.frame();--old.stamp.binding;
@@ -549,7 +549,424 @@ void native_fuse_conservation_and_no_trajectory_on_interrupt(){
     CHECK(expired.model.pending_request().action==A::preserve_original_on_interrupt);
 }
 }
+void continuous_grip_owner_flow(){
+    auto setup=[](Fixture& f){
+        f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+        CHECK(f.model.bind(f.certificate,{1,3,true}));
+    };
+    auto held=[](Fixture& f,double z=0.){
+        auto frame=f.frame({0,1.5,z});frame.equipment_hold_generation=42;
+        auto& h=frame.hands.hands[1];h.squeeze=1.;h.pressed[gears_vr::control_squeeze]=1;
+        h.released[gears_vr::control_squeeze]=0;h.trigger_active=0;return frame;
+    };
+    Fixture f;setup(f);
+    const auto first=f.model.adopt_equipment_hold(held(f));
+    if(first.event!=E::request_ready)std::fprintf(stderr,"Smoke Grip adoption event=%u stage=%u\n",unsigned(first.event),unsigned(f.model.stage()));
+    CHECK(first.event==E::request_ready);
+    auto prepare=f.take(A::prepare_original);
+    CHECK(f.model.acknowledge(f.receipt(prepare))==E::prepared);
+    for(unsigned i=0;i<6;++i)CHECK(f.model.update(held(f,double(i)*.01)).event==E::observed);
+    auto release=held(f,.07);release.hands.hands[1].squeeze=0.;
+    release.hands.hands[1].released[gears_vr::control_squeeze]=1;
+    CHECK(f.model.update(release,f.authenticated_input(release,SmokeInputKind::right_grip_release)).event==E::request_ready);
+    auto launch=f.take(A::launch_original);CHECK(f.model.acknowledge(f.receipt(launch))==E::thrown);
+    CHECK(f.model.inventory().count==2);
+    CHECK(f.model.adopt_equipment_hold(held(f)).event!=E::request_ready);
+    auto fresh=held(f);fresh.equipment_hold_generation=43;
+    fresh.hands.hands[1].pressed[gears_vr::control_squeeze]=2;
+    fresh.hands.hands[1].released[gears_vr::control_squeeze]=1;
+    CHECK(f.model.adopt_equipment_hold(fresh).event==E::request_ready);
+
+    Fixture missing_edge;setup(missing_edge);
+    CHECK(missing_edge.model.adopt_equipment_hold(held(missing_edge)).event==E::request_ready);
+    auto p=missing_edge.take(A::prepare_original);
+    CHECK(missing_edge.model.acknowledge(missing_edge.receipt(p))==E::prepared);
+    auto lost=held(missing_edge);lost.hands.hands[1].squeeze=0.;
+    CHECK(missing_edge.model.update(lost).event==E::safety_required);
+    auto safety=missing_edge.take(A::preserve_original_on_interrupt);
+    CHECK(safety.expected_count==3&&missing_edge.model.inventory().count==3);
+    Fixture empty;setup(empty);CHECK(empty.model.bind(empty.certificate,{1,0,true}));
+    const auto cue=empty.model.adopt_equipment_hold(held(empty));CHECK(cue.event==E::no_ammo);
+    CHECK(empty.model.adopt_equipment_hold(held(empty)).event!=E::no_ammo);
+    auto another=held(empty);another.equipment_hold_generation=43;
+    another.hands.hands[1].pressed[gears_vr::control_squeeze]=2;
+    another.hands.hands[1].released[gears_vr::control_squeeze]=1;
+    const auto next_cue=empty.model.adopt_equipment_hold(another);
+    CHECK(next_cue.event==E::no_ammo&&next_cue.audio_token>cue.audio_token);
+}
+void raw_grip_history_and_source_boundary(){
+    for(unsigned scenario=0;scenario<5;++scenario){
+        Fixture f;f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+        if(scenario==1)f.certificate.input_source=gears_vr::StereoSource::MetaOperatorSimulated;
+        CHECK(f.model.bind(f.certificate,{1,3,true}));
+        SmokeTriggerObserver observer;gears_hand_continuity::MotionHistory history{};
+        const auto raw=[&](double x,bool down){
+            auto frame=f.frame({x,1.5,0});frame.equipment_hold_generation=42;
+            auto& hand=frame.hands.hands[1];hand.trigger_active=0;hand.squeeze=down?1.f:0.f;
+            hand.pressed[gears_vr::control_squeeze]=1;hand.released[gears_vr::control_squeeze]=down?0:1;
+            if(scenario==1||scenario==2)frame.hands.source=frame.stereo.source=gears_vr::StereoSource::MetaOperatorSimulated;
+            if(history.count==gears_hand_continuity::motion_history_capacity){
+                for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];
+                --history.count;
+            }
+            auto& row=history.frames[history.count++];row.input=frame.hands;
+            row.stream_epoch=11;row.tracking_epoch[0]=21;row.tracking_epoch[1]=22;
+            frame.motion_history=history;return frame;
+        };
+        auto baseline=raw(0,true);SmokeInput input{};
+        CHECK(observer.observe(baseline,input,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+        if(scenario==2){
+            CHECK(f.model.adopt_equipment_hold(baseline).event==E::interrupted);
+            CHECK(!f.model.take_request());continue;
+        }
+        CHECK(f.model.adopt_equipment_hold(baseline).event==E::request_ready);
+        auto preparation=f.take(A::prepare_original);
+        CHECK(f.model.acknowledge(f.receipt(preparation))==E::prepared);
+        SmokeFrame latest{},release{};
+        for(unsigned i=0;i<8;++i){latest=raw(.02*double(i),i<6);if(i==6)release=latest;}
+        const auto seen=observer.observe(latest,input,f.certificate.release_input);
+        CHECK(seen==SmokeTriggerObservation::edge);
+        CHECK(input.hand_sequence==release.hands.sequence&&input.sync_ns==release.hands.sync_ns);
+        if(scenario==3)latest.motion_history={};
+        if(scenario==4)++input.sync_ns;
+        const auto decision=f.model.update(latest,input);
+        if(scenario>=3){
+            CHECK(decision.event==E::safety_required);
+            CHECK(f.model.pending_request().action==A::preserve_original_on_interrupt);continue;
+        }
+        CHECK(decision.event==E::request_ready);const auto launch=f.take(A::launch_original);
+        CHECK(near(launch.tracked.velocity_mps.x,2.));
+        CHECK(launch.valid_until_ns<=release.hands.sync_ns+f.certificate.request_lease_ns);
+        CHECK(f.model.acknowledge(f.receipt(launch))==E::thrown);
+        CHECK(f.model.inventory().count==2);
+    }
+}
+void stopped_preparation_after_external_debit(){
+    for(unsigned scenario=0;scenario<32;++scenario){
+        Fixture f(4);f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+        CHECK(f.model.bind(f.certificate,{1,4,true}));
+        auto held=f.frame();held.equipment_hold_generation=41;
+        held.hands.hands[1].squeeze=1;held.hands.hands[1].pressed[gears_vr::control_squeeze]=1;
+        CHECK(f.model.adopt_equipment_hold(held).event==E::request_ready);
+        const auto prepare=f.take(A::prepare_original);
+        CHECK(f.model.acknowledge(f.receipt(prepare))==E::prepared);
+        auto changed=f.frame();changed.inventory={2,3,true};
+        CHECK(f.model.update(changed).event==E::safety_required);
+        const auto stop=f.take(A::preserve_original_on_interrupt);
+        auto r=f.receipt(stop);r.inventory={2,3,true};
+        CHECK(f.model.acknowledge(r)==E::safety_violation);
+        switch(scenario){
+            case 1:++r.request_token;break;
+            case 2:++r.stamp.binding;break;
+            case 3:++r.stamp.identity.weapon;break;
+            case 4:++r.stamp.identity.world;break;
+            case 5:r.stamp.sequence=changed.stamp.sequence;break;
+            case 6:r.original_event_serial=0;break;
+            case 7:r.accepted=false;break;
+            case 8:r.original_effect_applied_once=false;break;
+            case 9:r.native_safety_complete=false;break;
+            case 10:r.original_fuse_preserved=false;break;
+            case 11:r.original_effects_preserved=false;break;
+            case 12:++r.original_preparation_serial;break;
+            case 13:r.fuse={700,r.stamp.game_tick,true};break;
+            case 14:r.original_projectiles_spawned=1;break;
+            case 15:r.original_projectile=800;break;
+            case 16:r.tracked_initial_pose_and_velocity_applied=true;break;
+            case 17:r.inventory.revision=1;break;
+            case 18:r.inventory.count=4;break;
+            case 19:r.inventory.count=2;break;
+            case 20:r.executed_ns=stop.authored_ns-1;break;
+            case 21:r.executed_ns=r.stamp.monotonic_ns+1;break;
+            case 22:++r.config_serial;break;
+            case 23:++r.original_entry;break;
+            case 24:++r.original_ammo_type;break;
+            case 25:++r.original_emitter_type;break;
+            case 26:r.original_smoke_emitter_path_preserved=false;break;
+            case 27:r.original_audio_path_preserved=false;break;
+            case 28:r.original_ammo_consumptions=1;break;
+            case 29:r.native_non_throwing_consequence=true;break;
+            case 30:r.inventory.count_known=false;break;
+            case 31:r.original_preparation_serial=0;break;
+        }
+        CHECK(f.model.retire_stopped_after_external_debit(r)==(scenario==0));
+        if(scenario){CHECK(f.model.inventory().count==4&&f.model.pending_request().token==stop.token);continue;}
+        CHECK(f.model.inventory().count==3&&f.model.stage()==S::interrupted);
+        CHECK(!f.model.pending_request().token&&!f.model.reserved_count());
+        CHECK(!f.model.retire_stopped_after_external_debit(r));
+    }
+    Fixture launch;const auto request=launch.throw_ready();auto r=launch.receipt(request);
+    r.original_projectiles_spawned=0;r.original_projectile=0;r.original_ammo_consumptions=0;
+    r.tracked_initial_pose_and_velocity_applied=false;r.fuse={};r.native_safety_complete=true;
+    CHECK(!launch.model.retire_stopped_after_external_debit(r));
+    CHECK(launch.model.pending_request().token==request.token&&launch.model.inventory().count==3);
+}
+void bounded_source_gap_rebuilds_only_motion_window(){
+    // Synthetic OFFLINE producer rows. A source-continuous 80ms interval is
+    // not usable velocity data. Current tracked ownership remains fresh, and
+    // a throw must rebuild >=55ms of actual samples with <=60ms intervals.
+    for(unsigned scenario=0;scenario<7;++scenario){
+        Fixture f;f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+        CHECK(f.model.bind(f.certificate,{1,3,true}));
+        SmokeTriggerObserver observer;gears_hand_continuity::MotionHistory history{};
+        std::int64_t xr=9000000000LL;
+        const auto raw=[&](double x,bool down,std::int64_t dt=10000000){
+            auto frame=f.frame({x,1.5,0},dt);frame.equipment_hold_generation=42;
+            auto& hand=frame.hands.hands[1];hand.squeeze=down?1.f:0.f;
+            hand.pressed[gears_vr::control_squeeze]=1;hand.released[gears_vr::control_squeeze]=down?0:1;
+            if(scenario==6){xr+=10000000;frame.hands.predicted_time=frame.stereo.predicted_time=xr;}
+            if(history.count==gears_hand_continuity::motion_history_capacity){
+                for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];--history.count;}
+            auto& row=history.frames[history.count++];row.input=frame.hands;
+            row.stream_epoch=11;row.tracking_epoch[0]=21;row.tracking_epoch[1]=22;
+            frame.motion_history=history;return frame;
+        };
+        auto base=raw(0,true);SmokeInput input{};
+        CHECK(observer.observe(base,input,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+        CHECK(f.model.adopt_equipment_hold(base).event==E::request_ready);
+        auto prep=f.take(A::prepare_original);CHECK(f.model.acknowledge(f.receipt(prep))==E::prepared);
+        for(unsigned i=0;i<6;++i){auto row=raw(0,true);observer.observe(row,input,f.certificate.release_input);
+            CHECK(f.model.update(row).event==E::observed);}
+        auto gap=raw(.8,scenario!=1,scenario==3?120000000:80000000);
+        if(scenario==4){++gap.motion_history.frames[gap.motion_history.count-1].input.sequence;++gap.hands.sequence;}
+        if(scenario==5)++gap.motion_history.frames[gap.motion_history.count-1].tracking_epoch[1];
+        const auto seen=observer.observe(gap,input,f.certificate.release_input);
+        const auto decision=f.model.update(gap,seen==SmokeTriggerObservation::edge?input:SmokeInput{});
+        if(scenario>=3&&scenario<=5){CHECK(decision.event==E::safety_required);CHECK(f.model.inventory().count==3);continue;}
+        if(scenario==1){CHECK(decision.event==E::safety_required);CHECK(f.model.inventory().count==3);continue;}
+        CHECK(decision.event==E::observed&&f.model.stage()==S::prepared&&!f.model.pending_request().token);
+        const unsigned rows=scenario==2?2:6;
+        SmokeFrame release{};
+        for(unsigned i=1;i<=rows;++i){auto row=raw(.8+.02*i,i<rows);const auto status=observer.observe(row,input,f.certificate.release_input);
+            const auto d=f.model.update(row,status==SmokeTriggerObservation::edge?input:SmokeInput{});
+            if(i<rows)CHECK(d.event==E::observed);else{release=row;CHECK(d.event==(scenario==2?E::safety_required:E::request_ready));}}
+        if(scenario==2){CHECK(f.model.inventory().count==3);continue;}
+        const auto launch=f.take(A::launch_original);
+        CHECK(near(launch.tracked.velocity_mps.x,2.));CHECK(near(launch.tracked.release_position.x,.92));
+        CHECK(launch.valid_until_ns<=release.hands.sync_ns+f.certificate.request_lease_ns);
+        CHECK(f.model.acknowledge(f.receipt(launch))==E::thrown&&f.model.inventory().count==2);
+    }
+}
+void finite_two_grasp_cycles_then_empty(){
+    // OFFLINE only: actual state model + original producer-ring observer.
+    // Original Engine receipts below are synthetic fixture evidence, never
+    // proof of an actual auto-switch, empty-slot sound or particle lifecycle.
+    Fixture f(2);f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+    f.certificate.motion.virtual_mass_kg=2.;CHECK(f.model.bind(f.certificate,{1,2,true}));
+    SmokeTriggerObserver observer;gears_hand_continuity::MotionHistory history{};
+    unsigned presses{},releases{};bool down{};
+    const auto raw=[&](bool squeeze,double x){
+        if(squeeze&&!down)++presses;if(!squeeze&&down)++releases;down=squeeze;
+        auto frame=f.frame({x,1.5,0});frame.equipment_hold_generation=41+presses;
+        auto& hand=frame.hands.hands[1];hand.trigger_active=0;hand.squeeze=squeeze?1.f:0.f;
+        hand.pressed[gears_vr::control_squeeze]=presses;hand.released[gears_vr::control_squeeze]=releases;
+        if(history.count==gears_hand_continuity::motion_history_capacity){
+            for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];--history.count;}
+        auto& row=history.frames[history.count++];row.input=frame.hands;
+        row.stream_epoch=11;row.tracking_epoch[0]=21;row.tracking_epoch[1]=22;
+        frame.motion_history=history;return frame;
+    };
+    auto baseline=raw(false,0);SmokeInput edge{};
+    CHECK(observer.observe(baseline,edge,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+    SmokeOriginalReceipt last{};
+    for(unsigned cycle=0;cycle<2;++cycle){
+        auto held=raw(true,0);CHECK(observer.observe(held,edge,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+        CHECK(f.model.adopt_equipment_hold(held).event==E::request_ready);
+        const auto prepare=f.take(A::prepare_original);
+        CHECK(prepare.before.count==2-cycle&&prepare.expected_count==2-cycle);
+        CHECK(f.model.acknowledge(f.receipt(prepare))==E::prepared);
+        for(unsigned i=1;i<=8;++i){
+            auto frame=raw(i<8,.02*i);const auto observed=observer.observe(frame,edge,f.certificate.release_input);
+            const auto decision=f.model.update(frame,observed==SmokeTriggerObservation::edge?edge:SmokeInput{});
+            CHECK(decision.event==(i==8?E::request_ready:E::observed));
+        }
+        const auto launch=f.take(A::launch_original);
+        CHECK(launch.before.count==2-cycle&&launch.expected_count==1-cycle);
+        CHECK(near(launch.tracked.velocity_mps.x,2.));
+        CHECK(launch.original_projectile_type==f.certificate.original_projectile_type&&
+              launch.original_emitter_type==f.certificate.original_emitter_type);
+        last=f.receipt(launch);CHECK(f.model.acknowledge(last)==E::thrown);
+        CHECK(f.model.inventory().count==1-cycle&&f.model.reserved_count()==0);
+        CHECK(f.model.acknowledge(last)==E::rejected&&f.model.inventory().count==1-cycle);
+        auto still_released=raw(false,.16);observer.observe(still_released,edge,f.certificate.release_input);
+        f.model.update(still_released);CHECK(!f.model.take_request()&&f.model.stage()==S::idle);
+    }
+    auto empty_press=raw(true,0);CHECK(observer.observe(empty_press,edge,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+    const auto cue=f.model.adopt_equipment_hold(empty_press);
+    CHECK(cue.event==E::no_ammo&&cue.request_original_no_ammo_sound&&cue.audio_for(f.certificate.identity,f.model.binding_token()));
+    CHECK(!f.model.take_request()&&!f.model.reserved_count()&&!f.model.inventory().count);
+    const auto first_audio=cue.audio_token;
+    for(unsigned i=0;i<4;++i){auto held=raw(true,0);observer.observe(held,edge,f.certificate.release_input);
+        const auto repeat=f.model.adopt_equipment_hold(held);CHECK(repeat.event!=E::no_ammo&&!repeat.request_original_no_ammo_sound);}
+    auto released=raw(false,0);observer.observe(released,edge,f.certificate.release_input);f.model.update(released);
+    auto fresh=raw(true,0);CHECK(observer.observe(fresh,edge,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+    const auto second=f.model.adopt_equipment_hold(fresh);
+    CHECK(second.event==E::no_ammo&&second.audio_token>first_audio);
+    CHECK(!f.model.take_request()&&!f.model.inventory().count&&f.model.stage()==S::idle);
+}
+void normal_carry_rotation_parity(){
+    using Observe=SmokeTriggerObservation;
+    constexpr auto rule=SmokeReleaseInput::right_grip_release_after_hold;
+    enum Case {recorded,left_only,right_only,left_yaw,neutral,expired,roll,cap,rate,identity_change,reference_change,motion_change,units_change,stream_change,tracking_change};
+    for(unsigned scenario=0;scenario<15;++scenario){
+        Fixture q(3,SmokeFuseOwner::original_projectile);
+        q.certificate.release_input=rule;q.certificate.motion.virtual_mass_kg=2.;
+        CHECK(q.model.bind(q.certificate,{1,3,true}));SmokeTriggerObserver observer;
+        gears_hand_continuity::MotionHistory history{};
+        const bool initial_left=scenario!=neutral&&scenario!=right_only;
+        const bool initial_right=scenario==recorded||scenario==right_only||scenario>=roll;
+        const double old_yaw=.229809513;
+        auto raw=[&](std::int64_t delta,bool left,bool right,bool down,double pitch,double yaw){
+            auto f=q.frame({0,1.5,0},delta);f.equipment_hold_generation=42;
+            f.mapping.game_base.rotation={pitch,yaw,0};
+            auto& hand=f.hands.hands[1];hand.trigger_active=0;
+            hand.squeeze=down?1.f:0.f;
+            hand.pressed[gears_vr::control_squeeze]=1;
+            hand.released[gears_vr::control_squeeze]=down?0:1;
+            auto& l=f.hands.hands[0];l.stick_active=1;l.stick_x=0;l.stick_y=left?.55f:0.f;
+            hand.stick_active=1;hand.stick_x=right?.42f:0.f;hand.stick_y=0;
+            if(history.count==gears_hand_continuity::motion_history_capacity){
+                for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];
+                --history.count;
+            }
+            auto& row=history.frames[history.count++];row.input=f.hands;
+            row.stream_epoch=11;row.tracking_epoch[0]=21;row.tracking_epoch[1]=22;
+            f.motion_history=history;return f;
+        };
+        auto held=raw(1000000,initial_left,initial_right,true,0,old_yaw);SmokeInput edge{};
+        CHECK(observer.observe(held,edge,rule)==Observe::baseline);
+        CHECK(q.model.adopt_equipment_hold(held).event==E::request_ready);
+        const auto prepare=q.take(A::prepare_original);
+        CHECK(q.model.acknowledge(q.receipt(prepare))==E::prepared);
+        auto baseline=raw(1000000,initial_left,initial_right,true,0,old_yaw);
+        CHECK(q.model.update(baseline).event==E::observed);
+        const auto baseline_ns=baseline.stamp.monotonic_ns;
+        const auto old_base=baseline.mapping.game_base;
+        // Raw producer advances normally. The consumer observes only the last
+        // frame: no old row, sequence, counter or timestamp is ever rewritten.
+        if(scenario==expired){
+            for(unsigned i=0;i<8;++i)raw(5000000,false,false,true,0,old_yaw);
+        }else if(scenario!=rate){
+            for(unsigned i=0;i<5;++i)raw(10000000,initial_left,initial_right,true,0,old_yaw);
+        }
+        const bool final_left=scenario==expired?false:initial_left;
+        const bool final_right=scenario==expired?false:initial_right;
+        const auto final_delta=scenario==rate?1000000:11223400;
+        double pitch=-.00872451684;
+        double yaw=(scenario==left_only||scenario==neutral||scenario==expired)?old_yaw:.233165114;
+        if(scenario==cap){pitch=.16;yaw=old_yaw+.16;}
+        auto changed=raw(final_delta,final_left,final_right,true,pitch,yaw);
+        if(scenario==roll)changed.mapping.game_base.rotation.roll=.001;
+        if(scenario==identity_change)++changed.stamp.identity.weapon;
+        if(scenario==reference_change)++changed.mapping.reference_generation;
+        if(scenario==motion_change)++changed.stamp.motion_epoch;
+        if(scenario==units_change)++changed.mapping.units_per_metre;
+        if(scenario==stream_change||scenario==tracking_change){
+            // Deliberate negative cohort fixture, not a positive-history repair.
+            for(unsigned i=0;i<changed.motion_history.count;++i){
+                if(scenario==stream_change)++changed.motion_history.frames[i].stream_epoch;
+                else ++changed.motion_history.frames[i].tracking_epoch[1];
+            }
+        }
+        CHECK(changed.stamp.monotonic_ns==q.ns);
+        CHECK(changed.hands.sync_ns==q.ns-2000);
+        if(scenario!=expired&&scenario!=rate)CHECK(changed.stamp.monotonic_ns-baseline_ns==61223400);
+        const auto input_seen=observer.observe(changed,edge,rule);
+        if(scenario<identity_change&&input_seen!=Observe::quiet)std::fprintf(stderr,"pitch observer case=%u seen=%u age=%lld\n",scenario,unsigned(input_seen),static_cast<long long>(changed.stamp.monotonic_ns-changed.hands.sync_ns));
+        if(scenario<identity_change)CHECK(input_seen==Observe::quiet);
+        const auto result=q.model.update(changed);
+        if(scenario>=left_yaw){
+            if(result.event!=E::safety_required)std::fprintf(stderr,"pitch case %u event=%u refusal=%u boundary=%u\n",scenario,unsigned(result.event),unsigned(q.model.last_interrupt_reason()),q.model.last_boundary_mask());
+            CHECK(result.event==E::safety_required&&q.model.inventory().count==3);
+            if(scenario<=rate)CHECK(q.model.last_interrupt_reason()==SmokeInterruptReason::mapping_boundary&&(q.model.last_boundary_mask()&32));
+            CHECK(q.model.pending_request().action!=A::launch_original);
+            continue;
+        }
+        if(result.event!=E::observed)std::fprintf(stderr,"pitch positive %u event=%u refusal=%u boundary=%u\n",scenario,unsigned(result.event),unsigned(q.model.last_interrupt_reason()),q.model.last_boundary_mask());
+        CHECK(result.event==E::observed);
+        const auto rotation=q.model.last_rotation_observation();
+        CHECK(rotation.pitch_changed&&rotation.pitch_continuous);
+        CHECK(rotation.consumer_gap_ns==61223400);
+        CHECK(rotation.rotation_magnitude<.2&&rotation.rotation_magnitude<=8.*double(rotation.consumer_gap_ns)/1e9);
+        if(scenario==left_only)CHECK(!rotation.yaw_changed&&!rotation.episode_after);
+        else CHECK(rotation.yaw_changed&&rotation.continuous&&rotation.episode_after);
+        auto released=raw(1000000,final_left,final_right,false,pitch,yaw);
+        CHECK(observer.observe(released,edge,rule)==Observe::edge&&edge.kind==SmokeInputKind::right_grip_release);
+        const auto decision=q.model.update(released,edge);
+        if(decision.event!=E::request_ready)std::fprintf(stderr,"pitch release %u event=%u refusal=%u\n",scenario,unsigned(decision.event),unsigned(q.model.last_interrupt_reason()));
+        CHECK(decision.event==E::request_ready);
+        const auto launch=q.take(A::launch_original);
+        CHECK(launch.tracked.predicted_time==released.hands.predicted_time);
+        GameGrenadeLaunch current{},previous{};
+        CHECK(grenade_world_launch(launch.tracked,released.mapping.frozen_reference,released.mapping.game_base,released.mapping.units_per_metre,current,released.mapping.pawn_velocity_world_units_per_second));
+        CHECK(grenade_world_launch(launch.tracked,released.mapping.frozen_reference,old_base,released.mapping.units_per_metre,previous,released.mapping.pawn_velocity_world_units_per_second));
+        CHECK(near(launch.launch.position.x,current.position.x)&&near(launch.launch.position.y,current.position.y)&&near(launch.launch.position.z,current.position.z));
+        CHECK(!near(current.position.x,previous.position.x)||!near(current.position.y,previous.position.y)||!near(current.position.z,previous.position.z));
+        CHECK(q.model.acknowledge(q.receipt(launch))==E::thrown&&q.model.inventory().count==2);
+        CHECK(!q.model.take_request());
+    }
+}
+void translated_body_origin_is_not_hand_velocity(){
+    // The production adapter authenticates the current rig base each sample.
+    // Translation is an output origin, not XR motion data. Artificial cover
+    // translation must not be fitted as speed or added as a second base speed.
+    // The current authenticated Game frame maps the actual raw release pose,
+    // including a continuous release observed one input sample later. No past
+    // Game origin is fabricated or required by the original interaction contract.
+    for(unsigned scenario=0;scenario<8;++scenario){
+        Fixture f;f.certificate.release_input=SmokeReleaseInput::right_grip_release_after_hold;
+        f.certificate.motion.virtual_mass_kg=2.;
+        CHECK(f.model.bind(f.certificate,{1,3,true}));
+        SmokeTriggerObserver observer;gears_hand_continuity::MotionHistory history{};
+        const auto raw=[&](unsigned step,bool down){
+            auto frame=f.frame({scenario==1?.02*step:0.,1.5,0});frame.equipment_hold_generation=42;
+            frame.mapping.game_base.position.x=100.+(scenario==1?.5:5.)*(scenario==7&&step>=7?7:step);
+            auto& hand=frame.hands.hands[1];hand.trigger_active=0;hand.squeeze=down?1.f:0.f;
+            hand.pressed[gears_vr::control_squeeze]=1;hand.released[gears_vr::control_squeeze]=down?0:1;
+            if(history.count==gears_hand_continuity::motion_history_capacity){
+                for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];--history.count;}
+            auto& row=history.frames[history.count++];row.input=frame.hands;
+            row.stream_epoch=11;row.tracking_epoch[0]=21;row.tracking_epoch[1]=22;
+            frame.motion_history=history;return frame;
+        };
+        auto held=raw(0,true);SmokeInput edge{};
+        CHECK(observer.observe(held,edge,f.certificate.release_input)==SmokeTriggerObservation::baseline);
+        CHECK(f.model.adopt_equipment_hold(held).event==E::request_ready);
+        const auto preparation=f.take(A::prepare_original);
+        CHECK(f.model.acknowledge(f.receipt(preparation))==E::prepared);
+        for(unsigned step=1;step<=8;++step){
+            auto frame=raw(step,step<8);
+            if(scenario==2)frame.mapping.frozen_reference.position.x+=.01;
+            if(scenario==3)frame.mapping.units_per_metre+=1.;
+            if(scenario==4)frame.mapping.game_base.rotation.yaw+=.2;
+            if(scenario==5)frame.mapping.game_base.position.x=std::numeric_limits<double>::infinity();
+            if((scenario==6||scenario==7)&&step==8)frame=raw(9,false);
+            const auto observed=observer.observe(frame,edge,f.certificate.release_input);
+            const auto decision=f.model.update(frame,observed==SmokeTriggerObservation::edge?edge:SmokeInput{});
+            if(scenario>=2&&scenario<=5){
+                CHECK(decision.event==E::safety_required&&f.model.inventory().count==3);
+                CHECK(f.model.pending_request().action==A::preserve_original_on_interrupt);
+                break;
+            }
+            CHECK(decision.event==(step==8?E::request_ready:E::observed));
+        }
+        if(scenario>=2&&scenario<=5)continue;
+        const auto launch=f.take(A::launch_original);
+        CHECK(near(launch.tracked.velocity_mps.x,scenario==1?2.:0.));
+        CHECK(near(launch.tracked.velocity_mps.y,0.)&&near(launch.tracked.velocity_mps.z,0.));
+        CHECK(near(launch.launch.position.x,scenario==1?104.:scenario==7?135.:scenario==6?145.:140.));
+        CHECK(near(launch.launch.position.y,scenario==1?36.:20.)&&near(launch.launch.position.z,15.));
+        CHECK(near(launch.launch.velocity.x,50.)&&near(launch.launch.velocity.y,scenario==1?180.:-20.)&&near(launch.launch.velocity.z,0.));
+        CHECK(f.model.acknowledge(f.receipt(launch))==E::thrown&&f.model.inventory().count==2);
+    }
+}
 int main(){
+    normal_carry_rotation_parity();
+    translated_body_origin_is_not_hand_velocity();
+    finite_two_grasp_cycles_then_empty();
+    bounded_source_gap_rebuilds_only_motion_window();
+    stopped_preparation_after_external_debit();
+    raw_grip_history_and_source_boundary();
+    continuous_grip_owner_flow();
     certificate_gates();grab_and_empty();real_motion_and_one_original_commit();
     receipt_validation_and_old_callbacks();interruption_and_native_fuse();
     ambiguous_and_undispatched_operations();bad_motion_never_throws();

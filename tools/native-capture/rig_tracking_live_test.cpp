@@ -21,13 +21,30 @@ struct Call {Call(){++calls;}~Call(){--calls;}};
 namespace cover_context_live {
 struct Observation {weapon_hand_scene_binding::Binding actor{};gears_anchor::Identity link{};
     int slot{-1};unsigned char cover_type{};};
-unsigned calls{},fail_on{},change_on{};unsigned char type{};bool wrong_actor{};
+unsigned calls{},fail_on{},change_on{},closing_mutation{};unsigned char type{};bool wrong_actor{};
 bool same(Observation const& a,Observation const& b){return
-    weapon_hand_scene_binding::same_key(a.actor,b.actor)&&gears_anchor::equal_identity(a.link,b.link)&&
+    weapon_hand_scene_binding::same_key(a.actor,b.actor)&&a.actor.special_move==b.actor.special_move&&
+    a.actor.scene_invocation==b.actor.scene_invocation&&gears_anchor::equal_identity(a.link,b.link)&&
     a.slot==b.slot&&a.cover_type==b.cover_type;}
 bool sample(gears_anchor::Receipt const* receipt,Observation& out){
     if(++calls==fail_on||!receipt)return false;
-    out.actor=weapon_hand_scene_binding::actor;out.actor.scene_invocation=receipt->invocation;
+    // Model the real cover reader's two fresh actor reads, not an actor flag
+    // copied from its fixture. Existing binding-close/reference hooks must
+    // also run on the ON path after outer overlapping samples are removed.
+    namespace binding=weapon_hand_scene_binding;
+    const auto opened_receipt=*receipt;
+    if(calls==2){
+        if(closing_mutation==1)++binding::actor.mesh.number;
+        if(closing_mutation==2)++binding::actor.world.number;
+        if(closing_mutation==3)++binding::actor.special_move;
+        if(closing_mutation==4)++const_cast<gears_anchor::Receipt*>(receipt)->renderer_qpc;
+    }
+    binding::Binding first{},again{};
+    if(!binding::sample(receipt,first)||!binding::sample(receipt,again)||
+       !binding::same_key(first,again)||first.special_move!=again.special_move||
+       first.scene_invocation!=again.scene_invocation||std::memcmp(&opened_receipt,receipt,sizeof opened_receipt))return false;
+    out.actor=again;
+    if(calls==2&&closing_mutation==5)++out.actor.scene_invocation;
     if(wrong_actor)out.actor.mesh.number++;
     out.cover_type=type;out.slot=type?0:-1;
     if(type)out.link=weapon_hand_scene_binding::actor.world; // Synthetic key only.
@@ -67,7 +84,14 @@ int main_test(const char* mode){
     shared::TrackingBundle bundle{};C(shared::tracking_for(&scene,stereo,bundle)&&bundle.matched&&bundle.publisher_pid==GetCurrentProcessId());
     input::controllers.close();input::bridge_open=false;
     C(!publish()&&rig::sequence==0&&rig::observed.stream==0);rig::reference_changed(frozen_reference);
-    C(publish());C(!input::bridge_open);C(read(request,out)==api::Reply::accepted&&api::frame_valid(out,fake_clock,50000000,true));
+    native::sample_calls=0;
+    C(publish());
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+    C(native::sample_calls==4);
+#else
+    C(native::sample_calls==2);
+#endif
+    C(!input::bridge_open);C(read(request,out)==api::Reply::accepted&&api::frame_valid(out,fake_clock,50000000,true));
     C(out.native_reference.epoch==1&&out.native_reference.flags==api::reference_stable);
     C(out.flags&api::controllers_matched);C(!(out.flags&api::producer_continuity_available)&&api::producer_empty(out.producer));
     C(!memcmp(&out.controllers,&bundle.hands,sizeof bundle.hands)&&out.controller_publisher_start==bundle.publisher_start);
@@ -155,6 +179,16 @@ int main_test(const char* mode){
             ctx::change_on=bad==2?2:0;ctx::wrong_actor=bad==3;ctx::type=2;
             C(!publish());C(read(request,out)==api::Reply::unavailable);
             ctx::fail_on=ctx::change_on=0;ctx::wrong_actor=false;}
+        // All payload/pose calculation is enclosed by the two complete cover
+        // observations. A later actual actor/world/state/receipt change cannot
+        // publish merely because the initial cover observation was valid.
+        for(unsigned bad=1;bad<=5;++bad){
+            selected();const auto original_actor=native::actor;const auto original_scene=scene;
+            ctx::calls=0;ctx::closing_mutation=bad;native::sample_calls=0;
+            C(!publish());C(ctx::calls==2&&native::sample_calls==4);
+            C(read(request,out)==api::Reply::unavailable);
+            native::actor=original_actor;scene=original_scene;ctx::closing_mutation=0;
+        }
     }
 #endif
     else C(false);

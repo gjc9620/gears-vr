@@ -11,6 +11,8 @@
 #include <cwchar>
 #include <functional>
 #include <memory>
+#include <new>
+#include "../vr-common/scoped_read_validation.h"
 #include <string>
 #include <type_traits>
 #include "../vr-common/weapon_hand_client.h"
@@ -46,6 +48,7 @@ bool copy(void* out,uptr from,std::size_t bytes){
     if(read_observer)read_observer(from,bytes);
 #endif
     const auto result=safe_copy(out,from,bytes);
+    if(result)gears_read_validation::observed(from,out,bytes);else gears_read_validation::unreadable();
     if(result&&mutate_read>=from&&mutate_read-from<bytes){mutate_read=0;auto callback=std::move(mutation);callback();}
     return result;
 }

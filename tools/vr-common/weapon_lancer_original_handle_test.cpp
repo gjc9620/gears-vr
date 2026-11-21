@@ -1,4 +1,4 @@
-#include "weapon_lancer_original_handle.h"
+#include "weapon_lancer_handle_compose.h"
 #include <cstdio>
 #include <limits>
 namespace h=gears_lancer_original_handle;
@@ -37,6 +37,108 @@ struct Fixture {
     void update_space(){const auto m=h::multiply(h::matrix(local[4],true),root);for(unsigned i=0;i<16;++i)space[4][i]=float(m[i]);}
 };
 int main(){
+    // Exhaustively compare the policy, with fresh observers and all boolean
+    // combinations. Include NaN/Inf/out-of-range values and spring returns.
+    const double angles[]={0,.2,h::maximum_angle,-.1,h::maximum_angle+.1,
+        std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity()};
+    const double pulls[]={0,1,h::maximum_pull_raw,-.1,h::maximum_pull_raw+.1,
+        std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity()};
+    for(double a:angles)for(double ba:angles)for(double p:pulls)for(double bp:pulls)
+        for(unsigned flags=0;flags<16;++flags){
+            const bool render=(flags&1)!=0,part=(flags&2)!=0,socket=(flags&4)!=0,home=(flags&8)!=0;
+            unsigned pc{},sc{};
+            const bool actual=h::update_admitted_lazy(a,p,ba,bp,render,
+                [&](){++pc;return part;},[&](){++sc;return socket;},home);
+            CHECK(actual==h::update_admitted(a,p,ba,bp,render,part,socket,home));
+            CHECK(pc<=1&&sc<=1);
+            if(!render)CHECK(!pc&&!sc);
+        }
+    const auto counted=[](double a,double p,double ba,double bp,bool render,bool part,bool socket,
+        bool home,unsigned expected_part,unsigned expected_socket,bool expected){
+        unsigned rc{},pc{},sc{};
+        const auto render_read=[&](){++rc;return render;};
+        CHECK(h::update_admitted_lazy(a,p,ba,bp,render_read(),[&](){++pc;return part;},
+            [&](){++sc;return socket;},home)==expected);
+        CHECK(rc==1&&pc==expected_part&&sc==expected_socket);
+    };
+    counted(0,0,0,0,true,false,false,false,0,0,true); // closed idle: three admissions -> one
+    counted(.2,0,.2,0,true,false,false,false,0,0,true); // held unchanged
+    counted(.2,0,0,0,true,true,false,false,1,0,true); // deploy with part
+    counted(.2,0,0,0,true,false,true,false,1,1,true); // deploy with socket
+    counted(.2,0,0,0,true,false,false,false,1,1,false);
+    counted(0,0,.2,0,true,false,false,false,0,0,true); // empty fold
+    counted(0,1,.2,1,true,false,true,false,1,0,false); // loaded fold needs part
+    counted(.2,1,.2,0,true,false,true,false,1,0,false); // socket never slides
+    counted(.2,0,.2,1,true,false,false,true,0,0,true); // authenticated return policy
+    counted(.2,1,.2,0,false,true,true,false,0,0,false);
+    counted(-.1,0,0,0,true,true,true,false,0,0,false);
+    CHECK(h::defer_closed_reload(false,false,false,false,false,{},0));
+    CHECK(h::defer_closed_reload(true,false,false,true,true,{},0));
+    CHECK(!h::defer_closed_reload(true,false,false,false,true,{},0));
+    CHECK(!h::defer_closed_reload(true,false,false,true,false,{},0));
+    CHECK(!h::defer_closed_reload(true,true,false,true,true,{},0));
+    CHECK(!h::defer_closed_reload(true,false,true,true,true,{},0));
+    CHECK(!h::defer_closed_reload(true,false,false,true,true,{.1,0},.1));
+    CHECK(!h::defer_closed_reload(true,false,false,true,true,{0,.1},0));
+    CHECK(!h::defer_closed_reload(true,false,false,true,true,{},.1));
+    // Untouched reference-pose node: no decoder, no sequence and empty cache.
+    // The original composer is represented by update_space(), never by a
+    // production SpaceBases store. Only local bone4 may be borrowed.
+    {
+        Fixture f;h::ComposeLease p;auto read=f.reader();auto write=f.writer();
+        CHECK(p.begin(f.source,read));CHECK(p.ready(f.source,read));
+        const auto all_before=f.local;const auto cache_before=f.cache;
+        CHECK(p.wanted(h::maximum_angle,4));CHECK(!p.ready(f.source,read));
+        CHECK(p.compose_begin(f.source,read,write));CHECK(p.active());
+        CHECK(!p.compose_begin(f.source,read,write)); // no nested journal
+        for(unsigned i=0;i<9;++i)if(i!=4)CHECK(h::same(f.local[i],all_before[i]));
+        f.update_space();++f.source.epoch;
+        CHECK(p.compose_end(f.source,true,read,write));CHECK(!p.active());
+        CHECK(h::same(f.local[4],f.closed));CHECK(p.ready(f.source,read));
+        CHECK(!std::memcmp(f.cache.data(),cache_before.data(),sizeof f.cache));
+        p.request_restore();CHECK(!p.restore(f.source,read,write)); // open evaluated geometry
+        f.update_space();++f.source.epoch;CHECK(p.restore(f.source,read,write));CHECK(!p.bound());
+    }
+    {
+        Fixture f;h::ComposeLease p;auto read=f.reader();CHECK(p.begin(f.source,read));
+        CHECK(p.wanted(.5,1));unsigned stores{};
+        auto partial=[&](auto at,h::Atom const& a){++stores;std::memcpy(reinterpret_cast<void*>(at),&a,8);return false;};
+        CHECK(!p.compose_begin(f.source,read,partial));
+        CHECK(p.restore_local(f.source,read,f.writer()));CHECK(!p.active());
+        CHECK(h::same(f.local[4],f.closed));CHECK(stores>0);
+        CHECK(p.compose_begin(f.source,read,f.writer()));
+        f.local[4].scale=2; // third-party value is not ours to restore
+        CHECK(!p.restore_local(f.source,read,f.writer()));CHECK(p.active());
+        auto other=f.source;other.local.data+=32;
+        CHECK(!p.restore_local(other,read,f.writer()));CHECK(p.active());
+        CHECK(f.local[4].scale==2);
+    }
+    {
+        Fixture f;h::ComposeLease p;CHECK(p.begin(f.source,f.reader()));CHECK(p.wanted(.4));
+        CHECK(p.compose_begin(f.source,f.reader(),f.writer()));
+        CHECK(!p.compose_end(f.source,false,f.reader(),f.writer()));
+        CHECK(p.restoring());CHECK(!p.active());CHECK(h::same(f.local[4],f.closed));
+        CHECK(!p.ready(f.source,f.reader()));CHECK(p.restore(f.source,f.reader(),f.writer()));
+    }
+
+    // Same canonical rest orientation with the opposite quaternion sign is
+    // not a foreign animation. Journal/restore its exact CURRENT bytes.
+    {
+        Fixture f;h::ComposeLease p;CHECK(p.begin(f.source,f.reader()));CHECK(p.wanted(h::maximum_angle,8));
+        for(auto& q:f.local[4].rotation)q=-q;
+        f.local[4].position[0]=std::nextafter(f.local[4].position[0],100.f);
+        const auto current_rest=f.local[4];CHECK(h::original(current_rest));
+        const bool composed=p.compose_begin(f.source,f.reader(),f.writer());CHECK(composed);
+        if(composed){f.update_space();++f.source.epoch;CHECK(p.compose_end(f.source,true,f.reader(),f.writer()));
+            CHECK(h::same(f.local[4],current_rest));CHECK(p.ready(f.source,f.reader()));}
+    }
+    // A genuinely animated/noncanonical C atom must still be left untouched.
+    {
+        Fixture f;h::ComposeLease p;CHECK(p.begin(f.source,f.reader()));CHECK(p.wanted(h::maximum_angle,8));
+        f.local[4].position[0]+=.05f;const auto foreign=f.local[4];
+        CHECK(!p.compose_begin(f.source,f.reader(),f.writer()));CHECK(h::same(f.local[4],foreign));CHECK(!p.active());
+    }
+
     //62548: partial release readback2.00046 differs from the last accepted
     //2.000674 request. Reissuing it needs a now-released part lease and leaves
     //C unready, so a same-position regrasp wrongly acquires the magazine.
@@ -69,6 +171,12 @@ int main(){
     CHECK(h::update_admitted(h::maximum_angle,0,h::maximum_angle,7,true,true,false));
     CHECK(!h::update_admitted(h::maximum_angle,9,h::maximum_angle,2,true,true,true));
     CHECK(!h::update_admitted(std::numeric_limits<double>::quiet_NaN(),0,0,0,true,true,true));
+    // Released cosmetic spring can only go home; proximity never pushes it.
+    CHECK(h::update_admitted(h::maximum_angle,7,h::maximum_angle,8,true,false,false,true));
+    CHECK(h::update_admitted(h::maximum_angle,0,h::maximum_angle,1,true,false,false,true));
+    CHECK(!h::update_admitted(h::maximum_angle,8,h::maximum_angle,7,true,false,true,true));
+    CHECK(!h::update_admitted(0,0,h::maximum_angle,1,true,false,false,true));
+    CHECK(!h::update_admitted(h::maximum_angle,0,h::maximum_angle,1,false,false,false,true));
     Fixture f;h::Plan p{};CHECK(p.bind(f.closed,f.root,f.handle));CHECK(p.conjugated);
     // Independent original-surface trajectory: radius is preserved around
     // the actual handle pivot; no disconnected translating cord or cap.

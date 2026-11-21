@@ -12,6 +12,54 @@ import launch_reserve
 
 
 class ReserveLifecycleTests(unittest.TestCase):
+    @contextlib.contextmanager
+    def birth_fixture(self):
+        identity=dict(pid=55,creation_time=456,image='fixture.exe')
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'birth.json'
+            value=dict(schema=1,kind='reservation_birth',game_identity=identity,injection_attempted=False,prime_attempted=False)
+            path.write_text(json.dumps(value),encoding='utf-8')
+            yield path,identity,value
+
+    def test_transient_replace_republishes_one_payload_and_preserves_prior_stage(self):
+        original_replace=pathlib.Path.replace;original_write=pathlib.Path.write_text
+        with self.birth_fixture() as (path,identity,value):
+            attempts=[];writes=[]
+            def replace(source,target):
+                attempts.append(source.read_bytes())
+                if len(attempts)<3:raise launch_reserve.c.WinError(5)
+                return original_replace(source,target)
+            def write(source,payload,**kwargs):
+                writes.append(payload);return original_write(source,payload,**kwargs)
+            with mock.patch.object(pathlib.Path,'replace',replace),mock.patch.object(pathlib.Path,'write_text',write),mock.patch.object(launch_reserve.time,'sleep') as sleep:
+                launch_reserve.mark_launch_stage(path,identity,'injection_attempted')
+            self.assertEqual(len(writes),1);self.assertEqual(len(attempts),3)
+            self.assertTrue(all(payload==attempts[0] for payload in attempts));self.assertEqual(sleep.call_count,2)
+            launch_reserve.mark_launch_stage(path,identity,'prime_attempted')
+            receipt=json.loads(path.read_text());self.assertTrue(receipt['injection_attempted']);self.assertTrue(receipt['prime_attempted'])
+
+    def test_permanent_replace_denial_keeps_old_receipt_and_pending_payload(self):
+        with self.birth_fixture() as (path,identity,value),mock.patch.object(pathlib.Path,'replace',side_effect=launch_reserve.c.WinError(5)) as replace,mock.patch.object(launch_reserve.time,'sleep') as sleep:
+            with self.assertRaises(OSError) as caught:launch_reserve.mark_launch_stage(path,identity,'injection_attempted')
+            self.assertEqual(replace.call_count,6);self.assertEqual(sleep.call_count,5)
+            self.assertEqual(json.loads(path.read_text()),value)
+            self.assertTrue(json.loads(path.with_name(path.name+'.tmp').read_text())['injection_attempted'])
+            self.assertIn('injection state remains unknown',caught.exception.__notes__[0])
+
+    def test_changed_birth_identity_during_retry_is_not_overwritten(self):
+        with self.birth_fixture() as (path,identity,value):
+            changed=dict(value,game_identity=dict(identity,creation_time=789))
+            def replace(*args):
+                path.write_text(json.dumps(changed));raise launch_reserve.c.WinError(32)
+            with mock.patch.object(pathlib.Path,'replace',side_effect=replace) as call,mock.patch.object(launch_reserve.time,'sleep'):
+                with self.assertRaisesRegex(RuntimeError,'changed during'):launch_reserve.mark_launch_stage(path,identity,'injection_attempted')
+            call.assert_called_once();self.assertEqual(json.loads(path.read_text()),changed)
+
+    def test_unrelated_publish_error_is_not_retried(self):
+        with self.birth_fixture() as (path,identity,value),mock.patch.object(pathlib.Path,'replace',side_effect=launch_reserve.c.WinError(112)) as call,mock.patch.object(launch_reserve.time,'sleep') as sleep:
+            with self.assertRaises(OSError):launch_reserve.mark_launch_stage(path,identity,'injection_attempted')
+            call.assert_called_once();sleep.assert_not_called();self.assertEqual(json.loads(path.read_text()),value)
+
     def test_loader_timeout_reports_last_existing_snapshot_without_an_extra_poll(self):
         exe=pathlib.Path('J:/fixture/GOWDE-Steam.exe');ticks=[0.]
         identity=dict(pid=55,creation_time=456,image=str(exe).casefold())

@@ -74,10 +74,10 @@ namespace GearsVrUi {
             "导出程序未返回有效的 ZIP 保存回执。",
             "导出提示：",
             "渲染倍率",
-            "× 推荐宽高；0.7 较省性能，1.0 为推荐尺寸；下次启动生效",
+            "超过上限自动等比缩小",
             "查看实际尺寸",
             "渲染倍率必须为 0.25–2.0 的数字；构建能力必须为布尔值。",
-            "实验版本 · VR 使用运行时推荐尺寸 × 渲染倍率\r\n桌面镜像尺寸独立；请手动进入关卡。",
+            "VR 引擎上限：双眼并排 8192 × 8192，单眼 4096 × 8192\r\n桌面镜像尺寸独立；请手动进入关卡。",
             "游戏画面：-- FPS（等待实际提交数据）",
             "游戏画面：",
             "OpenXR 循环：",
@@ -154,10 +154,10 @@ namespace GearsVrUi {
             "The exporter did not return a valid ZIP save receipt.",
             "Export note: ",
             "Render scale",
-            "x recommended width/height; 0.7 saves GPU work, 1.0 recommended; next launch",
+            "Automatically scales down to fit",
             "Check eye size",
             "Render scale must be a number from 0.25 to 2.0; build capability must be boolean.",
-            "Experimental build · VR uses runtime recommended size × render scale\r\nDesktop mirror resolution is independent. Enter a level manually.",
+            "VR engine limit: 8192 × 8192 side by side, 4096 × 8192 per eye\r\nDesktop mirror resolution is independent. Enter a level manually.",
             "Game frames: -- FPS (waiting for actual submissions)",
             "Game frames: ",
             "OpenXR loop: ",
@@ -513,7 +513,13 @@ namespace GearsVrUi {
                 !value.TryGetValue("eye",out eyes)||!value.TryGetValue("render_scale",out scale))return null;
             var dimensions=eyes as System.Collections.IList;
             if(dimensions==null||dimensions.Count!=2)return null;
-            return String.Format("VR: {0} × {1} / eye ({2:0.00}×)",dimensions[0],dimensions[1],Convert.ToDouble(scale));
+            double applied=Convert.ToDouble(scale);
+            object requested;
+            if(value.TryGetValue("requested_render_scale",out requested)){
+                return String.Format(Language.English?"VR: {0} × {1} / eye ({2:0.0000}×, capped)":"VR：单眼 {0} × {1}（{2:0.0000}×，已限幅）",
+                    dimensions[0],dimensions[1],applied);
+            }
+            return String.Format("VR: {0} × {1} / eye ({2:0.00}×)",dimensions[0],dimensions[1],applied);
         }
         internal static void SaveOptions(string path, string game, bool hudSupported, decimal hudSize) {
             SaveOptions(path, game, hudSupported, hudSize, false, 0);

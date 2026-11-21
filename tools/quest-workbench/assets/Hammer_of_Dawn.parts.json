@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        0.0,
+        0.04,
+        -0.24
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "cog_hod_mesh",
+      "parent": 0,
+      "pivot": [
+        4.476896720007062e-08,
+        -3.245628477088758e-09,
+        8.94715776666999e-08
+      ],
+      "mesh": "Hammer_of_Dawn.bone0.mesh",
+      "triangles": 9368
+    },
+    {
+      "bone": "Trigger",
+      "parent": 0,
+      "pivot": [
+        5.003544174542185e-09,
+        0.044015590283119084,
+        -0.14937582605576608
+      ],
+      "mesh": "Hammer_of_Dawn.bone1.mesh",
+      "triangles": 156
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.012253799438476563,
+        0.06474656105041504,
+        -0.31954364776611327
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.012253799438476563,
+        0.06474656105041504,
+        -0.46954364776611324
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "原件 · cog_hod_mesh",
+      "position": [
+        0.009836813148457751,
+        0.0940108345288305,
+        -0.24031266492806624
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "扳机 · Trigger",
+      "position": [
+        -1.692413147294446e-19,
+        0.02461938779528548,
+        -0.1279711597721751
+      ],
+      "bone": 1,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Hammer_of_Dawn",
+    "kind": "beam",
+    "capacity": 0,
+    "reserve": 0,
+    "feed": [
+      0.0,
+      0.065,
+      -0.16999999999999998
+    ],
+    "mechanism_pivot": [
+      0.0,
+      0.065,
+      -0.16999999999999998
+    ],
+    "mechanism_bones": [],
+    "magazine_bone": -1,
+    "travel": 0,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "",
+    "initial_loaded": 0,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      7.634147433406216e-05,
+      0.04854413311360246,
+      -0.590361242577181
+    ]
+  },
+  "curated": true
+}

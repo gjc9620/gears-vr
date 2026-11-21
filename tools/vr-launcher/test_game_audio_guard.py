@@ -59,6 +59,19 @@ class GuardTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'provenance/hash'):audio.begin(self.game,self.owner,self.log)
             guard.assert_not_called()
 
+    def test_legacy_zero_counters_do_not_claim_mute_verification(self):
+        guard=self.guard()
+        result=guard.close()
+        self.assertFalse(result['mute_verification']['observed'])
+
+    def test_already_muted_receipt_is_distinct_from_mutation_count(self):
+        guard=self.guard()
+        with self.log.open('a') as output:
+            output.write(json.dumps(dict(event='mute_verification_summary',pid=12,
+                initially_muted_sessions=1,verified_muted_observations=8,verify_failed=0,target_shared_rejected=0))+'\n')
+        result=guard.close()
+        self.assertEqual(result['mute_verification']['initially_muted_sessions'],1)
+        self.assertEqual(result['mute_verification']['verified_muted_observations'],8)
     def test_manual_helper_missing_wrong_hash_and_old_policy_rejected(self):
         import hashlib
         receipt=self.helper.with_name('audio-helper-provenance.json')
@@ -129,6 +142,40 @@ class GuardTests(unittest.TestCase):
         self.events.signal.assert_called_once_with(7)
         self.events.close.assert_called_once_with(7)
         self.process.wait.assert_called_once()
+
+    def timed_guard(self,ready_at,*,timeout=15.,wrong_owner=False,exited=False):
+        ticks=[0.];process=mock.Mock();process.poll.return_value=0 if exited else None
+        def receipt(path):
+            if ticks[0]<ready_at:return []
+            return [dict(event='guard_ready',**self.game,owner_pid=99 if wrong_owner else 56,owner_creation_time=78)]
+        with mock.patch.object(audio,'records',side_effect=receipt):
+            return audio.Guard(self.game,self.owner,self.log,helper=self.helper,events=self.events,
+                popen=lambda *a,**k:process,clock=lambda:ticks[0],
+                sleep=lambda seconds:ticks.__setitem__(0,ticks[0]+seconds),ready_timeout=timeout)
+
+    def test_late_ready_and_exact_deadline_ready_are_accepted(self):
+        for ready_at in (3.1,15.):
+            with self.subTest(ready_at=ready_at):
+                if self.log.exists():self.log.unlink()
+                guard=self.timed_guard(ready_at)
+                self.assertTrue(guard.startup['ready_observed'])
+                self.assertGreaterEqual(guard.startup['waited_seconds'],ready_at)
+                self.assertNotIn('muted',guard.startup)
+
+    def test_wrong_owner_or_exited_helper_rejected(self):
+        for options in ({'wrong_owner':True},{'exited':True}):
+            if self.log.exists():self.log.unlink()
+            with self.assertRaisesRegex(RuntimeError,'owner identity|exited before'):
+                self.timed_guard(0,**options)
+
+    def test_missing_ready_times_out_and_requests_normal_restore(self):
+        with self.assertRaisesRegex(RuntimeError,'did not acknowledge'):
+            self.timed_guard(31,timeout=.1)
+        self.events.signal.assert_called_once_with(7)
+
+    def test_read_sharing_lock_is_not_a_fatal_ready_error(self):
+        with mock.patch.object(Path,'stat',side_effect=PermissionError()):
+            self.assertEqual(audio.records(self.log),[])
 
 
 if __name__=='__main__': unittest.main()

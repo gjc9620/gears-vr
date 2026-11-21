@@ -28,7 +28,7 @@ struct AudioSession final : Session {
     ComPtr<ISimpleAudioVolume> volume;
     std::wstring key() const override { return id; }
     bool mute(bool& value) override {
-        BOOL state{}; if (FAILED(volume->GetMute(&state))) return false;
+        BOOL state{}; if (!same_session() || FAILED(volume->GetMute(&state))) return false;
         value=state!=FALSE; return true;
     }
     bool same_session() {
@@ -46,8 +46,8 @@ struct AudioSession final : Session {
         return same_session() && SUCCEEDED(volume->SetMasterVolume(value,nullptr));
     }
 };
-struct ScanCounts { unsigned endpoints{}, sessions{}, unavailable{}, rejected_shared{}; };
-static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE process, Policy* policy, ManualPolicy* manual=nullptr) {
+struct ScanCounts { unsigned endpoints{}, sessions{}, unavailable{}, rejected_shared{}, target_shared{}, inspected{}, confirmed_muted{}, inspect_failed{}; };
+static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE process, Policy* policy, ManualPolicy* manual=nullptr,bool inspect=false) {
     ScanCounts result; ComPtr<IMMDeviceCollection> devices;
     if (FAILED(enumerator->EnumAudioEndpoints(eRender,DEVICE_STATE_ACTIVE,&devices))) {
         ++result.unavailable; return result;
@@ -67,9 +67,9 @@ static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE pro
             ComPtr<IAudioSessionControl> control; ComPtr<IAudioSessionControl2> control2;
             if (FAILED(sessions->GetSession(j,&control)) || FAILED(control.As(&control2))) { ++result.unavailable; continue; }
             ++result.sessions;
-            if (!policy && !manual) continue; // Read-only enumeration never queries/modifies volume.
+            if (!policy && !manual && !inspect) continue; // Inventory never queries/modifies volume.
             DWORD pid{}; HRESULT owner=control2->GetProcessId(&pid);
-            if (owner!=S_OK) { if (SUCCEEDED(owner)) ++result.rejected_shared; continue; }
+            if (owner!=S_OK) { if (SUCCEEDED(owner)) {++result.rejected_shared;if(pid==target)++result.target_shared;} continue; }
             if (pid!=target || !alive(process) || control2->IsSystemSoundsSession()!=S_FALSE) continue;
             AudioSessionState state{};
             if (FAILED(control2->GetState(&state)) || state==AudioSessionStateExpired) continue;
@@ -79,7 +79,8 @@ static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE pro
             session->id=device_id+L"\n"+raw_instance; session->pid=pid; session->control=control2;
             CoTaskMemFree(raw_instance);
             if (FAILED(control.As(&session->volume))) { ++result.unavailable; continue; }
-            if (manual) manual->observe(std::move(session),alive(process));
+            if(inspect){bool muted{};if(!session->mute(muted))++result.inspect_failed;else{++result.inspected;if(muted)++result.confirmed_muted;}}
+            else if (manual) manual->observe(std::move(session),alive(process));
             else policy->observe(std::move(session),alive(process));
         }
     }
@@ -101,15 +102,26 @@ static std::uint64_t number(std::wstring const& text) {
     return value;
 }
 int wmain(int argc,wchar_t** argv) {
+    const bool guarded_start=argc==14&&(std::wstring(argv[1])==L"--guard"||std::wstring(argv[1])==L"--manual-volume");
+    if(guarded_start){std::printf("{\"event\":\"helper_boot\",\"helper_pid\":%lu,\"tick_ms\":%llu}\n",GetCurrentProcessId(),GetTickCount64());std::fflush(stdout);}
     HRESULT initialized=CoInitializeEx(nullptr,COINIT_MULTITHREADED);
     if (FAILED(initialized)) return 2;
     struct Uninit { ~Uninit() { CoUninitialize(); } } uninit;
     try {
         ComPtr<IMMDeviceEnumerator> enumerator;
         if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,IID_PPV_ARGS(&enumerator)))) return 2;
+        if(guarded_start){std::printf("{\"event\":\"audio_service_ready\",\"tick_ms\":%llu}\n",GetTickCount64());std::fflush(stdout);}
         if (argc==2 && std::wstring(argv[1])==L"--enumerate") {
             auto c=scan(enumerator.Get(),0,nullptr,nullptr);
             std::printf("{\"event\":\"read_only_audio_inventory\",\"active_render_endpoints\":%u,\"sessions\":%u,\"unavailable\":%u,\"mutations\":0}\n",c.endpoints,c.sessions,c.unavailable);
+            return 0;
+        }
+        if(argc==6&&std::wstring(argv[1])==L"--inspect-muted"&&std::wstring(argv[2])==L"--pid"&&std::wstring(argv[4])==L"--creation-time"){
+            const auto pid64=number(argv[3]),stamp=number(argv[5]);if(pid64>MAXDWORD)return 2;
+            Handle process;process.value=OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,static_cast<DWORD>(pid64));
+            if(!process.value||creation(process.value)!=stamp||!alive(process.value))return 2;
+            const auto c=scan(enumerator.Get(),static_cast<DWORD>(pid64),process.value,nullptr,nullptr,true);
+            std::printf("{\"event\":\"read_only_target_mute\",\"pid\":%llu,\"creation_time\":%llu,\"target_sessions_read\":%u,\"target_sessions_muted\":%u,\"target_shared_rejected\":%u,\"all_shared_rejected\":%u,\"read_failed\":%u,\"mutations\":0}\n",pid64,stamp,c.inspected,c.confirmed_muted,c.target_shared,c.rejected_shared,c.inspect_failed);
             return 0;
         }
         if (argc!=14) return 2;
@@ -135,19 +147,25 @@ int wmain(int argc,wchar_t** argv) {
             std::printf("{\"event\":\"identity_rejected\",\"mutations\":0}\n"); return 3;
         }
         Policy policy; ManualPolicy manual_policy; RestoreFallback fallback{policy};
-        std::printf("{\"event\":\"guard_ready\",\"pid\":%lu,\"creation_time\":%llu,\"matched\":0,\"muted\":0}\n",pid,game_creation); std::fflush(stdout);
+        std::printf("{\"event\":\"guard_ready\",\"pid\":%lu,\"creation_time\":%llu,\"owner_pid\":%lu,\"owner_creation_time\":%llu,\"ready_tick_ms\":%llu,\"matched\":0,\"muted\":0}\n",pid,game_creation,owner,owner_creation,GetTickCount64()); std::fflush(stdout);
         HANDLE waits[]{stop.value,parent.value,game.value};
         auto deadline=GetTickCount64()+seconds*1000; char const* reason="deadline";
-        std::uint64_t scans{}, unavailable{}, shared{}, last_muted{}, last_configured{};
+        std::uint64_t scans{}, unavailable{}, shared{}, last_muted{}, last_configured{},target_shared{};bool previous_verified{};unsigned verification_events{};
         while (GetTickCount64()<deadline) {
             DWORD signal=WaitForMultipleObjects(3,waits,FALSE,0);
             if (signal!=WAIT_TIMEOUT) { reason=signal==WAIT_OBJECT_0?"stop":signal==WAIT_OBJECT_0+1?"owner_exit":signal==WAIT_OBJECT_0+2?"game_exit":"wait_error"; break; }
-            auto c=scan(enumerator.Get(),pid,game.value,manual?nullptr:&policy,manual?&manual_policy:nullptr); ++scans; unavailable+=c.unavailable; shared+=c.rejected_shared;
+            const auto before=policy.counts();
+            auto c=scan(enumerator.Get(),pid,game.value,manual?nullptr:&policy,manual?&manual_policy:nullptr); ++scans; unavailable+=c.unavailable; shared+=c.rejected_shared;target_shared+=c.target_shared;
             if (manual && manual_policy.configured()!=last_configured) {
                 last_configured=manual_policy.configured();
                 std::printf("{\"event\":\"manual_audio_configured\",\"sessions\":%llu,\"volume\":1.0,\"muted\":false}\n",last_configured); std::fflush(stdout);
             }
             auto counts=policy.counts();
+            const bool verified=counts.verified_muted>before.verified_muted;
+            if(!manual&&verified!=previous_verified&&verification_events<32){
+                previous_verified=verified;++verification_events;
+                std::printf("{\"event\":\"mute_state_verified\",\"pid\":%lu,\"verified_muted_this_scan\":%s,\"initially_muted_sessions\":%llu,\"verified_observations\":%llu,\"verify_failed\":%llu,\"target_shared_rejected_this_scan\":%u}\n",pid,verified?"true":"false",counts.initially_muted,counts.verified_muted,counts.verify_failed,c.target_shared);std::fflush(stdout);
+            }
             if (counts.muted!=last_muted) {
                 last_muted=counts.muted;
                 std::printf("{\"event\":\"audio_muted\",\"matched\":%llu,\"muted\":%llu}\n",counts.matched,counts.muted); std::fflush(stdout);
@@ -163,6 +181,7 @@ int wmain(int argc,wchar_t** argv) {
         // their final Release. Never locate a successor PID/session to restore.
         fallback.finish();
         auto c=policy.counts();
+        std::printf("{\"event\":\"mute_verification_summary\",\"pid\":%lu,\"initially_muted_sessions\":%llu,\"verified_muted_observations\":%llu,\"verify_failed\":%llu,\"target_shared_rejected\":%llu,\"shared_rejected_is_global_scan_count\":true}\n",pid,c.initially_muted,c.verified_muted,c.verify_failed,target_shared);
         std::printf("{\"event\":\"guard_cleanup\",\"reason\":\"%s\",\"matched\":%llu,\"muted\":%llu,\"restore_attempted\":%llu,\"restored\":%llu,\"restore_pending\":%llu,\"read_failed\":%llu,\"mute_failed\":%llu,\"scans\":%llu,\"endpoint_unavailable\":%llu,\"shared_rejected\":%llu}\n",reason,c.matched,c.muted,c.restore_attempted,c.restored,policy.pending(),c.read_failed,c.mute_failed,scans,unavailable,shared);
         std::fflush(stdout); return policy.pending()?4:0;
     } catch (...) { std::printf("{\"event\":\"guard_error\"}\n"); return 2; }

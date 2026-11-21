@@ -102,6 +102,70 @@ void happy_path_and_exact_bytes(){
     CHECK(lease.acquire(b.current.key,positive_zero,b)&&lease.dirty_mask()==2);
     CHECK(lease.restore(b)&&exact(b.current.value,signed_zero));
 }
+void acquire_from_current_uses_fresh_first_read(){
+    Backend b;Lease lease;const auto first=b.current.value;
+    unsigned factory_calls{};bool factory_saw_first{};
+    const bool acquired=lease.acquire_from_current(b.current.key,b,[&](Value const& current){
+        ++factory_calls;factory_saw_first=exact(current,first);
+        auto wanted=current;wanted.absolute={true,true,current.absolute[2]};
+        wanted.translation=bytes(151);wanted.rotation=bytes(152);return wanted;
+    });
+    CHECK(acquired&&factory_calls==1&&factory_saw_first);
+    CHECK(lease.has_snapshot()&&exact(lease.original_value(),first));
+    CHECK(lease.dirty_mask()==7&&b.calls.size()==3&&b.reads==7);
+    CHECK(lease.restore(b)&&b.calls.size()==6&&b.reads==13&&exact(b.current.value,first)&&!lease.dirty());
+    CHECK(lease.reset());
+}
+void acquire_from_current_failed_read_never_calls_factory_or_writes(){
+    for(unsigned kind=0;kind<4;++kind){
+        Backend b;Lease lease;const auto expected=b.current.key;
+        if(kind==0)b.failed_reads.insert(0);
+        if(kind==1)b.current.known=false;
+        if(kind==2)++b.current.key.generation;
+        if(kind==3)++b.current.key.action_epoch;
+        unsigned factory_calls{};
+        const bool acquired=lease.acquire_from_current(expected,b,[&](Value const& current){
+            ++factory_calls;return current;
+        });
+        CHECK(!acquired&&factory_calls==0&&b.calls.empty());
+        CHECK(lease.faulted()&&!lease.dirty()&&!lease.has_snapshot());
+        CHECK(lease.reset());
+    }
+}
+void acquire_from_current_throwing_factory_never_writes(){
+    Backend b;Lease lease;unsigned calls{};
+    const bool acquired=lease.acquire_from_current(b.current.key,b,[&](Value const& current)->Value{++calls;if(calls)throw 1;return current;});
+    CHECK(!acquired&&calls==1&&b.calls.empty()&&lease.faulted()&&!lease.dirty());
+    CHECK(lease.reset());
+}
+void acquire_from_current_preserves_torn_write_and_restore(){
+    Backend b;Lease lease;const auto first=original();b.modes[1]=Backend::Mode::partial;
+    unsigned factory_calls{};
+    const bool acquired=lease.acquire_from_current(b.current.key,b,[&](Value const& current){
+        ++factory_calls;auto wanted=current;wanted.absolute={true,false,true};
+        wanted.translation=bytes(201);wanted.rotation=bytes(202);return wanted;
+    });
+    CHECK(!acquired&&factory_calls==1);
+    CHECK(lease.dirty_mask()==2&&lease.revoked_mask()==2&&lease.owned_mask()==0&&lease.faulted());
+    CHECK(b.calls.size()==3&&b.calls[0].group==1&&b.calls[1].group==2&&b.calls[2].group==1);
+    const auto calls=b.calls.size();CHECK(!lease.restore(b)&&b.calls.size()==calls);
+    assign(b.current.value,first,2);CHECK(lease.restore(b)&&!lease.dirty()&&lease.faulted()&&b.calls.size()==calls);
+    CHECK(lease.reset());
+}
+void acquire_from_current_reentry_and_aliases(){
+    Backend b;Lease lease;const auto key=b.current.key;
+    unsigned calls{};
+    CHECK(!lease.acquire_from_current(key,b,[&](Value const& current){
+        CHECK(exact(current,original()));++calls;b.current.value.rotation=bytes(72);return current;
+    })&&calls==1&&lease.faulted());
+    CHECK(b.calls.empty()&&lease.reset());
+    Backend nested;Lease recursive;bool attempted=false;
+    nested.after_write=[&](Backend& live_backend,int call){if(call==0){attempted=true;CHECK(!recursive.acquire_from_current(nested.current.key,live_backend,[](Value const& current){auto wanted=current;wanted.translation=bytes(81);return wanted;}));}};
+    const bool recursive_acquired=recursive.acquire_from_current(nested.current.key,nested,[](Value const& current){auto wanted=current;wanted.translation=bytes(81);return wanted;});
+    CHECK(!recursive_acquired&&attempted);
+    CHECK(recursive.dirty_mask()==2&&recursive.revoked_mask()==2&&recursive.owned_mask()==0);
+    nested.current.value=original();CHECK(recursive.restore(nested)&&recursive.faulted());
+}
 void no_op_and_unowned_foreign_fields(){
     Backend b;Lease noop;
     CHECK(noop.acquire(b.current.key,b.current.value,b)&&!noop.dirty()&&b.calls.empty());
@@ -267,6 +331,28 @@ void owned_value_getter_alias_survives_clean_reacquisition(){
     CHECK(exact(lease.original_value(),next_original)&&lease.dirty_mask()==7&&lease.owned_mask()==7&&!lease.faulted());
     CHECK(lease.restore(b)&&exact(b.current.value,next_original)&&!lease.dirty()&&!lease.faulted());
 }
+void getter_reference_is_copied_before_lease_storage_is_cleared(){
+    Backend b;Lease lease;
+    CHECK(lease.acquire(b.current.key,target(),b)&&lease.restore(b));
+    const auto prior_owned=lease.owned_value();
+    b.current.value=foreign();
+    const Value& wanted=lease.owned_value();
+    CHECK(lease.acquire(b.current.key,wanted,b));
+    CHECK(exact(b.current.value,prior_owned)&&exact(lease.owned_value(),prior_owned));
+    CHECK(exact(lease.original_value(),foreign()));
+    CHECK(lease.restore(b)&&exact(b.current.value,foreign()));
+}
+void original_getter_reference_is_copied_before_lease_storage_is_cleared(){
+    Backend b;Lease lease;
+    CHECK(lease.acquire(b.current.key,target(),b)&&lease.restore(b));
+    const auto prior_original=lease.original_value();
+    b.current.value=foreign();
+    const Value& wanted=lease.original_value();
+    CHECK(lease.acquire(b.current.key,wanted,b));
+    CHECK(exact(b.current.value,prior_original)&&exact(lease.owned_value(),prior_original));
+    CHECK(exact(lease.original_value(),foreign()));
+    CHECK(lease.restore(b)&&exact(b.current.value,foreign()));
+}
 void original_value_getter_alias_survives_clean_reacquisition(){
     Backend b;Lease lease;
     CHECK(lease.acquire(b.current.key,target(),b)&&lease.restore(b));
@@ -300,13 +386,19 @@ void explicit_external_action_relinquishes_without_erasing_dirty(){
 }
 }
 int main(){
-    happy_path_and_exact_bytes();no_op_and_unowned_foreign_fields();unknown_preflight_never_writes();
+    happy_path_and_exact_bytes();acquire_from_current_uses_fresh_first_read();
+    acquire_from_current_failed_read_never_calls_factory_or_writes();
+    acquire_from_current_throwing_factory_never_writes();
+    acquire_from_current_preserves_torn_write_and_restore();acquire_from_current_reentry_and_aliases();
+    no_op_and_unowned_foreign_fields();unknown_preflight_never_writes();
     failed_apply_can_still_have_written();torn_group_is_not_guessed_or_reacquired();
     post_call_read_failure_revokes_remaining_writes();foreign_owned_group_does_not_block_other_cleanup();
     identity_unknown_and_reused_address_never_mean_clean();failed_restore_preserves_ownership_or_revokes_a_torn_group();
     backend_rechecks_expected_value_and_key_before_writing();busy_and_reentrant_requests_cannot_replace_the_journal();
     earlier_group_returning_to_original_aborts_acquisition();caller_aliases_are_snapshotted();
     owned_value_getter_alias_survives_clean_reacquisition();original_value_getter_alias_survives_clean_reacquisition();
+    getter_reference_is_copied_before_lease_storage_is_cleared();
+    original_getter_reference_is_copied_before_lease_storage_is_cleared();
     explicit_external_action_relinquishes_without_erasing_dirty();
     std::printf("weapon mesh component lease: %u CPU checks passed (partial calls, exact bytes, foreign fields, identity and cleanup)\n",checks);
 }

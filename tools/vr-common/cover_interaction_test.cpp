@@ -340,6 +340,57 @@ static void physical_head_motion_stays_separate(){
     CHECK(offset_is(f.run(),-.2,.3));
 }
 
+static void directional_down_pull_modes(){
+    for(CoverEdgeKind kind:{CoverEdgeKind::left,CoverEdgeKind::right,CoverEdgeKind::top}){
+        Fixture f(kind);f.cover.pull_mode=CoverPullMode::directional_down;f.start();
+        const auto pulled=f.move({0,-.2,0});
+        const double right=kind==CoverEdgeKind::left?-.2:kind==CoverEdgeKind::right?.2:0;
+        const double up=kind==CoverEdgeKind::top?.2:0;
+        CHECK(pulled.owns_left_hand&&offset_is(pulled,right,up));
+        CHECK(offset_is(f.move({0,-.3,0}),right*1.5,up*1.5));
+        CHECK(offset_is(f.move({0,-.1,0}),right*.5,up*.5)); // Up is reverse retraction.
+        auto clipped=f.move({0,-2,0});
+        CHECK(clipped.status==CoverStatus::clipped&&offset_is(clipped,
+            kind==CoverEdgeKind::left?-.6:kind==CoverEdgeKind::right?.5:0,
+            kind==CoverEdgeKind::top?.7:0));
+        const auto reversed=f.move({0,-1.99,0});
+        CHECK(offset_is(reversed,
+            kind==CoverEdgeKind::left?-.59:kind==CoverEdgeKind::right?.49:0,
+            kind==CoverEdgeKind::top?.69:0)); // Clipped sample rebases; 1cm reverse responds.
+        const auto held=f.release();
+        CHECK(!held.owns_left_hand&&offset_is(held,reversed.offset.right,reversed.offset.up));
+        CHECK(offset_is(f.press(),reversed.offset.right,reversed.offset.up)); // Regrab keeps held position.
+        CHECK(offset_is(f.move({0,-1.89,0}),
+            reversed.offset.right+(kind==CoverEdgeKind::left?.1:kind==CoverEdgeKind::right?-.1:0),
+            reversed.offset.up-(kind==CoverEdgeKind::top?.1:0))); // Up retracts .1m after regrant.
+    }
+
+    Fixture repeat;repeat.cover.pull_mode=CoverPullMode::directional_down;repeat.start();
+    repeat.move({0,-.2,0});repeat.advance();repeat.cover.pull_mode=CoverPullMode::generic;
+    auto newer=repeat.run();
+    CHECK(newer.owns_left_hand&&offset_is(newer,-.2,0)); // New sequence keeps frozen grab mode.
+
+    Fixture replay;replay.cover.pull_mode=CoverPullMode::directional_down;replay.start();
+    replay.move({0,-.2,0});replay.cover.pull_mode=CoverPullMode::generic;
+    auto changed=replay.run(); // Same sequence changed payload must reject without waiting.
+    CHECK(changed.status==CoverStatus::replayed&&!changed.owns_left_hand&&offset_is(changed,-.2,0));
+
+    Fixture isolated;isolated.start();isolated.move({0,-.2,0});
+    isolated.advance();isolated.cover.pull_mode=CoverPullMode::directional_down;
+    auto frozen=isolated.run();
+    CHECK(frozen.owns_left_hand&&offset_is(frozen,0,0)); // Mode is frozen at grant, not reinterpreted.
+
+    Fixture angle(CoverEdgeKind::right);angle.cover.pull_mode=CoverPullMode::directional_down;
+    angle.cover.up_axis_tracking={0,0,1};angle.start();
+    CHECK(offset_is(angle.move({0,0,-.2}),.2,0)); // Down is the frozen +up-axis negative, not world Y.
+    angle.cover.up_axis_tracking={-1,0,0};angle.cover.right_axis_tracking={0,0,1};
+    CHECK(offset_is(angle.move({0,0,-.3}),.3,0)); // Later axes cannot rotate an active pull.
+
+    Fixture invalid;invalid.cover.pull_mode=static_cast<CoverPullMode>(99);
+    auto rejected=invalid.run();
+    CHECK(rejected.status==CoverStatus::invalid&&!rejected.owns_left_hand&&offset_is(rejected,0,0));
+}
+
 int main(){
     try{
         clipping_reverse_and_held_range_loss();
@@ -347,7 +398,8 @@ int main(){
         common_bounds_and_axis_changes();
         ownership_and_edge_lock();freshness_replay_and_clocks();tracking_interruptions_and_epochs();
         invalid_numbers_and_ranges();physical_head_motion_stays_separate();
+        directional_down_pull_modes();
     }catch(int){return 1;}
-    std::puts("Cover interaction CPU: directions, frozen axes, 20000-frame drift/repeat, acquisition reach versus held grip, held/regrab total bounds, ownership/edge lock, freshness/replay/clocks, tracking/epochs, finite/overflow and separate physical HMD composition PASS");
+    std::puts("Cover interaction CPU: directions, frozen axes, directional-down pull mapping/reverse/clipped rebase/regrab, acquisition reach versus held grip, held/regrab total bounds, ownership/edge lock, freshness/replay/clocks, tracking/epochs, finite/overflow and separate physical HMD composition PASS");
     return 0;
 }

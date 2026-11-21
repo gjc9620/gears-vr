@@ -4,7 +4,7 @@
 using namespace gears_test_audio;
 static unsigned checks{};
 #define CHECK(x) do { ++checks; if (!(x)) { std::printf("FAIL %u line %d\n",checks,__LINE__); std::exit(1); } } while(false)
-struct State { bool muted{}; unsigned writes{}, reads{}, fail_writes{}; bool fail_reads{}; float volume{.25f}; unsigned volume_writes{}, fail_volume{}; };
+struct State { bool muted{}; unsigned writes{}, reads{}, fail_writes{}; bool fail_reads{}, ignore_mute_write{}; float volume{.25f}; unsigned volume_writes{}, fail_volume{}; };
 struct Fake final : Session {
     std::wstring id; std::shared_ptr<State> state;
     Fake(std::wstring name, std::shared_ptr<State> value) : id(std::move(name)), state(std::move(value)) {}
@@ -18,6 +18,7 @@ struct Fake final : Session {
     bool set_mute(bool value) override {
         ++state->writes;
         if (state->fail_writes) { --state->fail_writes; return false; }
+        if(value&&state->ignore_mute_write)return true;
         state->muted=value; return true;
     }
 };
@@ -28,9 +29,11 @@ int main() {
     CHECK(!p.observe(session(L"endpoint1/session1",a),false)); CHECK(a->writes==0);
     CHECK(p.observe(session(L"endpoint1/session1",a),true)); CHECK(a->muted);
     CHECK(p.counts().matched==1 && p.counts().muted==1);
+    CHECK(p.counts().verified_muted==1 && p.counts().initially_muted==0);
     CHECK(p.observe(session(L"endpoint1/session1",a),true)); CHECK(a->writes==1);
     CHECK(p.observe(session(L"endpoint2/session1",b),true)); CHECK(b->writes==0);
     CHECK(p.counts().matched==2 && p.counts().muted==1);
+    CHECK(p.counts().initially_muted==1 && p.counts().verified_muted==3);
     // A later user unmute is suppressed during the test; first original state remains.
     a->muted=false; CHECK(p.observe(session(L"endpoint1/session1",a),true)); CHECK(a->muted);
     a->fail_writes=1; CHECK(!p.restore()); CHECK(p.pending()==1); CHECK(p.counts().restored==0);
@@ -49,6 +52,14 @@ int main() {
     { Policy q; auto fail=std::make_shared<State>(); fail->fail_reads=true;
       CHECK(!q.observe(session(L"unreadable",fail),true)); CHECK(fail->writes==0);
       CHECK(q.counts().matched==0 && q.counts().read_failed==1); CHECK(q.restore()); }
+    { Policy q; auto initial=std::make_shared<State>();initial->muted=true;
+      CHECK(q.observe(session(L"already-muted",initial),true));
+      CHECK(q.counts().matched==1&&q.counts().muted==0&&q.counts().initially_muted==1&&q.counts().verified_muted==1);
+      CHECK(initial->writes==0);CHECK(q.restore());CHECK(initial->muted&&initial->writes==0); }
+    { Policy q; auto ignored=std::make_shared<State>();ignored->ignore_mute_write=true;
+      CHECK(!q.observe(session(L"setter-success-but-unmuted",ignored),true));
+      CHECK(q.counts().mute_failed==0&&q.counts().verify_failed==1&&q.counts().verified_muted==0);
+      CHECK(q.pending()==1);CHECK(q.restore());CHECK(!ignored->muted); }
     { ManualPolicy q; auto late=std::make_shared<State>(); late->muted=true;
       CHECK(q.configured()==0); CHECK(!q.observe(session(L"late",late),false));
       CHECK(late->writes==0 && late->volume_writes==0);

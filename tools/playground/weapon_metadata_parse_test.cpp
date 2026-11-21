@@ -3,6 +3,8 @@
 #include "weapon_metadata_parse.h"
 #include "../native-capture/weapon_hud_query_input.h"
 #include "../vr-common/weapon_main_mount_provider.h"
+#include <cstdio>
+FILE* log_file{}; // Existing selected client diagnostics require the ordinary composition-root global.
 #include "weapon_hand_offline_fixture.h"
 #include <algorithm>
 #include <vector>
@@ -16,6 +18,24 @@ struct Query {
     explicit Query(bool fast=true){if(fast)previous=parse::activate(*workspace);else {previous=parse::active;parse::active=nullptr;}}
     ~Query(){parse::restore(previous);}
 };
+void stale_address_activation(){
+    auto w=std::make_unique<parse::Workspace>();
+    w->addresses.fill(0x12345678);w->epochs.fill(1);w->epoch=99;w->walk_owned=true;
+    w->names.fill({0x8888,7,55});auto* saved=parse::active;
+    CHECK(parse::activate(*w)==saved&&parse::active==w.get());
+    CHECK(w->epoch==0&&!w->walk_owned&&parse::length_bound(0x8888,7)==0);
+    for(auto const& n:w->names)CHECK(!n.entry&&!n.index&&!n.length);
+    for(auto epoch:w->epochs)CHECK(epoch==0);
+    // Previously resident addresses must be invisible until this walk writes
+    // the matching epoch. This exercises the slot that contains the exact
+    // queried stale address, not only unrelated garbage bytes.
+    const auto slot=parse::bucket(0x12345678,parse::visit_buckets-1);
+    CHECK(w->addresses[slot]==0x12345678);
+    {parse::Walk walk;parse::Address prefix[1]{};
+     CHECK(!walk.seen(0x12345678,prefix,0));prefix[0]=0x12345678;
+     CHECK(walk.seen(0x12345678,prefix,1));}
+    parse::restore(saved);CHECK(parse::active==saved);
+}
 void walks(){
     std::vector<uptr> previous(4096);std::uint64_t scalar_comparisons{},uncached_comparisons{};
     const auto original_seen=[&](uptr address,uptr const* prefix,unsigned count){
@@ -401,5 +421,5 @@ void aimed_fields(){
         CHECK(fields.boolean(r,F::toggle_flag,value)&&value.mask==4);
         CHECK(fields.finish(r));CHECK(!fields.boolean(r,F::held_flag,value));
     }
-}int main(){query_local_identities();contiguous_metadata_fields();aimed_fields();hud_direct_arguments();tick_scope_lifetime();walks();traversal_queries();scanners();names();cold_name_boundaries();CHECK(parse::active==nullptr&&parse::traversal_only==nullptr);
+}int main(){stale_address_activation();query_local_identities();contiguous_metadata_fields();aimed_fields();hud_direct_arguments();tick_scope_lifetime();walks();traversal_queries();scanners();names();cold_name_boundaries();CHECK(parse::active==nullptr&&parse::traversal_only==nullptr);
     std::printf("WeaponMetadataParseTest: %u checks passed; actual scanners/name reader, owned memory only\n",checks);return 0;}

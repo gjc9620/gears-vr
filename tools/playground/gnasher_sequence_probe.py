@@ -1,4 +1,4 @@
-"""Sample the original Gnasher lever or held hand bones in an owned retail test.
+"""Sample original Gnasher bones in an explicitly owned private game.
 
 The caller must start the private, behind-windows, muted game child and pass
 its ``owned.json``. This probe never edits packages or publishes an asset. It
@@ -31,7 +31,11 @@ def wait_for(callback, seconds, reason):
 
 def argument_parser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--owned-json', required=True, type=Path)
+    owner=parser.add_mutually_exclusive_group(required=True)
+    owner.add_argument('--owned-json', type=Path)
+    owner.add_argument('--launcher-session', type=Path)
+    parser.add_argument('--game-pid', type=int)
+    parser.add_argument('--game-creation-time', type=int)
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT,
@@ -39,6 +43,7 @@ def argument_parser():
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--held-grips-only', action='store_true',
                         help='Capture original resting character hands relative to the held Gnasher')
+    parser.add_argument('--combined-reference', action='store_true', help='One original held-hand bracket followed by the bounded SG_Chamber samples')
     return parser
 
 
@@ -52,6 +57,21 @@ def matrix(bridge, mesh, index):
     return list(values)
 
 
+def close_reference_bridge(bridge, receipt, launcher_owned):
+    """Release only this probe's responsibility; never close a parent session."""
+    try:
+        if launcher_owned:
+            receipt.update(shutdown_mode='launcher_owned', shutdown_deferred=True,
+                           launcher_cleanup_verified=False)
+        else:
+            receipt['shutdown_mode'] = 'probe_owned'
+            receipt['shutdown'] = bridge.export('PlaygroundShutdown')
+            if receipt['shutdown'] != 0:
+                raise RuntimeError('Playground shutdown was not clean')
+    finally:
+        bridge.close()
+
+
 def sample_owned_game(args, receipt):
     runtime_dir = args.runtime_root.resolve() / 'tools/playground'
     if not (runtime_dir / 'runtime.py').is_file():
@@ -59,10 +79,25 @@ def sample_owned_game(args, receipt):
     sys.path.insert(0, str(runtime_dir))
     from runtime import Bridge
 
-    owned = json.loads(args.owned_json.read_text(encoding='utf-8'))
-    if not owned.get('private_root') or not owned.get('launch', {}).get('test_windows_behind_requested'):
-        raise ValueError('Not an owned behind-windows test game')
-    identity = owned['game']
+    attach_only=bool(args.launcher_session)
+    if attach_only:
+        session=json.loads(args.launcher_session.read_text(encoding='utf-8-sig'))
+        pg=session.get('playground',{});report_path=Path(session.get('session_report',''))
+        report=json.loads(report_path.read_text(encoding='utf-8-sig')) if report_path.is_file() else {}
+        running=session.get('phase')=='session_owned' or (session.get('phase')=='waiting_for_level' and report.get('phase')=='running' and report.get('game_identity')==session.get('game_identity'))
+        identity=session.get('game_identity',{})
+        if not running or not session.get('test_audio_guard',{}).get('enabled') or not pg.get('enabled'):
+            raise ValueError('Not an owned muted running launcher session')
+        if pg.get('pid')!=identity.get('pid') or Path(pg.get('dll','')).resolve()!=args.dll.resolve() or pg.get('sha256')!=args.dll_sha256:
+            raise ValueError('Launcher Gnasher reference DLL/game mismatch')
+        if args.game_pid!=identity.get('pid') or args.game_creation_time!=identity.get('creation_time'):
+            raise ValueError('Launcher identity differs from explicit run owner')
+        receipt['game_identity']=identity;receipt['launcher_owner_identity']=session.get('owner_identity')
+    else:
+        owned=json.loads(args.owned_json.read_text(encoding='utf-8'))
+        if not owned.get('private_root') or not owned.get('launch',{}).get('test_windows_behind_requested'):
+            raise ValueError('Not an owned behind-windows test game')
+        identity=owned['game']
     bridge = None
     try:
         # The owned launcher publishes its child identity before UE3 registries
@@ -71,7 +106,11 @@ def sample_owned_game(args, receipt):
         registry_deadline = time.monotonic() + 90
         while True:
             try:
-                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256)
+                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256, attach_only=attach_only)
+                if attach_only:
+                    bridge.r.prepare()
+                    initialized=bridge.export('PlaygroundInitialize')
+                    if initialized!=0:raise RuntimeError(f'Owned Playground initialize failed: {initialized}')
                 break
             except RuntimeError as error:
                 if str(error) not in ('Invalid name array header', 'Invalid object array header'):
@@ -192,7 +231,7 @@ def sample_owned_game(args, receipt):
                        mesh=resolver.identity(mesh), anim_node=node_identity,
                        bone_indices={'main': main, 'lever': lever})
 
-        if args.held_grips_only:
+        if args.held_grips_only or args.combined_reference:
             pawn_mesh = pointer(pawn, 'Mesh')
             if class_name(pawn_mesh) != 'SkeletalMeshComponent':
                 raise RuntimeError('Original equipped pawn mesh is not skeletal')
@@ -220,30 +259,39 @@ def sample_owned_game(args, receipt):
                 time.sleep(.025)
             if len(receipt['held_grips']) != 24:
                 raise RuntimeError('Incomplete original held-grip sample')
-        else:
+        if not args.held_grips_only:
             # SetPosition(false) suppresses sequence notifies. The active
             # sequence changes only inside this private, discarded game child.
             bridge.call(shotgun, 'SetWeaponAnim', AnimName=fname('SG_Chamber'))
             bridge.call(shotgun, 'FreezeWeaponAnim')
+            receipt['capture_protocol'] = 'bracketed_original_sg35_v1'
+            receipt['separate_reads_not_atomic'] = True
             for frame in range(35):
                 position = SEQUENCE_LENGTH * frame / 34
                 bridge.call(shotgun, 'SetWeaponAnimPosition', NewPosition=position)
                 time.sleep(.025)  # allow one game animation update before sampling
-                receipt['samples'].append({'frame': frame, 'position_seconds': position,
-                                           'main': matrix(bridge, mesh, main),
-                                           'lever': matrix(bridge, mesh, lever)})
+                current_time=struct.unpack('<f',resolver.read(animations+property_of(animations,'CurrentTime')['offset'],4))[0]
+                main_before=matrix(bridge, mesh, main)
+                lever_observation=matrix(bridge, mesh, lever)
+                main_after=matrix(bridge, mesh, main)
+                after_time=struct.unpack('<f',resolver.read(animations+property_of(animations,'CurrentTime')['offset'],4))[0]
+                receipt['samples'].append({'frame': frame, 'position_seconds': position, 'observed_node_time_seconds':current_time,
+                                           'main':main_before,'lever':lever_observation,'main_after':main_after,
+                                           'observed_node_time_after_seconds':after_time})
             if len(receipt['samples']) != 35:
                 raise RuntimeError('Incomplete bounded sequence sample')
     finally:
         if bridge:
             try:
-                receipt['shutdown'] = bridge.export('PlaygroundShutdown')
+                close_reference_bridge(bridge, receipt, attach_only)
             except BaseException:
                 receipt['shutdown_error'] = traceback.format_exc()
-            bridge.close()
-    if receipt.get('shutdown') != 0:
+                raise
+    if not attach_only and receipt.get('shutdown') != 0:
         raise RuntimeError('Playground shutdown was not clean')
-    receipt['passed'] = True
+    receipt['sampling_passed'] = True
+    receipt['passed'] = not attach_only
+    receipt['state'] = 'sampled_awaiting_launcher_cleanup' if attach_only else 'sampled_probe_shutdown_complete'
 
 
 def main():
@@ -252,14 +300,15 @@ def main():
     if not output.is_relative_to((ROOT / 'analysis').resolve()):
         raise ValueError('Derived bone evidence must remain under analysis/')
     receipt = {'schema': 2 if args.held_grips_only else 1,
-               'passed': False, 'source': 'owned retail runtime',
+               'passed': False, 'source': 'owned original game runtime',
                'animation': 'held idle' if args.held_grips_only else 'SG_Chamber',
                'samples': []}
+    if args.combined_reference and args.held_grips_only:raise ValueError('Choose one reference mode')
     if not args.held_grips_only:
         receipt['length_seconds_from_package'] = SEQUENCE_LENGTH
     owned = False
     try:
-        owned = args.owned_json.is_file()
+        owned = args.owned_json is not None and args.owned_json.is_file()
         sample_owned_game(args, receipt)
     except BaseException:
         receipt['error'] = traceback.format_exc()

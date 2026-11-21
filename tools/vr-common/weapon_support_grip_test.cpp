@@ -1,6 +1,7 @@
 #include "weapon_support_grip.h"
 #include "weapon_hand_owner_adapter.h"
 #include "weapon_lancer_contact_route.h"
+#include "hand_object_grasp.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -77,6 +78,41 @@ int main(){
     _set_error_mode(_OUT_TO_STDERR);_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
 #endif
     unsigned cases{};
+    {++cases;Host h;h.game.support_box.enabled=true;
+        h.game.support_box.acquire_half={.08,.06,.06};h.game.support_box.retain_half={.10,.08,.08};
+        h.frame.controllers.hands[0].grip.position={.079999,1.059999,-.440001};
+        double distance{};assert(support_contact(h.frame,h.game,false,&distance)&&distance>.10);
+        assert(h.step(false)==Grip::single); // Neutral contact never steers.
+        assert(h.step(true)==Grip::two); // Same shared arbiter, a real Grip.
+        h.frame.controllers.hands[0].grip.position.x=.095;
+        assert(!support_contact(h.frame,h.game,false)&&support_contact(h.frame,h.game,true));
+        assert(h.step(true)==Grip::two); // The keep box retains a real lease.
+        h.frame.controllers.hands[0].grip.position.x=.100001;
+        assert(h.step(true)==Grip::single); // This opt-in box revokes outside keep.
+        h.frame.controllers.hands[0].grip.position.x=0;
+        assert(h.step(true)==Grip::single); // Returning while held cannot create a new grant.
+        assert(h.step(false)==Grip::single);
+        assert(h.step(true)==Grip::two); // Real release/repress reacquires inside.
+    }
+    {++cases;Host h;h.auto_socket=true;h.game.support_box.enabled=true;
+        h.game.support_box.acquire_half={.08,.06,.06};h.game.support_box.retain_half={.10,.08,.08};
+        assert(h.step(false)==Grip::single);h.game.magazine_observation_pending=true;
+        h.game.support_box.retain_half.x=.11;
+        assert(h.step(true)!=Grip::two); // A changed volume cannot borrow old socket affinity.
+    }
+    {++cases;Host h;h.game.support_box.enabled=true;
+        h.game.support_box.acquire_half={.08,.06,.06};h.game.support_box.retain_half={.10,.08,.08};
+        h.game.support_box.axes[0][0]=2;
+        assert(!support_contact(h.frame,h.game,false)&&h.step(true)==Grip::single);
+    }
+    {++cases;Host h;h.game.support_box.enabled=true;
+        h.game.support_box.acquire_half={.08,.06,.06};h.game.support_box.retain_half={.10,.08,.08};
+        h.frame.controllers.hands[1].grip.orientation={0,.7071067811865475,0,.7071067811865475};
+        h.frame.controllers.hands[0].grip.position={-.5,1,.079999};
+        assert(support_contact(h.frame,h.game,false));
+        h.frame.controllers.hands[0].grip.position.z=.080001;
+        assert(!support_contact(h.frame,h.game,false)); // Box follows current main-hand rotation.
+    }
     {++cases;Host h;h.auto_socket=true;assert(h.step(false)==Grip::single);
         h.game.magazine_observation_pending=true;
         assert(h.step(true)==Grip::two); // Actual hovered support + real edge; unknown unrelated magazine.
@@ -200,7 +236,8 @@ int main(){
     {++cases;Host h;assert(h.step(false)==Grip::single);
         h.game.magazine_observation_pending=true;auto p=h.prepare(true);auto d=h.arbitrate(p,true);
         assert(h.participant.commit(h.frame,p,d)==Reply::accepted);h.next();
-        h.frame.now_ns+=150000000;h.frame.stereo.received_ns+=150000000;h.next();
+        // Current owner permits bounded pending observation for500ms; exceed it.
+        h.frame.now_ns+=600000000;h.frame.stereo.received_ns+=600000000;h.next();
         h.game.magazine_observation_pending=false;h.game.request_magazine=true;
         p=h.prepare(true);d=h.arbitrate(p,true);assert(d.status==DecisionStatus::needs_release&&d.release_required);
         assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
@@ -299,6 +336,116 @@ int main(){
         h.frame.controllers.hands[0].grip.position.x=0;
         assert(h.step(true)==Grip::single); // hovering while held supplies no new edge
         assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);
+    }
+    {
+        ++cases;Host h;h.auto_socket=true;
+        h.game.acquire_metres=.14;h.game.release_metres=.22;
+        h.game.mount.support_length_tolerance_metres=.22;
+        h.game.mount.maximum_support_correction_radians=.8;
+        namespace grasp=gears_hand_object_grasp;
+        auto hover=grasp::proximity_socket(grasp::Kind::none,0.,.40,.14,.14);
+        assert(hover==grasp::Kind::support&&h.step(false)==Grip::single);
+        assert(h.participant.snapshot().left_hand.kind==LeaseKind::none);
+        assert(h.step(true)==Grip::two);
+        h.frame.controllers.hands[0].grip.position.x=.18;
+        assert(h.step(true)==Grip::two); // Move while actual Grip remains held.
+        hover=grasp::proximity_control_handoff(hover,LeaseKind::support,true);
+        assert(h.step(false)==Grip::single);
+        assert(h.participant.snapshot().left_hand.kind==LeaseKind::none);
+        hover=grasp::proximity_socket(hover,.18,.40,.14,.14);
+        assert(hover==grasp::Kind::support); // Still visually socketed after release.
+        assert(support_contact(h.frame,h.game,true)); // Retention geometry is current/valid.
+        assert(!support_contact(h.frame,h.game,false)); // Fresh-acquisition range differs.
+        const auto regrab=h.step(true); // A NEW physical edge, not a held-hover retry.
+        std::fprintf(stderr,"Release/regrab contract: passive_socket=%u actual_grip=%u expected_two=%u; local host only\n",
+            unsigned(hover),unsigned(regrab),unsigned(Grip::two));
+        assert(regrab==Grip::two); // Owner: Grip must retake control from the existing Snap.
+    }
+    {++cases;Host h;h.auto_socket=true;h.game.acquire_metres=.14;h.game.release_metres=.22;
+        assert(h.step(false)==Grip::single);assert(h.step(true)==Grip::two);
+        h.frame.controllers.hands[0].grip.position.x=.18;
+        assert(h.step(true)==Grip::two&&h.step(false)==Grip::single);
+        h.game.magazine_observation_pending=true;
+        assert(h.step(true)==Grip::two); // Same socket uses current retention contact, even with unrelated unknown mag.
+    }
+    for(unsigned changed=0;changed<12;++changed){
+        ++cases;Host h;h.auto_socket=true;h.game.acquire_metres=.14;h.game.release_metres=.22;
+        assert(h.step(false)==Grip::single);
+        h.frame.controllers.hands[0].grip.position.x=.18;
+        assert(h.step(false)==Grip::single);
+        assert(h.socket.current_contact(h.frame,h.game,h.hold,h.frame.now_ns));
+        h.game.magazine_observation_pending=true;
+        switch(changed){
+        case 0:++h.game.mount_revision;break;
+        case 1:++h.frame.reference_generation;break;
+        case 2:++h.frame.controllers.input_epoch;break;
+        case 3:h.frame.weapon.address+=8;break;
+        case 4:h.game.mount.support_grip_in_weapon.x+=.001;break;
+        case 5:h.game.acquire_metres=.13;break;
+        case 6:h.game.release_metres=.21;break;
+        case 7:++h.frame.stereo.space_epoch;break;
+        case 8:h.game.object_incumbents[0]={LeaseKind::ammo,0,1,71};break;
+        case 9:h.game.request_magazine=true;break;
+        case 10:h.frame.controllers.hands[0].grip_active=0;break;
+        case 11:h.game.busy=true;break;
+        }
+        assert(h.step(true)!=Grip::two); // Old cosmetic affinity cannot survive a changed owner/basis/mount or conflict.
+    }
+    {++cases;Host h;h.auto_socket=true;h.game.acquire_metres=.14;h.game.release_metres=.22;
+        h.frame.controllers.hands[0].grip.position.x=.18;
+        assert(h.step(false)==Grip::single&&h.step(true)==Grip::single); // No prior socket, unchanged acquisition limit.
+    }
+    {++cases;Host h;h.auto_socket=true;h.game.acquire_metres=.14;h.game.release_metres=.22;
+        assert(h.step(false)==Grip::single);
+        h.frame.controllers.hands[0].grip.position.x=.23;assert(h.step(false)==Grip::single);
+        h.frame.controllers.hands[0].grip.position.x=.18;assert(h.step(true)==Grip::single); // Leaving loses affinity.
+    }
+    {++cases;Host h;h.auto_socket=true;h.game.acquire_metres=.14;h.game.release_metres=.22;
+        assert(h.step(false)==Grip::single);
+        h.frame.controllers.hands[0].grip.position.x=.18;assert(h.step(false)==Grip::single);
+        h.another_socket=true;h.game.magazine_observation_pending=true;
+        assert(h.step(true)!=Grip::two); // Another selected part still blocks the unknown-part exception.
+    }
+    {++cases;Host h;
+        h.game.support_region.enabled=true;
+        h.game.support_region.volume.shape=gears_authored_contact_volume::Shape::box;
+        h.game.support_region.volume.half={.20,.04,.04};
+        h.frame.controllers.hands[0].grip.position.x=.18;
+        assert(support_contact(h.frame,h.game,false)); // Beyond old acquire sphere, inside exact box.
+        assert(h.step(false)==Grip::single); // Real released witness before a new press.
+        assert(h.step(true)==Grip::two);
+        h.frame.controllers.hands[0].grip.position.x=.40;
+        assert(!support_contact(h.frame,h.game,false));
+        assert(h.step(true)==Grip::two); // Acquisition volume is not grip lifetime.
+        assert(h.step(false)==Grip::single);
+    }
+    {++cases;Host h;
+        h.game.support_region.enabled=true;
+        h.game.support_region.volume.shape=gears_authored_contact_volume::Shape::capsule;
+        h.game.support_region.volume.radius=.03;h.game.support_region.volume.half_length=.20;
+        h.frame.controllers.hands[0].grip.position.y=1.18;
+        assert(support_contact(h.frame,h.game,false));
+        h.frame.controllers.hands[0].grip.position.x=.031;
+        assert(!support_contact(h.frame,h.game,false)); // Not a bounding-box approximation.
+    }
+    {++cases;Host h;
+        h.game.support_region.enabled=true;h.game.support_region.scale=0;
+        assert(!support_contact(h.frame,h.game,false));
+        assert(h.step(true)!=Grip::two);
+    }
+    {++cases;Host h;
+        auto& region=h.game.support_region;region.enabled=true;region.snap_limits_enabled=true;
+        region.volume.radius=.20;region.volume.snap_distance=.05;region.volume.release_distance=.18;
+        region.volume.snap_angle=.4;region.target_grip_in_mount.position=h.game.mount.support_grip_in_weapon;
+        h.frame.controllers.hands[0].grip.position.x=.08;
+        assert(!support_contact(h.frame,h.game,false)); // Inside shape, outside configured snap.
+        assert(support_contact(h.frame,h.game,true)); // Passive retention has its own larger exit range.
+        h.frame.controllers.hands[0].grip.position.x=.02;
+        assert(h.step(false)==Grip::single);assert(h.step(true)==Grip::two);
+        h.frame.controllers.hands[0].grip.position.x=.30;
+        assert(!support_contact(h.frame,h.game,true));
+        assert(h.step(true)==Grip::two); // Actual held Grip is not passive proximity retention.
+        assert(h.step(false)==Grip::single);
     }
     std::printf("WeaponSupportGripTest passed cases=%u; local host/shared owner, no runtime transport or mount acceptance\n",cases);
 }

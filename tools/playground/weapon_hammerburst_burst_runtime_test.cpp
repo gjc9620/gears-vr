@@ -56,6 +56,7 @@ void reset_bridge(){
     reset();bridge::certificate={};bridge::completion={};bridge::pressed={};
     bridge::first_debt=bridge::firing_debt=bridge::cancel_requested=bridge::scope_active=bridge::scope_first=false;
     bridge::ticket={};bridge::entered={};bridge::observed={};
+    bridge::first_revoke={};bridge::revoke_revision=bridge::cancel_stage=0;
 }
 void prime_first(gears_weapon_hand::Frame const& f){
     assert(bridge::prime(f,0x1234));assert(bridge::press(f));assert(bridge::capture_first());
@@ -157,6 +158,17 @@ int main(){
         auto conflicting=s;conflicting.render=fixture::model.now;assert(!bridge::permits(conflicting));
         fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));
         assert(!bridge::permits(s));checks+=6;}
+    {reset_bridge();auto f=frame();prime_first(f);auto changed=f;++changed.stereo.session;
+        assert(!bridge::need_source(changed));
+        const auto first=bridge::revoke_diagnostic();
+        assert(first.revision&&first.site==hammerburst_burst_event::RevokeSite::runtime_need_source_cohort);
+        assert(bridge::cancel());assert(bridge::revoke_diagnostic().revision==first.revision);
+        assert(bridge::revoke_diagnostic().site==first.site);
+        assert(bridge::prime(f,0x1234)&&bridge::press(f));
+        assert(!bridge::revoke_diagnostic().revision);
+        bridge::revoke_at(hammerburst_burst_event::RevokeSite::service_gates,__LINE__,3);
+        assert(bridge::revoke_diagnostic().detail==3&&bridge::revoke_diagnostic().revision>first.revision);
+        checks+=8;}
     std::printf("HB actual completion bridge: %u fake scope/input/cleanup boundary checks passed; original certificate is a stub, no game proof\n",checks);
 }
 #endif

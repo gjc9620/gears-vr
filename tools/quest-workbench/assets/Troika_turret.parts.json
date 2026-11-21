@@ -1,0 +1,400 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "右握把",
+      "position": [
+        0.18293256783615017,
+        1.0886418151855468,
+        -0.19413211822509766
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "左握把",
+      "position": [
+        -0.20042425131668185,
+        1.0948483276367187,
+        -0.19819644927978516
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_troika_root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        -1.5639230091079454e-16,
+        -0.7043283081054688
+      ],
+      "mesh": "Troika_turret.bone0.mesh",
+      "triangles": 1531
+    },
+    {
+      "bone": "b_troika_gun_latitude",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.7266921997070311,
+        -0.7043283081054688
+      ],
+      "mesh": "Troika_turret.bone1.mesh",
+      "triangles": 124
+    },
+    {
+      "bone": "b_troika_gun_longitude",
+      "parent": 1,
+      "pivot": [
+        2.39714630367871e-10,
+        0.9739332580566405,
+        -0.7098123168945313
+      ],
+      "mesh": "Troika_turret.bone2.mesh",
+      "triangles": 7160
+    },
+    {
+      "bone": "b_troika_spinner_L",
+      "parent": 2,
+      "pivot": [
+        -0.3067703816877756,
+        1.0674205017089842,
+        -0.9310271453857422
+      ],
+      "mesh": "Troika_turret.bone3.mesh",
+      "triangles": 600
+    },
+    {
+      "bone": "b_troika_spinner_R",
+      "parent": 2,
+      "pivot": [
+        0.3067700006974783,
+        1.0674205017089842,
+        -0.9310271453857422
+      ],
+      "mesh": "Troika_turret.bone4.mesh",
+      "triangles": 600
+    },
+    {
+      "bone": "b_troika_port_R",
+      "parent": 2,
+      "pivot": [
+        0.3907600405229178,
+        1.2024137878417969,
+        -0.9310271453857422
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_troika_port_L",
+      "parent": 2,
+      "pivot": [
+        -0.3907629392134103,
+        1.2024137878417969,
+        -0.9310271453857422
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_troika_muzzle_R",
+      "parent": 2,
+      "pivot": [
+        0.1260888483537283,
+        1.0950175476074218,
+        -1.8479118347167969
+      ],
+      "mesh": "Troika_turret.bone7.mesh",
+      "triangles": 864
+    },
+    {
+      "bone": "b_troika_muzzle_L",
+      "parent": 2,
+      "pivot": [
+        -0.12608999228347872,
+        1.0950175476074218,
+        -1.8479118347167969
+      ],
+      "mesh": "Troika_turret.bone8.mesh",
+      "triangles": 864
+    },
+    {
+      "bone": "b_troika_handleroot",
+      "parent": 2,
+      "pivot": [
+        2.39714630367871e-10,
+        1.114326171875,
+        -0.4727169418334961
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_troika_handle_L",
+      "parent": 9,
+      "pivot": [
+        -0.20042425131668185,
+        1.0948483276367187,
+        -0.19819644927978516
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_troika_handle_R",
+      "parent": 9,
+      "pivot": [
+        0.18293256783615017,
+        1.0886418151855468,
+        -0.19413211822509766
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_troika_playerref",
+      "parent": 1,
+      "pivot": [
+        0.0,
+        7.629394517039146e-08,
+        0.0
+      ],
+      "mesh": "",
+      "triangles": 0
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        6.103515624855671e-07,
+        0.7157268089056016,
+        -1.041513729095459
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        6.103515624855671e-07,
+        0.7157268089056016,
+        -1.191513729095459
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_troika_root",
+      "position": [
+        0.00014902273089813418,
+        0.24461253377899195,
+        -0.7089654024418823
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "俯仰机构 · b_troika_gun_latitude",
+      "position": [
+        8.609559999727616e-10,
+        0.9129674932691797,
+        -0.7097593900892475
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "转向机构 · b_troika_gun_longitude",
+      "position": [
+        0.0001884015472204133,
+        1.123866697547273,
+        -0.7776748430123964
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "左旋转枪管 · b_troika_spinner_L",
+      "position": [
+        -0.30676932717933036,
+        1.0674215507507359,
+        -0.9298882939385599
+      ],
+      "bone": 3,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_4",
+      "label": "右旋转枪管 · b_troika_spinner_R",
+      "position": [
+        0.3067705385020526,
+        1.067430477142334,
+        -0.9298882939385599
+      ],
+      "bone": 4,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_5",
+      "label": "右抛壳口 · b_troika_port_R",
+      "position": [
+        0.3907600405229178,
+        1.2024137878417969,
+        -0.9310271453857422
+      ],
+      "bone": 5,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_6",
+      "label": "左抛壳口 · b_troika_port_L",
+      "position": [
+        -0.3907629392134103,
+        1.2024137878417969,
+        -0.9310271453857422
+      ],
+      "bone": 6,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_7",
+      "label": "右枪口 · b_troika_muzzle_R",
+      "position": [
+        0.13252363062287886,
+        1.0472715903286,
+        -1.6026274125228157
+      ],
+      "bone": 7,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_8",
+      "label": "左枪口 · b_troika_muzzle_L",
+      "position": [
+        -0.1323797252283515,
+        1.0471884965194442,
+        -1.6026274125228157
+      ],
+      "bone": 8,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_9",
+      "label": "握把支架 · b_troika_handleroot",
+      "position": [
+        2.39714630367871e-10,
+        1.114326171875,
+        -0.4727169418334961
+      ],
+      "bone": 9,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_10",
+      "label": "左握把 · b_troika_handle_L",
+      "position": [
+        -0.20042425131668185,
+        1.0948483276367187,
+        -0.19819644927978516
+      ],
+      "bone": 10,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_11",
+      "label": "右握把 · b_troika_handle_R",
+      "position": [
+        0.18293256783615017,
+        1.0886418151855468,
+        -0.19413211822509766
+      ],
+      "bone": 11,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_12",
+      "label": "玩家参考点 · b_troika_playerref",
+      "position": [
+        0.0,
+        7.629394517039146e-08,
+        0.0
+      ],
+      "bone": 12,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Troika_turret",
+    "kind": "turret",
+    "capacity": 150,
+    "reserve": 600,
+    "feed": [
+      -0.20042425131668185,
+      1.1198483276367186,
+      -0.12819644927978516
+    ],
+    "mechanism_pivot": [
+      -0.20042425131668185,
+      1.1198483276367186,
+      -0.12819644927978516
+    ],
+    "mechanism_bones": [],
+    "magazine_bone": -1,
+    "travel": 0,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "",
+    "initial_loaded": 75,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      0.0,
+      1.0949187899289066,
+      -1.847368400390834
+    ]
+  },
+  "curated": true
+}

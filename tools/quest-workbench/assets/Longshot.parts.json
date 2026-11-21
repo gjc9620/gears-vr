@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.03,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        -0.00768,
+        0.03375,
+        -0.43251
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        -0.0007716377824545004,
+        0.10559648513793951,
+        -0.22475145339965813
+      ],
+      "bone": -1,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "ammo"
+    },
+    {
+      "id": "mechanism",
+      "label": "枪栓",
+      "position": [
+        0.010001377135834776,
+        0.09649350931203676,
+        -0.13699692352716877
+      ],
+      "bone": 3,
+      "role": "mechanism",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "bone_3"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_LS_Root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "Longshot.bone0.mesh",
+      "triangles": 9962
+    },
+    {
+      "bone": "b_LS_LensCap",
+      "parent": 0,
+      "pivot": [
+        0.025865299701690637,
+        0.2231291961669923,
+        -0.4125763702392577
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_LS_Scope",
+      "parent": 0,
+      "pivot": [
+        0.02843410730361938,
+        0.18012266159057624,
+        -0.21688240051269525
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_LS_Bolt",
+      "parent": 0,
+      "pivot": [
+        -0.0007716377824545004,
+        0.10559648513793951,
+        -0.17975145339965815
+      ],
+      "mesh": "Longshot.bone3.mesh",
+      "triangles": 894
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.015703179836273194,
+        0.09158893585205079,
+        -0.47222893714904784
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.015703179836273194,
+        0.09158893585205079,
+        -0.6222289371490478
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_LS_Root",
+      "position": [
+        0.004845573436502656,
+        0.09606631992321525,
+        -0.3371107321003515
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "镜盖 · b_LS_LensCap",
+      "position": [
+        0.025865299701690637,
+        0.2231291961669923,
+        -0.4125763702392577
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "瞄准镜 · b_LS_Scope",
+      "position": [
+        0.02843410730361938,
+        0.18012266159057624,
+        -0.21688240051269525
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "枪栓 · b_LS_Bolt",
+      "position": [
+        0.010001377135834776,
+        0.09649350931203676,
+        -0.13699692352716877
+      ],
+      "bone": 3,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Longshot",
+    "kind": "bolt",
+    "capacity": 1,
+    "reserve": 23,
+    "feed": [
+      -0.0007716377824545004,
+      0.10559648513793951,
+      -0.22475145339965813
+    ],
+    "mechanism_pivot": [
+      -0.0007716377824545004,
+      0.10559648513793951,
+      -0.17975145339965815
+    ],
+    "mechanism_bones": [
+      3
+    ],
+    "magazine_bone": -1,
+    "travel": 0.12,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "longshot-round.mesh",
+    "initial_loaded": 1,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": true,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      6.799808026301041e-05,
+      0.09254361555362359,
+      -1.0355207476860437
+    ]
+  },
+  "curated": true
+}

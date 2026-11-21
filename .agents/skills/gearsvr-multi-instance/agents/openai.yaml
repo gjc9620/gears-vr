@@ -1,0 +1,4 @@
+interface:
+  display_name: "GearsVR 独立多开"
+  short_description: "复用现有入口管理独立游戏与 OpenXR 模拟器多开，并核验真实启动状态"
+  default_prompt: "使用 $gearsvr-multi-instance 按项目约定管理我自己的独立游戏与 OpenXR 模拟器实例。"

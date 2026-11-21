@@ -33,6 +33,73 @@ void rejects(AssetMemory& m){
 template<class Change>void rejection(Change change){auto m=std::make_unique<AssetMemory>();change(*m);rejects(*m);}
 }
 int main(){
+    {auto memory=std::make_unique<AssetMemory>();auto& m=*memory;
+        const auto smoke=m.cls(L"Weap_SmokeGrenade",m.warfare,m.weapon_class);
+        const auto package=m.node(L"COG_Bolo_Grenade",m.package_type);
+        Memory::put(m.weapon,0x50,smoke);Memory::put(m.asset,0x48,m.text(L"Smoke_Grenade"));
+        Memory::put(m.asset,0x40,package);m.frame.weapon=m.identity(m.weapon);m.tables();
+        la::Evidence out{};
+        assert(la::read(m.frame,out,la::AssetScope::smoke_hold)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::unsupported_weapon);
+        Memory::put(m.asset,0x48,m.text(L"Frag_Grenade"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::smoke_hold)==la::Status::unsupported_asset);
+        Memory::put(m.asset,0x48,m.text(L"Smoke_Grenade"));
+        Memory::put(package,0x48,m.text(L"WrongSmokePackage"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::smoke_hold)==la::Status::unsupported_asset);
+        ++cases;
+    }
+    {auto memory=std::make_unique<AssetMemory>();auto& m=*memory;
+        const auto original_package=m.node(L"warfaregamecontentweapons",m.package_type);
+        const auto hod=m.cls(L"WEAP_HammerOfDawn",original_package,m.weapon_class);
+        const auto asset_package=m.node(L"COG_HOD",m.package_type);
+        Memory::put(m.weapon,0x50,hod);Memory::put(m.asset,0x48,m.text(L"COG_HammerofDawn"));
+        Memory::put(m.asset,0x40,asset_package);m.frame.weapon=m.identity(m.weapon);m.tables();
+        la::Evidence out{};
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::hod_use)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::lancer_only)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_weapon);
+        Memory::put(asset_package,0x48,m.text(L"WrongHODPackage"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::hod_use)==la::Status::unsupported_asset);
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_asset);
+        ++cases;
+    }
+
+    {auto memory=std::make_unique<AssetMemory>();auto& m=*memory;
+        const auto boltok=m.cls(L"Weap_LocustPistol",m.warfare,m.weapon_class);
+        const auto package=m.node(L"Geist_Pistol",m.package_type);
+        Memory::put(m.weapon,0x50,boltok);Memory::put(m.asset,0x48,m.text(L"Boltock_Pistol"));
+        Memory::put(m.asset,0x40,package);m.frame.weapon=m.identity(m.weapon);m.tables();
+        la::Evidence out{};
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::lancer_only)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_weapon);
+        Memory::put(package,0x48,m.text(L"OtherPistolPackage"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_asset);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::unsupported_asset);
+        Memory::put(package,0x48,m.text(L"Geist_Pistol"));
+        Memory::put(m.asset,0x48,m.text(L"COG_Pistol"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_asset);
+        ++cases;
+    }
+    {auto memory=std::make_unique<AssetMemory>();auto& m=*memory;
+        const auto sniper=m.cls(L"Weap_SniperRifle",m.warfare,m.weapon_class);
+        const auto package=m.node(L"COG_SniperRifle",m.package_type);
+        Memory::put(m.weapon,0x50,sniper);Memory::put(m.asset,0x48,m.text(L"LongShot"));
+        Memory::put(m.asset,0x40,package);m.frame.weapon=m.identity(m.weapon);m.tables();
+        la::Evidence out{};
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::lancer_only)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_weapon);
+        Memory::put(package,0x48,m.text(L"OtherSniperPackage"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_asset);
+        ++cases;
+    }
     for(bool object_mesh:{false,true}){
         auto m=std::make_unique<AssetMemory>(object_mesh);uptr weapon_head{},component_head{};
         const auto prepend=[&](uptr owner,const wchar_t* label){
@@ -61,6 +128,7 @@ int main(){
         Memory::put(m.weapon,0x50,frag);Memory::put(m.asset,0x48,m.text(L"Frag_Grenade"));
         Memory::put(m.asset,0x40,package);m.frame.weapon=m.identity(m.weapon);m.tables();
         la::Evidence out{};assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::ready);
+        assert(la::read(m.frame,out,la::AssetScope::smoke_hold)==la::Status::unsupported_weapon);
         assert(gears_weapon_hand::same(out.asset,m.identity(m.asset)));
         assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_weapon);
         assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::unsupported_weapon);

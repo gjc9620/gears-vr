@@ -14,6 +14,7 @@ struct Session {
 };
 struct Counts {
     std::uint64_t matched{}, muted{}, read_failed{}, mute_failed{}, restore_attempted{}, restored{};
+    std::uint64_t initially_muted{}, verified_muted{}, verify_failed{};
 };
 // Keeps the first state and the exact session object. Restoration never performs
 // another PID lookup (which could select a replacement process/session).
@@ -49,12 +50,16 @@ public:
             if (saved_.size() >= 512 || !session->mute(current)) { ++counts_.read_failed; return false; }
             saved_.push_back({std::move(session), current, false, false});
             saved = &saved_.back(); ++counts_.matched;
+            if(current)++counts_.initially_muted;
         } else if (!saved->session->mute(current)) { ++counts_.read_failed; return false; }
-        if (current) return true;
+        if (current) {++counts_.verified_muted;return true;}
         // Retain restoration evidence even if an API failure has uncertain effects.
         saved->pending = true;
         if (!saved->session->set_mute(true)) { ++counts_.mute_failed; return false; }
         if (!saved->muted) { saved->muted = true; ++counts_.muted; }
+        bool confirmed{};
+        if(!saved->session->mute(confirmed)||!confirmed){++counts_.verify_failed;return false;}
+        ++counts_.verified_muted;
         return true;
     }
     bool restore() noexcept {

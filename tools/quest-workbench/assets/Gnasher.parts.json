@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.018000000000000002,
+        -0.006999999999999999,
+        -0.08539999999999999
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        -0.0294,
+        0.0514,
+        -0.5719
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        0.0,
+        0.02,
+        -0.24
+      ],
+      "bone": -1,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "ammo"
+    },
+    {
+      "id": "mechanism",
+      "label": "下压杠杆",
+      "position": [
+        1.619022164570079e-06,
+        0.02299475370475011,
+        -0.2950834888099818
+      ],
+      "bone": 2,
+      "role": "mechanism",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "bone_2",
+      "editor_visible": false,
+      "pose_alias": "main_grip"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_Shotgun_Root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "",
+      "triangles": 0
+    },
+    {
+      "bone": "b_Shotgun_Main",
+      "parent": 0,
+      "pivot": [
+        9.849689774910075e-10,
+        0.09907415390014648,
+        -0.1754884147644043
+      ],
+      "mesh": "Gnasher.bone1.mesh",
+      "triangles": 5060
+    },
+    {
+      "bone": "b_Shotgun_Lever",
+      "parent": 1,
+      "pivot": [
+        -4.794656075263455e-09,
+        0.06982799530029297,
+        -0.3815622329711914
+      ],
+      "mesh": "Gnasher.bone2.mesh",
+      "triangles": 1260
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.03966445922851563,
+        -0.4091940927505493
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.0,
+        0.03966445922851563,
+        -0.5591940927505493
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_Shotgun_Root",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "原件 · b_Shotgun_Main",
+      "position": [
+        5.7122280637382154e-06,
+        0.09386974645814349,
+        -0.44632263101405395
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "杠杆 · b_Shotgun_Lever",
+      "position": [
+        1.619022164570079e-06,
+        0.02299475370475011,
+        -0.2950834888099818
+      ],
+      "bone": 2,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Gnasher",
+    "kind": "lever",
+    "capacity": 8,
+    "reserve": 31,
+    "feed": [
+      0.0,
+      0.02,
+      -0.24
+    ],
+    "mechanism_pivot": [
+      -4.794656075263455e-09,
+      0.06982799530029297,
+      -0.3815622329711914
+    ],
+    "mechanism_bones": [
+      2
+    ],
+    "magazine_bone": -1,
+    "travel": 0.16,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      1,
+      0
+    ],
+    "ammo_mesh": "gnasher-round.mesh",
+    "initial_loaded": 4,
+    "fire_interval": 0.7,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -4.311123898572221e-06,
+      0.09264111325242802,
+      -0.7635914981365204
+    ]
+  },
+  "curated": true
+}

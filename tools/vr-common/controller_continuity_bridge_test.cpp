@@ -1,5 +1,6 @@
 #include "controller_input_bridge.h" // Exercise coexistence and Windows-first includes.
 #include "controller_continuity_bridge.h"
+#include "controller_relative_motion.h"
 #include <cstdio>
 #include <cstdlib>
 #include <thread>
@@ -176,8 +177,8 @@ struct OwnedMapping {
     OwnedMapping() {
         const auto pid=GetCurrentProcessId();const auto start=gears_vr::controller_process_start(GetCurrentProcess());
         wchar_t map_name[128]{},lock_name[128]{};
-        swprintf_s(map_name,L"Local\\GearsVR.ControllerContinuity.v3.%lu.%llu",pid,static_cast<unsigned long long>(start));
-        swprintf_s(lock_name,L"Local\\GearsVR.ControllerContinuityLock.v3.%lu.%llu",pid,static_cast<unsigned long long>(start));
+        swprintf_s(map_name,L"Local\\GearsVR.ControllerContinuity.v4.%lu.%llu",pid,static_cast<unsigned long long>(start));
+        swprintf_s(lock_name,L"Local\\GearsVR.ControllerContinuityLock.v4.%lu.%llu",pid,static_cast<unsigned long long>(start));
         mutex=OpenMutexW(SYNCHRONIZE|MUTEX_MODIFY_STATE,FALSE,lock_name);
         mapping=OpenFileMappingW(FILE_MAP_READ|FILE_MAP_WRITE,FALSE,map_name);
         CHECK(mutex&&mapping);packet=static_cast<ContinuityPacket*>(MapViewOfFile(mapping,FILE_MAP_WRITE,0,0,sizeof(ContinuityPacket)));
@@ -214,12 +215,12 @@ void matching_age_and_ring() {
     CHECK(producer.open(pid,true));CHECK(reader.open(pid,false));
     rejected_read(reader,stereo_for(frame()),1000000100);
     SourceTracker source;TrackedInput out{},received{};Publisher publisher{};
-    for(std::uint64_t sequence=1;sequence<=10;++sequence){CHECK(source.update(frame(sequence),out));CHECK(producer.publish(out));}
+    for(std::uint64_t sequence=1;sequence<=ContinuityPacket::capacity+2;++sequence){CHECK(source.update(frame(sequence),out));CHECK(producer.publish(out));}
     auto input=frame(3);CHECK(reader.read_matching(stereo_for(input),input.received_ns+100000000,received,publisher));
     CHECK(received.input.sequence==3);
     rejected_read(reader,stereo_for(frame(2)),input.received_ns);
-    rejected_read(reader,stereo_for(frame(11)),input.received_ns);
-    input=frame(10);auto stereo=stereo_for(input);
+    rejected_read(reader,stereo_for(frame(ContinuityPacket::capacity+3)),input.received_ns);
+    input=frame(ContinuityPacket::capacity+2);auto stereo=stereo_for(input);
     rejected_read(reader,stereo,input.received_ns+100000001);
     rejected_read(reader,stereo,input.received_ns-1);
     auto wrong=stereo;++wrong.session;rejected_read(reader,wrong,input.received_ns);
@@ -285,6 +286,7 @@ void fixed_header_and_nonblocking_mutex() {
     corrupt([](auto& p){++p.qpc_frequency;});
     corrupt([](auto& p){++p.magic;});
     corrupt([](auto& p){++p.version;});
+    corrupt([](auto& p){p.version=3;}); // Prior wire version must fail even on a new channel.
     corrupt([](auto& p){--p.size;});
     corrupt([](auto& p){++p.latest_sequence;});
     mapping.change([](auto& p){p.frames[1].tracking_epoch[0]=0;});
@@ -356,31 +358,67 @@ void original_motion_ring_copy(){
         input.sync_ns=1000000000ll+sequence*10000000ll;input.received_ns=input.sync_ns+100;
         CHECK(producer.publish(tracked(input,1,left,right)));
     };
-    for(unsigned sequence=1;sequence<=10;++sequence)publish(sequence);
+    constexpr unsigned count=ContinuityPacket::capacity;
+    for(unsigned sequence=1;sequence<=count+2;++sequence)publish(sequence);
     MotionHistory history{};TrackedInput selected{};Publisher publisher{};
     CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
-    CHECK(history.count==8&&history.frames[0].input.sequence==3&&history.frames[7].input.sequence==10);
-    CHECK(motion_history_valid(history,selected,1)&&same_input(history.frames[7].input,input));
-    for(unsigned i=0;i<8;++i){const auto sequence=i+3;
+    CHECK(history.count==count&&history.frames[0].input.sequence==3&&history.frames[count-1].input.sequence==count+2);
+    CHECK(motion_history_valid(history,selected,1)&&same_input(history.frames[count-1].input,input));
+    for(unsigned i=0;i<count;++i){const auto sequence=i+3;
         CHECK(history.frames[i].input.sync_ns==1000000000ll+sequence*10000000ll);
         CHECK(history.frames[i].input.received_ns==history.frames[i].input.sync_ns+100);}
-    auto previous=input;previous.sequence=9;previous.predicted_time-=10000000;previous.sync_ns-=10000000;previous.received_ns-=10000000;
+    auto previous=input;--previous.sequence;previous.predicted_time-=10000000;previous.sync_ns-=10000000;previous.received_ns-=10000000;
     CHECK(reader.read_matching(stereo_for(previous),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
-    CHECK(history.count==7&&history.frames[0].input.sequence==3&&history.frames[6].input.sequence==9);
-    publish(11,1,2);
+    CHECK(history.count==count-1&&history.frames[0].input.sequence==3&&history.frames[count-2].input.sequence==count+1);
+    publish(count+3,1,2);
     CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
-    CHECK(history.count==1&&history.frames[0].input.sequence==11); // Right-hand recovery never borrows old motion.
-    publish(12,2,2);
+    CHECK(history.count==1&&history.frames[0].input.sequence==count+3); // Right-hand recovery never borrows old motion.
+    publish(count+4,2,2);
     CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
-    CHECK(history.count==2&&history.frames[0].input.sequence==11); // Independent left tracking does not cancel right motion.
+    CHECK(history.count==2&&history.frames[0].input.sequence==count+3); // Independent left tracking does not cancel right motion.
     auto mismatch=stereo_for(input);++mismatch.session;
     CHECK(!reader.read_matching(mismatch,input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
     CHECK(!history.count&&!selected.input.sequence&&!publisher.pid);
 }
 
+void retained_original_motion_window() {
+    InputBridge producer,reader;const auto pid=GetCurrentProcessId();
+    CHECK(producer.open(pid,true)&&reader.open(pid,false));
+    TrackedInput previous{},current{},latest{};
+    for(unsigned sequence=1;sequence<=24;++sequence){
+        auto value=frame(sequence);value.predicted_time=10000000000ll+sequence*10000000ll;
+        value.sync_ns=1000000000ll+sequence*10000000ll;value.received_ns=value.sync_ns+100;
+        value.hands[0].pressed[gears_vr::control_squeeze]=1;
+        latest=tracked(value);CHECK(producer.publish(latest));
+        if(sequence==4)previous=latest;
+        if(sequence==16)current=latest;
+    }
+    MotionHistory history{};TrackedInput selected{};Publisher publisher{};
+    CHECK(reader.read_matching(stereo_for(current.input),latest.input.received_ns+1000,
+        selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(history.count==16&&same_tracked(selected,current));
+    namespace relative=gears_controller_relative_motion;
+    relative::Segment segment{};
+    CHECK(relative::build(previous,current,history,gears_vr::control_squeeze,gears_vr::Pose{},1.,segment));
+    CHECK(segment.count==13&&segment.points[0].sync_ns==previous.input.sync_ns&&
+        segment.points[12].sync_ns==current.input.sync_ns);
+    CHECK(current.input.sync_ns-previous.input.sync_ns==120000000);
+    // Retention never renews the selected current frame's freshness.
+    rejected_read(reader,stereo_for(current.input),current.input.received_ns+100000001);
+    auto reject=[&](auto change){auto invalid=history;change(invalid);relative::Segment out{};
+        CHECK(!relative::build(previous,current,invalid,gears_vr::control_squeeze,gears_vr::Pose{},1.,out));
+        CHECK(!out.count);};
+    reject([](auto& h){for(unsigned n=7;n+1<h.count;++n)h.frames[n]=h.frames[n+1];--h.count;});
+    reject([](auto& h){h.frames[7].input.focused=0;});
+    reject([](auto& h){++h.frames[7].tracking_epoch[0];});
+    reject([](auto& h){++h.frames[7].input.input_epoch;});
+    reject([](auto& h){++h.frames[7].input.hands[0].pressed[gears_vr::control_squeeze];});
+    reject([](auto& h){h.frames[7].input.sync_ns=h.frames[6].input.sync_ns;});
+}
+
 int main(int argc,char** argv) {
     if(argc>1&&std::strcmp(argv[1],"--publisher-child")==0)return publisher_child(argc,argv);
-    original_motion_ring_copy();exact_value_comparison();source_loss_and_boundaries();source_rejections_break_continuity();producer_sync_boundaries();source_overflow_is_permanent();
+    retained_original_motion_window();original_motion_ring_copy();exact_value_comparison();source_loss_and_boundaries();source_rejections_break_continuity();producer_sync_boundaries();source_overflow_is_permanent();
     coexistence_and_skipped_loss();matching_age_and_ring();publication_rejection_does_not_consume();
     fixed_header_and_nonblocking_mutex();maximum_counters_do_not_wrap();publisher_process_lifetime();
     std::puts("controller continuity source history, exact matching, GVC3 coexistence, ring, identity and lifetime checks passed");

@@ -835,6 +835,7 @@ class ContinuousTests(unittest.TestCase):
                    continuous_session_evidence=dict(orderly_stop=True,shutdown_completed=True,structural_failure=False,
                                                     submitted_frames=1,scene_copies=1))
         self.assertTrue(runner.continuous_passed(state))
+
         startup=dict(state,startup_menu_enabled=True,startup_panel_submitted=True,
             startup_menu_evidence=dict(stereo_handoff=True,startup_quad_layers=1),
             startup_menu_handoff=dict(end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=True))
@@ -851,6 +852,34 @@ class ContinuousTests(unittest.TestCase):
             self.assertFalse(runner.continuous_passed(dict(state,continuous_owner_evidence=watched)))
         for flag in ('owner_exit_observed','owner_error_observed'):
             self.assertFalse(runner.continuous_passed(dict(state,native_status=dict(terminal(),**{flag:'1'}))))
+
+    def test_owner_cancel_wait_does_not_race_native_drain(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'session.json';control=Control()
+            state=dict(schema=1,kind='continuous_strict_stereo',session_id='unique',phase='running',
+                       owner_identity=identity(100),game_identity=identity(123),xr_identity=identity(456))
+            path.write_text(json.dumps(state))
+            # Model a launcher whose cancellation has reached the owner. The
+            # owner still needs Native for its original weapon release calls.
+            control.signal=mock.Mock(side_effect=AssertionError('Native retired before owner drain'))
+            def owner_finishes(_):
+                path.write_text(json.dumps(dict(state,phase='stopped',passed=True)))
+            with mock.patch.object(runner.time,'sleep',side_effect=owner_finishes):
+                self.assertEqual(runner.request_stop(path,1.,control,signal_native=False),0)
+            control.signal.assert_not_called()
+
+    def test_owner_cancel_wait_still_rejects_changed_session(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'session.json';control=Control()
+            state=dict(schema=1,kind='continuous_strict_stereo',session_id='unique',phase='running',
+                       owner_identity=identity(100),game_identity=identity(123),xr_identity=identity(456))
+            path.write_text(json.dumps(state))
+            def replace_session(_):
+                path.write_text(json.dumps(dict(state,session_id='replacement',phase='stopped',passed=True)))
+            with mock.patch.object(runner.time,'sleep',side_effect=replace_session):
+                with self.assertRaisesRegex(RuntimeError,'Session report identity changed'):
+                    runner.request_stop(path,1.,control,signal_native=False)
+            self.assertEqual(control.signals,[])
 
     def test_recoverable_menu_handoff_requires_configured_mode_and_runtime_evidence(self):
         state=dict(native_cleanup_verified=True,entry_restore_verified=True,xr_exit_code=0,

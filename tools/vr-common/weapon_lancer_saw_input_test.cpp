@@ -1,4 +1,5 @@
 #include "weapon_lancer_saw_input.h"
+#include "weapon_lancer_main_hold.h"
 #include <cassert>
 #include <cstdio>
 namespace s=gears_lancer_saw_input;
@@ -174,7 +175,44 @@ unsigned ready_stop_cases(){
     assert(ready.service(quiet,stop)==Status::released&&!ready.owed()&&calls==3);++cases;
     return cases;
 }
+unsigned main_hold_cases(){
+    gears_vr::StereoSample stereo{};stereo.session=11;stereo.sequence=100;stereo.predicted_time=55;
+    stereo.received_ns=1000000000;stereo.focused=stereo.visible=stereo.should_render=1;
+    stereo.head_flags=stereo.view_flags=15;stereo.head.orientation.w=1;
+    stereo.eyes[0].pose.position.x=-.032;stereo.eyes[1].pose.position.x=.032;
+    for(auto& eye:stereo.eyes){eye.pose.orientation.w=1;eye.fov={-.7,.7,.7,-.7};}
+    gears_hand_continuity::TrackedInput t{};auto& c=t.input;
+    c.session=stereo.session;c.sequence=stereo.sequence;c.space_epoch=stereo.space_epoch;
+    c.predicted_time=stereo.predicted_time;c.received_ns=c.sync_ns=stereo.received_ns;
+    c.focused=1;c.input_epoch=c.profile_generation=1;
+    for(auto& h:c.hands){h.grip_active=h.aim_active=h.squeeze_active=h.trigger_active=1;h.grip_flags=h.aim_flags=15;}
+    t.stream_epoch=t.tracking_epoch[0]=t.tracking_epoch[1]=1;
+    gears_hand_continuity::Publisher pub{44,55};gears_lancer_main_hold::TrackingPin pin;unsigned cases{};
+    assert(pin.bind(stereo,t,pub,1001000000,false));++cases; // No button held: shoulder-selected logical main hold.
+    ++c.sequence;stereo.sequence=c.sequence;c.sync_ns=c.received_ns=stereo.received_ns=1050000000;
+    ++c.hands[1].pressed[gears_vr::control_trigger];c.hands[1].trigger=1;
+    assert(pin.refresh(stereo,t,pub,1051000000,false));++cases; // A button edge is not an action permit here.
+    for(unsigned change=0;change<22;++change){auto q=t;auto eye=stereo;auto publisher=pub;auto candidate=pin;auto now=1051000000LL;
+        switch(change){
+        case 0:++publisher.pid;break;case 1:++publisher.start;break;case 2:++q.stream_epoch;break;
+        case 3:++q.tracking_epoch[0];break;case 4:++q.tracking_epoch[1];break;
+        case 5:++q.input.session;break;case 6:++q.input.space_epoch;break;case 7:++q.input.input_epoch;break;
+        case 8:++q.input.profile_generation;break;case 9:--q.input.sequence;break;case 10:--q.input.sync_ns;break;
+        case 11:q.input.hands[0].grip_flags=0;break;case 12:q.input.hands[1].grip_flags=0;break;
+        case 13:eye.focused=q.input.focused=0;break;case 14:eye.head_flags=0;break;case 15:eye.should_render=0;break;
+        case 16:now=1150000001;break;case 17:now=1049999999;break;
+        case 18:q.input.hands[1].trigger=0;break; // Same sequence, changed bytes rejected.
+        case 19:eye.source=q.input.source=gears_vr::StereoSource::MetaOperatorSimulated;break;
+        case 20:q.input.hands[1].grip_active=0;break;case 21:eye.received_ns=1151000001;break;
+        }
+        assert(!candidate.refresh(eye,q,publisher,now,false));++cases;
+    }
+    pin.reset();assert(!pin.refresh(stereo,t,pub,1051000000,false));++cases;
+    std::printf("Main logical hold: %u fresh same-cohort/open-hand and invalidation cases; no pose/action permit\n",cases);return cases;
+}
+
 int main(){
+    (void)main_hold_cases();
     {
         auto o=live();o.button_held=o.motor_running=o.doing_melee=true;o.special_move=33;
         assert(s::ready_motion_context(o));

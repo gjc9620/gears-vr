@@ -1,0 +1,326 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.02323,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        0.0,
+        0.05,
+        -0.3
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        0.0,
+        0.07500000000000001,
+        -0.22999999999999998
+      ],
+      "bone": -1,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "ammo"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_TB_Root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "Torque_Bow.bone0.mesh",
+      "triangles": 4190
+    },
+    {
+      "bone": "b_TB_Bow_01",
+      "parent": 0,
+      "pivot": [
+        -1.8309754118188056e-08,
+        0.1802097892761232,
+        -0.45382266998291004
+      ],
+      "mesh": "Torque_Bow.bone1.mesh",
+      "triangles": 1576
+    },
+    {
+      "bone": "b_TB_Bow_03",
+      "parent": 1,
+      "pivot": [
+        -0.032771586608093956,
+        0.18013380050659195,
+        -0.45379367828369127
+      ],
+      "mesh": "Torque_Bow.bone2.mesh",
+      "triangles": 326
+    },
+    {
+      "bone": "b_TB_Bow_05",
+      "parent": 1,
+      "pivot": [
+        -0.0002855718694150121,
+        0.16350728988647473,
+        -0.3531058883666991
+      ],
+      "mesh": "Torque_Bow.bone3.mesh",
+      "triangles": 306
+    },
+    {
+      "bone": "b_TB_Bow_02",
+      "parent": 0,
+      "pivot": [
+        -1.8307996571575937e-08,
+        -0.002968290448188653,
+        -0.45386287689208976
+      ],
+      "mesh": "Torque_Bow.bone4.mesh",
+      "triangles": 1724
+    },
+    {
+      "bone": "b_TB_Bow_04",
+      "parent": 4,
+      "pivot": [
+        -0.03277158660633641,
+        -0.0035587120056150964,
+        -0.45379360198974605
+      ],
+      "mesh": "Torque_Bow.bone5.mesh",
+      "triangles": 326
+    },
+    {
+      "bone": "b_TB_Bow_06",
+      "parent": 4,
+      "pivot": [
+        -0.00028553424222543713,
+        0.019975165724754433,
+        -0.3412255477905273
+      ],
+      "mesh": "Torque_Bow.bone6.mesh",
+      "triangles": 278
+    },
+    {
+      "bone": "b_TB_Bow_07",
+      "parent": 0,
+      "pivot": [
+        9.894733909941707e-09,
+        0.13804162979125983,
+        -0.2263651275634765
+      ],
+      "mesh": "Torque_Bow.bone7.mesh",
+      "triangles": 484
+    },
+    {
+      "bone": "b_TB_Bow_08",
+      "parent": 0,
+      "pivot": [
+        9.493526217319913e-09,
+        0.05639009475708014,
+        -0.2171865653991699
+      ],
+      "mesh": "Torque_Bow.bone8.mesh",
+      "triangles": 484
+    }
+  ],
+  "rest_mesh": "Torque_Bow.skinned-rest.mesh",
+  "mixed_skin_triangles": 48,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.05775449752807617,
+        -0.2903836989402771
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.0,
+        0.05775449752807617,
+        -0.44038369894027707
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_TB_Root",
+      "position": [
+        0.0006420961849175899,
+        0.0875792316203229,
+        -0.2953765510182779
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "弓臂 · b_TB_Bow_01",
+      "position": [
+        -3.9277873565432535e-07,
+        0.1906513641423451,
+        -0.3767273649426489
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "弓臂 · b_TB_Bow_03",
+      "position": [
+        -0.032466811877424985,
+        0.14626816124044428,
+        -0.32915599443579263
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "弓臂 · b_TB_Bow_05",
+      "position": [
+        2.99483924481089e-05,
+        0.15732482012971338,
+        -0.3377215723044362
+      ],
+      "bone": 3,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_4",
+      "label": "弓臂 · b_TB_Bow_02",
+      "position": [
+        -3.641755492527485e-07,
+        -0.02116046695356016,
+        -0.36976914452917903
+      ],
+      "bone": 4,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_5",
+      "label": "弓臂 · b_TB_Bow_04",
+      "position": [
+        -0.032466811877425006,
+        0.026833002849291698,
+        -0.32915599443579296
+      ],
+      "bone": 5,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_6",
+      "label": "弓臂 · b_TB_Bow_06",
+      "position": [
+        3.3810453511508854e-05,
+        0.023337776689190175,
+        -0.3355744666450105
+      ],
+      "bone": 6,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_7",
+      "label": "弓臂 · b_TB_Bow_07",
+      "position": [
+        4.6677711895531184e-06,
+        0.14531243797686455,
+        -0.26861375616608785
+      ],
+      "bone": 7,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_8",
+      "label": "弓臂 · b_TB_Bow_08",
+      "position": [
+        4.658015188190303e-06,
+        0.03440028295078885,
+        -0.2697452045750705
+      ],
+      "bone": 8,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Torque_Bow",
+    "kind": "bow",
+    "capacity": 1,
+    "reserve": 11,
+    "feed": [
+      0.0,
+      0.07500000000000001,
+      -0.22999999999999998
+    ],
+    "mechanism_pivot": [
+      0.0,
+      0.07500000000000001,
+      -0.22999999999999998
+    ],
+    "mechanism_bones": [],
+    "magazine_bone": -1,
+    "travel": 0,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "bow-arrow-preview.mesh",
+    "initial_loaded": 1,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -0.00010523450422940938,
+      0.08799724863923114,
+      -0.5699251907459204
+    ]
+  },
+  "curated": true
+}

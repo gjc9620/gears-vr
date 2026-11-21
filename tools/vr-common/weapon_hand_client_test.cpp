@@ -631,9 +631,92 @@ unsigned publication_age_observation_cases(){
     }
     return cases;
 }
+unsigned publication_failure_classification_cases(){
+    unsigned cases{};
+    const auto metadata=[](HandClient& client){
+        if(local_thread==55)return client.metadata_generation_on_gt();
+        GT gt;return client.metadata_generation_on_gt();
+    };
+    // Static classification receipt for the failure returned to HB consumers.
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        const auto generation=h.snapshot()?metadata(c):0;assert(generation);
+        const auto reason=c.last_disarm_reason();h.next();Proposal p{};
+        {GT gt;assert(h.prepare(p)==Reply::accepted);Frame out=h.frame;GripGameState game=h.game;Decision decision{};
+            FrameReadObservation observation{};assert(!c.copy_frame_on_gt(out,game,decision,&observation));
+            assert(observation.failure==FrameReadFailure::thread_or_unarmed);assert(!c.armed());
+            assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);
+            assert(metadata(c)==generation&&c.last_disarm_reason()==reason);
+            assert(!c.source_current_on_gt(h.frame.key));}
+        {GT gt;assert(h.commit(p)==Reply::accepted);Frame out{};GripGameState game{};Decision decision{};
+            assert(c.copy_frame_on_gt(out,game,decision));assert(same_frame(out,h.frame)&&same_game(game,h.game)&&c.armed());}
+        ++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();const auto reason=c.last_disarm_reason();
+        const auto epoch=metadata(c);assert(epoch);h.metadata_known=false;
+        Frame out=h.frame;GripGameState game=h.game;Decision decision{};FrameReadObservation observation{};
+        {GT gt;assert(!c.copy_frame_on_gt(out,game,decision,&observation));}
+        // An observe failure clears publication without incrementing the epoch.
+        assert(observation.failure==FrameReadFailure::observe);assert(!c.armed());
+        assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);
+        assert(metadata(c)==epoch&&c.last_disarm_reason()==reason);
+        {GT gt;Frame retry{};GripGameState retry_game{};Decision retry_decision{};
+            assert(!c.copy_frame_on_gt(retry,retry_game,retry_decision));}
+        {GT gt;assert(!c.source_current_on_gt(h.frame.key));}
+        h.metadata_known=true;h.next();h.step();assert(c.armed());++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        const auto epoch=metadata(c);assert(epoch);Frame old=h.frame;
+        h.invalidate(InvalidateReason::input_lost);
+        Frame out=h.frame;GripGameState game=h.game;Decision decision{};FrameReadObservation observation{};
+        {GT gt;assert(!c.copy_frame_on_gt(out,game,decision,&observation));}
+        assert(observation.failure==FrameReadFailure::thread_or_unarmed);
+        assert(!c.armed()&&c.last_disarm_reason()==257u&&metadata(c)!=epoch);
+        assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);
+        {GT gt;assert(!c.source_current_on_gt(old.key));RetainedItemInput retained{};
+            EquipmentIdentity identity{old.key,old.world,old.controller,old.pawn,old.mesh,old.weapon,old.reference,old.reference_generation};
+            assert(!c.copy_retained_item_input_on_gt(identity,retained)&&!retained.press_token);}
+        ++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out{};FrameReadObservation observation{};
+        auto copy_off=[&]{GripGameState game{};Decision decision{};
+            assert(!c.copy_frame_on_gt(out,game,decision,&observation));};
+        copy_off();assert(observation.failure==FrameReadFailure::thread_or_unarmed&&c.armed());
+        const auto epoch=metadata(c);assert(epoch);
+        assert(c.begin_disconnect()==Reply::draining);copy_off();
+        assert(observation.failure==FrameReadFailure::thread_or_unarmed&&!c.armed());
+        assert(metadata(c)==0);assert(c.finish_disconnect(33)==Reply::quiescent);
+        copy_off();assert(observation.failure==FrameReadFailure::thread_or_unarmed&&!c.armed());++cases;}
+    {Host h;HandClient c(h.adapter());h.client=&c;h.registration=c.registration();Frame out{};GripGameState game{};
+        Decision decision{};FrameReadObservation observation{};
+        assert(!c.copy_frame_on_gt(out,game,decision,&observation));
+        assert(observation.failure==FrameReadFailure::thread_or_unarmed&&c.phase()==ClientPhase::off);
+        assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);
+        assert(metadata(c)==0);++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out{};GripGameState game{};Decision decision{};
+        FrameReadObservation observation{};assert(c.armed());
+        assert(!c.copy_frame_on_gt(out,game,decision,&observation)); // Deliberately outside GT.
+        assert(observation.failure==FrameReadFailure::thread_or_unarmed&&c.armed());
+        assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();const auto epoch=metadata(c);assert(epoch);
+        h.invalidate(InvalidateReason::native_stopping);Frame out{};GripGameState game{};Decision decision{};
+        FrameReadObservation observation{};{GT gt;assert(!c.copy_frame_on_gt(out,game,decision,&observation));}
+        assert(observation.failure==FrameReadFailure::thread_or_unarmed&&!c.armed());
+        assert(c.last_disarm_reason()==258u&&!c.registration_alive(33,22));
+        assert(same_frame(out,Frame{})&&same_game(game,GripGameState{})&&!decision.proposal_nonce);
+        h.next();Proposal proposal{};{GT gt;assert(h.prepare(proposal)==Reply::unavailable);}++cases;}
+    return cases;
+}
 int main(){
+    { GripGameState before{},after{};assert(same_game(before,after));
+      after.support_box.enabled=true;after.support_box.acquire_half={.05,.05,.05};
+      after.support_box.retain_half={.1,.1,.1};assert(!same_game(before,after));
+      after=before;after.support_region.enabled=true;assert(!same_game(before,after));
+      before=after;after.support_region.volume.local.position.x=.01;assert(!same_game(before,after));
+      after=before;after.support_region.scale=2;assert(!same_game(before,after));
+    }
+
     const auto publication_age_cases=publication_age_observation_cases();
+    const auto publication_failure_cases=publication_failure_classification_cases();
+    assert(publication_failure_cases==7);
     std::printf("Publication age observation: %u cases; original clocks and admission unchanged\n",publication_age_cases);
+    std::printf("Publication failure classification: %u cases; empty output and ThreadOrUnarmed are not a gesture/publication grant\n",publication_failure_cases);
     unsigned cases{};
     {Host h;HandClient c(h.adapter());h.client=&c;h.registration=c.registration();
         assert(c.begin_connect({11,44})==Reply::accepted);

@@ -347,5 +347,87 @@ int main(){
         }
         assert(rows==16);std::fclose(receipt);checks+=21;
     }
+
+    // Actual3112: already accepted physical UP, then pose publication expires.
+    // Preserve only the existing debt. There must be no stale-source dispatch.
+    {reset_event();auto f=active_frame();actual_first(f);
+        model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        ++f.controllers.hands[1].released[gears_vr::control_trigger];
+        assert(adapter::release_completed(&f));
+        model.pose_stale=true;model.native_source=false;model.now+=110000000;
+        assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        const auto serial=adapter::event.serial;const auto captured=adapter::event.captured;
+        assert(adapter::service(f.controller.address));adapter::after_tick(nullptr);adapter::deliver(f);
+        assert(!bridge::cancel_requested&&adapter::owns_pending());
+        assert(event_fixture::invocations==1&&model.ammo_used==1);
+        assert(adapter::event.serial==serial&&adapter::event.captured==captured);
+        model.now+=10000000;model.native_source=true;
+        f.now_ns=f.stereo.received_ns=f.controllers.sync_ns=model.now-10000000;
+        f.controllers.received_ns=model.now-9000000;++f.key.frame;++f.stereo.sequence;++f.controllers.sequence;
+        adapter::after_tick(&f);assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);
+        assert(event_fixture::invocations==2&&model.ammo_used==2&&bridge::completion.count()==2);checks+=8;
+    }
+    for(unsigned invalid=0;invalid<8;++invalid){
+        reset_event();auto f=active_frame();actual_first(f);
+        model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        ++f.controllers.hands[1].released[gears_vr::control_trigger];assert(adapter::release_completed(&f));
+        model.pose_stale=true;model.native_source=false;
+        if(invalid==0)model.lifetime_valid=false;
+        if(invalid==1)model.registration=false;
+        if(invalid==2)model.pose_stale=false;
+        if(invalid==3)model.owned_press=true;
+        if(invalid==4)bridge::cancel_requested=true;
+        if(invalid==5)bridge::first_debt=true;
+        if(invalid==6)model.hold=false;
+        if(invalid==7)adapter::clear_released_lifetime();
+        assert(!adapter::retain_stale_debt());assert(event_fixture::invocations==1&&model.ammo_used==1);checks+=2;
+    }
+    {reset_event();auto f=active_frame();actual_first(f);
+        model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        ++f.controllers.hands[1].released[gears_vr::control_trigger];assert(adapter::release_completed(&f));
+        assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        const auto captured=adapter::event.captured;
+        model.pose_stale=true;model.native_source=false;model.now=captured+250000001;
+        assert(adapter::requires_release());assert(adapter::service(f.controller.address));adapter::after_tick(nullptr);
+        assert(event_fixture::invocations==1&&model.ammo_used==1);
+        assert(!adapter::outstanding()&&lancerrefire::pending_fire.event.empty());checks+=4;
+    }
+
+    // Real UP already passed all16 gates; source-loss cleanup must reach the
+    // EXISTING debt-only WAIT, not cancel before after_tick can use it.
+    {reset_event();auto f=active_frame();actual_first(f);
+        model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        ++f.controllers.hands[1].released[gears_vr::control_trigger];assert(adapter::release_completed(&f));
+        assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        const auto serial=adapter::event.serial;const auto captured=adapter::event.captured;
+        model.pose_stale=true;model.native_source=false;model.now+=110000000;
+        const bool released=adapter::release_completed(nullptr);
+        if(bridge::cancel_requested||!adapter::owns_pending()){
+            std::puts("REPRO: source-loss release canceled previously released finite debt before existing WAIT");return 17;
+        }
+        assert(released&&adapter::event.serial==serial&&adapter::event.captured==captured);
+        adapter::after_tick(nullptr);adapter::deliver(f);
+        assert(event_fixture::invocations==1&&model.ammo_used==1);
+        model.now+=10000000;model.native_source=true;
+        f.now_ns=f.stereo.received_ns=f.controllers.sync_ns=model.now-10000000;
+        f.controllers.received_ns=model.now-9000000;++f.key.frame;++f.stereo.sequence;++f.controllers.sequence;
+        adapter::after_tick(&f);assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);
+        assert(event_fixture::invocations==2&&model.ammo_used==2&&bridge::completion.count()==2);checks+=7;
+    }
+    for(unsigned invalid=0;invalid<10;++invalid){
+        reset_event();auto f=active_frame();actual_first(f);
+        model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        ++f.controllers.hands[1].released[gears_vr::control_trigger];assert(adapter::release_completed(&f));
+        assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        model.pose_stale=true;model.native_source=false;
+        if(invalid==0)model.lifetime_valid=false;if(invalid==1)model.registration=false;
+        if(invalid==2)model.pose_stale=false;if(invalid==3)model.owned_press=true;
+        if(invalid==4)bridge::cancel_requested=true;if(invalid==5)bridge::first_debt=true;
+        if(invalid==6)model.hold=false;if(invalid==7)adapter::clear_released_lifetime();
+        if(invalid==8)vrfire::mode.store(vrfire::stopping);
+        if(invalid==9)model.now=adapter::event.captured+250000001;
+        adapter::release_completed(nullptr);
+        assert((bridge::cancel_requested||!adapter::outstanding())&&event_fixture::invocations==1&&model.ammo_used==1);checks+=2;
+    }
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }

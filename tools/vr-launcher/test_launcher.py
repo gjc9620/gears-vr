@@ -189,6 +189,22 @@ class LauncherTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(ValueError):launcher.camera_closer({'camera_closer_metres':.3},broken)
         with self.assertRaises(ValueError):launcher.camera_closer({},dict(camera_distance_control=1))
 
+    def test_python_prelaunch_rejection_requires_exact_source_and_receipt(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as folder:
+            receipt=pathlib.Path(folder)/'case.birth.json';sidecar=receipt.with_name(receipt.name+'.no-start.json')
+            backend=launcher.Backend.__new__(launcher.Backend)
+            proof=dict(schema=1,kind='startup_prelaunch_rejection',stage='python_discovery',
+                launch_receipt=str(receipt.resolve()),game_creation_attempted=False,injection_attempted=False,prime_attempted=False,
+                startup_script_sha256=hashlib.sha256((launcher.ROOT/'tools/debug-launch/Start-DebugGame.ps1').read_bytes()).hexdigest())
+            for field,wrong in [(None,None),('startup_script_sha256','wrong'),('launch_receipt','wrong'),('game_creation_attempted',True)]:
+                value=dict(proof)
+                if field:value[field]=wrong
+                sidecar.write_text(json.dumps(value),encoding='utf-8')
+                result=backend.close_uninjected_reservation(receipt,pathlib.Path(folder))
+                self.assertEqual(result['status'],'no_birth_receipt' if field else 'prelaunch_rejected')
+                if not field:self.assertIs(result['no_game_started'],True);self.assertNotIn('game_identity',result)
+
     def test_failed_reserve_closes_only_exact_uninjected_birth(self):
         with tempfile.TemporaryDirectory() as directory:
             selected=pathlib.Path(directory)/'GOWDE-Steam.exe';receipt=pathlib.Path(directory)/'birth.json'
@@ -1184,7 +1200,8 @@ class LauncherTests(unittest.TestCase):
             original=dict(session_id='token',owner_identity=backend.owner,phase='running')
             report=pathlib.Path(directory)/'owner.json';report.write_text(json.dumps(original))
             state.update(session_report=str(report),session_id='token');index.write_text(json.dumps(state))
-            self.assertEqual(launcher.stop(backend,index),0);backend.runner.request_stop.assert_called_once()
+            self.assertEqual(launcher.stop(backend,index),0)
+            backend.runner.request_stop.assert_called_once_with(report.resolve(),95.,backend.control,signal_native=False)
             original['session_id']='other';report.write_text(json.dumps(original))
             with self.assertRaisesRegex(RuntimeError,'identity'):launcher.stop(backend,index)
 

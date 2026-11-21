@@ -2,6 +2,7 @@
 #define GEARS_DESKTOP_MIRROR_READBACK 1
 #endif
 #include "../vr-common/gpu_mirror.h"
+#include "../vr-common/first_person_display_policy.h"
 #include <d3d12sdklayers.h>
 #include <cstdio>
 #include <vector>
@@ -217,6 +218,9 @@ static void contended_display_checks(GPU& gpu){
 }
 #endif
 static void waiting_display_checks(GPU& gpu){
+    const bool unknown_first_person_wait=gears_first_person_display::waiting_fallback(
+        true,true,true,gears_menu::Mode::unknown);
+    require(unknown_first_person_wait,"expired menu lease preserves first-person mirror protection");
     auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
     auto dest=gpu.texture(240,100,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
     DesktopMirror mirror;DesktopMirror::Reason reason{};
@@ -227,7 +231,7 @@ static void waiting_display_checks(GPU& gpu){
     auto stamp=monotonic_ns();
     require(!mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason)&&reason==DesktopMirror::Reason::not_ready,
         "default display still refuses missing source");
-    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason,true)&&reason==DesktopMirror::Reason::not_ready&&mirror.drain(),
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason,unknown_first_person_wait)&&reason==DesktopMirror::Reason::not_ready&&mirror.drain(),
         "opted-in waiting card overwrites original destination without a source image");
     auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
     unsigned ink{};
@@ -240,7 +244,7 @@ static void waiting_display_checks(GPU& gpu){
     stamp=monotonic_ns();require(mirror.capture(source.Get(),1,1,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"waiting recovery fresh capture");
     require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+1,&reason,true)&&reason==DesktopMirror::Reason::none&&mirror.drain(),"fresh eye replaces waiting card");
     const auto before=mirror.status();
-    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+100000001,&reason,true)&&reason==DesktopMirror::Reason::stale&&mirror.drain(),
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+100000001,&reason,unknown_first_person_wait)&&reason==DesktopMirror::Reason::stale&&mirror.drain(),
         "expired image becomes labelled wait without increasing100ms age limit");
     const auto after=mirror.status();
     require(after.ticket==before.ticket&&after.received_ns==before.received_ns&&after.captured_ns==before.captured_ns&&

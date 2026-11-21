@@ -1,6 +1,6 @@
 {
   "document": "J:\\gearsVr\\docs\\cover-system-requirements-20261108.md",
-  "document_sha256": "bd4ad372ca3796985ead37039932583ceb71d5a5bfabe42797413334589e0bfd",
+  "document_sha256": "f0afdd8c5a5cae7e8d325a35ddb0e693073b54686fee2b95e044bec99e764ee1",
   "source_copy": "J:\\gearsVr\\docs\\cover-specs-20261028",
   "source_sha256": {
     "acceptance.md": "b5585ba3ae5236aff46dcc7e701a941bab9dab381312be931caf0039a918aab6",
@@ -30,13 +30,22 @@
     "4e62c806ed8877e675639a9595aa1db3da4547bffa4664992167aae0a4159b85",
     "17572c236930ae48d71cbe88654f66ad3a7994a8353150c3d1cd031439d9ef26",
     "df5dc4dcecf370e59fa24be7222fe5f3f13aa33ec2f22699827e11debf6792e8",
-    "63458cfba38d5b9cc482db06cf6a26520f280219d9c1d4a379e25f0f37330d0a"
+    "63458cfba38d5b9cc482db06cf6a26520f280219d9c1d4a379e25f0f37330d0a",
+    "bd4ad372ca3796985ead37039932583ceb71d5a5bfabe42797413334589e0bfd",
+    "b3a7b4a92ed9489d07b9c62047260bbe9db87d914917b0013c5f7bc40151b644",
+    "28e334d592bcb776d8333fe1d544e30f82fa875e544d10dcf8bb06a03ebd02af",
+    "9990ba34cd96f9fae755598bb4fbebc9e48e6aac20b7a1e9602885759be7777a",
+    "cfa78ad5ffa52569986e0d23dc3a9df22cc8ae09819ca8810aba154447213ab7",
+    "f0211216edbab77b0fe2946b0351551f50613cbb2ebf1058708c234567e11e12",
+    "9a2ba352da40f46a873b48418bc1db09b9bb1f60836806bc1df022abbdd25c39",
+    "6a1e70b6a30015f0367b76110f35661ce69e4460fdb1d127fd6bde94201fb177",
+    "f44f1648fd517b844f55ec89961ed3f48703c6e0d29dac88fa69e7fb7e888df6"
   ],
-  "as_of": "2026-11-12T16:53:48.494914+08:00",
+  "as_of": "2026-11-18T01:51:41.695091",
   "module_interfaces_commit": "7b6effc",
   "development_copy": {
     "path": "J:/gearsVr/docs/cover-system-development-20261108.md",
-    "sha256": "bdce82c2b1638bb4a6c191a451d25bc201387bd0316dcc3eeec46aa8cae31e9f"
+    "sha256": "9097199a3f27166a6344264915090bf6879a7857f3cd1b7ffd988b263090afbd"
   },
   "requirements_overview": "Added concise behavior and requirement-group overview; retained all CV-01–24 and AC-01–22 definitions.",
   "requirements_review": "Reconciled cover source specifications; clarified held-position occupancy recovery, same-pose hit/physics evidence, supported skeleton/local authority boundaries, and engineering acceptance. Retained CV-01-24 and AC-01-22.",
@@ -46,5 +55,17 @@
   "requirements_query_coverage": "Clarified CV16 valid-empty-result coverage of participating component/shape kinds, scale branches, bones and early-exit results; retained CV24/AC22 IDs.",
   "requirements_document_review_20261110": "Reconciled existing docs for the requested cover requirements document; distinguished confirmed behavior, consistency requirements, engineering defaults and tuning parameters, and completed per-grab-point pose source index. All CV-01-24 and AC-01-22 retained.",
   "requirements_navigation_review_20261110": "Reviewed existing cover source requirements; added section navigation and verified CV-01-24, AC-01-22, local source links and document mirrors. No gameplay status changed.",
-  "requirements_owner_override_20261112": "Defer occlusion; no collision prerequisite. Reference original L2 side peek points; top only low cover with popup permission. Implement left-grip drag, release hold and regrab retract."
+  "requirements_owner_override_20261112": "Defer occlusion; no collision prerequisite. Reference original L2 side peek points; top only low cover with popup permission. Implement left-grip drag, release hold and regrab retract.",
+  "requirements_owner_override_20261115": "Body face-cover and both hand6DoF first, then ordinary fist/downward proportional pull at native LT action points, then camera displacement. Matched skin/GrabPose requirement superseded. Collision/occlusion deferred.",
+  "requirements_owner_priority_reference_correction": "Corrected latest override reference CV12->CV14/AC05 per actual numbered definitions; explicitly retains CV12 release-hold/regrab. No new scope.",
+  "requirements_current_flow_sync": "Updated operation table/flow and AC05 to all-edge downward pull; marked CV14 per-point pose clauses historical. CV12 release-hold/regrab retained; no new gameplay scope.",
+  "requirements_owner_demo_20261116": "Owner requests autonomous basic completion and actual route video before physical headset test; physical feedback is not a coding prerequisite.",
+  "demo_route": {
+    "path": "J:/gearsVr/docs/cover-demo-route-20261116.md",
+    "sha256": "d6d66e0d5ca1e21ce839b4c25108f950e33e4e080bbda092500248362f05559d"
+  },
+  "requirements_effect_correction_20261116": "Owner requires actual wall-edge contact, concealed neutral start, physical+hand peek, visible target and6DoF shooting; old numerical-only completion superseded.",
+  "requirements_owner_state_first_20261116": "State-based empty-hand Grip and proportional two-axis peek first; actual edge detection afterwards; original LT permissions/range and HMD independence retained.",
+  "requirements_hands_only_preview_20261117": "Owner requests local first-person hands-only preview; hide other body/arms/sleeves, preserve pose/input/weapon/cover behavior. Full goal remains active.",
+  "owner_added_route_cases": "OT-01..06, all pending actual acceptance"
 }

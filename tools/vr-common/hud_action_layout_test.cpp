@@ -16,9 +16,27 @@ int main(){
     for(auto size:{std::array<float,2>{{1920,1080}},{{3660,3200}},{{7320,3200}}}){
         std::array<float,2> p{};
         assert(gears_hud_action_layout::plan(size[0],size[1],{{size[0]/2,24}},p));
-        assert(p[0]>0&&p[0]<size[0]/2&&p[1]>size[1]/2&&p[1]<size[1]);
+        assert(p[0]>size[0]/2&&p[0]<size[0]&&p[1]>0&&p[1]<size[1]/2);
     }
     std::array<float,2> unchanged{{1,2}},p=unchanged;
+    for(auto size:{std::array<float,2>{{1920,1080}},{{3840,2160}},{{8192,3288}}}){
+        constexpr float ul=256,scale=2;
+        assert(gears_hud_action_layout::weapon_panel_plan(size[0],size[1],ul,scale,{{24,24}},p));
+        const float original_formula_x=size[0]-p[0]-ul*scale;
+        const float right=original_formula_x+ul*scale;
+        assert(original_formula_x>0&&right<size[0]);
+        assert(std::abs(right-size[0]*.96f)<.001f&&p[1]==size[1]*.02f);
+        // Only the panel SafeZone pair is returned; unchanged action-plan and
+        // separately owned reload-bar geometry need no new coordinate offset.
+    }
+    p=unchanged;
+    for(float bad:{0.f,-1.f,std::numeric_limits<float>::quiet_NaN(),20000.f}){
+        assert(!gears_hud_action_layout::weapon_panel_plan(bad,1080,256,2,{{24,24}},p)&&p==unchanged);
+        assert(!gears_hud_action_layout::weapon_panel_plan(1920,1080,bad,2,{{24,24}},p)&&p==unchanged);
+        assert(!gears_hud_action_layout::weapon_panel_plan(1920,1080,256,bad,{{24,24}},p)&&p==unchanged);
+    }
+    assert(!gears_hud_action_layout::weapon_panel_plan(1920,1080,1024,2,{{24,24}},p)&&p==unchanged);
+    assert(!gears_hud_action_layout::weapon_panel_plan(1920,1080,256,2,{{1920,24}},p)&&p==unchanged);
     for(float bad:{0.f,-1.f,std::numeric_limits<float>::quiet_NaN(),20000.f}){
         assert(!gears_hud_action_layout::plan(bad,1080,{{960,24}},p)&&p==unchanged);
     }

@@ -19,6 +19,7 @@ struct Fixture {
     void button(unsigned hand,std::uint32_t bit,unsigned control,bool down){advance();auto& h=f.hands[hand];
         if(down){h.buttons|=bit;++h.pressed[control];}else{h.buttons&=~bit;++h.released[control];}assert(observe());}
 };
+#if !defined(GEARS_VR_GAMEPAD_FIXTURE_ONLY)
 int main(){
     {
         Fixture s;s.button(0,controller_x,control_x,true);
@@ -127,5 +128,28 @@ int main(){
         s.advance();++s.publisher.start;assert(s.observe());assert(s.sample().buttons==0);}
     {Fixture s;s.button(1,controller_a,control_a,true);assert(s.sample().buttons==pad::a);
         s.now+=100000001;assert(s.sample().buttons==0);assert(!s.observe());}
-    std::puts("VR original-gamepad mapping: ABXY/Menu, menu D-pad/hysteresis/rearm, gameplay axis ownership, thumb fallback, short tap, stale/source/publisher guards passed; no game/XR acceptance");
+    {Fixture s;s.button(1,controller_stick_click,control_stick,true);
+        s.route.consume_buttons(pad::right_thumb);
+        assert(!(s.route.pending_buttons(s.now)&pad::right_thumb)&&s.sample().buttons==0);
+        s.advance();assert(s.observe());assert(s.sample().buttons==0);
+        s.button(1,controller_stick_click,control_stick,false);assert(s.sample().buttons==0);
+        s.button(1,controller_stick_click,control_stick,true);assert(s.sample().buttons==pad::right_thumb);}
+    {Fixture s;s.button(1,controller_stick_click,control_stick,true);
+        s.button(1,controller_stick_click,control_stick,false);
+        assert(s.route.pending_buttons(s.now)&pad::right_thumb);
+        s.route.consume_buttons(pad::right_thumb);
+        assert(!(s.route.pending_buttons(s.now)&pad::right_thumb)&&s.sample().buttons==0);}
+    {Fixture s;s.button(1,controller_stick_click,control_stick,true);
+        s.route.consume_buttons(pad::right_thumb);
+        s.button(0,controller_stick_click,control_stick,true);assert(s.sample().buttons==pad::start);
+        s.button(0,controller_stick_click,control_stick,false);
+        // The R3 owner may already be gone. Breaking the pause chord must
+        // still not redeliver that held press to the original weapon.
+        assert(s.sample().buttons==0);
+        s.button(1,controller_stick_click,control_stick,false);assert(s.sample().buttons==0);
+        s.button(1,controller_stick_click,control_stick,true);assert(s.sample().buttons==pad::right_thumb);}
+    {Fixture s;s.button(1,controller_a,control_a,true);s.button(1,controller_stick_click,control_stick,true);
+        s.route.consume_buttons(pad::right_thumb);assert(s.sample().buttons==pad::a);}
+    std::puts("VR original-gamepad mapping and explicit consumption: existing routing, no delayed/held R3 replay, pause chord preservation and real release/repress passed; no game/XR acceptance");
 }
+#endif

@@ -19,6 +19,28 @@ h::Decision grant(h::Frame const& f){
     d.lease={h::LeaseKind::magazine,0,f.key.lifecycle,f.press_token};return d;
 }
 int main(){
+    //52580: an auto-fitted C with a temporarily unavailable proposal must not
+    // acquire the overlapping magazine on the same held Grip. Exercise the
+    // production selector and exact proposal/grant dispatch together.
+    {
+        Route route;auto f=frame();auto d=grant(f);
+        auto deferred=gears_weapon::resolve_lancer_starter_proposal(unsigned(P::magazine),true,false,.08,.12);
+        assert(deferred.observation_pending&&deferred.candidates==0);
+        assert(route.propose(f,deferred.candidates)==P::none);
+        assert(!route.grants(f,d,P::magazine)&&!route.grants(f,d,P::starter));
+        ++f.key.frame;++f.controllers.sequence;++f.controllers.sync_ns;
+        auto current=gears_weapon::resolve_lancer_starter_proposal(unsigned(P::magazine),true,true,.08,.12);
+        assert(!current.observation_pending&&current.candidates==unsigned(P::starter));
+        assert(route.propose(f,current.candidates)==P::starter);
+        d=grant(f);assert(route.grants(f,d,P::starter)&&!route.grants(f,d,P::magazine));
+        auto ordinary=gears_weapon::resolve_lancer_starter_proposal(unsigned(P::magazine),false,true,.08,.12);
+        assert(ordinary.candidates==unsigned(P::magazine)&&!ordinary.observation_pending);
+        ordinary=gears_weapon::resolve_lancer_starter_proposal(unsigned(P::magazine),false,false,.08,.12);
+        assert(ordinary.candidates==unsigned(P::magazine)&&!ordinary.observation_pending);
+        auto ambiguous=gears_weapon::resolve_lancer_starter_proposal(unsigned(P::charging),true,true,.08,.12);
+        ++f.key.frame;++f.controllers.sequence;
+        assert(route.propose(f,ambiguous.candidates)==P::conflict);
+    }
     unsigned handoff_cases{};
     for(auto purpose:{P::magazine,P::charging,P::starter}){
         Route route;auto f=frame();auto d=grant(f);

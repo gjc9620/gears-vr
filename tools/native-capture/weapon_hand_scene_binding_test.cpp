@@ -22,7 +22,11 @@ gears_anchor::Config anchor_config;
 struct Scope {bool world()const{return true;}};
 uintptr_t arena{},denied{};unsigned reads{},native_calls{};size_t denied_read_size{};
 void (*read_hook)(uintptr_t,size_t){};
+bool real_memory_mode=false;
+__declspec(noinline) bool experiment_local_copy_guarded(void* out,void const* from,size_t bytes){
+ if(!from||!out)return false;__try {memcpy(out,from,bytes);return true;}__except(EXCEPTION_EXECUTE_HANDLER){return false;}}
 bool safe_copy(void* out,void const* from,size_t size){
+ if(real_memory_mode)return experiment_local_copy_guarded(out,from,size);
  const auto address=reinterpret_cast<uintptr_t>(from);++reads;if(read_hook)read_hook(address,size);
  if(!address||address==denied||(denied_read_size&&size==denied_read_size)||address<arena||size>1024*1024||address>arena+1024*1024-size)return false;
  memcpy(out,from,size);return true;

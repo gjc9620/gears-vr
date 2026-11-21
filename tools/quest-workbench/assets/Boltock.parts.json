@@ -1,0 +1,411 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "握把",
+      "position": [
+        0.0,
+        0.0,
+        -0.087
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        0.0,
+        0.0,
+        -0.087
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "装填弹巢",
+      "position": [
+        0.0,
+        0.08968266963958739,
+        -0.17672944259643555
+      ],
+      "bone": -1,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "ammo"
+    },
+    {
+      "id": "mechanism",
+      "label": "弹巢",
+      "position": [
+        0.0,
+        0.08968266963958739,
+        -0.17672944259643555
+      ],
+      "bone": 1,
+      "role": "mechanism",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "bone_1"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "alow_poly",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        -1.931788020496125e-17,
+        -0.08699999809265137
+      ],
+      "mesh": "Boltock.bone0.mesh",
+      "triangles": 4325
+    },
+    {
+      "bone": "Object03",
+      "parent": 0,
+      "pivot": [
+        -0.02089574098587036,
+        0.053229660987853984,
+        -0.21655614852905275
+      ],
+      "mesh": "Boltock.bone1.mesh",
+      "triangles": 318
+    },
+    {
+      "bone": "Object08",
+      "parent": 1,
+      "pivot": [
+        -0.003399690389633179,
+        0.08859438419342039,
+        -0.25215795516967776
+      ],
+      "mesh": "Boltock.bone2.mesh",
+      "triangles": 58
+    },
+    {
+      "bone": "Object02",
+      "parent": 1,
+      "pivot": [
+        0.0,
+        0.08968266963958739,
+        -0.21472944259643556
+      ],
+      "mesh": "Boltock.bone3.mesh",
+      "triangles": 116,
+      "replacement_mesh": "Boltock.open-cylinder.mesh"
+    },
+    {
+      "bone": "Object07",
+      "parent": 0,
+      "pivot": [
+        -0.021580801010131836,
+        0.10612762451171874,
+        -0.26337634086608885
+      ],
+      "mesh": "Boltock.bone4.mesh",
+      "triangles": 104
+    },
+    {
+      "bone": "Object09",
+      "parent": 0,
+      "pivot": [
+        -0.00028435464948415754,
+        0.04218227863311766,
+        -0.3087534236907959
+      ],
+      "mesh": "Boltock.bone5.mesh",
+      "triangles": 190
+    },
+    {
+      "bone": "Object10",
+      "parent": 0,
+      "pivot": [
+        1.2279133079573512e-06,
+        0.017431278228759745,
+        -0.20331619262695313
+      ],
+      "mesh": "Boltock.bone6.mesh",
+      "triangles": 408
+    },
+    {
+      "bone": "Object11",
+      "parent": 0,
+      "pivot": [
+        1.8189894035458565e-14,
+        0.04411156654357908,
+        -0.1432974147796631
+      ],
+      "mesh": "Boltock.bone7.mesh",
+      "triangles": 124
+    },
+    {
+      "bone": "Object04",
+      "parent": 0,
+      "pivot": [
+        -2.4572452530264856e-05,
+        0.08964194297790526,
+        -0.08311602592468262
+      ],
+      "mesh": "Boltock.bone8.mesh",
+      "triangles": 98
+    },
+    {
+      "bone": "Object05",
+      "parent": 8,
+      "pivot": [
+        -1.1641532182693482e-11,
+        0.09829803775052627,
+        -0.08723334044948261
+      ],
+      "mesh": "Boltock.bone9.mesh",
+      "triangles": 503
+    },
+    {
+      "bone": "Object06",
+      "parent": 9,
+      "pivot": [
+        1.1288084351690487e-08,
+        0.11758800814847549,
+        -0.1369084045363967
+      ],
+      "mesh": "Boltock.bone10.mesh",
+      "triangles": 228
+    },
+    {
+      "bone": "Object01",
+      "parent": 0,
+      "pivot": [
+        -3.159584593959153e-11,
+        0.09027002334594725,
+        -0.16123014450073242
+      ],
+      "mesh": "Boltock.bone11.mesh",
+      "triangles": 270
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.04379469871520997,
+        -0.23650719881057738
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.0,
+        0.04379469871520997,
+        -0.3865071988105774
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "原件 · alow_poly",
+      "position": [
+        0.0019106372270352079,
+        0.06210498746432917,
+        -0.18142829988452375
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "原件 · Object03",
+      "position": [
+        -0.022747522655874486,
+        0.08200579720735543,
+        -0.2550905352830891
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "原件 · Object08",
+      "position": [
+        0.0001563895866274833,
+        0.09016375526785857,
+        -0.2519860157370568
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "原件 · Object02",
+      "position": [
+        1.8681105165207925e-05,
+        0.09002163785402892,
+        -0.2127192306518552
+      ],
+      "bone": 3,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_4",
+      "label": "原件 · Object07",
+      "position": [
+        -0.022394269933604216,
+        0.1277643080432005,
+        -0.24503069058813218
+      ],
+      "bone": 4,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_5",
+      "label": "原件 · Object09",
+      "position": [
+        1.1386493467853442e-05,
+        0.04192002883801854,
+        -0.3127237347761789
+      ],
+      "bone": 5,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_6",
+      "label": "原件 · Object10",
+      "position": [
+        -5.231963071888273e-10,
+        0.019118570059744853,
+        -0.20100614335801864
+      ],
+      "bone": 6,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_7",
+      "label": "原件 · Object11",
+      "position": [
+        -4.818676322157798e-19,
+        0.03356391226803814,
+        -0.14758680096379034
+      ],
+      "bone": 7,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_8",
+      "label": "原件 · Object04",
+      "position": [
+        0.0002671121240591793,
+        0.0942634819775093,
+        -0.08071742319479222
+      ],
+      "bone": 8,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_9",
+      "label": "原件 · Object05",
+      "position": [
+        -8.043462579900529e-05,
+        0.10831076124001758,
+        -0.10495220135936788
+      ],
+      "bone": 9,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_10",
+      "label": "原件 · Object06",
+      "position": [
+        -3.03301768204604e-05,
+        0.11855778684321142,
+        -0.1360621009905314
+      ],
+      "bone": 10,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_11",
+      "label": "原件 · Object01",
+      "position": [
+        -8.120067299358156e-06,
+        0.09002246902102515,
+        -0.1656291571874464
+      ],
+      "bone": 11,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Boltock",
+    "kind": "revolver",
+    "capacity": 6,
+    "reserve": 24,
+    "feed": [
+      0.0,
+      0.08968266963958739,
+      -0.17672944259643555
+    ],
+    "mechanism_pivot": [
+      -0.02089574098587036,
+      0.053229660987853984,
+      -0.21655614852905275
+    ],
+    "mechanism_bones": [
+      1,
+      2,
+      3
+    ],
+    "magazine_bone": -1,
+    "travel": 0.055,
+    "hinge_axis": [
+      0,
+      0,
+      -1
+    ],
+    "open_axis": [
+      -1,
+      0,
+      0
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "Boltock.reload-cylinder.mesh",
+    "initial_loaded": 3,
+    "fire_interval": 0.18,
+    "mechanism_requires_reload": true,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "cylinder",
+    "cylinder_bone": 3,
+    "shared_grip": true,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -5.418590514170824e-10,
+      0.10606011032939432,
+      -0.43129046754058137
+    ]
+  },
+  "curated": true
+}

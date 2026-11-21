@@ -89,7 +89,16 @@ int main(){
         h.body(3,pellets,h.address(0));assert(!s.packet(h.weapon,h.address(3),h.reader(),p));s.leave(orphan);++cases;}
     {Host h;shot::Stack s;auto projectile=Host::binding(Role::war_projectile);
         auto root=s.enter(projectile,h.weapon,h.address(0),h.grip(),1000000001,h.reader());h.body(1,projectile,h.address(0));
-        shot::Packet p{};assert(!s.packet(h.weapon,h.address(1),h.reader(),p));s.leave(root);++cases;}
+        shot::Packet p{};assert(!s.packet(h.weapon,h.address(1),h.reader(),p));
+        assert(s.projectile_packet(h.weapon,h.address(1),h.reader(),p)&&s.current(p));
+        assert(p.root==Role::war_projectile&&p.grip.grip==Grip::single);
+        assert(!s.projectile_packet(Host::object(0x5010),h.address(1),h.reader(),p));
+        assert(!s.projectile_packet(h.weapon,h.address(0),h.reader(),p));
+        s.leave(root);assert(!s.projectile_packet(h.weapon,h.address(1),h.reader(),p));++cases;}
+    {Host h;shot::Stack s;auto root=s.enter(war,h.weapon,h.address(0),h.grip(),1000000001,h.reader());
+        h.body(1,war,h.address(0));shot::Packet p{};
+        assert(!s.projectile_packet(h.weapon,h.address(1),h.reader(),p));
+        assert(s.packet(h.weapon,h.address(1),h.reader(),p));s.leave(root);++cases;}
     {Host h;shot::Stack s;auto root=s.enter(war,h.weapon,h.address(0),h.grip(),1200000000,h.reader());
         h.body(1,war,h.address(0));shot::Packet p{};assert(s.packet(h.weapon,h.address(1),h.reader(),p)&&p.grip.grip==Grip::unknown);
         s.leave(root);++cases;}
@@ -102,5 +111,19 @@ int main(){
     {Host h;shot::Stack s;auto root=s.enter(war,h.weapon,h.address(0),h.grip(),1000000001,h.reader());
         auto child=s.mask();s.leave(root);assert(s.poisoned());s.leave(child);shot::Packet p{};
         assert(!s.packet(h.weapon,h.address(1),h.reader(),p));++cases;}
+    {Host h;shot::Stack s;const auto custom=Host::binding(Role::shotgun_custom),pellets=Host::binding(Role::shotgun_pellets);
+        const auto root=s.enter(custom,h.weapon,h.address(0),h.grip(),1000000001,h.reader());
+        shot::Packet p{};assert(s.invocation_packet(root,custom.identities[0].address,h.weapon,p));
+        const auto id=p.shot;assert(p.mode==Role::shotgun_custom&&p.root==Role::shotgun_custom);
+        auto bad=root;++bad.call;assert(!s.invocation_packet(bad,custom.identities[0].address,h.weapon,p));
+        bad=root;++bad.previous_depth;assert(!s.invocation_packet(bad,custom.identities[0].address,h.weapon,p));
+        assert(!s.invocation_packet(root,pellets.identities[0].address,h.weapon,p));
+        assert(!s.invocation_packet(root,custom.identities[0].address,Host::object(0x5100),p));
+        h.body(1,custom,h.address(0));const auto alias=s.enter(pellets,h.weapon,h.address(1),{},1000000002,h.reader());
+        assert(!s.invocation_packet(root,custom.identities[0].address,h.weapon,p));
+        assert(s.invocation_packet(alias,pellets.identities[0].address,h.weapon,p)&&p.shot==id&&p.mode==Role::shotgun_pellets);
+        s.leave(alias);assert(s.invocation_packet(root,custom.identities[0].address,h.weapon,p)&&p.shot==id);
+        const auto masked=s.mask();assert(!s.invocation_packet(root,custom.identities[0].address,h.weapon,p));s.leave(masked);
+        s.leave(root);assert(!s.invocation_packet(root,custom.identities[0].address,h.weapon,p));++cases;}
     std::printf("WeaponShotScopeTest passed: %u cases; local frames and immutable source only\n",cases);
 }

@@ -1,6 +1,8 @@
 // Actual production schema reader and local parameter transfer, owned memory
 // only. No engine dispatch, Native registration, pose or action authority.
 #define GEARS_WEAPON_METADATA_PARSE_TEST_STATS 1
+#include <cstdio>
+namespace {FILE* log_file{};}
 #include "weapon_hand_offline_fixture.h"
 namespace {
 namespace getter {

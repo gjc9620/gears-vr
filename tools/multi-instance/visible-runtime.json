@@ -1,0 +1,9 @@
+{
+  "sim_runtime": {
+    "manifest": "J:/gearsVr/analysis/runtime/simulator-behind/openxr_simulator.json",
+    "dll": "J:/gearsVr/analysis/runtime/simulator-behind/openxr_simulator.dll",
+    "manifest_sha256": "d6e2661d0ec80a162d022a8c5ae75ad1dbbb432bb0adb4491bf455fada7f1ab7",
+    "dll_sha256": "5681e8af6075cbec815382a684f30ccfe4450fa828bff5a394ff6d4ed9f59cdd"
+  },
+  "policy": "visible desktop windows and taskbar buttons; no DWM cloak"
+}

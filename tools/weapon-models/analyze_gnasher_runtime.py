@@ -55,22 +55,48 @@ def pivot_in_main(sample, main_rotation):
 
 def summarize(capture):
     samples = capture.get('samples')
-    if not capture.get('passed') or capture.get('animation') != 'SG_Chamber' or \
+    owner_pending = (capture.get('passed') is False and capture.get('sampling_passed') is True
+                     and capture.get('shutdown_mode') == 'launcher_owned'
+                     and capture.get('shutdown_deferred') is True
+                     and capture.get('launcher_cleanup_verified') is False)
+    if not (capture.get('passed') is True or owner_pending) or capture.get('animation') != 'SG_Chamber' or \
             not isinstance(samples, list) or len(samples) != 35 or \
             [row.get('frame') for row in samples] != list(range(35)):
         raise ValueError('Expected one complete 35-frame SG_Chamber capture')
     relative = []
     pivots = []
+    main_bracket_angles = []
+    main_bracket_distances = []
+    node_bracket_times = []
     for row in samples:
         main = rotation(row['main'])
         lever = rotation(row['lever'])
+        if capture.get('capture_protocol') == 'bracketed_original_sg35_v1':
+            after = rotation(row['main_after'])
+            angle = angle_axis(multiply(after, transpose(main)))[0]
+            distance = math.dist([row['main'][i] for i in (12,13,14)],
+                                 [row['main_after'][i] for i in (12,13,14)])
+            before_time,after_time=row['observed_node_time_seconds'],row['observed_node_time_after_seconds']
+            if (type(before_time) not in (int,float) or type(after_time) not in (int,float)
+                    or not math.isfinite(before_time) or not math.isfinite(after_time)):
+                raise ValueError('Invalid original node-time bracket')
+            time_difference=abs(after_time-before_time)
+            if angle>.1 or distance>.05 or time_difference>.0001:
+                raise ValueError('Original Main/node changed across separate bone reads')
+            main_bracket_angles.append(angle);main_bracket_distances.append(distance);node_bracket_times.append(time_difference)
         relative.append(multiply(lever, transpose(main)))
         pivots.append(pivot_in_main(row, main))
     rotations = [angle_axis(multiply(transpose(relative[0]), current))
                  for current in relative]
     peak = max(range(35), key=lambda index: rotations[index][0])
     baseline = pivots[0]
-    return {'schema': 1, 'capture_pid': capture.get('pid'), 'frames': len(samples),
+    return {'schema': 1, 'capture_pid': capture.get('game_pid', capture.get('pid')), 'frames': len(samples),
+            'launcher_cleanup_pending': owner_pending,
+            'bone_reads_atomic': False,
+            'bracketed_original_reads':len(main_bracket_angles)==35,
+            'maximum_main_bracket_rotation_degrees':max(main_bracket_angles,default=None),
+            'maximum_main_bracket_translation_raw':max(main_bracket_distances,default=None),
+            'maximum_node_time_bracket_seconds':max(node_bracket_times,default=None),
             'peak_frame': peak, 'peak_degrees': rotations[peak][0],
             'peak_axis_in_main': rotations[peak][1],
             'final_degrees_from_home': rotations[-1][0],

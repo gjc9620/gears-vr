@@ -1,0 +1,40 @@
+# Quest workbench interaction redesign — 2026-11-12
+
+Owner scope and feedback
+
+The owner confirmed the previous capture functions were usable, but requested a simpler interface: different colors for volumes, controls attached to a selected component, single-hand posing while the other hand clicks, and an all-part current-pose overview with editing. The earlier empty disk project did not disprove their in-headset capture report. They explicitly said the old data was unnecessary before this update. No game/other-weapon work, helpers or public package changes were started.
+
+Delivered implementation
+
+- Five direct tabs: capture, all-part current-pose overview, replay, capture library and settings. Blue main grip, green support, purple magazine, yellow E, orange C are stable volume/chip identities. Buttons and readiness status were enlarged.
+- Default immediate single-hand capture. The posing hand is excluded from hand-menu input; the other bare hand can aim/pinch or use real Touch actions. Both-hand capture is secondary with3s countdown. Capture does not freeze live tracking or stop a running take. Two-second calibration is specific to the selected hand; bare pickup binds that hand after3s.
+- Capture snapshots are independent captures/<UTCms>-<sequence>.json files. A bounded single storage worker publishes immutable archive + latest project copies. UI marks ready after actual completion, reports failures, and does not count pending entries as saved. Library scans actual archive files on startup, filters by part and supports multiple same-part captures.
+- Five overview cards show actual stored Marcus hand meshes (independent left/right availability) and cropped original component geometry. Empty slots explicitly show unrecorded. Card selection previews a stored pose on the full weapon. Thumb caches are skinned only when local rotations change, using the same fixed-length FK/skinning path.
+- Component selection opens a viewer-facing inspector whose position is attached to that component. C/E have mechanical sliders/presets; region controls have attached XYZ rings, drag rotation, position, per-axis box sizes, capsule length, snap distance/angle and release distance. These controls are hidden before selection and may be collapsed.
+- Hand editing directly selects thumb/index/middle/ring/little, root/middle/distal, axis and a rotation slider; 3D joint markers can be selected by ray. Wrist translation/rotation has direct controls. Preview edits are archived as a new variant on save or return to live; previous entries are retained. Saved preview changes update the current in-memory slot too.
+- Changing the only model no longer clears current poses. Switching real models restores that model's project. Drag callback failures remain UI errors rather than escaping the render loop.
+- Desktop export retains captures and converts each capture's chosen part/hand into its own mod-captures directory. Existing Mod limits remain: bounded finger deltas only, canonical main-right/other-left consumer; full wrists/volumes/snap and mechanical state remain in the authoring project.
+
+Validation and exact package
+
+Current build:0.2.0-dev/versionCode8, APK SHA256 75d28bb397f7ed1cb5919b7a1e756a226f39227ec21b940467122e3a72e8c1ff,15189214 bytes. Candidate updated at J:/gearsVr/candidates/quest-workbench-20261111; Windows companion and guide updated. Installed base.apk was pulled back and matched. v5/v6/v7 build artifacts remain rollback records; no public tag or Git commit was created for this work.
+
+Android arm64 compile/link, signature and16K alignment passed. Windows companion compiled. Portable core checks passed rotated sliders, source/held input, rotation-ring drag, posing-hand menu exclusion, independent archive ordering/atomic latest update/overwrite rejection, binary v1/v2, fixed-length retargeting and invalid controller-source finger capture rejection. Four Python checks passed existing Mod encoder roundtrip, reflected correction/bounds, wrong model/rig/basis and independent same-part library conversion with invalid part rejection. These remain offline checks.
+
+Actual v7 UI offscreen rendering produced the two layout images personally reviewed: ui-v7-capture.png and ui-v7-overview.png. They render current application UI into a private framebuffer and do not inject input, alter tracking or create poses. The initial slots were empty, so those pictures validate component thumbnails/layout, not stored hand fitting. The ordinary eye capture had the world workspace outside the view while the headset was tilted; it is preserved and not called a passing layout view.
+
+Owner explicitly replied “能看清、能点到” to the0.2.0 layout question. Actual v7 and final v8 right-controller tab/component/hand-selector/calibration clicks were observed. Final v8 process23653 reached session5, both1931x2023 eyes,2xMSAA, GL0 and simultaneous resume0; original tracking flags/calibration are retained. Owner's complete physical multi-capture/archive-reload/edited-thumb/rotation-drag confirmation remains pending. At the last bounded inspection there was no new captures directory and the visible actions were calibration/navigation, so do not claim two independent physical captures already passed. An async two-capture check is pending; do not repeat installations or stop the owner's current session.
+
+Evidence: apk-build-v8-final, device-v8-start.log, device-v8-owner.log, device-installed-v8.apk, core-v6-fixture, quest-source-v020-manifest.json, delivery-v020-review.json, the two UI previews, and device-before-v6/device-before-v8 backups under J:/gearsVr/analysis/quest-workbench-20261112. Current installed package is left for manual use. No new game/XR simulator/other-weapon acceptance is implied.
+
+
+Final owner capture readback and handoff
+
+The owner subsequently saved4 actual independent left-hand captures. All four files were copied read-only to owner-v020-captures and parsed: support#1, magazine#2, charging#3 and starter#4. Each selected capture contains15 normalized local finger quaternions and26 raw joints, retargeted=true, fully_tracked=true, hand_data_source=1 (unobstructed). Exact IDs:1794418169059-1,1794418220181-2,1794418385098-3,1794418426664-4. New capture files coexist, rather than overwriting the previous part. The final snapshot was copied before any further change and no new installation followed.
+
+This supersedes the earlier “no captures directory” observation. The main right-hand slot is not in this batch. The owner chose “暂时不试，先保留这版” for the proposed same-part two-capture check; do not run that check, reinstall, capture more diagnostic UI, terminate the current session or continue changes until asked. Preserve0.2.0/code8. Actual multi-file capture/write/readback is now verified; same-part variant physical selection, full edited-pose reload and complete fit remain unperformed. User's latest question asks whether these4 captures are visible; answer yes with the four exact parts/sides, not a claim of four motion takes.
+
+
+Offline game-import question
+
+The owner asked whether the4 accurately positioned captures can be used in the game. All4 converted successfully through the current finger-only adapter and passed the actual existing desktop editor validator/600-byte encoder. Prepared output: owner-v020-mod-import-review, with actual-editor-format-review.json and import-scope.json. No game, build, runtime input, install or live profile application occurred. Do not claim original hand placement was applied: current conversion deliberately emits zero palm translation/rotation. The captured weapon-relative wrist transforms remain intact in the original files. Complete positional import still requires converting the reflected object/wrist bases and attaching to each current moving component; C capture is90deg deployed, E0 travel, magazine must follow its item frame. Existing V2 adjustments are bounded50mm/45deg deltas. Answer with this current boundary; old raw data does not need recapture merely because the importer is incomplete.

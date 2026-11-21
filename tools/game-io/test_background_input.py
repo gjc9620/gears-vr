@@ -61,6 +61,28 @@ class PatchTests(unittest.TestCase):
             restored = b.change(42,'disable'); self.assertEqual(restored['state'],'original')
             self.assertEqual(self.code,self.original)
 
+    def test_transient_final_ledger_replace_preserves_one_patch_transaction(self):
+        with self.target() as (root, _, _, writes, _):
+            original_replace = pathlib.Path.replace
+            replaces = 0
+
+            def replace(source, destination):
+                nonlocal replaces
+                replaces += 1
+                if replaces == 2:
+                    raise b.c.WinError(5)
+                return original_replace(source, destination)
+
+            with mock.patch.object(pathlib.Path, 'replace', autospec=True, side_effect=replace):
+                report = b.change(42, 'enable')
+
+            self.assertEqual(replaces, 3)
+            self.assertEqual(writes.call_count, len(b.PATCHES))
+            self.assertEqual(b.classify(self.code), 'enabled')
+            saved = json.loads(pathlib.Path(report['ledger']).read_text())
+            self.assertEqual(saved['state'], 'enabled')
+            self.assertTrue(saved['verified'])
+
     def test_partial_write_error_rolls_back(self):
         with self.target() as (root,exe,control,writes,write):
             calls = 0
@@ -100,5 +122,25 @@ class PatchTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 with b.FrozenThreads(42,0x140000000): pass
             k.ResumeThread.assert_called_once_with(10); k.CloseHandle.assert_called_once_with(10)
+
+    def test_open_thread_failure_observes_disappearance_but_still_aborts(self):
+        with mock.patch.object(b,'thread_ids',side_effect=[{1,2},{1}]),mock.patch.object(b,'k') as k,mock.patch.object(b.c,'get_last_error',return_value=87):
+            k.OpenThread.side_effect=[10,0];k.SuspendThread.return_value=0;k.GetThreadContext.return_value=True
+            with self.assertRaises(OSError) as caught:
+                with b.FrozenThreads(42,0x140000000):self.fail('Incomplete freeze entered write scope')
+            proof=json.loads(caught.exception.__notes__[0])
+            self.assertEqual(proof['tid'],2);self.assertEqual(proof['winerror'],87)
+            self.assertFalse(proof['failed_tid_still_present'])
+            self.assertEqual(proof['already_suspended'],[1])
+            k.ResumeThread.assert_called_once_with(10);k.CloseHandle.assert_called_once_with(10)
+
+    def test_open_thread_failure_snapshot_error_does_not_mask_original(self):
+        with mock.patch.object(b,'thread_ids',side_effect=[{2},RuntimeError('No live game threads')]),mock.patch.object(b,'k') as k,mock.patch.object(b.c,'get_last_error',return_value=5):
+            k.OpenThread.return_value=0
+            with self.assertRaises(OSError) as caught:
+                with b.FrozenThreads(42,0x140000000):self.fail('Incomplete freeze entered write scope')
+            self.assertEqual(caught.exception.winerror,5)
+            self.assertIn('fresh_snapshot_error',json.loads(caught.exception.__notes__[0]))
+            k.SuspendThread.assert_not_called();k.ResumeThread.assert_not_called()
 
 if __name__=='__main__': unittest.main()

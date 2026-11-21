@@ -1,3 +1,232 @@
+## 自然手型：护木源码与编译推进，完整五处未完成（2026-11-10 04:46）
+
+- 人类“先实现自然手型”仍优先。新护木15关节预设与腕位/Root10252注册配对已入源码；固定骨长、T/S、蒙皮、输入与独占权限不变。主握把→弹匣→E→C仍未完成，完整五处/全Lancer/头显FALSE。
+- 根据31404保留真机输入筛出2876匹配Lancer样本/1035副手尝试（非成功证明），选3个邻近姿势离线转移到当前held35及旧rig；映射左右手回算核对通过。存在6.51–9.73raw厘米可达壳投影，不能称精确真人回放。旧合成站姿右手在头后6cm，不再当用户姿势代表。
+- 旧前向手型有前臂与折叠C柄相交；Lancer support_surface限定的新attached_body_pole把肘部向外下方放置，沿现有weight从原neutral端点平滑过渡。其他武器authored/automatic保持原端点。原有shared left_support_world保留authored preset的修正是本轮前已存在的通用改动，保持且不冒领。
+- V21 Native生产编译链接0，PG复用V20完整编译链接0（V21仅Native C0差分）。原C0 8090/腕挂接1109及私有Lancer主动握持扩展8222检查均通过；私有检查初次缺include/顺序错误保留，修正为生产顺序后通过，不是游戏失败。21独立权重最大肘步0.4448raw、腕漂移3.325e-5raw；3邻近姿势完整3146臂面/13397枪面交线>1mm均0。仅离线、非时间序列/全角度/游戏/头显验收。
+- V18私有分配前臂扭转使相交199→506，拒绝；底托到下护圈的草稿拒绝。最终V21不含这些试验，不混其他枪研究。未stage/run/录像/占窗口；040742/Publicv71/scale0.3/固定11/64/36.47%不变。
+- 当前证据：analysis/lancer-natural-hand-20261109/natural-hand-forward-v21-progress-20261110.json。下一步主握把自然贴合，再弹匣/E/C；不得把护木代码编译及离线模型当五处或玩家动作通过。
+
+## 自然手型：腕舒适度与连续肘过渡V17已编译（2026-11-10，最新覆盖）
+
+- V14在full support关闭腕舒适偏好，实际原rig/合成抬枪姿势腕至指根方向与前臂97.90°，不能自然通过。V16恢复偏好后稳态59.33°但21静态权重点出现13.078cm跳肘，编译成功仍拒绝，不stage。V15首编译Vector未限定命名空间失败保留，不能报通过。
+- 最新V17仅Lancer左support用认证rig四MCP局部translation均值作为手方向；身体端点先按原20°偏好/60°pole界限完成解算，再混两个有效端点，最终只投影固定骨长圆，不在混合途中再次选pole。115局部T/S与同一目标腕位姿保持，不改输入/ABI/租约/时钟或增加writer。21独立静态权重点最大相邻肘步0.207936cm、腕漂移2.435e-5raw；非真实时间/松手/游戏/头显证明。
+- 精确V14源只2文件覆盖V17，原C0检查8090/0，完整Native生产编译链接0/7aab78fc；PG27780544不变复用（PG无该helper依赖）。V17稳态115world joints与V16完全一致，复用其同一旧手表/合成姿势3146整臂面vs13397枪面0交线；旧手表仍MCP35/40°等超临时authoring域、腕59.33°，不称自然手型完成，不stage/run/换Public或040742。
+- 新几何事实：真实护木Root10252连通体1834顶点/1790面，排除3037/3096下方条带；真实底面3205含10252，旧纯坐标筛选混入下方条带。拇指朝前不能以腕-local -Z代替，须核实际thumb骨/皮面。此前“两个组件绕序相反”判断已撤回：34闭合体raw volume均负，原统一反转与闭合体外向一致；相关反例标REJECTED，不作旧拟合/运行因果。
+- 下一点只用V17把实际腕角/掌指接触/完整袖口一起收口，不再用V14去拟合；先核保留真人点位是否可用，避免只凭合成站姿。护木自然后同一mount+15表/编译/唯一四态双路，再主握/弹匣/E/C。全五部位/全Lancer/头显FALSE，Publicv71/040742/scale0.3/固定11/64/36.47%及统筹37.5%保持；目标active，本轮progress。证据analysis/lancer-natural-hand-20261109/natural-hand-wrist-comfort-v17-progress-20261110.json。
+
+## 自然手型：整手托握接触复查仍未通过（2026-11-10，最新）
+
+- 复用冻结V14真实C0和原115骨完整蒙皮，只做离线姿态authoring；未新增产品修改/编译、未stage或启动游戏/XR。原版AR手姿直接迁移的升高样本仍601组交叉，不能作为Lancer自然手型。
+- 原手姿局部约束拟合保留较一致的拇指向前/四指下绕形态，但真实完整3146手臂面与13397枪面仍217组交叉；掌根/前臂0，剩余集中指尖低条带及拇指。拟合45次达到上限，不称收敛。仅加深末节183、统一强抓301、整体抬高4.5raw483，均拒绝，不写入产品。近/远侧接触角色取决于整手基准，仍为authoring假设，不当因果修复。
+- 下一点收窄为一套完整护木掌面与各指有限表面的接触修正，保存最佳草稿，禁止再做无依据全手自由搜索、以分数/零碰撞代替自然握持；通过后配套更新腕mount和15局部旋转，再编译Native+PG。主握把/弹匣/E/C均未称自然手型完成。
+- 040742/Publicv71/scale0.3/固定11/64/36.47%保持，完整Lancer/头显FALSE。证据analysis/lancer-natural-hand-20261109/natural-hand-coherent-contact-rejections-20261110.json。
+
+## 自然手型：整手联动与肘部过渡窄修V14已编译（2026-11-10）
+
+- 已把固定原参考屈指、实际C0混合蒙皮、手腕与五指31变量一起调姿；原版Lancer只带Muzzle/Magazine两socket，无可直接复用的左手护木预设。实际1891手面153→57→24交线，原C0最终回放与预测skin最大差2.164e-5raw；仍有指尖和外观问题，所有新表均拒绝/未接产品，不能以数量减少称自然手型完成。四指/拇指接触角色及模型指腹采样均为待视觉确认的authoring条件；最终13397枪面包含192遮罩面不排除。
+- 发现同一固定腕目标的20°数学偏好把前臂护甲拉进机匣：完整3146整臂490交线；只回身体外下肘方向后24，剩17/20/23/26指尖，无腕目标/骨长改变。直接混偏好权重仍7.0969cm跳肘、线性收旋转范围仍5.4435，均拒绝；V13虽已编译绝不stage/run。
+- 最终V14仅held_lancer左support沿现有left_blend权重（含release尾）混两个有效肩/肘几何端点，再在固定骨长圆上解算；不线性混肘位置、不加状态/时钟/Native writer/输入或权限，不改普通solve默认。21独立权重点最大相邻肘步0.8960cm、总15.5393cm、腕漂移5.295e-5raw，115局部T/S保持；这是离线固定目标权重扫描，非真实时间松手/全姿态/游戏通过。
+- 精确V12基底仅2文件覆盖V14，原C0检查8090/0，完整Native生产编译链接0/0d779723；PG27780544未变复用。V14完整稳态115world joints与已审原C0 body-pole对照完全相同，复用其24交线范围；新自然手表仍旧V8，040742/Publicv71/scale0.3/11/64/36.47%保持，全自然五部位/全Lancer/头显FALSE。
+- 下一点必须用V14真实同一C0 arm做24指尖表面见证与掌指腕袖完整贴合，不能再用旧V12肘姿去拟合、不能用握空/竖爪/指尖贴任意链条面替代。自然后再同一挂点+15表、Native/PG编译和唯一四态双路实跑，随后主握把/弹匣/E/C。无本轮游戏/XR/录像/运行申请/助手/CUA；200139仍撤回，旧48324等因果未闭合。证据analysis/lancer-natural-hand-20261109/natural-hand-full-contact-elbow-progress-20261110.json。目标active，本轮progress。
+
+## 自然手型：原动画扭转泄漏窄修已编译，整手仍在制作（2026-11-10）
+
+- 同一实际rig/合成固定手目标的C0反例：仅输入原动画腕部增加0.8rad，旧前臂漂移45.8366°、辅助骨22.9183°，新两者0，目标腕及全部translation/scale保持。独立held_lancer路径现用参考腕/前臂关系作为中性扭转基准，29/53辅助骨回同一参考关系；仍单C0 writer，不改输入/租约/时钟/骨长。此为owned-buffer证明，不是游戏或头显通过。
+- 仅两hunk覆盖V11不可变源到V12，完整Native生产编译链接0/e980a70a；PG27780544未变复用。冻结V12原C0检查实际8090/0。精确patch c4f2f385见lancer-reference-twist-only.patch；不stage/run，不替换040742/Publicv71，不借本修关闭48324或旧间歇故障。
+- 已纠正累计相对种子转指导致MCP82..108°反折的制作方式：从原参考以硬边界参数生成，不能靠软惩罚放过；20°不是用户解剖硬限制。纯手1395面0交线/0指间仍遗漏混合手腕：实际C0完整1891手面203交线、3146整臂611，拒绝。修正基准后的小范围贴合仍210；向前移虽1891手面0，但像松拳未包住护木，仍拒绝。斜向托握预览拇指穿插，也未接产品。
+- 下一步在新基准下把掌面、拇指、四指及混合袖口一起贴合正确凹槽护木，手指屈曲平面应包住护木横截面，不能用浮拳/竖爪/搭上方替代。自然后再同一表+挂点更新/Native与PG编译，获唯一窗口后只一段原四态双路录像；再主握把/弹匣/E/C。所有草稿/首个旧测试CLI无authoring模式拒绝记录均保留；本轮未游戏/XR/录像，无新运行窗/助手。
+- 证据analysis/lancer-natural-hand-20261109/natural-hand-absolute-reference-progress-20261110.json。scale0.3/固定11/64/36.47%保持；五部位自然/全Lancer/头显FALSE，目标active，本轮progress。
+
+## 自然整臂核查：腕姿与指间约束一起修（2026-11-09）
+
+- 原BodyC0HandsTest新增明确离线authoring模式，真实原rig＋合成稳态可达目标，调用现有唯一C0解算并独立FK；MSVC/W4/WX/UNDEBUG实际编译0。115骨局部translation/scale全部保持。完整混合蒙皮覆盖1891手面与3146前臂/袖口/手面，不能再把1395纯手面当完整袖口；无游戏/采集器/新writer。
+- 已亲看3组各3视角完整整臂预览。旧侧腕表完整1891手面仍0条大于1mm交线，但本抬枪姿势折腕47.029°，拒绝自然通过。恢复原作者腕框架20.000°却有786枪面交线；中间框架20.000°且掌面0，但117指尖交线。杯状指节减少到57枪交线却新增55条纯指间交线；并行屈指仍102枪/28纯指间，全部拒绝、未入产品。下一点必须同时约束自然腕/指间/枪面，不能继续只追一个数。
+- 仅已选中立护木提前发布的调度窄修在隔离V11完整PG编译链接0（27780544），Native/common完全复用V8不变；没有放宽时钟、真实几何、身份或权限，不声称48324因果修复。200139原冻结未改、未stage/run；发现已知整臂拒绝后已撤回运行申请，传递weapon_part_cache.py归档缺口另保留，不占LS后继窗。
+- Publicv71/040742/scale0.3/固定11/64/36.47%不变。五部位自然手型、全Lancer、头显仍FALSE；本轮progress。证据analysis/lancer-natural-hand-20261109/natural-hand-full-arm-review.json。
+
+## 自然整手补核：手指互穿不能用贴枪分数遮掩（2026-11-09）
+
+- 共用单写者V4加独立include修正后隔离V8完整Native/PG编译链接0，Nativeaf0ad3d6/PG9bf93c12；不stage、不运行、不替换165800/040742/Publicv71。构成natural-hand-build-review-v8.json，原V7/V5保留。
+- 原三角检查补同手非相邻面，UV缝按原bind位置+精确蒙皮权重识别邻接，不能以当前姿态顶点重合排除碰撞。护木42对同指褶皱交线、原artist48对；本次未发现不同手指交叉，但仍非完整自然/袖口/游戏通过。
+- 主握把仅2对枪面交线的候选实际仍有中指/无名指互穿（72对纯两指交线），明确拒绝，未接产品。2mm整手外移反增37对枪交线也拒绝；单独食指扳机端点仍10对，未接受。当前只离线修指列/屈曲，不以数值少或编译成功冒称自然手型完成。
+- 48324首被动读回仍待分清实际绘制/独立SpaceBases观测和请求消费链，不把独立读取当原子GPU证据，不盲改输入/骨长/保护；本方已最终交HB且不再占运行窗。证据analysis/lancer-natural-hand-20261109/lancer-natural-hand-source-compile-review.json，目标progress、五部位/全Lancer/头显FALSE，固定11/64/36.47%不变。
+
+## 自然手型165800实际48324首败、完整收尾（2026-11-09）
+
+- Bow最终唯一交窗后独立1364源/6saved/17driver+AST/identity/idle核验，精确165800仅一轮。实际48324 creation134386928815981176，初次被动Snap snapshot腕距预设41.219raw/55.462度，operator49484=1，后续Grip/松手/再抓未达；PG有部分support发布TRUE、Native13contextual support提交，但不能据此确定丢失/拒绝原因，也不能把独立SpaceBases读数当原子GPU证据。完整自然手型未通过，不盲改阈值或再跑旧套件。
+- 76.8秒完整保存跨度3页双路及4实际原图已亲看，888game/1650sim，双路末端覆盖；game采集最大缺口2.883秒非FPS。wrapper8869=0/encode52389=0/retention62456=0，Native/entry/pad TRUE、hand_stop5/drained/XR0/launcher0/gamegone。wrapper录制收尾idle race导致settings未自动恢复，独立idle后按baseline165800/1.bin原字节恢复，5基线全匹配；没有停止外部进程。
+- 现有retention实删1522媒体/238121043B/errors0，保留48324/31716/26028。独立2253PG+1338Native/6saved/19driver+AST及3receipt/idle全核后，已最终唯一交HB171233，不追加本窗。证据analysis/lancer-natural-hand-20261109/natural-hand-48324-review.json及natural-hand165800-final-HB171233-handoff-check.json。
+- 主握把离线诊断用小幅掌注册后286pairs逐指到18pairs，食指/扳机护圈仍穿插，明确拒绝、未改产品主握挂接或套到其他部件；下一点先区分48324既有独立骨读与真实绘制/请求消费链，保留首败，再完成五部位。Publicv71/040742/scale0.3/固定11/64/36.47%不变，全Lancer/头显FALSE，目标仍progress。
+
+## 自然手型：单写者V4完整编译、主握把候选仍拒绝（2026-11-09）
+
+- 护木完整15关节表及腕注册已接现有C0/BlendState；165800冻结候选仍待Bow164457最终唯一交窗，未stage/run。原零大于1mm三角交线仅离线表面条件，不是掌面/袖口/自然整手或头显通过。
+- V4最终2984字节/完整32字节几何SHA已在隔离040742基底完整Native/PG编译链接0（V7 Native7e202578/PG5b153ae0），V2/V3旧导出保留。实际同模型reference15、完整Frame/时效及Broker闭合，原已读class链区分Lancer，E/C继续原owner；没有第二写者/新增游戏读取。owner44及真实参考C0局部800项CPU检查0，均不当skin通过。
+- 通用hand_finger_pose独立include原因已修：authored局部finite/unit norm与旧零位移stereo条件等价，原腕测试将其第一include，实际1109项0；V7及165800归档不追改。主握把原AR表308pairs，首次逐指269，含拇指对掌后148，仍穿掌根且姿态不自然，全部拒绝、未接产品；先核主握掌注册，避免靠扭指遮掩。
+- Publicv71/040742手动入口/scale0.3/固定11/64/36.47%不变；五部位完整自然手型及全Lancer/实体头显仍FALSE。证据analysis/lancer-natural-hand-20261109/lancer-natural-hand-source-compile-review.json及natural-hand-build-review-v7.json。
+
+## 自然手型：护木整手预设源码/双模块编译，165800待运行（2026-11-09）
+
+- 已建立Lancer独立护木15节local quaternion预设及匹配腕/Grip变换；原骨长、蒙皮、输入和控制权限不变。公共hand_finger_pose仅消费调用方local15表，枪常量留在Lancer模块，Target/BlendState沿同一C0 writer处理保持/释放，不新增writer。
+- foreend-panel-palm-triangle-fit2离线原手1395/原枪13397三角，超过1mm交线跨度的交叉0；三视图已看。此非穿透深度/完整袖口/动态/双眼/头显通过。侧向腕角及全臂袖口仍待实图，不把marker或CPU零交叉写成自然手型验收。
+- 原W4/WX/UNDEBUG腕/挂点1109检查0，既有part合同/Native真实片段测试0，含局部表无效值、保持释放及不改物理输入。独立040742 overlay生产Native/PG完整编译链接0；Native8bf8dffb/PG501b5a65。归档缺测试源/ASM及首次漏V3 include失败均保留；最终仅生产目标，六个git clean原ASM+hash-pinned旧MinHook补源明记，不伪称原归档全含。
+- 冻结equipment-controls-prepared-20261109-165800-natural-hand（1364源/6bins/17driver），prepared b6b9436c/plan3bf1d3ce，prepare-only0，未stage/run；新无开火护木运动/整手审图申请沿真实尾递送，不能借旧窗。040742手动包和Publicv71/scale0.3/11/64/36.47%不变，全Lancer/头显FALSE。
+- 原版手姿参考26480在Native激活前因过时session.playground键KeyError退出，没取到24样本或手姿；正常取消、配置/设置/head/pad/音频/入口恢复，XR预启动1与operator1保留，launcher0/gamegone。0.766667秒双路全保存/末端两raw已看，编码0；retention0实删3791/734463643B/errors0，最终交HB153818，不追加实跑。
+- 右主握参考改用实际45596同枪腕基准和原AR动画右15节，原样贴合仍308交叉，拒绝未入产品；下一点修主握掌/食指/拇指，弹匣/E/C全姿态继续开放。通用跨枪V4由现有Boltok会话准备独立头/provider，本会话认领sole C0消费与额外owner适配，未称可用，不借Lancer表给别枪。
+- 证据analysis/lancer-natural-hand-20261109/lancer-natural-hand-source-compile-review.json。目标active，本轮progress。
+
+## 自然手型：护木接触语义位置修正已编译（2026-11-09）
+
+- 原模型语义投影确认Root3096(.669,49.656,3.170)位于电锯/护圈相邻低条带，Root绑定本身不能证明它是护木。改用Root10252(3.211,46.819,7.580)带凹槽护木侧板下缘；原模型位置及100%Root蒙皮核实。对照图foreend-contact-semantic-20261109.png。仅接触位置改动，旧腕姿及手指参数暂未改；不称自然手型通过。
+- 原WeaponLancerWristMountTest新增护木语义区域反例，真实W4/WX/UNDEBUG编译执行旧点FAIL/new1019通过。独立040742基底只overlay该Lancer header，全PG编译链接0/PGc6809bb5；未混HB/Longshot共享研究，不改Native，不stage/不运行、不替换040742手动包或Publicv71。
+- 原AR artist fingers直接套到新点及三个实测掌面接触候选仍有穿插，全部拒绝，不交付成自然姿态。下一点核可信原版枪-手挂接基准并在正确护木整手调姿，避免继续无依据转腕；完整五部位要求保持。证据lancer-natural-handguard-panel-build-review.json。scale0.3/固定11/64/36.47%保持，目标active。
+
+## 人类恢复自然手型实现（2026-11-09，最新覆盖）
+
+- 用户明确“你先实现自然手型”，解除此前自然手姿暂存。当前先护木掌面/拇指/四指/袖口完整贴合，再主握把、弹匣、E、C；固定骨长、原输入/抓取所有权和单一Native写者不变。
+- 当前正进行原模型完整手面 authoring；旧marker/腕方向通过不足以验收。旧palmar候选精确三角检查286pairs/152手面，新的刚体平面约束也未改善原106pairs，均拒绝保留。现有staged求解新增owner-cradle，仅修改离线接触目标为粗护木下缘托握，避免强制四指包到远侧上表面。尚未接产品/编译/实跑，不称自然手型完成。
+- 040742交付入口及Publicv71/scale0.3/11/64/36.47%保持；不混HB共享射击在研改动。当前不占游戏窗口，无新增运行器或助手。证据lancer-natural-hand-resumed-20261109.json。
+
+## Lancer独立候选首次部件准备通过（2026-11-09）
+
+- 使用已交付目录自带Python -I -B和包内原有prepare_inputs→verified_inputs，实际冷缓存生成及核验通过：标准启动所需magazine、Lancer前拉柄、Lancer原弹匣三项均preparedTRUE，耗时约0.649秒。仅离线读取用户选定的原包，生成在该候选analysis/weapon-part-cache；不启动游戏/XR，不修改原包，不把派生资产加入ZIP。载荷inventory SHA保持cbde654c6ea6bc2febf2ce4e5d1118c40e29585accf255bc250a3b2c898bebcf。证据lancer-manual-bundle-part-preparation-review.json。
+- 既有30808肩取、69292首发、55412菜单及59800中断分别核对到原记录：已知拒绝谓词/缺证范围保留，不能把后来通过或不同的查询/窗口/身份记账修正说成所有旧故障的因果修复。新整理lancer-open-failures-retained-reconciliation-20261109.json，未盲改保护、增加采集器或重跑套件。
+- 这是交付前资源链补证，不是新的玩法/实体通过。040742手动入口及ZIP不变，Publicv71/scale0.3/固定11/64/36.47%不变；自然手型继续暂存，全Lancer/头显FALSE。保留用户反馈入口，不重复催测。
+
+## Lancer040742独立本机候选已打包（2026-11-09）
+
+- 同一040742不可变源码配套Native c98568f0、PG7efe4a2a及重新编译的实体XR32a5e912；实体XR不含模拟器定义，仅编译成功，未实体运行。归档CMake缺测试源、最初SDK路径错误保留，最终只构建原生产目标，未补测试桩或启动程序。
+- 753个载荷文件通用隔离Python/PE依赖预检通过；缺少lancer_magazine_cache在交付前查获并补同冻结模块。随后精确恢复用户原config（游戏选择、两安装设置绑定、scale0.3），launcher.settings/游戏与二进制SHA/真实设置路径及全部文件哈希通过。通用空路径预检与本机配置核验分开记录，不把前者说成最终配置的严格通用预检。
+- 新入口J:/gearsVr/candidates/lancer-manual-20261109-040742/GearsVR Launcher.exe；ZIP已逐成员回读核验，754成员、15629462字节、SHA8258c007e3dde9a44fe6a9c0a20e45a0655cd0d8c6fe0a951b6c8b5e78db4d05。公共v71的manifest/config/inventory原SHA保持一致，没有替换公共入口。该ZIP含本机路径配置，仅供本机检查。
+- 状态为“已编译、候选已交付、等待用户真机检查”；复用37120护木四态及32408限定HUD/首发证据，各守原范围。完整自然手型继续暂存，历史间歇首发/肩取/生命周期因果未闭合，全Lancer/头显FALSE，固定11/64及36.47%不变。本轮未启动GUI/游戏/XR/录像，不占同伴窗口、无额外清理。
+- 证据analysis/solo-m1-20261028/lancer-manual-bundle-delivery-review.json；下一步保留用户反馈入口，并可独立检查既有间歇失败证据，不重跑已过套件或恢复暂存手型。
+
+## Lancer32408原HUD两组分离限定实跑通过（2026-11-09）
+
+- 023554/PG004518ed实际48572确认右上panel位置确实改变，247panel/247还原、总494/494无债；原pickup文字仍穿过中央枪体。完整55秒双路2页与2原图已看，正常恢复/编码/retention0（1303文件/204343837字节）。保留该范围，不当全UI通过。
+- 同一具体现象仅追加一次040742/PG7efe4a2a：原提示纯布局改右下（X84%/SafeZoneBottom8%），panel维持右上（右边缘96%/Top2%）；文字/图标原尺寸、动作语义、独立换弹条/4秒计时/奖励及Native不变。原CPU布局/边界/journal检查实际0、完整PG0、832隔离编译源匹配、17依赖prepare-only0。源码检查点bca55a44，共享HEAD/暂存区未改。
+- 实际32408/creation134386421365297521完成原拾枪/肩取/首发/抬枪HUD及暂停B；256panel/256还原，总512/512/debt0，真实wanted panel153.6/43.2、actions3225.6/172.8。55.433秒全保存跨度2页双路及game00734/sim00986原图已亲看：提示离开中央接收机到右下，与右侧ammo垂直分开，两眼均可见。仅本段分离布局通过，不保证所有姿态/FOV/分辨率不重叠或头显可读性；881游戏/1183模拟器采样，末端覆盖通过，最大游戏捕获缺口1.867秒非FPS证明。
+- runner45117/encode94299/retention3550均terminal0，Native/entry/pad TRUE、hand_stop5/drained、XR0/launcher0/game退出；config/settings/head原缺精确恢复，17依赖无漂移。实删2940媒体/498746669字节/errors0，保留32408/48572/9540；idle后已明确唯一交Snub024436，再Frag→Boltok→Cover→Longshot，不再追加本窗。
+- Publicv71/scale0.3/固定11/64/36.47%不变，完整自然手姿继续暂存，全Lancer/实体头显FALSE。下一步整理可交付候选身份与仍开放的自然手姿、历史间歇生命周期/输入缺口；不重跑本轮已过UI或未改C/E/换弹套件。证据lancer-hud-48572-panel-review.json、lancer-hud-32408-separation-review.json、lancer-hud-context-build-review.json。
+
+## Lancer31424坐标复查及右上边距候选（2026-11-09）
+
+- 精确012317/PGdadbf8c3实际31424/creation134386361002231775触达同一HUD窄段，真实Canvas3840×2160，panel借值384/216→1675/172.8；253次设置/253恢复，总506/506、debt0。2页54.7秒完整双路与game00778/sim00969原图已看，仍覆盖抬枪，UI未接受；没有换弹/C/E/四态重跑。
+- runner/编码/retention均terminal0，Native/entry/pad恢复TRUE，hand_stop5/drained、XR0/launcher0/game退出；config/settings原字节/head原缺精确恢复，17依赖无漂移。实删1048媒体/152622469字节/errors0，保留31424/50736/44560；idle后已明确唯一交Snub013007，之后按协调续交。
+- 根据实际中央布局仍重叠，仅公共纯布局的panel规则改为右边缘96%Canvas、顶边2%，保留真实UL/ResScale和原尺寸；动作提示、独立换弹子布局/计时/奖励/Native均未动。实际Canvas预测面板左3196.4/右3686.4/top43.2，是CPU规划，非实际像素通过。
+- 独立PG完整编译链接0，既有HudActionLayoutTest真实编译执行0，含完整面板边界、3尺寸、非法值及原journal恢复。023554冻结PG004518ed，832隔离源码SHA一致、17依赖prepare-only0，未stage/run。源码检查点见lancer-hud-right-margin-source-checkpoint.json，共享HEAD/暂存区不变。Publicv71/scale0.3/11/64/36.47%不变，全Lancer/头显FALSE，自然完整手姿暂存。证据lancer-hud-31424-coordinate-review.json、lancer-hud-right-margin-build-review.json。
+
+## HUD9684后续：活动绘制链路和有界坐标回执修正（2026-11-09）
+
+- 9684实际Native回执显示owned_material生产/执行/绘制均0；活动链为indexed HUD payload（4559完整捕获、4401布局应用、kind_mask4）。不能把静态material-quad分支当本次像素路径；不改休眠分支或全局HUD比例。
+- 当前日志预算在tick中被actions先耗尽，累计panel237不足以核其实际坐标。仅Lancer HUD现有回执移至成功store后，actions/panel各至多2条、全局8上限保留，实际至多4条，输出原有call/Canvas/before/wanted并明确非像素归属。没有新采集器/Hook，产品布局/输入/库存/时钟不变。
+- 独立PG目标GearsPlayground完整编译链接0，PGdadbf8c3/mapfd8c2f09及源码已保存；第一次误用输出DLL名作目标而MSB1009，未进入编译，日志保留。新回执未stage/run，不能当UI修复；旧235922冻结不变。源码/编译为progress，Publicv71/scale0.3/11/64/36.47%不变，完整自然手姿暂存。证据lancer-hud-coordinate-receipt-build-review.json、lancer-hud-9684-coordinate-path-review.json。
+
+## Lancer9684弹药面板实际作用域通过、抬枪布局仍未验收（2026-11-09）
+
+- 精确235922/PG53ed实际9684/creation134386297859360879完成必要拾枪/肩取/首发/抬枪HUD快照及暂停B，panel237次apply/restore、总474/474、debt0；没有重跑四态/换弹/C/E。实际新布局有调用和还原，抬枪仍提示/面板覆盖枪体，不能报UI修复。
+- 54.733秒完整保存跨度2页双路总览及6张实际原图已亲看，872游戏/1167模拟器帧、尾部覆盖通过；游戏采集最大缺口2.217秒，不是逐渲染帧/FPS/头显证明。
+- wrapper/编码/既有retention均实际0；Native/entry/pad正常恢复、hand_stop5/drained、XR0/launcher0/game退出，config/settings原字节和原缺失head精确恢复，17依赖无漂移。实删4321文件/738567688字节/errors0，保留9684/5008/21000；旧媒体可用性按实际删除，不影响文字数值。
+- 明确唯一交Cover r7，再HB004159原匣，后续由HB统一协调。本会话离线查最终HUD映射并只修当前重叠，不抢窗、不重复未改套件。遵守模块边界，不新增Hook/公共层武器依赖/输入或骨架写者；完整自然手姿仍暂存。Publicv71/scale0.3/11/64/36.47%不变，全Lancer/头显FALSE。证据analysis/solo-m1-20261028/lancer-hud-panel-9684-review.json。
+
+## 弹药面板独立布局源码/编译完成，未实跑（2026-11-09）
+
+- 原DrawHUD→UpdateWeaponIndicator父调用已用原包确认。只改HUD3文件：保留原动作提示族，新增panel族在原调用内读取真实Canvas/WeaponInfoFrame.UL/ResScaleSmall，临时借SafeZoneRight/Top置上方中央并在同调用结束恢复；不增加hook/相机/输入写者、不改原换弹子布局/计时/奖励。面板过大/非法尺寸/元数据身份变化拒绝，保持原布局。上方中央为待验证设计，避免已知旧12%X横向裁切。
+- 独立212510基底+3文件完整PG编译链接0，既有HudActionLayoutTest真实W4/WX/UNDEBUG编译执行0，含新面板几何/非法值拒绝与旧嵌套/部分失败写入/外来写者恢复。最初map未生成在stage前查获，显式MAP重链0后冻结235922最终PG53ed1b6c/mapfd9f81ea，替代未stage初链8935510f；源码/DLL/map/运行plan核对一致，UI-only prepare-only0。
+- UI运行入口复用既有抬枪HUD快照，仅必要取枪/首发，不重复四态/换弹/C/E整套；同一提前未验证身份保护保留。235922未stage/run，尚未UI像素/头显通过，Publicv71/scale0.3/11/64/36.47%不变，完整自然手姿暂存。
+- 遵守主人最新要求：正常排队不关闭会话、不记blocked或催主人重启；当前不占instance，等待现有HB/Boltok/Frag及更早掩体申请的唯一交接。证据lancer-hud-panel-build-review.json。
+
+## Lancer37120护木四态限定实跑通过（2026-11-08）
+
+- 收到Longshot21724明确唯一交接后，精确stage212510/PG37dceb09，实际37120/creation134386244639367844完整触达四态。被动Snap无控枪、随主手移动且实际腕位姿贴预设；真实Grip转枪16.052°；松Grip回主手并保留18cm保持带；再次Grip转6.241°；移到30cm主动脱离，实际腕离socket29.924raw。无新增开火/换弹/C/E套件，保护不变。
+- 已亲看4页116秒完整保存跨度游戏/模拟器双路总览及5张关键原图，画面与动作切换一致。实际腕预设应用误差至多约0.0112raw/0.0144°，不是完整自然手型通过；掌/指根/袖口问题继续暂存，拾取文字/弹药面板仍有重叠。1702游戏/2483模拟器帧，末端覆盖合格；采样不等于每渲染帧/FPS/头显。
+- operator0/Native正常清理TRUE/XR0/launcher0/实际暂停B通过，config/settings原字节及原缺失head精确恢复，16依赖无漂移。提前未验证身份在真实运行已落盘，正式结果另存；视频编码terminal0、ffprobe116.066667秒，视频实际保留。
+- 既有retention terminal0实际删1267文件/223388393字节/errors0，保留[37120, 21724, 56220]。不拿本次通过解释59800突然终止。W2/B3现有60档增加限定证据，Publicv71/scale0.3/11/64/36.47%不变，全Lancer/实体头显FALSE。
+- 正常收尾后唯一交Frag效果段，再Snub→HB。下一Lancer源码点为特定UpdateWeaponIndicator弹药面板布局，保留现有换弹子调用布局，不重跑未改四态/供弹/C/E/射击，不恢复暂存自然手姿。证据lancer-four-state-37120-review.json。
+
+## 59800保留末端核对：未取得终止原因（2026-11-08）
+
+- 仅查同一59800/creation134386207732465916日志尾部：Native最后running/reason none/stop_tick0/closed0，XR最后frame1358/state5/should_render1；最后game capture比最后telemetry晚380.6204ms。route的scene_left_or_overlay只是撤销位置权限，不能当进程退出原因。没有退出码/正常shutdown/操作者异常证据，结论仍未知，不声称修好中断。
+- 提前持久化未验证身份入口已就绪、产品212510不变。向现有协调登记Frag→Snub后一次尚未执行到的四态窄段；目前窗口仍不归Lancer，不stage/start，不插队或重跑已过功能。完整自然手姿继续暂存，Publicv71/scale0.3/11/64/36.47%不变。证据lancer-59800-retained-ending-review.json。
+
+## Lancer中断录像身份提前持久化修正（2026-11-08）
+
+- 只改独立run_lancer_handguard_check，在现有wrapper已确认真实活游戏身份后、录像与动作启动前记录标准result身份。记录明确started_unverified、passedFALSE、checks空、Native/头显FALSE；不伪造正常完成或玩法通过。独立伴随目录保留pid/creation，原动作结果仍独立。
+- 真实59800保留身份用于本地文件检查：正确身份持久化、同身份不覆盖、PID变更/零creation/错误image/无效stamp拒绝、已有目录不覆盖共7项通过；动态选择后wrapper AST及--prepare-only实际exit0。16依赖除本入口均与原冻结一致，旧plan保留，新入口SHA更新。未启动游戏、未运行清理、未改产品/输入/保护。
+- 这修复清理前缺身份的收尾缺口，不是59800突然终止的根因修复，无法恢复已删媒体。完整四态与头显仍待证，Publicv71/212510产品/scale0.3/11/64/36.47%不变，自然手型继续暂存。窗口已明确唯一交Frag，再Snub；本轮源码/检查为progress。证据lancer-interrupted-identity-build-check.json。
+
+## Lancer212510实际59800中断，四态未触达（2026-11-08）
+
+- 已获HB唯一交接、精确stage212510/PG37dceb09，实际game59800/creation134386207732465916进入XR并保存18.5秒双路。但exec77793后丢失，wrapper15504/launcher28748/game59800/XR18660及operator/编码均实际不存在，无本轮done/动作result/正常Native收尾，旧done为HB47576不能借用。原因未知，未盲重启。Application1000/1001/1026在22:12..22:18无匹配事件仅为有限负搜。
+- 原保存315游戏/390模拟器帧重新编码exit0、ffprobe18.5秒，1页全保存跨度总览已亲看：标题→等待卡→普通启动画面→第一人称自由手；无Lancer拾取/护木动作，全部四态仍待证。此为采样非逐帧/头显，不能用XR启动证明Grab通过。
+- 核实idle后原config/settings按SHA精确恢复，原缺失head仍缺失。Native正常收尾与音频guard正常回执仍缺，未写通过。16运行依赖hash仍与准备一致，无产品/时限/手姿修改。
+- 既有retention terminal0实际删707文件/102424546字节/errors0；59800中断时无标准result身份，清理保留旧3身份并将本次707媒体也删除。清理前已观看，现媒体实际0；文字/数值/源码保留。已补真实failed result登记59800身份，未补造通过/未再清理或启动。该清理前身份登记遗漏保留为本轮问题。
+- 下一窗口只交Frag，再Snub，Lancer先离线查已保留中断证据；Publicv71/scale0.3/11/64/36.47%不变，完整Lancer/头显FALSE，完整自然GrabPose继续暂存。证据lancer-four-state-59800-review.json。
+
+## HUD现有Mod子调用布局核对（2026-11-08）
+
+- 补充前轮“原版父面板移动连带换弹条”的范围：当前Mod在原GetActiveReloadValues返回、同一DrawActionReloadBar调用闭合后已有place(s.locals,drawing)，独立设置局部X/Y/Scale；合法布局为居中20%宽、Y20%及既有marker/body补偿。验证失败仍回原参数，不能说所有UI无条件解耦。
+- weapon_lancer_reload_ui.inl及weapon_lancer_reload_display.h在当前/153242/212510的完整SHA均一致。50024原普通换弹实际197scope/restore及可读tick证据可复用原范围；不重跑、不扩大成全UI/头显证明。下一布局修改只考虑特定UpdateWeaponIndicator面板，保留现有子调用覆盖，不再新增重复换弹条偏移或改计时奖励。
+- 本轮离线证据改变下一实现范围，progress；无产品/运行/采集器/手姿改动。窗口仍按Longshot→HB→Lancer明确交接，212510未stage；Publicv71/scale0.3/11/64/36.47%不变。证据lancer-hud-existing-layout-reconciliation.json。
+
+## HUD原始脚本四入口关联补证（2026-11-08）
+
+- 只读复用UELib解析原WarfareGame.u，包hash91c0f56e与旧证据一致。初次错误reference前缀匹配0保留；修正为精确Function引号路径后4函数导出、errors空。没有运行游戏或更改产品/手姿。
+- DrawActions分别处理ActiveAction与PreviousAction；DrawActionInfo用TooltipText及原两SafeZone字段。独立UpdateWeaponIndicator以SafeZoneRight/Top向DrawWeaponInfo传面板X/Y，现有提示布局journal不影响它；DrawWeaponInfo又用OrigDrawX/Y给DrawActionReloadBar定位，所以父面板位置改动会连带换弹条，不能盲改所有调用者或计时/奖励。
+- 16080实际像素归属仍非原子证明，本补证仅静态调用/参数关系；UI尚未修复。护木212510专项入口--prepare-only再次通过，未stage/run。已核Snub14004/game49012先live后terminal；Snub明确正常收尾将窗口交Longshot，Lancer无交接、不抢窗口。上一轮progress，本轮新增静态证据progress；Publicv71/scale0.3/11/64/36.47%不变。证据lancer-hud-route-static-20261108-review.json。
+
+## 护木四态运行入口冻结核对完成（2026-11-08）
+
+- 新run_lancer_handguard_check仅复用现有run_v63生命周期/录像/清理，并在内存中选择四态动作；不修改Frag/Snub/HB共享入口或源码。显式选择主人给定游戏副本；保留原配置字节并正常idle后恢复。--prepare-only已实际exit0，不stage、不启动。
+- 212510三二进制、16个当前运行依赖及游戏exe哈希均核对成功，内存选择后的原wrapper可编译；执行前/结束后再校验脚本未漂移。这里只是运行准备，不是护木游戏通过，也未新增采集器或Computer Use。公共v71/scale0.3/11/64/36.47%不变，完整自然GrabPose继续暂存。
+- 上轮/本轮progress；仍等既定Frag→Snub共享窗口的明确交接，本会话无运行作业。证据lancer-four-state-runtime-plan.json；下一动作仍为仅四态实际运行与完整双路视觉复查。
+
+## 护木四态专项动作已准备，未启动游戏（2026-11-08）
+
+- 在既有lancer_twohand_chain增加--handguard-four-state-only，沿用--support-surface-mapping使准备阶段不射击，跳过旧35度/开火/完整手型拟合套件。动作覆盖中立吸附不控枪、主手移动时视觉手随枪、真实Grip控枪、18cm保持带松Grip回被动、新Grip再次控枪及主动退出。
+- 复用已有实际枪矩阵/骨骼读取与双路录像，不新增采集器或Computer Use。判据同时看枪的位置/旋转与实际手腕相对握点的位置/方向；贴合预设的应用不能当完整自然手姿通过。当前检查器以保留45596实际样本接受、位置错移/手腕翻转/无Grip枪被拖移三种离线负例拒绝，AST通过；均非本候选实跑。
+- 当前无本会话游戏/XR/编码作业。最新紧凑快照已替代旧Steam卡点：指定副本在Frag实际进入game/XR；当前先等Frag正常收尾与既定Snub窗口，Lancer尚无运行交接。无并发启动或保护绕过。212510尚未stage，四态运行与头显仍待证；Publicv71/scale0.3/11/64/36.47%不变。上一轮/本轮均progress。证据lancer-four-state-driver-preparation.json。
+
+## 最新护木四态重新Grab修正：源码/编译通过，实跑待证（2026-11-08）
+
+- 用户四态保持：邻近Snap仅手部跟枪，不控枪；真实Grip后副手参与双手解算，主握把仍为基准；松Grip回被动跟随，主动移出保持区才脱离。自然完整GrabPose仍暂存、未验收。
+- 修正已有socket在保持带重新Grip却退到single的离线反例。SupportSocketPreference与Participant均核当前同一身份/reference/mount/hold及真实当前保持几何；冷获取仍14cm，原保持22cm。无旧pose/输入/租约复用，不改100/40/50ms、20ms余量、250ms或唯一写者。
+- 原RED保留；真实生产Participant+共享owner本地主机65项通过，SourceState目标通过，独立冻结205200基底加本修正PG完整编译链接0。当前root OfflineTest因其他HB分支缺fixture声明编译失败，未算通过。候选212510/PG37dceb09未stage、未运行，不能称四态游戏/头显通过。
+- 下一点只待共享运行窗口交接后验证四态与保持带再抓，不重跑未改换弹/C/E/射击套件、不恢复手姿拟合。Publicv71、scale0.3、固定11/64与36.47%不变。证据analysis/solo-m1-20261028/lancer-regrab-fixed-build-review.json。
+
+## 最新护木保持带重新Grip离线反例：RED（2026-11-08）
+
+- 本轮/上轮goal为progress。用户四态要求新增实质反例：现有SupportGripParticipant+共享LeftHandInteractionOwner本地主机中，中立Snap无控枪、初次Grip双手、持Grip移动18cm、松Grip回Snap/单手均通过；仍在22cm被动保持带重新真实按Grip时得到single而期望two，新断言失败。14cm新获取与22cm保持几何分离是该反例的准确拒绝条件；新按键、身份/时效和其余几何有效，无竞争部件。不是实体/模拟器实跑证据。
+- 新需求回归已加入原weapon_support_grip_test.cpp末尾，MSVC/W4/WX/UNDEBUG编译0，实际执行3，输出passive_socket4/actual_grip1/expected_two2。当前该完整测试为RED，不能引用历史通过声称全绿。205200原release→Snap选择保留修正仍仅编译，不能借它关闭随后重新Grab的缺口。本轮未改生产准入或任何范围/时钟、未运行游戏、未收窄用户要求。
+- 下一点需让已有socket的重新Grip判定一致：当前同一身份/引用/mount/hold下，仍验证真实当前保持带几何、新Grip和共享仲裁，冷获取保持14cm；SupportSocketPreference的未知部件优先与Participant支持提案必须一致。先使反例转绿，再实际验证完整四态；禁止以视觉贴合冒充权限、保留旧pose/输入/租约或放宽100/40/50ms、20ms余量、250ms。自然手型继续暂存。
+- 已通知HB该新测试故意RED，仍不占其运行窗口。Longshot会话直接人类同worktree开发要求已核对，其共享grasp.inl独立分派编辑窗口获准；我此时不写该文件，不动HB/Longshot分支。本会话只负责Lancer，无新助手。公开v71、scale0.3、11/64与36.47%不变，全Lancer/头显FALSE。证据lancer-release-regrab-contract-red.json。
+
+## 最新护木松Grip回Snap源码修正 / 仅编译205200（2026-11-08）
+
+- 本轮/上轮goal均progress。确认Lancer proximity_tick在Grip或旧support lease交接帧无条件清nearby_kind，导致原已选护木在松手后丢失14..22cm被动保持带。新纯cosmetic handoff只在换弹idle且持有者为none/support时保留已选support枚举；不保留旧pose/接触/输入/时间/租约，不发被动目标，下一neutral帧仍查当前身份/epochs和真实距离。C/弹匣/ammo占用及换弹忙清除、22cm外离开和更近C切换均保留。
+- 现有HandObjectGraspTest以真实MSVC/W4/WX/UNDEBUG编译并执行exit0，新增13个neutral→Grip→旧租约释放→18cm保持、23cm脱离、竞争物/忙/无原选择组合断言及旧项通过；PG完整编译链接exit0，b49219e。仅代码/CPU/编译，不是实际四态/自然手姿/头显通过。主动Grab的额外真实距离/角度/独占条件未放宽，Snap→Grab完整衔接仍待实际覆盖。
+- 205200冻结1332文件，454个编译前PG/common源哈希匹配；归档原清单遗漏新头的问题已用源码根目录收录补齐。第一次归档前置因后来Longshot两文件变化而拒绝，按git6c3ab84与CRLF精确匹配编译前哈希重建到私有overlay，未回滚工作区。此为编译来源保存，不是本会话开发/测试其他枪。Nativec98568f0/XR16840b27未变。
+- 已取得HB会话对Lancer分支的短编辑授权并归还；其HB分支未改，HB仍拥有运行窗口。本轮未stage/运行/录制/清理，不干扰其冻结候选。Publicv71、scale0.3、11/64及36.47%不变，全Lancer/实体头显FALSE；完整自然贴合按用户要求暂存。证据lancer-hover-handoff-build-check.json。
+- 下一实际点等明确窗口交还后核一段护木四态：中立Snap不控枪→真实Grip参与双手→在18cm被动保持带松Grip回Snap且不控枪→明确移开。只修实际首个失败，不能把本次CPU补证当完整四态通过；继续离线UI绘制归属，不重复未改供弹/C/E/射击套件，不加助手/采集器或改100/40/50ms、20ms余量、250ms。
+
+## 最新HUD16080实际快照 / 护木四态确认（2026-11-08）
+
+- 用户明确护木四态：进入Snap体积自动手姿吸附、跟枪但无控枪权；真实Grip取得Grab后副手参与双手解算；松Grip回到符合范围的被动吸附。代码已分proximity与support lease，但主动获取仍需真实当帧接触/两手距离/角度/独占仲裁，不能把被动视觉吸附直接当无条件Grab成功；完整四态切换和自然贴合未验收，手姿拟合继续暂存。
+- 202051保持PGdadec91c/Nativec98568f0/XR16840b27，与191024同产品；仅现有驱动增加一次既有只读HUD快照选择。实际16080/creation134386143387393691完成拾枪/肩取/首发/抬枪快照/暂停返回，无换弹/C/E/供弹重跑；HUDLocators在QPC948961756152400为data0/count0/capacity0。前35.565ms的game00843与后64.436ms的game00844仍见LANCER文字/X提示及独立弹药面板重叠。支持继续查DrawActions/DrawActionInfo及UpdateWeaponIndicator/DrawWeaponInfo，但非原子像素归属证明，不排除旧排队几何，布局尚未修复。
+- 两页完整保存跨度总览及两张实际近景已看。首次编码进程已终止且mp4缺moov，保留encode-first-incomplete.log；使用原保存帧重编码，正常结束，ffprobe55.566667秒，不重启游戏。Native/entry/pad/XR/game正常结束，config/settings/head原字节精确恢复。
+- 既有retention实删1899文件/303718745字节/errors0，保留16080/9612/58452及48h，旧69292媒体实际0，文字数值源码保留。Publicv71、scale0.3、11/64与36.47%不变，全Lancer/实体头显FALSE。证据hud-caption-16080-review.json。
+- 已核对另一个会话的直接人类授权“模拟器测试你们自己协调”，无新助手。本会话仅负责Lancer；HB会话负责两个共享.inl的HB独立分支和HB专用源码，使用独立build。当前正常收尾/编码/清理后核实idle，窗口明确交给HB会话01a1bb03-7453-7530-afcd-2fb1ea7e7a51；我继续离线HUD/护木边界核对，需要再次运行先协调，不同时写同分支或抢instance。本轮/上轮goal均progress，未称完成或blocked。
+
+## 最新余弹肩取9612限定通过（2026-11-08）
+
+- 本轮与上轮goal均progress，无助手/其他枪；未改产品源码，复用191024/PGdadec91c、Nativec98568f0/XR16840b27。Publicv71、scale0.3、固定11/64及36.47%不变，全Lancer/实体头显FALSE，完整自然GrabPose按用户要求暂存。启动前曾因上一轮stop-basic保护拒绝，未启动游戏；完成既有idle stage后仅一次实际运行，不绕过保护。
+- 实际9612/creation134386120903593902完成9次有限弹药准备后，首次触达新规则：实际40/0→拔下弃原匣仍40/0→肩取新匣rounds40/spare_reserved0→不松手插入回座仍40/0，inventory_changed0，原ReloadDuration2.5/ReloadStart404.4477844/bonus0不变，无新增奖励关闭。实际剩2发只具有现有编译契约，本次运行样本是40发。
+- 回座后4发严格回射到36/0；随后36条实际同源枪口/trace到总0。总0再拔/弃原匣，Grip token22与食指token23均replacement_created0/sound1，按住各只调用一次本地原版缺弹音，无新供弹/回座或弹药增加。自动检查仍静音；这是声音分发通过，不是实际听感或头显通过。所有目标checks TRUE、无error，暂停/B返回也通过。
+- 504.236秒保存跨度17页游戏/模拟器双路总览已亲自看，游戏6651/模拟器14348帧，尾部覆盖合格；开头游戏捕获有1.950秒缺口，不能作逐渲染帧/FPS证明。可见拔出/回座及目标空取；完整自然手姿与抬枪原版提示/面板重叠不因本次数值通过而关闭。原69292和历史肩取/首发/暂停间歇失败仍保留，不能因本次通过宣称因果修复。
+- Native/entry/pad/XR/game/operator/编码均正常结束，config/settings/head原字节精确恢复；既有retention实删15009文件/2496567753字节/errors0，保留9612/58452/69292及48h，旧21716媒体实际0，文字数值源码保留。无活跃作业。证据lancer-supply-reuse-9612-review.json，视频menu-firstperson-9612-startup-20261108-194801/dual-output/paired-output.mp4。
+- 下一项：复用已保留抬枪近景及既有UI调用，先确认拾取文字/弹药面板实际绘制归属，再最小布局修正；不重跑未改供弹/换弹/C/E/开火套件，不恢复暂存手姿，不增加采集器或放宽100/40/50ms、20ms余量、250ms期限。
+
 ## 最新部件状态核查 / 首发58452限定通过（2026-11-08）
 
 - 用户询问Snap、GripPoint、GrabVolume、GrabPose是否全部完成：四套机制已有源码，各部件完整自然贴合仍未验收；主握把、护木、弹匣、E、C不能统一报完成。护木掌部/指根/袖口穿插和其余五部位完整自然贴合继续暂存，不恢复拟合；B保持无交互。Publicv71、scale0.3、11/64及36.47%不变，全Lancer/实体头显FALSE，无助手/其他枪。
@@ -260,3 +489,63 @@ Nativec9514484/PGc225a8e8未变；公开v71/私有0.3保持。本轮只新增连
 
 
 真实进入护木后仍退回普通握拳，不以手腕对齐或代码编译代替验收。当前210905为首个主动手姿交接拒绝原因的现有状态回执补充，未实跑；游戏、输入、Native、XR、编码均正常结束，原私有配置恢复。此前换弹/电锯/射击证据仅按原范围沿用，原失败不被这次取枪成功消除。
+
+
+## 主握把V23源码与生产编译完成（2026-11-10，最新）
+
+- 护木V21保留；新增Lancer专属主握把GripPoint及完整右手15关节预设，经现有V4 cosmetic publication进入唯一C0写者。原物理腕校准/骨长/输入/租约不变，枪体与权威枪口共用同一mount；真实扳机只令食指PIP弯曲3度，其余12关节不变。
+- 原完整右手1891面/原Lancer13397面在rest和trigger端点均无>1mm相交线跨度；已看外侧/远侧/掌面/袖口离线原皮肤图。该指标不是穿透深度或游戏/全角度/头显通过。现有C0扩展到同时左右自然手姿实际8624检查0失败，腕/预设1126检查通过，原mesh-follow通过。
+- 独立source-natural-v23从V21仅叠Lancer自有修改及原canonical reference依赖；Native 9e23ac4e、PG 321e51ad完整编译链接0。首轮漏reference头与一次cmd路径错误日志保留，最终通过。未混其他枪在研共享修改、未stage/打包/游戏/XR/录像，不占运行窗口。
+- 弹匣V24..27仍有接触间隙/相交或不自然姿态，全部未接产品；C代理包围体拟合也拒绝。AR_Reload原artist读取因压缩/数据范数未核实而拒绝，不能把这些候选写成完成。下一点弹匣完整贴合→E→C；全五部位/完整Lancer/头显FALSE。Publicv71、040742手动入口、scale0.3、11/64/36.47%保持，目标active。
+- 证据analysis/lancer-natural-hand-20261109/main-natural-v23-progress-20261110.json。
+
+
+
+## 自然手型V41：五处源码编译完成，但手指互穿明确拒绝（2026-11-10，最新）
+
+- 护木V21/主握V23保持；弹匣/E/C完整15表已接现有V4与唯一C0，弹匣只在当前original120v资产安装身份成立时应用新表及不到1cm的视觉腕修正；PH fallback保留旧profile。C新原模型内握contact为9.083391,-4.067897,.355356，真实推拉/输入/权限/运行皮肤16cm修正及22cm最大不变。
+- 隔离source-natural-v41完整Native/PG编译链接0；腕/预设1140、原ObjectGrasp、C0独立稳态五部位9032/0通过。首个旧C marker字面量/旧<5raw美术期望与串入旧support释放blend的fixture失败均保留；精确径向1e-7/轴向3raw、既有release检查与运行保护不降低。
+- **本候选不可stage/交付为自然手型完成**。新增原完整手面self审计：主握rest143条中确认不同手指无名/小指26；trigger142。左mag96/E356/C191 raw self仍须纯指分类及原褶皱基线对照，不能以枪面0或编译0掩盖。已开始有限pinky MCP V42修正，先闭合互穿/真正包握，再准备唯一运行窗，不重跑无关玩法。
+- 原AR_Reload艺术种子已核Fixed48旧24byte range头、完整padding边界及所有key范围，先前错误读法保留拒绝；仍仅离线种子。此前V24..29旧PH替代匣几何拟合不适用于当前original Lancer匣，V34改用现有hash-verified cache120v/156tri。C33/36空拳贴旁被拒绝，C40才改为实际内握。
+- 无本轮game/XR/录像/运行窗口申请/新助手。Publicv71、040742手动候选、scale0.3、固定11/64/36.47%保持，全自然五处/全Lancer/头显FALSE，目标active。证据analysis/lancer-natural-hand-20261109/natural-hand-v41-progress-20261110.json。
+
+
+
+## 主握把V44
+
+主握小指修正已接入和编译；rest/trigger纯不同指互穿及穿枪均0；掌根/褶皱仍待复核。原输入/骨长及单写者不变。E170/C69互穿继续修，未stage/run/改变公共候选。详见analysis/lancer-natural-hand-20261109/natural-main-v44-progress-20261110.json。
+
+
+## 自然手型C握柄V47修正已编译（2026-11-10，最新）
+
+- C在不改腕位/contact/真实滑轨/输入/租约的前提下，有限MCP小幅调姿先严格重现纯不同指69交线，再得到0；原完整1891手面vs1089 C面仍0。完整self111余项属于同指/掌根/web仍需原褶皱基线复核，不能当全自然通过。三视图原皮肤已亲看，仍是包握，不采用空拳贴旁。
+- source-natural-v47从V44仅覆盖Lancer part header中的C15表，主握V44保持；原腕/预设1140、C0五处9032/0、完整PG编译链接0，PG89fc5c56。Native精确复用V41 b4d9479f（generic V4/C0未变），无新writer/ABI/时钟/范围变化，未stage/run/交付/占窗。
+- E仅小幅MCP修正170→113后不再下降，草稿V46拒绝且未接产品。下一点改为真正相对的食指/拇指捏持面和自然分离的其余三指；不以降低交线数量称完成，不放弃五处整手/袖口/过渡要求。原公开v71、040742、scale0.3、11/64/36.47%保持，目标active，本轮progress。
+- 证据analysis/lancer-natural-hand-20261109/natural-C-v47-progress-20261110.json。
+
+
+
+## 拉栓E自然手型V49离线推进（2026-11-10，最新）
+
+- 先重现E170及V46的113纯不同指互穿。复用已制作的弹匣自然三指收拢，仅保留原E食指/拇指，再做有限MCP调姿，V49纯不同指0且原E54部件交线0，完整1891面self135余项仍需掌根/web/同指基线审图；不是完整自然通过。
+- 腕位/contact/真实拉动/输入/权限未改。三视图已看；食指+Z/拇指-Z对立表面的最近3末节顶点平均gap0.485/0.665raw cm，不能当真正指腹三角接触证明。V51有限候选未改善该值，未放松条件、未称对夹验收。
+- V49尚未入产品/编译，最新产品仍V47 PG89fc5c56/Nativeb4d9479f。下一点核实际E54两侧指腹表面及邻近整枪/袖口，合格后再整合；不再用无交叉代替贴合。无game/XR/录像/占窗/新助手。Publicv71/040742/scale0.3/11/64/36.47%不变，全五处/全Lancer/头显FALSE，目标active，本轮progress。
+- 证据analysis/lancer-natural-hand-20261109/natural-E-v49-progress-20261110.json。
+
+
+
+## 自然手型E V55源码编译完成；转整臂/过渡复核（2026-11-10，最新）
+
+- E V49完整1891手面纯不同指170→0、原E54交线0；已接Lancer part header的loading15表，腕/contact/物理推拉/输入/权限不变。主握V44、C V47保持。source-natural-v55从V47仅更新E数据，腕/预设1140、C0五处9032/0及完整PG编译链接0，PG1d0af04b；Native精确复用V41 b4d9479f，generic V4/C0未变。
+- 原三角最邻近特征核对：无方向筛选最近食指点在所谓上表面下方，不能当对夹证明；另在指定上/下实际面上找到手侧outward-Z特征对，食指gap .33775、拇指 .26555raw cm。该结果仅几何见证，非整个指腹贴合/法线对夹/原子像素或手感通过；原3顶点平均gap也不当表面距离。完整self135余项仍须基线/袖口/整臂复核。
+- 五处均已有独立姿态源码，仍不宣称完整自然手型或全Lancer/头显完成。未stage/run/录像/改手动候选或Publicv71；scale0.3/11/64/36.47%保持。下一点统一五处整臂、掌根/指缝褶皱和attach/hold/release，之后现有双路实际审片。
+- 最新主人转达规则已采用：各自独立源码/编译/离线工作，不再远期前驱/逐级签收；只在实际启动共享游戏/模拟器时核现有互斥和真实占用，简短协调。动作结束后立即正常恢复并释放自有共享资源，独立编码/审片不占游戏使用权；不抢占别人、不削弱身份/时效/库存/存档保护。无须常规汇报给统筹，无新助手。
+- 证据analysis/lancer-natural-hand-20261109/natural-E-v55-progress-20261110.json；目标active，本轮progress。
+
+## 2026-11-15 主手取得过渡合回当前工作区
+
+- 工作台保存的 `snap_seconds=0.13711455816800297` 已有严格导出字段，并合入 Native 单一 C0 手部消费者。仅当前真实 Lancer hold、当前物理掌心锚定的自由腕到最终握持腕过渡；不从旧地面/武器槽世界位置插值，最终右手及四处用户左手姿态不变。
+- 合并保留当前 stationary hand scope 及其他已有修改。根默认 profile 仍禁用；显式选中导出配置才启用。90 项同掌心/时钟/结束姿态检查、5 组实际配置导出检查通过，合并冻结源码 Native 生产编译链接0。首冻结遗漏第三方 `.cmake.in`，补齐构建资产后配置通过，原失败日志保留。
+- 既有选中配置 F 的记录证明拿枪边沿和最终阶段、电锯实际抓取/full stroke/原版启动；低帧率下没有证明137ms中间每帧平滑，也不是本次合并后根二进制的运行证明。F 本轮仅复查启动状态后正常停止：launcher0、gamegone、children0、无强停，无新录像。
+- 记录：`analysis/lancer/main-snap-20261115/root-adoption/review.json`、`build-result.json`。未替换用户入口。低真实FPS、左扳机头显闪、C自然接近手感、真人自然握枪上翘仍开放；完整Lancer与头显验收保持未完成。
+

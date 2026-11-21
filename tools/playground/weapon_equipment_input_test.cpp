@@ -315,6 +315,7 @@ void recorded_press_after_slow_poll(){
         case 17:press.input.sync_ns=h.sample.ns-100000000;break;
         }
         const bool expected=variation==0||variation==1||variation==9||variation==17;
+        C(h.input.needs_recorded_right_press(h.sample.f,h.sample.calibration,h.cursor));
         const auto before=h.out;
         const bool result=h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&current);
         C(result==expected);
@@ -467,7 +468,38 @@ void held_timing(){
         }
     }
 }
+void lazy_recorded_press_query(){
+    for(bool simulated:{false,true}){
+        ++cases;Direct h;if(simulated)h.sample.simulated();
+        const auto needs=[&](){return h.input.needs_recorded_right_press(h.sample.f,h.sample.calibration,h.cursor);};
+        C(!needs());h.baseline();C(!needs());
+        h.sample.advance();C(!needs()&&!h.next());
+        // The query cannot consume or rebaseline an edge: both reads say yes,
+        // and the actual Input still emits that same original squeeze once.
+        h.sample.press(2);const auto evidence=h.input.evidence();
+        C(needs()&&needs());C(!std::memcmp(&evidence,&h.input.evidence(),sizeof evidence));
+        C(h.next()&&h.out.inventory_slot==2&&h.out.kind==gw::EquipmentIntentKind::slot);
+        C(!needs()&&!h.next());
+        h.sample.advance();++h.sample.f.controllers.hands[1].released[vr::control_squeeze];
+        C(!needs()&&!h.next());
+        h.sample.press(2);++h.sample.f.controllers.input_epoch;
+        C(!needs());h.unchanged_failure(ei::Status::cohort_changed);C(!needs());
+
+        ++cases;Direct index;if(simulated)index.sample.simulated();index.index_enabled=true;
+        index.sample.f.controllers.hands[1].trigger_active=1;index.baseline();index.sample.advance();
+        auto& r=index.sample.f.controllers.hands[1];++r.pressed[vr::control_trigger];r.trigger=1;r.grip.position=index.sample.point(2);
+        C(!index.input.needs_recorded_right_press(index.sample.f,index.sample.calibration,index.cursor));
+        C(index.next()&&index.out.kind==gw::EquipmentIntentKind::index_acquire_slot);
+
+        ++cases;Direct baseline;if(simulated)baseline.sample.simulated();baseline.baseline();baseline.sample.press(2);
+        baseline.cursor=UINT64_MAX;
+        C(!baseline.input.needs_recorded_right_press(baseline.sample.f,baseline.sample.calibration,baseline.cursor));
+        C(!baseline.next()&&baseline.input.evidence().status==ei::Status::baseline);
+        baseline.sample.press(2);baseline.input.reset();
+        C(!baseline.input.needs_recorded_right_press(baseline.sample.f,baseline.sample.calibration,baseline.cursor));
+    }
 }
-int main(){index_acquisition();routes();boundaries();invalids();times();continuous_source_jitter();recorded_press_after_slow_poll();quiet_slow_poll_baseline();pose_gap_observation();integration();held_timing();
+}
+int main(){lazy_recorded_press_query();index_acquisition();routes();boundaries();invalids();times();continuous_source_jitter();recorded_press_after_slow_poll();quiet_slow_poll_baseline();pose_gap_observation();integration();held_timing();
     std::printf("NativeEquipmentInputTest: %u cases / %u checks passed; actual Native Frame input/router + Runtime/model, controlled backend seam; no Game/XR/mapping/engine acceptance\n",cases,checks);
 }

@@ -1,8 +1,12 @@
+#include "hand_finger_pose.h" // Must compile without a prior stereo header.
 #include "weapon_lancer_wrist_mount.h"
 #include "hand_contact_equivalence.h"
 #include "weapon_mesh_follow.h"
 #include "weapon_two_hand_hold.h"
 #include "weapon_lancer_foregrip.h"
+#include "weapon_lancer_natural_hand.h"
+#include "weapon_lancer_main_hand.h"
+#include "weapon_lancer_part_hand.h"
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -45,6 +49,11 @@ static_assert(noexcept(lancer::marcus115(authored::Signature{},1,100,std::declva
 int main(){
     {
         namespace fore=gears_weapon_lancer_foregrip;
+        // Original LOD0 side-panel contact sits ABOVE the chainsaw/guard.
+        // The former Root3096 is a real vertex but belongs to that lower
+        // strip; being Root-bound alone never certifies a handguard socket.
+        CHECK(fore::surface_raw.z>7.&&fore::surface_raw.z<13.&&
+              fore::surface_raw.y>45.&&fore::surface_raw.y<62.&&fore::surface_raw.x>2.5);
         Vector grip{};CHECK(fore::grip_in_mesh(grip));
         authored::Mount left{};CHECK(authored::marcus115(authored::marcus115_signature,authored::Side::left,1,100,left));
         const auto orientation=gears_vr::multiply(fore::wrist_in_mesh(),gears_vr::inverse(left.calibration.grip_to_wrist_rotation));
@@ -54,28 +63,35 @@ int main(){
         // crosses the gun despite marker coincidence. Full original skin
         // fitting is a separate requirement, not proved by this CPU check.
         CHECK(close(add(hand.position,rotated(hand.orientation,fore::palm_surface_raw)),fore::surface_raw));
-        // The wrist approaches diagonally forward in the horizontal plane,
-        // not vertically/upward or backwards into the forearm.
-        // Palm faces upward from underneath; fixed marker reaches
-        // the actual original fore-end surface after calibration.
+        // These are authored mount regression bounds, not a hand-skin test.
+        // Review the thumb on its actual posed branch; wrist-local -Z alone
+        // is the knuckle-row side and cannot prove a forward-facing thumb.
         const auto longitudinal=rotated(hand.orientation,{1,0,0});
-        CHECK(std::abs(longitudinal.z)<1e-8&&longitudinal.y>.3&&longitudinal.x<-.3);
-        // Original index-to-little knuckle row is wrist-local Z. It must
-        // extend along the handguard, not span its narrow cross-section.
+        CHECK(longitudinal.y>.85&&longitudinal.z<-.2&&longitudinal.z>-.55&&std::abs(longitudinal.x)<.15);
         const auto finger_row=rotated(hand.orientation,{0,0,1});
-        CHECK(std::abs(finger_row.z)<1e-8&&finger_row.y<-.7&&finger_row.x<0);
-        // Marcus LEFT thumb lies on wrist-local -Z. The owner5112dfd7
-        // reference requires that side toward the muzzle, with the other
-        // fingers wrapping the far side. An upward palm alone accepts the
-        // reversed hand; the old signed row check even demanded that error.
-        const auto thumb_side=rotated(hand.orientation,{0,0,-1});
-        CHECK(thumb_side.y>.7);
-        // Owner's underhand reference: upward palm, forward forearm,
-        // wrist below the contact. A side-facing fist is not acceptable even
-        // when the palm marker happens to meet the contact position.
+        CHECK(finger_row.z<-.85&&finger_row.y<-.2&&std::abs(finger_row.x)<.15);
         const auto normal=rotated(hand.orientation,{0,-1,0});
-        CHECK(std::abs(normal.x)<1e-8&&std::abs(normal.y)<1e-8&&normal.z>.99);
-        CHECK(hand.position.z<fore::surface_raw.z-1.&&hand.position.z>fore::surface_raw.z-2.);
+        CHECK(normal.x<-.95&&std::abs(normal.y)<.15&&std::abs(normal.z)<.15);
+        CHECK(close(hand.position,{7.7614252890634017,42.787216568792928,11.352242872682027}));
+        namespace natural=gears_lancer_natural_hand;
+        const auto thumb_base=gears_vr::multiply(hand.orientation,natural::support_closed[12]);
+        const auto thumb_middle=gears_vr::multiply(thumb_base,natural::support_closed[13]);
+        const auto thumb_direction=add(rotated(thumb_base,{4.162128448486328,-7.62939453125e-6,-1.9073486328125e-6}),
+            rotated(thumb_middle,{3.3369216918945312,7.62939453125e-6,-3.814697265625e-6}));
+        const auto thumb_length=std::hypot(thumb_direction.x,thumb_direction.y,thumb_direction.z);
+        CHECK(thumb_direction.y>.8*thumb_length&&thumb_direction.z>0);
+
+        for(unsigned i=0;i<15;++i){
+            const auto reference=natural::support_reference[i];Quaternion q{};
+            CHECK(gears_hand_fingers::rotation(0,i,1.,reference,q,gears_hand_fingers::Shape::authored,1.,0.,natural::support_closed));
+            const auto expected=natural::support_closed[i];
+            CHECK(std::abs(q.x*expected.x+q.y*expected.y+q.z*expected.z+q.w*expected.w)>.999999999);
+            CHECK(gears_hand_fingers::rotation(0,i,0.,reference,q,gears_hand_fingers::Shape::authored,1.,0.,natural::support_closed));
+            CHECK(std::abs(q.x*reference.x+q.y*reference.y+q.z*reference.z+q.w*reference.w)>.999999999);
+            const auto before=bytes(q);
+            CHECK(!natural::support_rotation(1,i,reference,q));
+            CHECK(bytes(q)==before);
+        }
     }
     {
         const Pose tracking{{-4096,512,600},{0,0,0,1}};
@@ -91,7 +107,7 @@ int main(){
         CHECK(!gears_hand_contact_equivalence::same_contact(tracking,rendered,100));
         CHECK(!gears_hand_contact_equivalence::same_contact(tracking,tracking,0));
     }
-    CHECK(std::strcmp(lancer::profile_id,"marcus115-lancer-held-grip-v4-psvr-down35")==0);
+    CHECK(std::strcmp(lancer::profile_id,"marcus115-lancer-held-grip-v5-owner-down55")==0);
     CHECK(std::strcmp(lancer::supported_mesh,"COGAssaultRifle")==0);
     const Quaternion grips[]={Quaternion{},axis({0,0,1},.8),axis({1,0,0},1.3),
         gears_vr::multiply(axis({0,0,1},-.7),gears_vr::multiply(axis({0,1,0},.4),axis({1,0,0},1.1)))};
@@ -99,7 +115,7 @@ int main(){
     for(double model:{.5,1.,1.7,3.})for(double units:{10.,100.,500.}){
         authored::Mount free{};CHECK(authored::marcus115(authored::marcus115_signature,authored::Side::right,model,units,free));
         lancer::Profile held{};CHECK(lancer::marcus115(authored::marcus115_signature,model,units,held));
-        CHECK(held.revision==4&&held.provenance==authored::Provenance::designer_authored);
+        CHECK(held.revision==5&&held.provenance==authored::Provenance::designer_authored);
         CHECK(held.mount.model==authored::Model::marcus115&&held.mount.side==authored::Side::right);
         CHECK(held.mount.provenance==authored::Provenance::designer_authored);
         CHECK(held.mount.input_space==authored::Space::ue_grip_forward_right_up);
@@ -111,9 +127,13 @@ int main(){
         CHECK(std::abs(std::hypot(std::hypot(a.x,a.y),a.z)-std::hypot(std::hypot(b.x,b.y),b.z))<1e-12);
         const auto free_marker=marker_in_wrist(free.calibration),held_marker=marker_in_wrist(held.mount.calibration);
         CHECK(close(free_marker,held_marker));
-        constexpr double c=.81915204428899178968,s=.57357643635104609611;
+        constexpr double c=.57357643635104609611,s=.81915204428899178968;
         CHECK(close(rotated(held.mount.calibration.grip_to_wrist_rotation,{1,0,0}),{c,0,-s}));
         for(auto q:grips){
+            const auto previous_bore=rotated(gears_vr::multiply(q,Quaternion{0,.30070579950427311950,0,.95371695074822692114}),{1,0,0});
+            const auto corrected_bore=rotated(gears_vr::multiply(q,held.mount.calibration.grip_to_wrist_rotation),{1,0,0});
+            const double separation=std::acos(std::clamp(previous_bore.x*corrected_bore.x+previous_bore.y*corrected_bore.y+previous_bore.z*corrected_bore.z,-1.,1.));
+            CHECK(std::abs(separation-20.*3.14159265358979323846/180.)<1e-12);
             const Pose grip{{12,-34,56},q};
             const auto fw=target(grip,free.calibration,units),hw=target(grip,held.mount.calibration,units);
             // Contextual held-hand fitting may rotate the wrist, while BOTH
@@ -179,5 +199,34 @@ int main(){
     for(auto bad:std::array<Pose,3>{{{{nan,0,0},{}},{{},{0,0,0,0}},{{},{0,0,0,2}}}}){
         Pose untouched{{17,23,41},{}};const auto before=bytes(untouched);
         CHECK(!lancer::grip_from_palm_endpoint(bad,untouched)&&bytes(untouched)==before);}
+    // The Lancer-only main preset has the authenticated model reference and
+    // moves only the index when the actual trigger changes. It cannot supply
+    // a new wrist transform, action lease or altered non-index grip.
+    {
+        namespace main=gears_lancer_main_hand;namespace api=gears_hand_authored_grasp;
+        const auto q=main::request({});CHECK(api::structural(q));
+        api::Binding binding{gears_hand_authored_mount::marcus115_signature,
+            gears_hand_marcus115_reference::right};
+        api::Joints open{},pressed{},middle{};
+        CHECK(api::rotations(q,binding,0,open)&&api::rotations(q,binding,1,pressed)&&api::rotations(q,binding,.5,middle));
+        for(unsigned i=3;i<15;++i)CHECK(bytes(open[i])==bytes(pressed[i])&&bytes(open[i])==bytes(middle[i]));
+        CHECK(bytes(open[1])!=bytes(pressed[1]));
+        auto bad=binding;bad.geometry_signature[0]^=1;CHECK(!api::rotations(q,bad,0,middle));
+        bad=binding;bad.reference[0]={0,0,0,1};CHECK(!api::rotations(q,bad,0,middle));
+    }
+    {
+        namespace part=gears_lancer_part_hand;namespace api=gears_hand_authored_grasp;
+        api::Binding binding{gears_hand_authored_mount::marcus115_signature,
+            gears_hand_marcus115_reference::left};
+        for(auto kind:{part::Kind::magazine,part::Kind::loading,part::Kind::starter}){
+            api::Request q{};CHECK(part::request(kind,{},{{1,2,3},{}},q));
+            api::Joints a{},b{};CHECK(api::rotations(q,binding,0,a)&&api::rotations(q,binding,1,b));
+            CHECK(bytes(a)==bytes(b)&&!q.has_trigger_endpoint&&q.side==api::Side::left);
+            auto wrong_binding=binding;wrong_binding.geometry_signature[3]^=1;CHECK(!api::rotations(q,wrong_binding,0,b));
+        }
+        api::Request q{};const auto before=bytes(q);
+        CHECK(!part::request(part::Kind::none,{},{},q)&&bytes(q)==before);
+        CHECK(!part::request(part::Kind::support,{},{},q)&&bytes(q)==before);
+    }
     std::printf("WeaponLancerWristMountTest: %u checks passed (synthetic CPU data only)\n",checks);return 0;
 }

@@ -56,5 +56,28 @@ int main(){
         sample.lever_angle_radians=angle;complete=lever.observe(sample,travel);}
     assert(complete&&gun.cycle(10,1070,MechanismAction::lever_down_return)==ReloadEvent::cycled);
     assert(gun.can_fire());
-    std::puts("Gnasher bilateral lever travel, shot gate, jump and tracking boundaries passed");
+
+    // Explicit opt-in regrasp retains a real partial stroke. Outage time and
+    // new input at another angle never advance the saved mechanism.
+    assert(lever.arm(10,3,5));sample.lever_angle_radians=0;
+    sample.sequence++;sample.monotonic_ns+=20000000;assert(!lever.observe(sample,travel));
+    sample.lever_angle_radians=.1;sample.sequence++;sample.monotonic_ns+=20000000;
+    assert(!lever.observe(sample,travel));lever.suspend();assert(lever.suspended());
+    const auto frozen=sample;
+    sample.sequence++;sample.monotonic_ns+=5000000000;
+    for(unsigned invalid=0;invalid<8;++invalid){auto bad=sample;
+        if(invalid==0)bad.weapon++;if(invalid==1)bad.world++;if(invalid==2)bad.space_epoch++;
+        if(invalid==3)bad.sequence=frozen.sequence;if(invalid==4)bad.monotonic_ns=frozen.monotonic_ns;
+        if(invalid==5)bad.lever_angle_radians=.48;if(invalid==6)bad.left_front_held=false;
+        if(invalid==7)bad.tracked=false;
+        assert(!lever.reattach(bad,travel,.02)&&lever.suspended());}
+    assert(!lever.reattach(sample,travel,.1));
+    assert(lever.reattach(sample,travel,.02)&&!lever.suspended());
+    assert(lever.phase()==LeverPhase::push_down); // Regrasp is no endpoint.
+    assert(!lever.reattach(sample,travel,.02));
+    const double resume[]={.2,.34,.48,.34,.2,.1,0};
+    for(double angle:resume){sample.sequence++;sample.monotonic_ns+=20000000;
+        sample.lever_angle_radians=angle;complete=lever.observe(sample,travel);}
+    assert(complete&&lever.phase()==LeverPhase::unarmed);
+    std::puts("Gnasher bilateral lever travel, shot gate, jump, frozen regrasp and tracking boundaries passed");
 }

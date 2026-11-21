@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "shape": "sphere",
+      "local": {
+        "position_metres": [
+          0.041310674991,
+          -0.011633055962,
+          0.007928067235
+        ],
+        "rotation_xyzw": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "radius_metres": 0.1,
+      "half_length_metres": 0.08,
+      "snap_distance_metres": 0.14,
+      "snap_angle_radians": 1.4835298641951802,
+      "release_distance_metres": 0.18,
+      "half_extents_metres": [
+        0.06,
+        0.06,
+        0.06
+      ]
+    },
+    {
+      "id": "support",
+      "shape": "sphere",
+      "local": {
+        "position_metres": [
+          -0.032114882469,
+          0.07580302715300001,
+          -0.468190498352
+        ],
+        "rotation_xyzw": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "radius_metres": 0.14,
+      "half_length_metres": 0.08,
+      "snap_distance_metres": 0.14,
+      "snap_angle_radians": 1.4835298641951802,
+      "release_distance_metres": 0.18,
+      "half_extents_metres": [
+        0.06,
+        0.06,
+        0.06
+      ]
+    },
+    {
+      "id": "magazine",
+      "shape": "capsule",
+      "local": {
+        "position_metres": [
+          -7.96632598e-05,
+          -0.036039356221,
+          -0.2814602802187
+        ],
+        "rotation_xyzw": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "radius_metres": 0.12,
+      "half_length_metres": 0.08,
+      "snap_distance_metres": 0.14,
+      "snap_angle_radians": 1.4835298641951802,
+      "release_distance_metres": 0.18,
+      "half_extents_metres": [
+        0.06,
+        0.06,
+        0.06
+      ]
+    },
+    {
+      "id": "charging",
+      "shape": "sphere",
+      "local": {
+        "position_metres": [
+          -0.0452,
+          0.1325,
+          -0.5835
+        ],
+        "rotation_xyzw": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "radius_metres": 0.18,
+      "half_length_metres": 0.08,
+      "snap_distance_metres": 0.14,
+      "snap_angle_radians": 1.4835298641951802,
+      "release_distance_metres": 0.18,
+      "half_extents_metres": [
+        0.06,
+        0.06,
+        0.06
+      ]
+    },
+    {
+      "id": "starter",
+      "shape": "sphere",
+      "local": {
+        "position_metres": [
+          -0.04994400476,
+          0.101799370098,
+          -0.250155129328
+        ],
+        "rotation_xyzw": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "radius_metres": 0.14,
+      "half_length_metres": 0.08,
+      "snap_distance_metres": 0.14,
+      "snap_angle_radians": 1.4835298641951802,
+      "release_distance_metres": 0.18,
+      "half_extents_metres": [
+        0.06,
+        0.06,
+        0.06
+      ]
+    }
+  ],
+  "starter_pivot_metres": [
+    -0.04685962200164795,
+    0.10670499801635742,
+    -0.3284494018554688
+  ],
+  "charging_travel_metres": 0.23041412353515625,
+  "component_triangles": {
+    "starter": 1089,
+    "charging": 54,
+    "receiver": 1300,
+    "magazine": 156,
+    "body": 10798
+  }
+}

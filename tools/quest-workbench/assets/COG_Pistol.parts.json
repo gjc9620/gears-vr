@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "握把",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        0.00032737724669945286,
+        0.005833929176826212,
+        -0.22955638154005925
+      ],
+      "bone": 4,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "bone_4"
+    },
+    {
+      "id": "mechanism",
+      "label": "套筒",
+      "position": [
+        -7.669903577702434e-11,
+        0.09507713888955925,
+        -0.0912143038210337
+      ],
+      "bone": 1,
+      "role": "mechanism",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "bone_1"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_HG_Root",
+      "parent": 0,
+      "pivot": [
+        0.00011136770248413086,
+        0.0,
+        0.0
+      ],
+      "mesh": "COG_Pistol.bone0.mesh",
+      "triangles": 2166
+    },
+    {
+      "bone": "b_HG_Slide",
+      "parent": 0,
+      "pivot": [
+        0.0002559049054980423,
+        0.10677588462829592,
+        -0.07087201118469234
+      ],
+      "mesh": "COG_Pistol.bone1.mesh",
+      "triangles": 445
+    },
+    {
+      "bone": "b_HG_Wing_L",
+      "parent": 0,
+      "pivot": [
+        -0.014256976842880298,
+        0.05231894969940194,
+        -0.3048278045654296
+      ],
+      "mesh": "COG_Pistol.bone2.mesh",
+      "triangles": 60
+    },
+    {
+      "bone": "b_HG_Wing_R",
+      "parent": 0,
+      "pivot": [
+        0.014624241590499822,
+        0.052318949699401936,
+        -0.3048278045654296
+      ],
+      "mesh": "COG_Pistol.bone3.mesh",
+      "triangles": 60
+    },
+    {
+      "bone": "b_HG_Magazine",
+      "parent": 0,
+      "pivot": [
+        0.0003689140826463312,
+        0.04678941726684577,
+        -0.2336940765380859
+      ],
+      "mesh": "COG_Pistol.bone4.mesh",
+      "triangles": 314
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.04134492874145508,
+        -0.18176602363586425
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.0,
+        0.04134492874145508,
+        -0.33176602363586427
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_HG_Root",
+      "position": [
+        9.992706023099671e-05,
+        0.07099480311276025,
+        -0.21877050363026646
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "套筒 · b_HG_Slide",
+      "position": [
+        -7.669903577702434e-11,
+        0.09507713888955925,
+        -0.0912143038210337
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "原件 · b_HG_Wing_L",
+      "position": [
+        -0.030387476300293544,
+        0.05453998843453965,
+        -0.27347336139319084
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "原件 · b_HG_Wing_R",
+      "position": [
+        0.030387476300293544,
+        0.05453998843453965,
+        -0.2734733613931909
+      ],
+      "bone": 3,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_4",
+      "label": "弹匣 · b_HG_Magazine",
+      "position": [
+        0.00032737724669945286,
+        0.005833929176826212,
+        -0.22955638154005925
+      ],
+      "bone": 4,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "COG_Pistol",
+    "kind": "pistol",
+    "capacity": 12,
+    "reserve": 60,
+    "feed": [
+      0.0003689140826463312,
+      0.04678941726684577,
+      -0.2336940765380859
+    ],
+    "mechanism_pivot": [
+      0.0002559049054980423,
+      0.10677588462829592,
+      -0.07087201118469234
+    ],
+    "mechanism_bones": [
+      1,
+      2,
+      3
+    ],
+    "magazine_bone": 4,
+    "travel": 0.065,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      1,
+      0
+    ],
+    "ammo_mesh": "COG_Pistol.ammo.mesh",
+    "initial_loaded": 6,
+    "fire_interval": 0.15,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": true,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -1.0300992113171202e-08,
+      0.04267728994741584,
+      -0.3274223976063006
+    ]
+  },
+  "curated": true
+}

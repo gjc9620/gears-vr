@@ -3,6 +3,11 @@
 #include <windows.h>
 #include <bcrypt.h>
 #include "body_c0_hands.h"
+#include "../vr-common/weapon_lancer_foregrip.h"
+#include "../vr-common/weapon_lancer_natural_hand.h"
+#include "../vr-common/weapon_lancer_part_hand.h"
+#include "../vr-common/weapon_lancer_held_contact.h"
+#include "../vr-common/weapon_boomshot_grasp_pose.h"
 #include <cstdio>
 #include <fstream>
 #include <memory>
@@ -86,8 +91,9 @@ void shoulder_policy_cases(){
     }
 }
 int main(int argc,char** argv){
-    shoulder_policy_cases();
-    {
+    const bool support_authoring=(argc==4||argc==5)&&std::string(argv[2])=="--lancer-support-authoring";
+    if(!support_authoring)shoulder_policy_cases();
+    if(!support_authoring){
         // A current object pose changes smoothly on attach, release and a
         // different part. Only the index responds to a held rifle's trigger.
         gears_hand_fingers::PoseBlend blend;const v::Quaternion open{0,0,0,1};v::Quaternion held{},out{};
@@ -111,7 +117,7 @@ int main(int argc,char** argv){
             C(qerror(held0,held1)<1e-12);if(n<3)C(qerror(held0,rifle)>.01);}
     }
     #if defined(GEARS_C0_CONTEXT_GEOMETRY_ONLY)
-    if(argc!=2)return 2;
+    if(argc!=2&&!(argc==3&&std::string(argv[2])=="--authored-local-only")&&!support_authoring)return 2;
     #else
     if(argc!=3)return 2;
     #endif
@@ -130,8 +136,33 @@ int main(int argc,char** argv){
     C(read(fixtures+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));frame->units_per_metre=actual.units_per_metre;
     C(b::prepare_model(frame->reference,digest,*model));
     for(unsigned i=0;i<16;++i)bw->component.m[i]=frame->component_to_world.values[i];std::copy(frame->local.begin(),frame->local.end(),bw->pose.local);C(b::d::rebuild(*model,*bw));
+    if(argc==3&&std::string(argv[2])=="--authored-local-only"){
+        // Exercise the production sole finger consumer against the retained
+        // REAL reference/local atoms. Cosmetic test data never acts as a
+        // tracked hand, mount or game/Native write permission.
+        auto original_local=std::make_unique<std::array<b::Atom,b::bones>>();
+        std::copy_n(bw->pose.local,b::bones,original_local->begin());
+        const auto original_model=bytes(*model);const auto original_frame=bytes(*frame);
+        std::array<v::Quaternion,15> authored{};
+        for(unsigned n=0;n<15;++n){const auto& q=model->reference[36+n].q;
+            authored[n]=v::normalized(mul({q[0],q[1],q[2],q[3]},turn(2,-.1-.01*n)));}
+        C(a::detail::fingers(*model,*bw,1,1.,{{UINT64_MAX,UINT64_MAX}},
+            gears_hand_fingers::Shape::authored,1.,0.,nullptr,authored.data()));
+        for(unsigned i=0;i<b::bones;++i){
+            C(!std::memcmp(bw->pose.local[i].translation,(*original_local)[i].translation,12));
+            C(bw->pose.local[i].scale==(*original_local)[i].scale);
+            if(i>=36&&i<=50){const auto& q=bw->pose.local[i].q;
+                C(qerror({q[0],q[1],q[2],q[3]},authored[i-36])<1e-6);}
+            else C(!std::memcmp(&bw->pose.local[i],&(*original_local)[i],sizeof(b::Atom)));
+        }
+        C(original_model==bytes(*model)&&original_frame==bytes(*frame));
+        C(!a::detail::fingers(*model,*bw,1,1.,{{UINT64_MAX,UINT64_MAX}},
+            gears_hand_fingers::Shape::authored,1.,0.,nullptr,nullptr));
+        std::printf("Authored C0 local consumer: %u checks %u failures; real reference fixture, synthetic local pose; no game/tracking acceptance\n",checks,failures);
+        return failures?1:0;
+    }
     b::Goal goal{};goal.head_world=b::d::pose(bw->pose.world[b::head]);for(unsigned side=0;side<2;++side)goal.feet_world[side]=b::d::pose(bw->pose.world[b::legs[side][2]]);
-    goal.body_yaw_delta=-.1;goal.physical_world={1,2,-3};goal.committed_grip_world={2,1,-2};goal.head_world.position=add(goal.head_world.position,{3,3,-5});
+    if(!support_authoring){goal.body_yaw_delta=-.1;goal.physical_world={1,2,-3};goal.committed_grip_world={2,1,-2};goal.head_world.position=add(goal.head_world.position,{3,3,-5});}
     b::Output body_only{};C(b::plan(*model,*frame,goal,*bw,body_only).status==b::Status::solved);
     const auto before=fk(*model,*frame,body_only);const auto model_bytes=bytes(*model);const auto frame_bytes=bytes(*frame);const auto original=bytes(body_only);
     const a::hand::ObjectIdentity asset{0x70000,0x71000,0x72000,18,19,20,1};
@@ -140,6 +171,84 @@ int main(int argc,char** argv){
     C(a::core::core_snapshot_valid(actual,now,50000000,sim));
     #endif
     const v::StereoMatrix base=actual.base_view;
+    if(support_authoring){
+        // OFFLINE steady-state mesh authoring only. Retained real geometry,
+        // synthetic reachable wrist goals; no live Core/Frame or permission.
+        // Use the production sole arm/finger composition so forearm helper
+        // bones and the cuff are not frozen at their reference transforms.
+        auto right_axis=sub(before[32].position,before[8].position);right_axis.z=0;
+        C(distance(right_axis,{})>1);right_axis=scale(right_axis,1/distance(right_axis,{}));
+        const v::Vector up{0,0,1};const auto forward=a::two::detail::cross(right_axis,up);
+        constexpr double angle=.4363323129985824;
+        const auto gun_forward=sub(scale(forward,std::cos(angle)),scale(right_axis,std::sin(angle)));
+        const auto gun_x=a::two::detail::cross(gun_forward,up);
+        const v::Matrix gun_axes{{{{gun_x.x,gun_forward.x,up.x}},{{gun_x.y,gun_forward.y,up.y}},{{gun_x.z,gun_forward.z,up.z}}}};
+        v::Quaternion gun_q{},right_in_gun{};C(v::rig_tracking::detail::quaternion(gun_axes,gun_q));
+        v::Vector main_palm{},main_marker{};v::Matrix main_basis{};
+        C(gears_weapon_lancer_contact::authored(main_palm,main_basis));
+        C(gears_weapon_lancer_contact::palm_marker_in_wrist(main_marker));
+        C(v::rig_tracking::detail::quaternion(main_basis,right_in_gun));
+        const auto right_local=sub(main_palm,rotate(right_in_gun,main_marker));
+        std::array<v::Pose,2> desired{};
+        desired[1]={add(before[b::head].position,add(scale(right_axis,16),add(scale(forward,-6),scale(up,-18)))),mul(gun_q,right_in_gun)};
+        auto gun_origin=sub(desired[1].position,rotate(gun_q,right_local));
+        auto left_in_gun=gears_weapon_lancer_foregrip::wrist_in_mesh();
+        auto left_local=sub(gears_weapon_lancer_foregrip::surface_raw,
+            rotate(left_in_gun,gears_weapon_lancer_foregrip::palm_surface_raw));
+        std::array<v::Quaternion,15> authored{};
+        std::copy_n(gears_lancer_natural_hand::support_closed,15,authored.begin());
+        if(argc==5){
+            // Explicit offline art input, never a runtime asset or permission.
+            std::ifstream profile(argv[4]);
+            profile>>left_local.x>>left_local.y>>left_local.z;
+            profile>>left_in_gun.x>>left_in_gun.y>>left_in_gun.z>>left_in_gun.w;
+            for(auto& q:authored)profile>>q.x>>q.y>>q.z>>q.w;
+            const auto unit=[](v::Quaternion q){const auto n=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;return std::isfinite(n)&&std::abs(n-1)<.001;};
+            C(bool(profile)&&v::finite(left_local)&&unit(left_in_gun));
+            for(auto q:authored)C(unit(q));
+            if(failures)return 1;
+        }
+        desired[0]={add(gun_origin,rotate(gun_q,left_local)),mul(gun_q,left_in_gun)};
+        const auto reach=distance(before[8].position,before[10].position)+distance(before[10].position,before[11].position);
+        const auto demand=distance(before[8].position,desired[0].position);
+        const auto correction=scale(sub(desired[0].position,before[8].position),-std::max(0.,demand-(reach-4.))/demand);
+        C(distance(correction,{})<14);
+        if(failures)return 1;
+        for(auto& target:desired)target.position=add(target.position,correction);
+        gun_origin=add(gun_origin,correction);
+        work->finger_available={{UINT64_MAX,UINT64_MAX}};
+        a::mount::Mount left_mount{};
+        C(a::mount::marcus115(model->signature,a::mount::Side::left,1,frame->units_per_metre,left_mount));
+        work->left_visual={gears_hand_object_grasp::Kind::support,synthetic_grip(desired[0],left_mount,frame->units_per_metre),1.,true,gears_hand_object_grasp::Preset::support_surface};
+        std::copy(authored.begin(),authored.end(),work->left_visual.authored_pose.begin());
+        work->left_visual.has_authored_pose=true;
+        work->left_blend.kind=gears_hand_object_grasp::Kind::support;work->left_blend.preset=gears_hand_object_grasp::Preset::support_surface;
+        work->left_blend.weight=1.;work->left_blend.last_ns=now-20000000;
+        // Seed an explicitly steady authoring state; not a transition test.
+        for(unsigned i=0;i<15;++i){work->finger_blend[0].known[i]=true;work->finger_blend[0].joints[i]=authored[i];}
+        auto posed=body_only;
+        const auto solved=a::compose_common(*model,*frame,actual,asset,base,now,sim,*work,posed,
+            a::adapter::MountKind::held_lancer,[&](a::adapter::ModelBinding const& binding,unsigned side){
+                work->computed_wrist[side]=desired[side];
+                work->eye_targets[side].grip_world=synthetic_grip(desired[side],binding.authored_mount,frame->units_per_metre);
+                return a::adapter::Status::okay;
+            },true);
+        std::printf("Offline Lancer full-arm authoring: status=%u side=%u visual=%u reach=%g demand=%g correction=%g; not game/tracking acceptance\n",
+            unsigned(solved.status),solved.side,unsigned(work->left_visual_applied),reach,demand,distance(correction,{}));
+        C(solved.status==a::Status::okay&&work->left_visual_applied);
+        if(failures)return 1;
+        const auto world=fk(*model,*frame,posed);
+        for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(posed.local[i].translation,body_only.local[i].translation,12)&&posed.local[i].scale==body_only.local[i].scale);
+        C(distance(world[11].position,desired[0].position)<.002&&qerror(world[11].orientation,desired[0].orientation)<1e-5);
+        std::ofstream out(argv[3]);out.precision(17);
+        auto vector=[&](v::Vector p){out<<'['<<p.x<<','<<p.y<<','<<p.z<<']';};
+        auto quaternion=[&](v::Quaternion q){out<<'['<<q.x<<','<<q.y<<','<<q.z<<','<<q.w<<']';};
+        out<<"{\"scope\":\"OFFLINE steady authored arm composition; synthetic reachable goals, retained real rig; NOT source/admission, transition, game, GPU or headset evidence\",\"accepted\":false,\"gun_position\":";
+        vector(gun_origin);out<<",\"gun_orientation\":";quaternion(gun_q);out<<",\"world_joints\":[";
+        for(unsigned i=0;i<b::bones;++i){if(i)out<<',';out<<"{\"p\":";vector(world[i].position);out<<",\"q\":";quaternion(world[i].orientation);out<<'}';}
+        out<<"],\"all_local_translations_scales_unchanged\":"<<(failures?"false":"true")<<",\"physical_headset_accepted\":false}\n";
+        out.close();C(bool(out));return failures?1:0;
+    }
     C(model->parents[10]==8&&model->parents[11]==10&&model->parents[34]==32&&model->parents[35]==34);
     C(model->parents[51]==35&&model->parents[52]==51);
     a::core::CoreSnapshot source=actual;
@@ -284,22 +393,27 @@ int main(int argc,char** argv){
         work->finger_blend[0]={};work->finger_blend[1]={};
     }
     std::array<v::Pose,2> physical_reach{};
-    for(unsigned kind=1;kind<=3;++kind){
+    for(unsigned scenario=0;scenario<5;++scenario){
+        const unsigned kind=scenario<3?scenario+1:1;
+        const auto preset=scenario==3?gears_hand_object_grasp::Preset::precision:
+            scenario==4?gears_hand_object_grasp::Preset::cylinder:gears_hand_object_grasp::Preset::automatic;
         auto adjusted=body_only;auto const& calibration=work->bindings[0].authored_mount.calibration;
         const auto q=mul(physical_targets[0].orientation,inv(calibration.grip_to_wrist_rotation));
         const auto d=rotate(q,scale(calibration.grip_to_wrist_metres,frame->units_per_metre));
         work->eye_targets[0].grip_world={sub(physical_targets[0].position,d),q};
         work->left_visual={static_cast<gears_hand_object_grasp::Kind>(kind),
-            {add(work->eye_targets[0].grip_world.position,{.5*kind,0,0}),mul(turn(2,.2*kind),q)},1};
+            {add(work->eye_targets[0].grip_world.position,{.5*kind,0,0}),mul(turn(2,.2*kind),q)},1,false,preset};
         work->left_blend={};work->left_blend.kind=work->left_visual.kind;work->left_blend.weight=1;work->left_blend.last_ns=now-20000000;
+        work->left_blend.preset=preset;
         work->finger_closure[0]=1;
         const auto observed_before=bytes(actual);const auto target_before=bytes(work->eye_targets[0].grip_world);
         const auto result=a::compose_common(*model,*frame,actual,asset,base,now,sim,*work,adjusted,
             a::adapter::MountKind::held_lancer,[&](auto const&,unsigned side){work->computed_wrist[side]=physical_targets[side];return a::adapter::Status::okay;},true);
         C(result.status==a::Status::okay&&work->left_visual_applied&&work->solved_mask==3);
+        C(work->left_blend.preset==preset);
         C(bytes(actual)==observed_before&&bytes(work->eye_targets[0].grip_world)==target_before);
         C(bytes(work->computed_wrist[0])==bytes(physical_targets[0]));
-        if(kind==1)physical_reach={{work->physical_wrist[0],work->physical_wrist[1]}};
+        if(scenario==0)physical_reach={{work->physical_wrist[0],work->physical_wrist[1]}};
         else for(unsigned side=0;side<2;++side)C(bytes(work->physical_wrist[side])==bytes(physical_reach[side]));
         C(qerror(work->physical_wrist[0].orientation,physical_targets[0].orientation)<1e-6);
         const auto& physical_input=work->inputs[0];
@@ -346,6 +460,35 @@ int main(int argc,char** argv){
             C(bytes(work->computed_wrist[side])==bytes(physical_targets[side]));
             C(distance(world[wrist].position,expected_wrist[side].position)<.002&&qerror(world[wrist].orientation,expected_wrist[side].orientation)<1e-5);}
         for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(adjusted.local[i].translation,body_only.local[i].translation,12)&&adjusted.local[i].scale==body_only.local[i].scale);
+        // Boomshot's V4 support retains its own fifteen finger locals when
+        // relative support geometry becomes a world target for the C0 solve.
+        {
+            const auto original_support_workspace=std::make_unique<a::Workspace>(*work);
+            gears_hand_authored_grasp::Request authored_support{};
+            C(gears_boomshot_grasp_pose::marcus115_request(gears_boomshot_grasp_pose::Part::support,{},geometry,false,authored_support));
+            work->left_visual.preset=gears_hand_object_grasp::Preset::authored;
+            work->left_visual.has_authored_pose=true;work->left_visual.authored_pose=authored_support.closed;
+            work->left_blend={};work->left_blend.kind=gears_hand_object_grasp::Kind::support;
+            work->left_blend.preset=gears_hand_object_grasp::Preset::authored;
+            work->left_blend.weight=1;work->left_blend.last_ns=now-20000000;work->finger_blend[0]={};
+            auto authored_adjusted=body_only;
+            // Advance the existing bounded finger blend with synthetic time;
+            // a new authored preset does not bypass its rotation speed limit.
+            for(unsigned sample=0;sample<4;++sample){
+                authored_adjusted=body_only;
+                const auto authored_result=a::compose_common(*model,*frame,actual,asset,base,now+sample*50000000LL,sim,*work,authored_adjusted,a::adapter::MountKind::held_lancer,prepare,true);
+                C(authored_result.status==a::Status::okay&&work->left_visual_applied&&work->solved_mask==3);
+            }
+            C(work->left_blend.preset==gears_hand_object_grasp::Preset::authored);
+            for(unsigned i=0;i<15;++i){
+                C(bytes(work->left_blend.authored_pose[i])==bytes(authored_support.closed[i]));
+                const auto& q=authored_adjusted.local[12+i].q;
+                C(qerror({q[0],q[1],q[2],q[3]},authored_support.closed[i])<1e-5);
+            }
+            C(bytes(actual)==input_before);
+            for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(authored_adjusted.local[i].translation,body_only.local[i].translation,12)&&authored_adjusted.local[i].scale==body_only.local[i].scale);
+            *work=*original_support_workspace; // Independent cases retain their original synthetic clock/state.
+        }
         // Proximity handguard attachment is a WORLD cosmetic socket. Unlike
         // active support it must not rotate the right hand/gun before Grip.
         {
@@ -364,6 +507,50 @@ int main(int argc,char** argv){
             C(bytes(actual)==input_before&&bytes(work->eye_targets[0].grip_world)==bytes(moved_left));
             for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(adjusted.local[i].translation,body_only.local[i].translation,12)&&
                 adjusted.local[i].scale==body_only.local[i].scale);
+        }
+        {
+            // A Native-admitted deployed C descriptor is static geometry,
+            // not a retained world target. Resolve it from THIS right hand;
+            // a stationary left controller must not steer the rifle.
+            const auto prior=std::make_unique<a::Workspace>(*work);
+            const auto left_input=work->eye_targets[0].grip_world;
+            for(unsigned tick=0;tick<3;++tick){
+                const auto shift=v::Vector{.4*tick,-.15*tick,.25*tick};
+                auto moving_right=right;moving_right.position=add(right.position,shift);
+                const auto calibration=work->bindings[1].authored_mount.calibration;
+                v::Pose moving_wrist{};C(gears_hand_wrist::native_wrist_target(moving_right,calibration,
+                    frame->units_per_metre,moving_wrist)==gears_hand_wrist::Status::okay);
+                const v::Pose wanted_grip{add(moving_right.position,rotate(moving_right.orientation,
+                    scale(geometry.position,frame->units_per_metre))),mul(moving_right.orientation,geometry.orientation)};
+                v::Pose wanted_wrist{};C(gears_hand_wrist::native_wrist_target(wanted_grip,
+                    work->bindings[0].authored_mount.calibration,frame->units_per_metre,wanted_wrist)==gears_hand_wrist::Status::okay);
+                work->left_visual={gears_hand_object_grasp::Kind::starter,geometry,1.,true,gears_hand_object_grasp::Preset::authored};
+                work->left_visual.authored_pose=gears_lancer_part_hand::starter;
+                work->left_visual.has_authored_pose=true;work->left_visual.passive_relative_socket=true;
+                work->left_blend={};work->right_blend={};
+                work->left_blend.kind=gears_hand_object_grasp::Kind::starter;
+                work->left_blend.preset=gears_hand_object_grasp::Preset::authored;
+                work->left_blend.weight=1;work->left_blend.last_ns=now;
+                for(unsigned n=0;n<15;++n){work->finger_blend[0].known[n]=true;work->finger_blend[0].joints[n]=gears_lancer_part_hand::starter[n];}
+                auto c_pose=body_only;
+                const auto c_prepare=[&](auto const&,unsigned side){
+                    work->computed_wrist[side]=side?moving_wrist:physical_targets[0];
+                    work->eye_targets[side].grip_world=side?moving_right:left_input;
+                    return a::adapter::Status::okay;
+                };
+                C(a::compose_common(*model,*frame,actual,asset,base,now+tick*20000000ll,sim,*work,c_pose,
+                    a::adapter::MountKind::held_lancer,c_prepare,true).status==a::Status::okay);
+                const auto c_world=fk(*model,*frame,c_pose);
+                C(work->left_visual_applied&&work->right_blend.weight==0);
+                C(distance(c_world[11].position,wanted_wrist.position)<.002&&qerror(c_world[11].orientation,wanted_wrist.orientation)<1e-5);
+                C(distance(c_world[35].position,moving_wrist.position)<.002&&qerror(c_world[35].orientation,moving_wrist.orientation)<1e-5);
+                C(bytes(actual)==input_before&&bytes(work->eye_targets[0].grip_world)==bytes(left_input));
+                for(unsigned n=0;n<15;++n){const auto& q=c_pose.local[12+n].q;
+                    C(qerror({q[0],q[1],q[2],q[3]},gears_lancer_part_hand::starter[n])<1e-5);}
+                for(unsigned n=0;n<b::bones;++n)C(!std::memcmp(c_pose.local[n].translation,body_only.local[n].translation,12)&&
+                    c_pose.local[n].scale==body_only.local[n].scale);
+            }
+            *work=*prior;
         }
         // A release decays the skin-only fitting on fresh physical input, then
         // returns both hands to the independently tracked poses.

@@ -1,0 +1,594 @@
+{
+  "schema": 1,
+  "weapons": [
+    {
+      "id": "Lancer",
+      "model": "Lancer.glb",
+      "title": "Lancer 电锯步枪",
+      "source": "SkeletalMesh'COG_AssaultRifle.Mesh.COGAssaultRifle'",
+      "source_sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 13397,
+      "bounds_min": [
+        -0.06357141971588134,
+        -0.08744216918945312,
+        -0.762596664428711
+      ],
+      "bounds_max": [
+        0.054365739822387696,
+        0.20002105712890625,
+        0.046175689697265626
+      ],
+      "bones": [
+        "b_AR_Root",
+        "b_AR_Chainsaw",
+        "b_AR_ChainsawEnd",
+        "b_AR_Chain",
+        "b_AR_Chainsaw_Handle",
+        "b_AR_Receiver",
+        "b_AR_Receiver_Spin",
+        "b_AR_Latch",
+        "b_AR_Magazine"
+      ],
+      "interaction": "lancer"
+    },
+    {
+      "id": "Boltock",
+      "model": "Boltock.glb",
+      "title": "Boltok 左轮",
+      "source": "SkeletalMesh'Geist_Pistol.Boltock_Pistol'",
+      "source_sha256": "a1f04758c0f6c5c817701ed9f063f43221dadba2e734f6a2a683cd918ecd7087",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 6742,
+      "bounds_min": [
+        -0.03588510990142822,
+        -0.06137845039367676,
+        -0.43264762878417967
+      ],
+      "bounds_max": [
+        0.03588510990142822,
+        0.1489678478240967,
+        -0.0403667688369751
+      ],
+      "bones": [
+        "alow_poly",
+        "Object03",
+        "Object08",
+        "Object02",
+        "Object07",
+        "Object09",
+        "Object10",
+        "Object11",
+        "Object04",
+        "Object05",
+        "Object06",
+        "Object01"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Boomshot",
+      "model": "Boomshot.glb",
+      "title": "Boomshot 榴弹枪",
+      "source": "SkeletalMesh'Locust_Boomshot.Mesh.Locust_Boomshot'",
+      "source_sha256": "a3b7067818b6c4b2670fa36211ca29694706d606b033eb91688c382acd280710",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 8862,
+      "bounds_min": [
+        -0.14467634201049806,
+        -0.1997609329223633,
+        -0.9506263732910156
+      ],
+      "bounds_max": [
+        0.12527633666992188,
+        0.29948665618896486,
+        0.1253537654876709
+      ],
+      "bones": [
+        "Boomshot_Root",
+        "Boomshot_Magazine",
+        "Boomshot_Barrel"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "COG_Pistol",
+      "model": "COG_Pistol.glb",
+      "title": "Snub 手枪",
+      "source": "SkeletalMesh'COG_Pistol.COG_Pistol'",
+      "source_sha256": "1f1c5a1405d354f89d352c26547a22a1c4cd791ba769755b6e9317e93ceaecb2",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 3045,
+      "bounds_min": [
+        -0.042670183181762696,
+        -0.06081134796142578,
+        -0.33398616790771485
+      ],
+      "bounds_max": [
+        0.042670183181762696,
+        0.14350120544433595,
+        -0.029545879364013674
+      ],
+      "bones": [
+        "b_HG_Root",
+        "b_HG_Slide",
+        "b_HG_Wing_L",
+        "b_HG_Wing_R",
+        "b_HG_Magazine"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Frag_Grenade",
+      "model": "Frag_Grenade.glb",
+      "title": "破片手雷",
+      "source": "SkeletalMesh'COG_Bolo_Grenade.Frag_Grenade'",
+      "source_sha256": "f015fe8af442469bd23f7b24c9cfc58b11b99085abeedc349236b8cbd4f2a7ac",
+      "forward_axis_raw": "+X",
+      "raw_to_xr": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          -1,
+          0,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 5186,
+      "bounds_min": [
+        -0.06214982986450195,
+        -0.21169891357421874,
+        -0.15355047225952148
+      ],
+      "bounds_max": [
+        0.06214982986450195,
+        0.4548087310791016,
+        -0.006449527144432068
+      ],
+      "bones": [
+        "b_bolo_root",
+        "b_Bolo_Counter",
+        "b_Bolo_Chain_01",
+        "b_Bolo_Chain_02",
+        "b_Bolo_Chain_03",
+        "b_Bolo_Chain_04",
+        "b_Bolo_Chain_05",
+        "b_Bolo_Chain_06",
+        "b_Bolo_Chain_07",
+        "b_bolo_chain_08",
+        "b_Bolo_Chain_09",
+        "b_bolo_end"
+      ],
+      "interaction": "workshop",
+      "parts": 1,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Gnasher",
+      "model": "Gnasher.glb",
+      "title": "Gnasher 霰弹枪",
+      "source": "SkeletalMesh'COG_Gnasher.Mesh.COG_Gnasher_Skel'",
+      "source_sha256": "0439fa167754bf5201135ad6a52eb96701c5722542f4bd093d108b6049aa023f",
+      "forward_axis_raw": "+X",
+      "raw_to_xr": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          -1,
+          0,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 6320,
+      "bounds_min": [
+        -0.04872894287109375,
+        -0.08958595275878907,
+        -0.7652037048339844
+      ],
+      "bounds_max": [
+        0.04872894287109375,
+        0.16891487121582033,
+        -0.05318448066711426
+      ],
+      "bones": [
+        "b_Shotgun_Root",
+        "b_Shotgun_Main",
+        "b_Shotgun_Lever"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Hammer_of_Dawn",
+      "model": "Hammer_of_Dawn.glb",
+      "title": "黎明之锤",
+      "source": "SkeletalMesh'COG_HOD.COG_HammerofDawn'",
+      "source_sha256": "e8d29e9e13040bd422a58d446656be47b32e695541d653d00b65e245219eed54",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 9524,
+      "bounds_min": [
+        -0.08628693580627442,
+        -0.06911060333251953,
+        -0.5943294906616211
+      ],
+      "bounds_max": [
+        0.11079453468322754,
+        0.19860372543334961,
+        -0.04475780487060547
+      ],
+      "bones": [
+        "cog_hod_mesh",
+        "Trigger"
+      ],
+      "interaction": "workshop",
+      "parts": 2,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Hammerburst",
+      "model": "Hammerburst.glb",
+      "title": "Hammerburst 锤爆步枪",
+      "source": "SkeletalMesh'Locust_Hammerburst.Locust_Hammerburst'",
+      "source_sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 9966,
+      "bounds_min": [
+        -0.06670733451843262,
+        -0.1548719310760498,
+        -0.5751179122924804
+      ],
+      "bounds_max": [
+        0.06670733451843262,
+        0.18397283554077148,
+        0.0025536346435546873
+      ],
+      "bones": [
+        "b_HB_Root",
+        "b_HB_MagLatch",
+        "b_HB_Mag"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Longshot",
+      "model": "Longshot.glb",
+      "title": "Longshot 狙击枪",
+      "source": "SkeletalMesh'COG_SniperRifle.LongShot'",
+      "source_sha256": "741d96530f076bf7d3a98d31c9813e2e65f566eda193eaa5f5ea6710c5421e9f",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 10856,
+      "bounds_min": [
+        -0.038877158164978026,
+        -0.04280242919921875,
+        -1.0418669891357422
+      ],
+      "bounds_max": [
+        0.07028351783752441,
+        0.22598030090332033,
+        0.09740911483764648
+      ],
+      "bones": [
+        "b_LS_Root",
+        "b_LS_LensCap",
+        "b_LS_Scope",
+        "b_LS_Bolt"
+      ],
+      "interaction": "workshop",
+      "parts": 4,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Smoke_Grenade",
+      "model": "Smoke_Grenade.glb",
+      "title": "烟雾手雷",
+      "source": "SkeletalMesh'COG_Bolo_Grenade.Smoke_Grenade'",
+      "source_sha256": "bd94a1935a1d722db9f1e50c88efc4eaecad21410149a31da067cc9ae2fbfa6c",
+      "forward_axis_raw": "+X",
+      "raw_to_xr": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          -1,
+          0,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 3874,
+      "bounds_min": [
+        -0.038284547328948974,
+        -0.20965463638305665,
+        -0.1214286994934082
+      ],
+      "bounds_max": [
+        0.03828454494476318,
+        0.4514482116699219,
+        -0.02098352909088135
+      ],
+      "bones": [
+        "b_bolo_root",
+        "b_Bolo_Counter",
+        "b_Bolo_Chain_01",
+        "b_Bolo_Chain_02",
+        "b_Bolo_Chain_03",
+        "b_Bolo_Chain_04",
+        "b_Bolo_Chain_05",
+        "b_Bolo_Chain_06",
+        "b_Bolo_Chain_07",
+        "b_bolo_chain_08",
+        "b_Bolo_Chain_09",
+        "b_bolo_end"
+      ],
+      "interaction": "workshop",
+      "parts": 1,
+      "mixed_skin_triangles": 0
+    },
+    {
+      "id": "Torque_Bow",
+      "model": "Torque_Bow.glb",
+      "title": "扭力弓",
+      "source": "SkeletalMesh'Locust_Torquebow.TorqueBow'",
+      "source_sha256": "4769f3da359b895b8ea5d47947958da707bbfeef1801ed93ccd9da2d0de702db",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 9742,
+      "bounds_min": [
+        -0.07250254154205323,
+        -0.11740217208862305,
+        -0.5738650512695312
+      ],
+      "bounds_max": [
+        0.07250254154205323,
+        0.2329111671447754,
+        -0.006902346611022949
+      ],
+      "bones": [
+        "b_TB_Root",
+        "b_TB_Bow_01",
+        "b_TB_Bow_03",
+        "b_TB_Bow_05",
+        "b_TB_Bow_02",
+        "b_TB_Bow_04",
+        "b_TB_Bow_06",
+        "b_TB_Bow_07",
+        "b_TB_Bow_08"
+      ],
+      "interaction": "workshop",
+      "parts": 3,
+      "mixed_skin_triangles": 48
+    },
+    {
+      "id": "Troika_turret",
+      "model": "Troika_turret.glb",
+      "title": "Troika 固定机枪",
+      "source": "SkeletalMesh'Geist_TroikaCabal.TroikaTurret'",
+      "source_sha256": "7baac05a7bb59b5a60e5f1b409deb2bed223e17c953ad3c3d400619e59adc037",
+      "forward_axis_raw": "+Y",
+      "raw_to_xr": [
+        [
+          -1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          -1,
+          0
+        ]
+      ],
+      "units_per_raw": 0.01,
+      "triangles": 11743,
+      "bounds_min": [
+        -0.45896526336669924,
+        -8.385777473449708e-05,
+        -1.8485862731933593
+      ],
+      "bounds_max": [
+        0.4589664840698242,
+        1.4315374755859376,
+        -0.2344411849975586
+      ],
+      "bones": [
+        "b_troika_root",
+        "b_troika_gun_latitude",
+        "b_troika_gun_longitude",
+        "b_troika_spinner_L",
+        "b_troika_spinner_R",
+        "b_troika_port_R",
+        "b_troika_port_L",
+        "b_troika_muzzle_R",
+        "b_troika_muzzle_L",
+        "b_troika_handleroot",
+        "b_troika_handle_L",
+        "b_troika_handle_R",
+        "b_troika_playerref"
+      ],
+      "interaction": "workshop",
+      "parts": 2,
+      "mixed_skin_triangles": 0
+    }
+  ]
+}

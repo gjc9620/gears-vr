@@ -66,5 +66,22 @@ int main(){
         if(failure==2)bad[2].left_grip.position.z=-1;
         auto a=seeded(p,mount);assert(!h::advance(a,p,bad.back(),bad.data(),4,mount,result));++cases;
     }
+    // Current producer-capacity array API must retain the original kernel
+    // and reject counts beyond the actual owned storage before any mutation.
+    {
+        std::array<FeedSample,gears_hand_continuity::motion_history_capacity+1> ring{};
+        ring[0]=prior;
+        for(unsigned i=1;i<ring.size();++i)ring[i]=sample(prior.sequence+i,
+            prior.monotonic_ns+20000000*i,prior.left_grip.position.z-.001*i);
+        auto a=seeded(prior,mount);result=FeedResult::rejected;
+        assert(h::advance(a,prior,ring.back(),ring,unsigned(ring.size()),mount,result));
+        assert(result==FeedResult::approaching);++cases;
+        a=seeded(prior,mount);const auto unchanged=a;result=FeedResult::inserted;
+        assert(!h::advance(a,prior,ring.back(),ring,unsigned(ring.size()+1),mount,result));
+        assert(result==FeedResult::inserted);++cases;
+        auto expected=unchanged;
+        auto next=sample(prior.sequence+1,prior.monotonic_ns+20000000,.004);
+        assert(a.observe(next,mount)==expected.observe(next,mount));++cases;
+    }
     std::printf("Hammerburst feed-history: %u scenarios; real kernel, synthetic original-point fixtures; no game\n",cases);
 }

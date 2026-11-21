@@ -1,300 +1,223 @@
 #include "weapon_torque_bow_interaction.h"
 #include <cassert>
 #include <cstdio>
-
 using namespace gears_weapon;
-using E=TorqueBowEvent;
-using A=TorqueBowAction;
-using S=TorqueBowStage;
-using O=TorqueBowOutcome;
+using E=TorqueBowEvent;using A=TorqueBowAction;using S=TorqueBowStage;using O=TorqueBowOutcome;
 namespace {
-// Synthetic adapter certifications only. None of these counts, parts, ticks,
-// step orders or safe-abort receipts represents a measured original instance.
+// Synthetic adapter receipts. No fixture is retail ABI or physical evidence.
 constexpr TorqueBowIdentity id{1,2,3,4,5,6,7,8};
 constexpr TorqueBowOriginalState idle{true,false,false,false,false};
 constexpr TorqueBowOriginalState charged{false,true,false,true,false};
 constexpr TorqueBowOriginalState deferred{false,true,true,false,false};
-TorqueBowConfig config() {
+TorqueBowConfig config(){
     TorqueBowConfig c{};c.identity=id;c.instance_config_serial=17;c.capacity=1;
+    c.game_ticks_per_second=1000;
     c.original_class_verified=c.original_charge_entry_verified=c.original_end_fire_verified=true;
     c.non_firing_abort_verified=c.manual_reload_phase_verified=c.reload_plan_verified=true;
-    c.reload_step_count=3;
-    c.reload_steps[0]={TorqueBowReloadAction::verified_mechanism,101};
-    c.reload_steps[1]={TorqueBowReloadAction::insert_arrow,201};
-    c.reload_steps[2]={TorqueBowReloadAction::verified_mechanism,301};return c;
+    c.reload_step_count=1;c.reload_steps[0]={TorqueBowReloadAction::insert_arrow,201};return c;
 }
-struct Fixture {
-    TorqueBowInteraction model{};
-    std::uint64_t sequence{},original_event{};
-    std::int64_t ns{1000000},tick{};
-    explicit Fixture(std::uint32_t loaded=0,TorqueBowConfig const& c=config(),std::uint32_t reserve=3) {
-        assert(model.bind(c,{1,loaded,reserve}));
+struct F {
+    TorqueBowInteraction m;std::uint64_t seq{},events{};std::int64_t ns{1000000},tick{};
+    explicit F(unsigned loaded=0,unsigned reserve=1){assert(m.bind(config(),{1,loaded,reserve}));}
+    TorqueBowStamp next(std::int64_t at=-1){++seq;ns+=1000000;if(at>=0)tick=at;return {id,seq,ns,tick};}
+    E sample(bool down=false,TorqueBowOriginalState state=idle,bool right=true,bool left=true){
+        const auto stamp=next();return m.observe({stamp,m.inventory(),state,right,left,true,down,stamp.monotonic_ns});
     }
-    TorqueBowStamp next(std::int64_t at=-1) {
-        ++sequence;ns+=1000000;tick=at<0?tick+1:at;return {id,sequence,ns,tick};
+    E begin(){const auto s=next(tick<1000?1000:tick);return m.begin_left_shoulder({s,1,1,true,true,true,true,s.game_tick},
+        {11,TorqueBowAmmoSource::left_shoulder,true,true,1,true,true});}
+    E seat(std::int64_t at){auto start=seq;return m.complete_step(next(at),{17,1,201,start,11,true,true,true,true,true});}
+    E edge(std::uint64_t n,bool down){return m.trigger(next(),{n,true,true,down});}
+    E cancel(std::uint64_t n=1){return m.cancel_charge(next(),{n,true,true,true});}
+    TorqueBowRequest take(A a){TorqueBowRequest r{};assert(m.take_request(r,ns));assert(r.action==a);
+        TorqueBowRequest twice{};assert(!m.take_request(twice,ns));return r;}
+    E ack(TorqueBowRequest const& r,TorqueBowOriginalState state=idle){
+        auto i=m.inventory();if(r.action==A::complete_original_reload){i=r.after;++i.revision;}
+        return m.acknowledge({next(),r.token,++events,true,i,state,r.outcome});
     }
-    E sample(bool down=false,TorqueBowOriginalState state=idle,
-             bool right=true,bool left=true) {
-        return model.observe({next(),model.inventory(),state,right,left,true,down});
-    }
-    E begin(bool known=true,std::uint64_t r3=1,std::uint64_t serial=1) {
-        return model.begin_r3({next(1000),r3,serial,{id,serial,known?100:0,known},true,true});
-    }
-    E step(std::uint64_t component,std::uint64_t arrow,std::uint64_t since,std::int64_t at) {
-        return model.complete_step(next(at),{17,1,component,since,arrow,true,true,true,true,true});
-    }
-    E grab(std::uint64_t serial=11) {
-        return model.grab_left_shoulder(next(),{serial,TorqueBowAmmoSource::left_shoulder,true,true});
-    }
-    TorqueBowRequest take(A expected) {
-        TorqueBowRequest r{};assert(model.take_request(r,ns));assert(r.action==expected);
-        TorqueBowRequest duplicate{};assert(!model.take_request(duplicate,ns));return r;
-    }
-    E ack(TorqueBowRequest const& r,TorqueBowOriginalState state,bool accepted=true) {
-        auto inventory=model.inventory();
-        if(accepted&&r.action==A::complete_original_reload){inventory=r.after;++inventory.revision;}
-        return model.acknowledge({next(),r.token,++original_event,accepted,inventory,state,
-            accepted?r.outcome:O::none});
-    }
-    void open() {
-        assert(sample()==E::observed);assert(begin()==E::reload_started);
-        assert(step(101,0,sequence,1010)==E::step_completed);
-    }
-    void seat() {
-        open();assert(grab()==E::arrow_grabbed);
-        assert(step(201,11,sequence,1030)==E::step_completed);
-    }
-    void charge() {
-        assert(sample()==E::observed);
-        assert(model.trigger(next(),{1,true,true,true})==E::request_ready);
-        const auto r=take(A::begin_original_charge);
-        assert(ack(r,charged)==E::charge_started);assert(model.stage()==S::charging);
-    }
+    void charge(){assert(sample()==E::observed);assert(edge(1,true)==E::request_ready);
+        auto r=take(A::begin_original_charge);assert(ack(r,charged)==E::charge_started);}
 };
-void certified_configuration_only() {
-    auto c=config();c.reload_plan_verified=false;c.reload_step_count=0;
-    Fixture f(1,c);assert(f.sample()==E::observed);assert(f.begin()==E::rejected);
-    c.non_firing_abort_verified=false;Fixture unsafe(1,c);assert(unsafe.sample()==E::observed);
-    assert(!unsafe.model.can_request_fire(unsafe.ns,unsafe.model.inventory()));
-    assert(unsafe.model.trigger(unsafe.next(),{1,true,true,true})==E::rejected);
-    c=config();c.reload_step_count=0;assert(!c.valid());
-    c=config();c.reload_steps[2].action=TorqueBowReloadAction::insert_arrow;assert(!c.valid());
-    c=config();c.reload_steps[0].component=0;assert(!c.valid());
-    c=config();c.identity.space_epoch=0;assert(!c.valid());
-    c=config();c.manual_reload_phase_verified=false;assert(!c.valid());
-    c=config();c.original_class_verified=false;assert(!c.valid());
-    TorqueBowInteraction invalid;assert(!invalid.bind(config(),{1,2,3}));
-    assert(!invalid.bind(config(),{0,0,3}));
-    // A different certified order with no invented final mechanism is accepted.
-    c=config();c.reload_step_count=1;c.reload_steps[0]={TorqueBowReloadAction::insert_arrow,901};
-    Fixture direct(0,c);assert(direct.sample()==E::observed);
-    assert(direct.begin()==E::reload_started);assert(direct.grab()==E::arrow_grabbed);
-    const auto motion_begin=direct.sequence;
-    assert(direct.model.complete_step(direct.next(1050),
-        {17,1,901,motion_begin,11,true,true,true,true,true})==E::request_ready);
-}
-void guides_conservation_and_once_only_commit() {
-    Fixture f;f.open();auto g=f.model.guide();
-    assert(g.part==TorqueBowGuidePart::left_shoulder&&g.component==201);
-    assert(g.red==1&&g.green==1&&g.blue==0&&g.alpha==1);
-    assert(f.model.total()==3&&f.model.available_reserve()==3);
-    assert(f.grab()==E::arrow_grabbed);
-    assert(f.model.held_arrows()==1&&f.model.available_reserve()==2&&f.model.total()==3);
-    assert(f.model.guide().part==TorqueBowGuidePart::arrow_feed);
-    const auto grabbed=f.sequence;
-    assert(f.model.release_arrow(f.next(),11)==E::arrow_released);
-    assert(f.model.total()==3&&f.model.available_reserve()==3);
-    assert(f.grab()==E::rejected); // Retired visual item cannot be reused.
-    assert(f.grab(12)==E::arrow_grabbed);
-    assert(f.step(201,12,grabbed,1030)==E::rejected); // Old motion cannot seat the replacement.
-    assert(f.step(201,12,f.sequence-1,1031)==E::step_completed);
-    assert(f.model.held_arrows()==0&&f.model.seated_uncommitted_arrows()==1&&f.model.total()==3);
-    g=f.model.guide();assert(g.part==TorqueBowGuidePart::verified_mechanism&&g.component==301);
-    assert(f.step(301,0,f.sequence,1040)==E::request_ready);
-    assert(f.model.guide().part==TorqueBowGuidePart::none);
-    assert(f.model.inventory().loaded==0&&f.model.inventory().reserve==3);
-    const auto request=f.take(A::complete_original_reload);
-    assert(request.before.loaded==0&&request.before.reserve==3&&request.after.loaded==1&&
-        request.after.reserve==2&&request.arrow_serial==12&&request.outcome==O::perfect);
-    assert(f.ack(request,idle)==E::perfect);
-    assert(f.model.inventory().loaded==1&&f.model.inventory().reserve==2&&f.model.total()==3);
-    assert(f.ack(request,idle)==E::rejected);
-    assert(!f.model.can_request_fire(f.ns,f.model.inventory())); // Original recovery still required.
-    assert(f.sample()==E::observed);assert(f.model.can_request_fire(f.ns,f.model.inventory()));
-    auto stale=f.model.inventory();--stale.revision;assert(!f.model.can_request_fire(f.ns,stale));
-}
-void perfect_deadline_and_unknown_window() {
-    for(const auto end: {1050,1100,1101,1300}){
-        Fixture f;f.seat();assert(f.step(301,0,f.sequence,end)==E::request_ready);
-        const auto r=f.take(A::complete_original_reload);
-        assert(r.outcome==(end<=1100?O::perfect:O::ordinary));
-        assert(f.ack(r,idle)==(end<=1100?E::perfect:E::ordinary));
+void reload_deadline(){
+    for(auto at:{1000,4999,5000,5001,9000}){
+        F f;assert(f.sample()==E::observed);assert(f.begin()==E::reload_started);
+        assert(f.m.held_arrows()==1&&f.m.available_reserve()==0&&f.m.total()==1);
+        assert(f.m.identity()==id&&f.m.held_arrow_serial()==11);
+        assert(f.seat(at)==E::request_ready);auto r=f.take(A::complete_original_reload);
+        assert(!f.m.last_loaded_token());
+        assert(!f.m.held_arrow_serial()); // seated arrow no longer follows the hand
+        assert(r.outcome==(at<=5000?O::perfect:O::ordinary));
+        assert(f.ack(r)==(at<=5000?E::perfect:E::ordinary));
+        assert(f.m.last_loaded_token()==r.token);
+        assert(f.m.inventory().loaded==1&&f.m.inventory().reserve==0&&f.m.total()==1);
+        assert(f.m.acknowledge({f.next(),r.token,++f.events,true,r.after,idle,r.outcome})==E::rejected);
     }
-    Fixture unknown;assert(unknown.sample()==E::observed);
-    assert(unknown.begin(false)==E::reload_started);
-    assert(unknown.step(101,0,unknown.sequence,1010)==E::step_completed);
-    assert(unknown.grab()==E::arrow_grabbed);
-    assert(unknown.step(201,11,unknown.sequence,1020)==E::step_completed);
-    assert(unknown.step(301,0,unknown.sequence,1030)==E::request_ready);
-    const auto r=unknown.take(A::complete_original_reload);assert(r.outcome==O::ordinary);
-    assert(unknown.ack(r,idle)==E::ordinary);
-    Fixture wrong;assert(wrong.sample()==E::observed);auto s=wrong.next(1000);
-    auto window=TorqueBowPerfectWindow{id,2,100,true};
-    assert(wrong.model.begin_r3({s,1,1,window,true,true})==E::rejected);
-    Fixture empty(0,config(),0);assert(empty.sample()==E::observed);
-    assert(empty.begin()==E::no_ammo);assert(empty.begin()==E::rejected);
-    Fixture full(1);assert(full.sample()==E::observed);assert(full.begin()==E::full);
-    assert(!full.model.has_pending_request());
+    F pause;pause.sample();pause.begin();
+    for(int n=0;n<20;++n)assert(pause.sample()==E::observed); // clock paused, input remains fresh
+    assert(pause.seat(1000)==E::request_ready);assert(pause.take(A::complete_original_reload).outcome==O::perfect);
 }
-void reload_gates_and_tracking_fences() {
-    Fixture f;f.open();
-    assert(f.model.begin_r3({f.next(),2,2,{id,2,100,true},true,true})==E::rejected);
-    assert(f.model.grab_left_shoulder(f.next(),{11,TorqueBowAmmoSource::other,true,true})==E::rejected);
-    assert(f.model.grab_left_shoulder(f.next(),{11,TorqueBowAmmoSource::left_shoulder,false,true})==E::rejected);
-    assert(f.grab()==E::arrow_grabbed);const auto since=f.sequence;
-    auto bad=TorqueBowStepReceipt{17,1,201,since,11,true,true,true,true,true};
-    bad.continuous=false;assert(f.model.complete_step(f.next(),bad)==E::rejected);
-    bad.continuous=true;bad.component=301;assert(f.model.complete_step(f.next(),bad)==E::rejected);
-    assert(f.model.tracking_lost()==E::observed);
-    assert(f.model.held_arrows()==0&&f.model.available_reserve()==3&&f.model.total()==3);
-    assert(f.sample()==E::observed);assert(f.grab()==E::rejected);assert(f.grab(12)==E::arrow_grabbed);
-    assert(f.step(201,12,since,1040)==E::rejected);
-    assert(f.step(201,12,f.sequence-1,1041)==E::step_completed);
-    assert(f.model.tracking_lost()==E::observed);assert(f.model.seated_uncommitted_arrows()==1);
-    const auto old=f.sequence;assert(f.sample()==E::observed);
-    assert(f.step(301,0,old,1050)==E::rejected);
-    assert(f.step(301,0,f.sequence-1,1051)==E::request_ready);
-    const auto r=f.take(A::complete_original_reload);
-    auto wrong=f.next();++wrong.identity.space_epoch;
-    assert(f.model.acknowledge({wrong,r.token,1,true,r.after,idle,r.outcome})==E::rejected);
-    assert(f.model.inventory().loaded==0&&f.model.total()==3);
-    assert(f.ack(r,idle)==E::perfect);
+void accepted_original_clock(){
+    for(auto finish:{5000,5001}){
+        F delayed;assert(delayed.sample()==E::observed);
+        const auto receipt=delayed.next(1700);
+        assert(delayed.m.begin_left_shoulder({receipt,1,1,true,true,true,true,1000},
+            {11,TorqueBowAmmoSource::left_shoulder,true,true,1,true,true})==E::reload_started);
+        assert(delayed.seat(finish)==E::request_ready);
+        assert(delayed.take(A::complete_original_reload).outcome==(finish==5000?O::perfect:O::ordinary));
+    }
+    F zero;zero.sample();const auto receipt=zero.next(1400);
+    const TorqueBowArrowReceipt arrow{11,TorqueBowAmmoSource::left_shoulder,true,true,1,true,true};
+    assert(zero.m.begin_left_shoulder({receipt,1,1,true,true,true,true},arrow)==E::rejected);
+    assert(zero.m.begin_left_shoulder({receipt,1,1,true,true,true,true,-1},arrow)==E::rejected);
+    assert(zero.m.begin_left_shoulder({receipt,1,1,true,true,true,true,1401},arrow)==E::rejected);
+    assert(zero.m.begin_left_shoulder({receipt,1,1,true,true,true,true,0},arrow)==E::reload_started);
+    assert(zero.seat(4000)==E::request_ready);
+    assert(zero.take(A::complete_original_reload).outcome==O::perfect);
+    F already_reloading;assert(already_reloading.sample(false,{false})==E::observed);
+    const auto accepted=already_reloading.next(1700);
+    assert(already_reloading.m.begin_left_shoulder({accepted,1,1,true,true,true,true,1000},arrow)==E::reload_started);
+    F not_active(1);assert(not_active.sample(false,{false})==E::observed);
+    assert(not_active.edge(1,true)==E::rejected); // Reload receipt does not relax new Charge admission.
+    F unsafe;unsafe.sample(false,{false,true});
+    assert(unsafe.m.begin_left_shoulder({unsafe.next(1700),1,1,true,true,true,true,1000},arrow)==E::rejected);
 }
-void original_charge_release_and_actual_projectile() {
-    Fixture f(1);f.charge();assert(f.model.inventory().loaded==1);
-    assert(f.model.trigger(f.next(),{1,true,true,true})==E::rejected);
-    assert(f.model.trigger(f.next(),{2,true,true,false})==E::request_ready);
-    const auto end=f.take(A::end_original_fire);
-    assert(end.requires_right_tracking&&end.before.loaded==end.after.loaded);
-    assert(f.ack(end,deferred)==E::release_accepted);
-    assert(f.model.stage()==S::await_original&&f.model.inventory().loaded==1);
-    assert(f.model.trigger(f.next(),{3,true,true,true})==E::rejected);
-    auto after=f.model.inventory();++after.revision;--after.loaded;
-    const auto stamp=f.next();
-    assert(f.model.record_original_shot({stamp,++f.original_event,11,after,true})==E::shot_recorded);
-    assert(f.model.inventory().loaded==0&&f.model.total()==3);
-    assert(f.model.record_original_shot({f.next(),f.original_event,11,after,true})==E::rejected);
-    assert(f.sample()==E::observed);assert(!f.model.can_request_fire(f.ns,f.model.inventory()));
-    Fixture hold_limit(1);hold_limit.charge();auto used=hold_limit.model.inventory();
-    ++used.revision;--used.loaded;
-    assert(hold_limit.model.record_original_shot({hold_limit.next(9000),
-        ++hold_limit.original_event,12,used,true})==E::shot_recorded);
-    assert(!hold_limit.model.has_pending_request()); // No synthetic VR release or charge timer.
+void reservation_and_regrip(){
+    F f;f.sample();assert(f.begin()==E::reload_started);auto before=f.m.inventory();
+    assert(f.m.release_arrow(f.next(2500),11)==E::arrow_released);
+    assert(!f.m.held_arrow_serial());
+    assert(f.m.inventory().reserve==before.reserve&&f.m.available_reserve()==1);
+    assert(f.begin()==E::rejected); // no restart/old clock rollback
+    assert(f.m.grab_left_shoulder(f.next(),{12,TorqueBowAmmoSource::left_shoulder,true,true,2,true,true})==E::arrow_grabbed);
+    assert(f.m.held_arrow_serial()==12);
+    auto start=f.seq;assert(f.m.complete_step(f.next(5001),{17,1,201,start,12,true,true,true,true,true})==E::request_ready);
+    assert(f.take(A::complete_original_reload).outcome==O::ordinary);
+    F empty(0,0);empty.sample();assert(empty.begin()==E::no_ammo);assert(empty.m.held_arrows()==0);
+    F full(1,1);full.sample();assert(full.begin()==E::full);assert(full.m.held_arrows()==0);
+    F bad;bad.sample();auto s=bad.next(1000);
+    assert(bad.m.begin_left_shoulder({s,1,1,true,true,false,true,s.game_tick},{11,TorqueBowAmmoSource::left_shoulder,true,true,1,true,true})==E::rejected);
+    assert(bad.m.begin_left_shoulder({s,1,1,true,true,true,true,s.game_tick},{11,TorqueBowAmmoSource::other,true,true,1,true,true})==E::rejected);
+    assert(bad.m.begin_left_shoulder({s,1,1,true,true,true,true,s.game_tick},{11,TorqueBowAmmoSource::left_shoulder,true,true,1,true,true})==E::reload_started);
+    start=bad.seq;
+    assert(bad.m.complete_step(bad.next(1200),{17,1,201,start,11,true,false,true,true,true})==E::rejected);
+    assert(bad.m.complete_step(bad.next(1201),{17,1,201,start,11,true,true,false,true,true})==E::rejected);
+    assert(bad.m.complete_step(bad.next(1202),{17,1,201,start,11,true,true,true,false,true})==E::rejected);
+    assert(bad.m.tracking_lost()==E::observed);assert(bad.m.held_arrows()==0);
 }
-void loss_never_generates_end_fire() {
-    Fixture f(1);f.charge();assert(f.model.tracking_lost()==E::abort_required);
-    assert(f.model.tracking_lost()==E::abort_required);
-    const auto abort=f.take(A::abort_original_charge);assert(!abort.requires_right_tracking);
-    assert(f.model.trigger(f.next(),{2,true,true,false})==E::abort_required);
-    assert(f.ack(abort,idle)==E::aborted);assert(f.model.inventory().loaded==1);
-    assert(f.sample(true)==E::observed);
-    assert(f.model.trigger(f.next(),{3,true,true,true})==E::rejected);
-    assert(f.sample()==E::observed);
-    assert(f.model.trigger(f.next(),{4,true,true,true})==E::request_ready);
-    const auto next=f.take(A::begin_original_charge);assert(next.token>abort.token);
-    Fixture before_dispatch(1);assert(before_dispatch.sample()==E::observed);
-    assert(before_dispatch.model.trigger(before_dispatch.next(),{1,true,true,true})==E::request_ready);
-    assert(before_dispatch.model.tracking_lost()==E::aborted);
-    assert(!before_dispatch.model.has_pending_request());
-    Fixture waiting(1);assert(waiting.sample()==E::observed);
-    assert(waiting.model.trigger(waiting.next(),{1,true,true,true})==E::request_ready);
-    const auto begin=waiting.take(A::begin_original_charge);
-    assert(waiting.model.tracking_lost()==E::abort_required);
-    assert(waiting.ack(begin,charged)==E::abort_required);
-    waiting.take(A::abort_original_charge);
-    Fixture release_queued(1);release_queued.charge();
-    assert(release_queued.model.trigger(release_queued.next(),{2,true,true,false})==E::request_ready);
-    assert(release_queued.model.tracking_lost()==E::abort_required);
-    release_queued.take(A::abort_original_charge);
+void cancellation(){
+    F f(1);f.charge();assert(f.cancel()==E::abort_required);
+    assert(f.cancel()==E::rejected);assert(!f.m.last_confirmed_cancel_edge());auto stop=f.take(A::abort_original_charge);
+    assert(f.ack(stop)==E::aborted);assert(f.m.inventory().loaded==1);
+    assert(f.m.last_confirmed_cancel_edge()==1);
+    assert(f.sample(true)==E::observed);assert(f.edge(2,true)==E::rejected);
+    assert(f.sample(false)==E::observed);assert(f.edge(3,true)==E::rejected); // level alone cannot rearm
+    assert(f.edge(4,false)==E::observed);assert(f.edge(5,true)==E::request_ready);
+    assert(f.take(A::begin_original_charge).before.loaded==1);
+    F early(1);early.sample();assert(early.edge(1,true)==E::request_ready);
+    assert(early.cancel()==E::aborted);assert(!early.m.has_pending_request());
+    assert(!early.m.last_confirmed_cancel_edge()); // No original Charge was dispatched.
+    assert(early.edge(2,false)==E::observed);assert(early.edge(3,true)==E::request_ready);
+    F inflight(1);inflight.sample();inflight.edge(1,true);auto begin=inflight.take(A::begin_original_charge);
+    assert(inflight.cancel()==E::abort_required);assert(inflight.ack(begin,charged)==E::abort_required);
+    auto abort=inflight.take(A::abort_original_charge);assert(inflight.ack(abort)==E::aborted);
+    F pending(1);pending.charge();assert(pending.edge(2,false)==E::request_ready);
+    auto release=pending.take(A::end_original_fire);assert(pending.ack(release,deferred)==E::release_accepted);
+    assert(pending.cancel()==E::abort_required);auto clear=pending.take(A::abort_original_charge);
+    assert(pending.ack(clear)==E::aborted);assert(pending.m.inventory().loaded==1);
+    assert(pending.m.last_confirmed_cancel_edge()==1);
+    F canceled_loss(1);canceled_loss.charge();canceled_loss.cancel();canceled_loss.m.tracking_lost();
+    auto lost_stop=canceled_loss.take(A::abort_original_charge);assert(canceled_loss.ack(lost_stop)==E::aborted);
+    assert(!canceled_loss.m.last_confirmed_cancel_edge());
+    F race(1);race.charge();race.edge(2,false);auto end=race.take(A::end_original_fire);
+    assert(race.cancel()==E::abort_required);assert(race.ack(end,deferred)==E::abort_required);
+    assert(race.take(A::abort_original_charge).before.loaded==1);
 }
-void quick_tap_and_expiry() {
-    Fixture f(1);assert(f.sample()==E::observed);
-    assert(f.model.trigger(f.next(),{1,true,true,true})==E::request_ready);
-    const auto begin=f.take(A::begin_original_charge);
-    assert(f.model.trigger(f.next(),{2,true,true,false})==E::release_buffered);
-    assert(f.ack(begin,charged)==E::request_ready);f.take(A::end_original_fire);
-    Fixture expired(1);expired.charge();
-    assert(expired.model.expire_pose(expired.ns+100000001)==E::abort_required);
-    expired.take(A::abort_original_charge);
-    Fixture stale(1);stale.charge();
-    assert(stale.model.trigger(stale.next(),{2,true,true,false})==E::request_ready);
-    TorqueBowRequest out{};assert(!stale.model.take_request(out,stale.ns+100000001));
-    assert(stale.model.take_request(out,stale.ns+100000001)&&out.action==A::abort_original_charge);
-    Fixture gap(1);gap.charge();gap.ns+=100000001;
-    assert(gap.sample(true,charged)==E::abort_required);gap.take(A::abort_original_charge);
-    Fixture bad_edge(1);bad_edge.charge();
-    assert(bad_edge.model.trigger(bad_edge.next(),{2,false,true,false})==E::abort_required);
-    bad_edge.take(A::abort_original_charge);
-    Fixture late_start(1);assert(late_start.sample()==E::observed);
-    assert(late_start.model.trigger(late_start.next(),{1,true,true,true})==E::request_ready);
-    const auto delayed=late_start.take(A::begin_original_charge);late_start.ns+=100000001;
-    assert(late_start.ack(delayed,charged)==E::abort_required);late_start.take(A::abort_original_charge);
-    Fixture stale_tap(1);assert(stale_tap.sample()==E::observed);
-    assert(stale_tap.model.trigger(stale_tap.next(),{1,true,true,true})==E::request_ready);
-    const auto start=stale_tap.take(A::begin_original_charge);
-    assert(stale_tap.model.trigger(stale_tap.next(),{2,true,true,false})==E::release_buffered);
-    stale_tap.ns+=100000001;
-    assert(stale_tap.ack(start,charged)==E::abort_required);stale_tap.take(A::abort_original_charge);
+void release_shot_and_safety(){
+    F shot(1);shot.charge();assert(shot.edge(2,false)==E::request_ready);
+    auto end=shot.take(A::end_original_fire);assert(shot.ack(end,deferred)==E::release_accepted);
+    auto ammo=shot.m.inventory();++ammo.revision;--ammo.loaded;
+    assert(shot.m.record_original_shot({shot.next(),++shot.events,1,ammo,true})==E::shot_recorded);
+    assert(shot.m.last_original_projectile_serial()==1&&!shot.m.last_confirmed_cancel_edge());
+    assert(shot.cancel()==E::rejected);assert(shot.m.inventory().loaded==0);
+    F tired(1);tired.charge();ammo=tired.m.inventory();++ammo.revision;--ammo.loaded;
+    assert(tired.m.record_original_shot({tired.next(),++tired.events,1,ammo,true})==E::shot_recorded);
+    assert(tired.edge(2,false)==E::request_ready);auto tired_up=tired.take(A::end_original_fire);
+    assert(tired.ack(tired_up)==E::release_accepted);assert(tired.sample()==E::observed);
+    assert(tired.m.stage()==S::ready&&tired.m.inventory().loaded==0); // No reload/refund/re-fire.
+    F loss(1);loss.charge();assert(loss.m.tracking_lost()==E::abort_required);
+    auto abort=loss.take(A::abort_original_charge);assert(loss.ack(abort)==E::aborted);
+    assert(!loss.m.last_confirmed_cancel_edge());
+    F stale(1);stale.charge();assert(stale.m.expire_pose(stale.ns+100000001)==E::abort_required);
+    stale.take(A::abort_original_charge);
+    F identity(1);identity.charge();auto s=identity.next();++s.identity.space_epoch;
+    assert(identity.m.observe({s,identity.m.inventory(),charged,true,true,true,true,s.monotonic_ns})==E::abort_required);
+    auto stop=identity.take(A::abort_original_charge);assert(identity.ack(stop)==E::safety_violation);
+    F late(1);late.charge();late.m.tracking_lost();ammo=late.m.inventory();++ammo.revision;--ammo.loaded;
+    assert(late.m.record_original_shot({late.next(),++late.events,1,ammo,true})==E::safety_violation);
+    assert(late.m.inventory().loaded==0); // real projectile is never refunded
 }
-void sequence_clock_and_dispatch_gates() {
-    Fixture f(1);f.charge();
-    auto s=f.next();s.sequence=3;
-    assert(f.model.trigger(s,{2,true,true,false})==E::rejected);
-    s=f.next();s.monotonic_ns=4000000;
-    assert(f.model.trigger(s,{2,true,true,false})==E::rejected);
-    s=f.next();s.game_tick=0;
-    assert(f.model.trigger(s,{2,true,true,false})==E::rejected);
-    s=f.next();++s.identity.input_epoch;
-    assert(f.model.trigger(s,{2,true,true,false})==E::rejected);
-    assert(f.model.stage()==S::charging&&!f.model.has_pending_request());
-    assert(f.model.trigger(f.next(),{2,true,true,false})==E::request_ready);
-    f.take(A::end_original_fire);
-    Fixture shared(1);assert(shared.sample()==E::observed);
-    assert(shared.model.trigger(shared.next(),{1,true,true,true})==E::request_ready);
-    assert(shared.sample(true,charged)==E::observed); // Another source acquired original R2.
-    TorqueBowRequest out{};assert(!shared.model.take_request(out,shared.ns));
-    assert(!shared.model.has_pending_request());
+void charge_receipt_boundaries(){
+ F tap(1);tap.sample();assert(tap.edge(1,true)==E::request_ready);
+ assert(tap.edge(2,false)==E::release_buffered);auto begin=tap.take(A::begin_original_charge);
+ assert(tap.ack(begin,charged)==E::request_ready);tap.take(A::end_original_fire);
+ F late(1);late.sample();late.edge(1,true);auto pending=late.take(A::begin_original_charge);
+ late.edge(2,false);late.ns+=100000001;
+ assert(late.ack(pending,charged)==E::abort_required);late.take(A::abort_original_charge);
+ F invalid(1);invalid.charge();invalid.cancel();auto stop=invalid.take(A::abort_original_charge);
+ auto still_pending=idle;still_pending.pending_fire=true;
+ assert(invalid.ack(stop,still_pending)==E::abort_required);assert(invalid.m.stage()==S::interrupted);
+    assert(!invalid.m.last_confirmed_cancel_edge());
+ F wrong(1);wrong.sample();wrong.edge(1,true);auto start=wrong.take(A::begin_original_charge);
+ auto receipt=TorqueBowActionReceipt{wrong.next(),start.token+1,1,true,wrong.m.inventory(),charged,O::none};
+ assert(wrong.m.acknowledge(receipt)==E::rejected);assert(wrong.m.has_pending_request());
+ receipt.request_token=start.token;receipt.stamp=wrong.next();assert(wrong.m.acknowledge(receipt)==E::charge_started);
 }
-void contradictory_receipts_and_identity_change_fail_closed() {
-    Fixture f(1);f.charge();auto changed=f.next();++changed.identity.weapon;
-    assert(f.model.observe({changed,f.model.inventory(),charged,true,true,true,true})==E::abort_required);
-    const auto abort=f.take(A::abort_original_charge);assert(abort.identity==id);
-    assert(f.ack(abort,charged)==E::abort_required);assert(f.model.stage()==S::interrupted);
-    assert(!f.model.can_request_fire(f.ns,f.model.inventory()));
-    Fixture invalid_shot(1);invalid_shot.charge();auto wrong=invalid_shot.model.inventory();
-    ++wrong.revision;--wrong.reserve; // A projectile cannot consume a reserve arrow directly.
-    assert(invalid_shot.model.record_original_shot({invalid_shot.next(),
-        ++invalid_shot.original_event,21,wrong,true})==E::abort_required);
-    assert(invalid_shot.model.inventory().loaded==1&&invalid_shot.model.inventory().reserve==3);
-    Fixture safety(1);safety.charge();assert(safety.model.tracking_lost()==E::abort_required);
-    auto shot=safety.model.inventory();++shot.revision;--shot.loaded;
-    assert(safety.model.record_original_shot({safety.next(),++safety.original_event,22,shot,true})==E::safety_violation);
-    assert(safety.model.total()==3); // Account for the real shot, never claim safe recovery.
-    const auto stop=safety.take(A::abort_original_charge);
-    assert(safety.ack(stop,idle)==E::safety_violation);
-    Fixture bad_reload;bad_reload.seat();assert(bad_reload.step(301,0,bad_reload.sequence,1040)==E::request_ready);
-    const auto r=bad_reload.take(A::complete_original_reload);
-    auto counts=r.after;++counts.revision;++counts.reserve;
-    assert(bad_reload.model.acknowledge({bad_reload.next(),r.token,1,true,counts,idle,r.outcome})==E::interrupted);
-    assert(bad_reload.model.inventory().loaded==0&&bad_reload.model.total()==3);
-    TorqueBowRequest repeat{};assert(!bad_reload.model.take_request(repeat,bad_reload.ns));
+void certification(){
+    auto c=config();c.game_ticks_per_second=0;assert(!c.valid());
+    c=config();c.reload_step_count=2;assert(!c.valid());
+    c=config();c.capacity=2;assert(!c.valid());
+    c=config();c.non_firing_abort_verified=false;TorqueBowInteraction m;assert(m.bind(c,{1,1,1}));
+    assert(m.observe({{id,1,1,0},{1,1,1},idle,true,true,true,false,1})==E::observed);
+    assert(!m.can_request_fire(1,m.inventory()));
+}
+void original_sync_deadline(){
+    // The same old source is current at processing, but the next command does
+    // not acquire a new100ms deadline from the GT processing timestamp.
+    for(auto age:{99000000LL,100000000LL}){
+        F f(1);f.ns=200000000;const auto s=f.next();
+        assert(f.m.observe({s,f.m.inventory(),idle,true,true,true,false,s.monotonic_ns-age})==E::observed);
+        const auto event=f.edge(1,true);
+        assert(event==(age==99000000?E::request_ready:E::observed));
+        assert(f.m.has_pending_request()==(age==99000000));
+    }
+    for(unsigned bad=0;bad<4;++bad){
+        F f(1);f.ns=200000000;auto s=f.next();
+        const auto sync=bad==0?0:bad==1?s.monotonic_ns+1:bad==2?s.monotonic_ns-100000001:s.monotonic_ns;
+        assert(f.m.observe({s,f.m.inventory(),idle,true,true,true,false,sync})==E::observed);
+        if(bad==3){s=f.next();assert(f.m.observe({s,f.m.inventory(),idle,true,true,true,false,sync-1})==E::observed);}
+        assert(f.edge(1,true)==E::observed&&!f.m.has_pending_request());
+    }
+    F charging(1);charging.charge();auto s=charging.next();
+    assert(charging.m.observe({s,charging.m.inventory(),charged,true,true,true,true,s.monotonic_ns+1})==E::abort_required);
+    charging.take(A::abort_original_charge); // Invalid tracking is never EndFire.
+}
+void inflight_begin_and_rearm(){
+    F uncalled(1);uncalled.sample();uncalled.edge(1,true);
+    auto ammo=uncalled.m.inventory();++ammo.revision;--ammo.loaded;
+    assert(uncalled.m.record_original_shot({uncalled.next(),2,1,ammo,true})==E::rejected);
+    assert(uncalled.m.inventory().loaded==1); // No root was dispatched.
+    F called(1);called.sample();called.edge(1,true);auto begin=called.take(A::begin_original_charge);
+    ammo=called.m.inventory();++ammo.revision;--ammo.loaded;
+    assert(called.m.record_original_shot({called.next(),2,1,ammo,true})==E::shot_recorded);
+    assert(called.m.acknowledge({called.next(),begin.token,3,false,called.m.inventory(),idle,{}})==E::rejected);
+    assert(called.m.inventory().loaded==0&&called.m.original_shot_recorded());
+    F canceled(1);canceled.charge();canceled.cancel();auto stop=canceled.take(A::abort_original_charge);
+    assert(canceled.ack(stop)==E::aborted);canceled.sample();
+    assert(canceled.m.observe_trigger_up(canceled.next(),false)==E::rejected);
+    assert(canceled.m.observe_trigger_up(canceled.next(),true)==E::observed);
+    assert(canceled.edge(2,true)==E::request_ready);
+    auto next=canceled.take(A::begin_original_charge);assert(next.action==A::begin_original_charge);
+    F held(1);held.charge();assert(held.m.observe_trigger_up(held.next(),true)==E::rejected);
+    assert(!held.m.has_pending_request()); // An UP level cannot emit an original release.
 }
 }
-int main() {
-    certified_configuration_only();guides_conservation_and_once_only_commit();
-    perfect_deadline_and_unknown_window();reload_gates_and_tracking_fences();
-    original_charge_release_and_actual_projectile();loss_never_generates_end_fire();
-    quick_tap_and_expiry();sequence_clock_and_dispatch_gates();
-    contradictory_receipts_and_identity_change_fail_closed();
-    std::puts("Torque Bow interaction tests passed (synthetic certified adapter fixtures).");
-}
+int main(){reload_deadline();accepted_original_clock();reservation_and_regrip();cancellation();release_shot_and_safety();charge_receipt_boundaries();certification();original_sync_deadline();inflight_begin_and_rearm();
+    std::puts("Torque Bow interaction regression passed; synthetic adapter receipts only.");}

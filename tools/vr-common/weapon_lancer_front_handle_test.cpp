@@ -18,6 +18,14 @@ int main(){
     C(std::abs(g.contact_radius-.18)<1e-12);
     auto wide=sample(0,1);wide.hand.x+=.16;C(s.begin(g,wide,0));s.reset();
     wide=sample(0,1);wide.hand.x+=.181;C(!s.begin(g,wide,0));
+    // An explicitly checked authored acquisition region replaces only the
+    // old start sphere. It cannot replace tracking, instance or closed-part
+    // evidence, and acquiring farther away creates zero stroke progress.
+    C(s.begin_in_region(g,wide,0));C(s.wanted_distance()==0&&!s.actual_full_pull());s.reset();
+    auto invalid=wide;invalid.tracked=false;C(!s.begin_in_region(g,invalid,0));
+    invalid=wide;invalid.grip_token=0;C(!s.begin_in_region(g,invalid,0));
+    C(!s.begin_in_region(g,wide,.003));
+    auto unverified=g;unverified.current_instance_verified=false;C(!s.begin_in_region(unverified,wide,0));
     C(s.begin(g,sample(0,1),0));C(s.move(sample(full*.5,2)));C(s.move(sample(full,3)));
     C(!s.actual_full_pull()&&s.release(1)&&s.phase()==h::Stroke::Phase::waiting_open);
     C(s.acknowledge_visible_part(0,1,1.1)&&s.phase()==h::Stroke::Phase::waiting_open);

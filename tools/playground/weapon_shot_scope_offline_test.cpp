@@ -6,11 +6,13 @@
 #define GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE 1
 #define GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL 1
 #include <initializer_list>
+#include <cstdio>
+namespace {FILE* log_file{};}
 #include "../vr-common/weapon_shot_scope.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include "weapon_hand_offline_fixture.h"
 namespace {
-std::atomic<unsigned> callbacks{};FILE* log_file{};
+std::atomic<unsigned> callbacks{};
 namespace playground {bool automatic=true,ready=true;uptr arena_pc{},arena_world{};}
 #include "weapon_grip_call_context.inl"
 #include "weapon_shot_scope.inl"

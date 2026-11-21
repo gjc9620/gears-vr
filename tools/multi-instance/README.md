@@ -1,5 +1,52 @@
 # Independent game instances
 
+The isolated simulator entry `isolated_sim.py` has no fixed instance-count
+limit (owner override, 2026-11-15). The owner also removed the 1 GiB free-RAM /
+6 GiB free-commit admission threshold: memory is recorded but does not block a
+launch. Disk availability and process identity checks remain. Existing sessions
+keep running if a new launch fails.
+Its background mode hides the owned game and simulator windows with DWM cloak;
+the processes continue rendering, but no preview appears on the desktop or
+taskbar. Instance count and window visibility are separate settings.
+
+For owner-requested desktop-visible instances, use a fresh name:
+
+```powershell
+$instanceName = "visible-$([guid]::NewGuid().ToString('N'))"
+python tools/multi-instance/isolated_sim.py prepare --name $instanceName --visible --lowest --render-scale 0.5
+python tools/multi-instance/isolated_sim.py start --name $instanceName --wait-resources-seconds 0
+```
+
+Visible mode selects the verified non-cloaking startup/runtime, shows the game
+and simulator as normal taskbar windows, and retains private profiles and normal
+stop/cleanup. An already-running hidden instance must be stopped normally and
+replaced with a fresh visible instance; it is not hot-switched.
+
+Add `--lowest` to `prepare` for the owner's low-load multi-instance comparison.
+It backs up each private EngineUserSettings INI, lowers existing graphics fields
+(shadows/AO/reflections/post effects off, low detail, texture groups capped at
+256), sets the desktop startup dimensions to 800x600 and VR scale to 0.25.
+The per-instance `lowest-graphics.json` lists every changed field and its hash;
+`lowest-graphics-originals/` retains the copied original settings. This does not
+overwrite shared settings or represent a verified in-game named preset.
+
+The current owner-requested comparison overrides the low-load preset's VR
+scale with `--render-scale 0.5`; there is no fixed 1080p requirement. Use a new
+name for every restart, including after a failed start. Do not adopt or stop
+another chat's instance. No recording is enabled by these commands.
+
+The optional older `--full-hd` mode requests a 1920x1080 desktop and total
+side-by-side stereo image, with 960x1080 per eye at scale 1.0. Runtime render
+receipts remain separate from the requested size plan.
+
+Visible load-test instances skip startup movies via the private child-only
+`-nomoviestartup` switch. This avoids the observed intro-movie startup stalls;
+normal shared/manual launch behavior is unchanged. Private player discovery is
+bounded to 180 seconds and uses the existing normal cancellation/cleanup path.
+`status --name ...` now includes `startup_status.startup_confirmed`: it requires
+an actual first-stereo receipt, a running native session, and matching live
+launcher/game/XR identities. A process or queued map request alone is not ready.
+
 `start.py` provides an explicit multi-instance entry point. Each new name gets
 private game settings, profiles, game logs, shader-cache copies, native DLL/status
 files and a launcher index under `analysis/instances/<name>/`. The game EXE and

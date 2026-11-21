@@ -223,7 +223,7 @@ static void bounded_magazine_observation_handoff(){
     for(unsigned mode=0;mode<11;++mode){
         LeftHandInteractionOwner owner;auto f=begin(owner);next(f);
         f.now_ns+=50000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
-        if(mode==0)f.now_ns+=50000001;
+        if(mode==0)f.now_ns+=450000001;
         if(mode==1)f.now_ns-=50000000;
         if(mode==2)f.now_ns-=50000001;
         if(mode==3)f.tracked=false;
@@ -249,8 +249,24 @@ static void bounded_magazine_observation_handoff(){
     {
         LeftHandInteractionOwner owner;auto f=begin(owner);next(f);f.now_ns+=30000000;
         CHECK(!owner.update(f).release_required);
-        next(f);f.now_ns+=70000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        next(f);f.now_ns+=470000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
         CHECK(owner.update(f).new_grant);
+    }
+    {
+        //37408: one slow owner tick must not consume an undispatched press.
+        // This frame represents NEW certified contact, not an aged old pose.
+        LeftHandInteractionOwner owner;auto f=begin(owner);next(f);f.now_ns+=150000000;
+        f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        const auto granted=owner.update(f);
+        CHECK(granted.new_grant&&granted.lease.kind==LeftHandInteraction::magazine);
+    }
+    {
+        // Continued observation cannot renew the deadline from the first press.
+        LeftHandInteractionOwner owner;auto f=begin(owner);
+        for(unsigned i=0;i<4;++i){next(f);f.now_ns+=100000000;CHECK(!owner.update(f).release_required);}
+        next(f);f.now_ns+=100000001;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        CHECK(owner.update(f).release_required);
+        next(f);++f.now_ns;CHECK(empty(owner.update(f)));
     }
     {
         LeftHandInteractionOwner owner;auto f=begin(owner);next(f);++f.now_ns;

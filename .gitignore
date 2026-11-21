@@ -4,6 +4,11 @@
 !/README.md
 !/CHANGELOG.md
 !/AGENTS.md
+!/.agents/
+/.agents/*
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/gearsvr-multi-instance/
 !/GearsVR DLSS Test.cmd
 !/docs/
 !/tools/

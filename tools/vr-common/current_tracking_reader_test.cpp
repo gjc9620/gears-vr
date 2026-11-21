@@ -37,7 +37,7 @@ template<class Action>
 void while_publisher_busy(Fixture const& f,unsigned bridge,Action action){
     wchar_t name[128]{};
     if(bridge==2)swprintf_s(name,L"Local\\GearsVR.StereoLock.%lu",f.pid);
-    else swprintf_s(name,bridge?L"Local\\GearsVR.ControllerContinuityLock.v3.%lu.%llu":
+    else swprintf_s(name,bridge?L"Local\\GearsVR.ControllerContinuityLock.v4.%lu.%llu":
         L"Local\\GearsVR.ControllerInputLock.v4.%lu.%llu",f.pid,
         static_cast<unsigned long long>(gears_vr::controller_process_start(GetCurrentProcess())));
     HANDLE mutex=OpenMutexW(SYNCHRONIZE|MUTEX_MODIFY_STATE,FALSE,name);

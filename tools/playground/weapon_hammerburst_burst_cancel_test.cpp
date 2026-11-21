@@ -9,6 +9,7 @@
 #include <functional>
 #include <type_traits>
 #include "../vr-common/weapon_hand_participant.h"
+#include "../vr-common/weapon_hand_client.h"
 #ifdef NDEBUG
 #error Assertions required
 #endif
@@ -26,7 +27,7 @@ struct Model {
     bool gt{true},hold{true},registration{true},tables{true},objects{true},receiver{true},game{true},r2{},
         manager_class{true},retained{true},native_function{true},invoke{true},change_state{true},
         pending_race{},pointer_race{},inner_race{},field_race{},array_race{},read_fail{},post_pending{},
-        native_source{true},owned_press{true},query_invoke{true},force_refire{},putting_down{};
+        pose_stale{},lifetime_valid{true},native_source{true},owned_press{true},query_invoke{true},force_refire{},putting_down{};
     uptr manager{0xa000},world{0xb000},controller{0xc000},pawn{0xd000},weapon{0xe000};
     Name state{101,0},destination{};
     Array array{0xf000,2,2};std::array<unsigned char,256> bytes{};
@@ -112,7 +113,20 @@ struct HoldBinding {Id world{},controller{},pawn{},weapon{};
     std::uint64_t native_cookie{1},native_started{2},world_generation{3},generation{4};bool known{true};};
 HoldBinding held_binding;
 struct Client {bool registration_alive(std::uint64_t,std::uint64_t){return fixture::model.registration;}
-    bool armed(){return fixture::model.native_source;}}client;
+    gears_weapon_hand::FrameKey released_key{};
+    bool armed(){return fixture::model.native_source;}
+    bool capture_existing_action_lifetime_on_gt(gears_weapon_hand::FrameKey const& key,gears_weapon_hand::ExistingActionLifetime& out){
+        out={};if(!armed()||!fixture::model.registration)return false;
+        released_key=key;out.epoch=1;out.parent.key=key;return true;
+    }
+    bool existing_action_lifetime_on_gt(gears_weapon_hand::ExistingActionLifetime const& out){
+        return out.epoch==1&&fixture::model.lifetime_valid&&fixture::model.registration&&fixture::model.gt;
+    }
+    gears_weapon_hand::FrameReadObservation withdrawal_on_gt(){
+        gears_weapon_hand::FrameReadObservation out{};out.frame=released_key.frame;
+        if(fixture::model.pose_stale)out.failure=gears_weapon_hand::FrameReadFailure::stale_before;
+        return out;
+    }}client;
 bool current_gt(void*){return fixture::model.gt;}
 std::int64_t clock_ns(void*){return fixture::model.now;}
 bool object(gripdamage_metadata::Reader&,Id const&){return fixture::model.objects;}
@@ -225,6 +239,7 @@ int main(){
     reset();model.native_function=false;assert(!layout());++checks;
     const auto complete=[](){return hammerburst_burst_cancel::complete(weaponhand::held_binding);};
     reset();assert(complete());assert(model.go_calls==1&&model.state.index==burst);checks+=2;
+    assert(hammerburst_burst_cancel::last_failure_gate==0);++checks;
     reset();model.state={102,0};assert(complete());assert(!model.go_calls);checks+=2;
     for(unsigned failure=0;failure<12;++failure){reset();switch(failure){
         case 0:model.gt=false;break;case 1:model.hold=false;break;case 2:model.registration=false;break;
@@ -233,11 +248,16 @@ int main(){
         case 9:model.native_function=false;break;case 10:model.retained=false;break;
         case 11:snapshot.identities[burst].outer=address(weapon_owner);break;}
         assert(!complete());assert(!model.go_calls);checks+=2;
+        constexpr unsigned expected_gate[]{1,3,4,5,5,5,6,8,10,13,10,12};
+        assert(hammerburst_burst_cancel::last_failure_gate==expected_gate[failure]);++checks;
     }
     for(unsigned failure=0;failure<3;++failure){reset();if(failure==0)model.invoke=false;
         if(failure==1)model.change_state=false;if(failure==2)model.post_pending=true;
         assert(!complete());assert(model.go_calls==1);checks+=2;
+        assert(hammerburst_burst_cancel::last_failure_gate==(failure==0?17u:failure==1?18u:19u));++checks;
     }
+    reset();auto unknown=weaponhand::held_binding;unknown.known=false;
+    assert(!hammerburst_burst_cancel::complete(unknown));assert(hammerburst_burst_cancel::last_failure_gate==2);checks+=2;
     std::printf("HB actual cancellation adapter: %u fake boundary/order checks passed; not a game/ABI proof\n",checks);
 }
 #endif

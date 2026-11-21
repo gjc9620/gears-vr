@@ -22,7 +22,7 @@ class RenderSizeTests(unittest.TestCase):
             with self.subTest(value=value),self.assertRaises(ValueError):launcher.render_scale(dict(render_scale=value),dict(runtime_render_size=True))
         with self.assertRaises(ValueError):launcher.render_scale(dict(render_scale=.7),{})
         with self.assertRaises(ValueError):launcher.render_scale({},dict(runtime_render_size='true'))
-    def test_prelaunch_plan_is_authenticated_and_not_clamped(self):
+    def test_raw_probe_authenticates_plan_and_preserves_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root=pathlib.Path(directory);probe=root/'xr/OpenXRPoseProbe.exe';probe.parent.mkdir();probe.write_bytes(b'test')
             manifest=dict(xr_build='xr',xr_sha256=hashlib.sha256(b'test').hexdigest())
@@ -39,6 +39,24 @@ class RenderSizeTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):launcher.render_size_info(manifest,.7,root)
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout='',stderr='exceeds 8192')):
                 with self.assertRaisesRegex(RuntimeError,'before game launch.*8192'):launcher.render_size_info(manifest,1.5,root)
+    def test_launcher_caps_scale_without_changing_aspect_ratio(self):
+        for width, height, runtime_width, expected in (
+            (6278, 5042, 8192, [4096, 3290]),
+            (2048, 6000, 8192, [2797, 8192]),
+            (3072, 3264, 3500, [3500, 3719]),
+        ):
+            with self.subTest(recommended=(width, height), runtime_width=runtime_width):
+                def raw_probe(manifest, scale, root, environment):
+                    eye = [launcher.math.ceil(v * scale - 1e-9) for v in (width, height)]
+                    if eye[0] > min(4096, runtime_width) or eye[1] > 8192:
+                        raise launcher.RenderSizeLimitError('size limit')
+                    return dict(render_scale=scale, recommended=[width, height], eye=eye)
+                with mock.patch.object(launcher, 'render_size_info', side_effect=raw_probe):
+                    plan = launcher.capped_render_size_info({}, 2.)
+                    self.assertEqual(plan['eye'], expected)
+                    self.assertEqual(plan['requested_render_scale'], 2.)
+                    self.assertEqual(launcher.capped_render_size_info({}, .5)['render_scale'], .5)
+
     def test_runner_forwards_only_to_xr(self):
         args=SimpleNamespace(pid=1,xr_build_dir=pathlib.Path('xr'),render_scale=.7)
         command=runner.xr_command(args,pathlib.Path('sample.csv'),dict(pid=2,creation_time=3))

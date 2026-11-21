@@ -50,6 +50,20 @@ class PythonDiscoveryTests(unittest.TestCase):
                 self.assertIn('GEARSVR_PYTHON is not a usable Python 3', result.stderr)
                 self.assertNotIn('"check_only":true', result.stdout)
 
+    def test_prelaunch_python_rejection_publishes_no_game_proof(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as folder:
+            birth=Path(folder)/'fixture.birth.json'
+            env=dict(os.environ,GEARSVR_PYTHON=str(Path(folder)/'missing-python.exe'))
+            result=self.run_ps(['-File',str(SCRIPT),'-PythonCheckOnly','-LaunchReceipt',str(birth)],env)
+            self.assertNotEqual(result.returncode,0);self.assertFalse(birth.exists())
+            proof=json.loads(birth.with_name(birth.name+'.no-start.json').read_text())
+            self.assertEqual(proof['stage'],'python_discovery')
+            self.assertIs(proof['game_creation_attempted'],False)
+            self.assertEqual(proof['launch_receipt'],str(birth.resolve()))
+            self.assertEqual(proof['startup_script_sha256'],hashlib.sha256(SCRIPT.read_bytes()).hexdigest())
+            self.assertEqual(proof['probes'][0]['status'],'missing')
+
     def test_packaged_then_development_candidate_order_without_copying_runtime(self):
         # Parse/load only the function definition. Test-Path records candidates
         # and returns false, so no process is constructed and no game code runs.

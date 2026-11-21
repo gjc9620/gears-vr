@@ -1,0 +1,364 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        1.1843662832689007e-08,
+        0.27166019439697264,
+        -0.08094207763671875
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_bolo_root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "Smoke_Grenade.bone0.mesh",
+      "triangles": 498
+    },
+    {
+      "bone": "b_Bolo_Counter",
+      "parent": 0,
+      "pivot": [
+        1.9721522630525296e-33,
+        -0.06726338386535645,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone1.mesh",
+      "triangles": 1372
+    },
+    {
+      "bone": "b_Bolo_Chain_01",
+      "parent": 0,
+      "pivot": [
+        8.529562478543084e-10,
+        0.08731246948242187,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone2.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_02",
+      "parent": 2,
+      "pivot": [
+        1.7128047602454899e-09,
+        0.1069835090637207,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone3.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_03",
+      "parent": 3,
+      "pivot": [
+        2.5657107016741065e-09,
+        0.12649572372436524,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone4.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_04",
+      "parent": 4,
+      "pivot": [
+        3.4256333947269016e-09,
+        0.14616846084594726,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone5.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_05",
+      "parent": 5,
+      "pivot": [
+        4.2786138010342255e-09,
+        0.165682373046875,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone6.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_06",
+      "parent": 6,
+      "pivot": [
+        5.138424512551864e-09,
+        0.18535251617431642,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone7.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_07",
+      "parent": 7,
+      "pivot": [
+        5.991437319607939e-09,
+        0.20486717224121095,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone8.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_bolo_chain_08",
+      "parent": 8,
+      "pivot": [
+        6.858248298158287e-09,
+        0.2246975326538086,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone9.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_Bolo_Chain_09",
+      "parent": 9,
+      "pivot": [
+        7.697128694417188e-09,
+        0.24388885498046875,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone10.mesh",
+      "triangles": 64
+    },
+    {
+      "bone": "b_bolo_end",
+      "parent": 10,
+      "pivot": [
+        1.1843662832689007e-08,
+        0.27166019439697264,
+        -0.08094207763671875
+      ],
+      "mesh": "Smoke_Grenade.bone11.mesh",
+      "triangles": 1428
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        -1.1920928966180355e-09,
+        0.12089678764343262,
+        -0.07120611429214478
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        -1.1920928966180355e-09,
+        0.12089678764343262,
+        -0.22120611429214476
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_bolo_root",
+      "position": [
+        0.0006386982654331491,
+        0.005192530135368754,
+        -0.08047822272018046
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "配重 · b_Bolo_Counter",
+      "position": [
+        4.196457494230734e-05,
+        -0.13516825047181683,
+        -0.08092682925324789
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "链节 · b_Bolo_Chain_01",
+      "position": [
+        -0.00036039780167972346,
+        0.08650263660094312,
+        -0.08094776490155386
+      ],
+      "bone": 2,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_3",
+      "label": "链节 · b_Bolo_Chain_02",
+      "position": [
+        -2.9121838948306616e-05,
+        0.10596920237821689,
+        -0.08127904176712035
+      ],
+      "bone": 3,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_4",
+      "label": "链节 · b_Bolo_Chain_03",
+      "position": [
+        -0.00036039816982605817,
+        0.1254992097966811,
+        -0.0809477644106921
+      ],
+      "bone": 4,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_5",
+      "label": "链节 · b_Bolo_Chain_04",
+      "position": [
+        -2.912163734436126e-05,
+        0.14496637961443726,
+        -0.08127904246835145
+      ],
+      "bone": 5,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_6",
+      "label": "链节 · b_Bolo_Chain_05",
+      "position": [
+        -0.00036039780167972346,
+        0.164496976628023,
+        -0.08094776490155386
+      ],
+      "bone": 6,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_7",
+      "label": "链节 · b_Bolo_Chain_06",
+      "position": [
+        -2.9121838948306616e-05,
+        0.18396415373858285,
+        -0.08127904176712035
+      ],
+      "bone": 7,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_8",
+      "label": "链节 · b_Bolo_Chain_07",
+      "position": [
+        0.0003021548951373387,
+        0.20349353341495277,
+        -0.08094776441069206
+      ],
+      "bone": 8,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_9",
+      "label": "链节 · b_bolo_chain_08",
+      "position": [
+        -2.912163734436126e-05,
+        0.22296072342816514,
+        -0.08127904246835145
+      ],
+      "bone": 9,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_10",
+      "label": "链节 · b_Bolo_Chain_09",
+      "position": [
+        -0.00036039780167972346,
+        0.2424913081000834,
+        -0.08094776490155386
+      ],
+      "bone": 10,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_11",
+      "label": "原件 · b_bolo_end",
+      "position": [
+        -0.0003054821864465938,
+        0.3668437635690141,
+        -0.06652199258415202
+      ],
+      "bone": 11,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Smoke_Grenade",
+    "kind": "smoke",
+    "capacity": 1,
+    "reserve": 3,
+    "feed": [
+      1.1843662832689007e-08,
+      0.29666019439697267,
+      -0.010942077636718742
+    ],
+    "mechanism_pivot": [
+      1.1843662832689007e-08,
+      0.29666019439697267,
+      -0.010942077636718742
+    ],
+    "mechanism_bones": [],
+    "magazine_bone": -1,
+    "travel": 0,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "",
+    "initial_loaded": 1,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -1.4526976651137532e-08,
+      0.07170293419747739,
+      -0.11429307562810881
+    ]
+  },
+  "curated": true
+}

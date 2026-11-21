@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cwchar>
 #include <string>
+#include "weapon_metadata_parse.h"
 
 // Exercise the ACTUAL shared selector and actual new typed pair with owned
 // descriptors. No engine/registry/current Frame/FPS or gameplay claim.

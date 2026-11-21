@@ -3644,3 +3644,899 @@ r287 normal_cleanup_verified=false、Native entries_restored0，XR exit0、remai
 copy thunk原始6bytes ff25b34bda00权威解析IAT RVA131ca18，实际r283既有生产档案也记录该slot。IDA operand字符串显示131ca08存在冲突，不能据此接入；按raw bytes和实际slot处理。r283档案回读显示System32 VCRUNTIME140.dll memcpy export RVA1f020，内存入口E91BDBFFFF跳至1cb40，与当前磁盘默认dispatch不同，不能仅凭模块名/地址放行。私有CRT离线分析确认该实际实现memcpy_avx_ermsb_Intel，完整1041bytes SHA470810…369d1；固定115*32=3680字节、Source/Dest不重叠，排除CopyDown、>=8192 rep-movs和>=0x180000 NT路径，正常YMM尾表29400的9个目标都在同一已核对函数内。Native-v3额外在调用前后核对当前System32模块/GetProcAddress、实际dispatch5bytes、完整实现1041bytes和尾表36bytes。r283未保存完整CRT函数内存，不能倒推当时已通过本新门；由下一真实运行执行当前字节核对。v2只校验export绑定的编译稿未运行/未选用。
 
 112项纯数据/代码连续性检查0失败，覆盖wrong epochs/arrays/alias/Desired、copy损坏/中途变化、CRT实现/尾表/dispatch改动；这不是game或写入权限证明。首版iota narrowing/WX及局部档案decoder namespace编译失败均保留后修正。最终Native-v3在r284-v2冻结生产树仅改4个文件，434项目依赖全部冻结内，flags不变、PHYSX OFF；DLL71789359a915ec5030fc516313c74cee3a0344c39a128eaadf17d1de4c087573编译链接通过。加入cover forward镜像/FACB0分类计数，仅区分下一真实失败路径。尚无本新版本运行/Grip/头显验收，不称挂起已修复。
+
+
+### 2026-11-13 主人反馈：进入掩体后手部6DoF消失（仅记录）
+
+主人实际反馈：“进入掩体之后 我发现手部6dof消失了”。记录为待修复问题：进入掩体后，手部独立六自由度控制消失。具体涉及单手或双手、位置或旋转、退出掩体后是否恢复及发生版本尚未确认，不补造细节或根因。此为主人观察，尚未独立复现或验证修复。
+
+主人明确要求“记录一下就行”。本次仅保存反馈，不修改功能、不构建、不启动游戏/XR/模拟器或测试、不注入输入；掩体开发目标保持暂停。
+
+
+### 2026-11-15 掩体内自由手6DoF：候选接入与真实求解离线检查
+
+主人要求下次运行前修复进入掩体后手部6DoF消失，并授权唯一持久DeepSeek Worker。当前Worker真实会话01a1dedc-c39b-7c11-8844-dff4c25cb76c已命名并固定至侧栏置顶，首次打开成功。CLI最初本地执行因Core进程无包身份失败；按本会话已授权权限修正本轮执行配置后，原ID恢复执行，不改全局配置、不另建Worker。前两轮候选/测试反复编辑失败，均未合入生产；主会话接手关键接入与测试，原Worker转为定向审查。
+
+当前源码仍将手部合成限定stationary。新增私有三处候选修改：fixed_cover/world_absolute且当前V3、实际cover绑定、同次desired_eye/base完整，排除原paired-execution34后，向既有共享C0候选追加compose_eye；站立原分支及原有ready33挂载/身份/时效/DesiredBones/prepare/commit/退休规则不改。候选位于analysis/cover-worker/owner-cover-hands/candidate.patch，尚未合入生产、未编译Native，不称已修复。
+
+已用保存的原角色几何/有效source夹具，生成明确标记为HOST的当前V3控制器输入，实际执行prepare_cover、plan_cover、compose_eye，并以独立四元数FK核对双手位置/旋转。393项断言0失败：双手目标、单侧移动不改变另一侧目标、左手追踪缺失仍可更新右手、脚/头/骨长/非根平移/缩放保持、过期和错误绑定拒绝且输出不变。编译/检查证据及源/夹具hash保存owner-cover-hands/evidence.json。最初测试的字段编译错误日志保留；Worker旧手工Core夹具失败不是生产求解器不可用的证明。
+
+状态边界：这些是纯离线内存夹具检查，不是游戏、立体图像或头显验收。尚需完成候选审查、真实左手扒住Contact/GrabPose的接入与松手恢复，再编译/交付后运行；本次未启动游戏/XR/模拟器/Quest、未安装或注入输入。原始缓存拷贝退休路径r288的游戏因果验证和整个掩体系统其余要求仍未完成。遮挡/碰撞仍按主人要求暂缓。
+
+
+本日后续源码状态：三处owned hunk经基准hash复验及git apply --check后已合入当前Native源码，应用后与候选逐字节（规范化换行）相同；保留原有其他脏修改，未stage/commit。Worker定向审查R1的“producer advance会替换当前body输入”未成立：C0仅在owner GT复制一次body_source，captured拒绝重入，body_tick_source_live::observe比较完整saved/latch，ActualContext提交阶段重复current验证；compose_eye也在实际调用时重新分类时效，无需新造ticket。R2的实际Native apply/Kernel/消费回读缺证据成立，仍须后续验证。Worker已转为task04：在原CoverInputOwner上提供ticket绑定、成功完成后的实际grab输入快照及CPU回归，供现有GrabPose适配器使用，禁止以diagnostics代替手部控制权。Native构建/真实运行/完整修复验收仍未完成。
+
+
+### r290 掩体自由手：记录值兼容阻断修复、冻结Native编译及同版离线通过
+
+继续检视既有r272真实观察值，发现手部compose_common仍对所有Atom采用严格单位四元数校验，而plan_cover已支持certified passive骨65/67/106的原始刚体表示。向保存几何夹具注入原记录float32值后，真实prepare_cover/plan_cover通过，但手部返回invalid_body(4)，失败日志run-passive-before.log保留；这是离线复现的具体阻断，不是对主人当次头显现象的单一根因证明。
+
+在body_c0_hands仅复用既有cover_passive_atoms::validate：来源有有效cover key/type/link/slot时采用原有限辅助骨规则，并额外要求其局部Atom在身体候选中逐字节不变。普通站立仍走原严格验证，不扩至手臂或其他骨，不添写入者/跟踪时间。普通夹具393断言0失败；记录值夹具401断言0失败，包括修改aux字节、在手臂上使用类似非单位表示、将aux表示带入站立路径均拒绝且输出保持。原手部回归14678项中16个持Lancer四元数断言失败；用此次修改前的头文件重跑，标准化完整输出完全相同，不能记作全套通过，也不在本轮改武器校准。
+
+冻结r290只在r288-v3生产树修改full_body_c0_native_live.inl和body_c0_hands.h，未带入当前工作区其他武器/性能脏修改。最初git apply因不同版本上下文/换行拒绝后，按唯一完整文本锚点接入相同owned变更，拒绝记录保留。Native编译链接通过，DLL SHA256 419969aa330702eb14823aed8b0d1a6a2aadcb377cc17aba07ec2801df914d39，434项目依赖全部在冻结目录，原flags一致、PHYSX查询OFF。未staging/替换公开v71/固定启动器，未运行游戏/XR/Quest。
+
+进一步仅使用该Native的冻结项目头文件编译同一姿态检查，普通393与记录值401均0失败。首次host测试缺独立记录值test-helper的编译失败保留，v2将该已hash核对的纯夹具辅助文件单独保存；所有生产依赖仍来自同一冻结树。编译及依赖证据在analysis/cover-system-20261108/cover-hands-r290/native-build-result.json、frozen-hands-v2-result.json；根源码/回归证据在analysis/cover-worker/owner-cover-hands/passive-evidence.json。
+
+当前边界：代码、Native编译和同版纯姿态离线证据成立；尚无实际apply/Kernel/消费回读、游戏图像或头显验收。Worker task04交付成功commit ticket绑定的grab快照接口候选及193检查0失败；主review要求收紧最终lease精确一致检查，并把真实其他owner导出为other而非free，已交原Worker task05处理，尚未合入生产。真实扒住点Contact/GrabPose接入、松手恢复、Grip拖动闭环、其余掩体要求仍待完成。
+
+
+### 2026-11-15 已提交grab输入快照接入与较新V3输入关联设计
+
+Worker task05完成针对task04的两项审查修正：即使new_grant/retained也必须精确匹配最终decision的lease kind/lifecycle/id；真实其他交互的最终lease导出other及原lease，不能标为空闲。204项原owner+新增快照检查0失败，含实际magazine授予并作为incumbent保留的流程。主会话逐项审查候选、核对基础hash/git apply --check/最后测试日志后，已将只读grab_snapshot及value-only快照结构合入cover_input_owner.h。无旧owner行为/结构成员/仲裁/时间更新；证据analysis/cover-worker/task-05/integration.json。尚无Native重建或实时C0调用该接口的证据。
+
+确认Scene owner与Native C0的输入可属于不同cohort：C0独立读取更近V3，不能把旧owner hand序号和时间戳直接换成新值来通过既有cover_grab_tick_adapter的严格等式。已交原Worker task06实现纯数据关联模块：只有同一Scene元数据/输入域/producer stream/左手tracking epoch，且生产者squeeze pressed/released计数完全未变，才把已提交的逻辑握持状态关联到当前真实物理手样本。任何新press/release或中间release+repress均拒绝旧状态；不再造阈值、边沿、request或手部权限，保留原cover观察时间和当前真实hand接收时间。当前已制定契约，转换器及实时接线尚未完成。
+
+主会话另在r290/host-c0准备了独立检查副本：Native和body_c0_hands与已编译r290完全一致，只引入已hash验证的历史Host边界及记录值helper。计划走实际apply/Backend/Kernel/CAS/原消费回读，源/actor/entry身份仍明确为Host夹具，不伪造退休覆盖或游戏证据。此副本尚未编译/执行，不能算C0验证通过。实际L2 Contact、逐点Profile、GrabPose/松手过渡、运行/图像/头显及其余系统要求仍未完成。
+
+
+### r290 Host C0真实提交/消费切片109检查通过（非游戏证据）
+
+主会话完成同版Host检查：输入/Goal/eye先由同一冻结姿态生成器生成可达双手目标，在Native准入之前一次锁定，准入后不更新保存的输入；仅为Host环境一致调整线程/actor/world/asset身份，时间和跟踪payload保持其夹具原值。执行实际r290 Native apply_impl、Backend、Kernel、CAS、Registry安装、before_original/pose_end及read_completed_cover。原始Compose的SpaceBases计算和actor/session/entry/source入口认证仍是明确Host替身，不是游戏引擎或真实发布者证明。
+
+普通/记录aux值两例均27检查0失败，确认joint_committed、cover_plan、solved_mask3；消费后的真实读取Local与本次完整候选一致，读取SpaceBases的左右腕位置/四元数也分别匹配目标。原始覆盖并未发生，51项实际写入债务保持pending，未合成overwrite/retirement覆盖。另测替换锁定源14项0失败（未写Local），不完整Desired12项0失败（实际backend capture阶段拒绝，未写Local），保护原始paired-execution34场景29项0失败（不接管手部，原始手部Local保持，body消费可核对）。5场景共109断言0失败。
+
+首次Host编译缺历史诊断声明和original_space替身方法，后补仅测试边界；不完整Desired最初错误预期在apply而非capture阶段拒绝，以及首次调用尚未建立owner_thread时无单行begin诊断，均保留失败日志；最终核对实际backend_capture计数，不以无效诊断行判定。最终依赖解析验证95个生产依赖均与已编译r290冻结文件逐hash一致，3个测试边界文件单列，无意外工作区依赖。证据cover-hands-r290/host-c0/evidence.json、result-v5.json及依赖/日志/二进制hash。武器挂载provider、原始游戏控制器/actor读取、真实Original Compose、arm-control/GPU/立体图像/头显仍未验收。
+
+Worker task06交付当前V3关联模块候选及40检查0失败，已改正中间稿的parent/current别名并移除调试TLS状态，但尚未合入。主review发现held状态完整性和release夹具不一致（只释放ownership但hand仍down）需修正；已交同一Worker task07，要求真实free/released语义、完整lease/phase/offset校验和coherent夹具，不弱化Source分类。实际L2 Contact、逐点Profile、GrabPose实时接线及整个系统其余要求继续未完成。本轮无游戏/XR/Quest执行，无公开包/入口替换。
+
+### 2026-11-15：当前输入关联器合入、原始 L2 点位只读票据
+
+主review核对task07候选与其生产依赖hash，合入新的cover_grab_current_adapter.h，保留parent Scene逻辑输入和当前V3物理姿态的分别绑定；held要求同边、认证offset、grabbing阶段、按下、request/lease/lifecycle一致，release/none要求真正free且抬起、无遗留lease。保存V3配合明确synthetic owner状态109检查0失败。候选补丁多余EOF空行已移除，生产文件与Worker最终候选逐字节相同；integration.json记录。本模块尚未由C0调用，不能作为实时扒住完成证据。
+
+原始cover_l2_grab_live collector新增PointReceipt，保存原始点位、完整EyeSample、frame/epochs/原始时间、墙面基与比例；只在原始getter成功的实际Scene GT准备中发布，每次准备失败撤销。读取先检查atomic线程身份，再核对frame及全部7项epochs，拒绝不改输出。收集器本身不授予手部lease、不证明表面/碰撞，不改变既有点位选择。未来C0还须重新绑定实际actor/world/cover身份和当前owner ticket。
+
+独立Host夹具执行实际collector：v2为36/0；新增top CT2+popup及左右原始权限检查后v4为45/0。v3一项失败来自前例保留-0.3m拖动offset导致top未进入获取范围，v4仅隔离该夹具状态后通过，失败日志保留。getter及EyeSample仍是Host替身，不宣称引擎对象认证或实际游戏点位采样。证据analysis/cover-worker/owner-l2-receipt/evidence.json。
+
+同一真实DeepSeek Worker已固定到Pinned，精确ID/title已复核并成功打开。task07进程exit0。task08已写好authoritative owner receipt接线brief；CLI恢复因桌面active writer被拒绝，桌面派单和紧凑状态工具未返回，停止等待工具后未重启/替换Worker，接单状态仍未确认。current.json明确记录，不把派单请求当已开工。本轮无游戏/XR/Quest/输入注入/公开入口变更。逐点Profile、Contact/C0实时扒住手型、实际画面与头显验证及原完整需求继续未完成。
+
+### 2026-11-15：已提交掩体票据桥接与冻结 Native r291 编译
+
+Worker task08仍无成功开工证据，桌面write ownership未被强行抢占。主会话接手关键接口，新增cover_grab_owner_receipt.h：仅保存真实CoverInputOwnerTicket，发布和每次读取都通过实际owner.grab_snapshot核对当前提交，保留原始采样时间；不以缓存快照或diagnostics.latest授权。线程atomic gate先于非atomic GT状态读取，拒绝不修改输出。真实CoverInputOwner配合synthetic binding key进行47断言0失败，覆盖free/held/release、替换ticket、失效、失败提交、错误owner/thread/Scene key/lifecycle等；不能据此宣称真实游戏对象准入已验证。
+
+Native cover_shared_input_live仅添加发布/读取接口，成功cover事务complete后保存真实ticket、selected control、Scene/frame/thread/三项QPC、actor/eye、tracking ticket及动作cookie/revision；新Scene的原有clear_tracking同时撤销，保留已有同Scene view缓存流程。read_grab先检查线程与Scene，再重新校验票据和当前broker action barrier/generation/cookie/revision，前后不一致则拒绝。此接口尚未被C0扒住手型调用。原有runtime行为没有改成第二次仲裁，也没有新增骨骼writer。
+
+r291从r290精确冻结源复制，仅叠加审查过的owner snapshot、原始L2 receipt及本次票据桥接；capture.cpp和shared inl按当前before/after的最小自有hunk移植，不拷入其他会话dirty文件。Native编译/链接成功，DLL SHA256 04858de675ec680c80794bd3c0c64513fd12cc0fba1096c09d6cf9c61896b870。435项目头依赖及主编译单元命令核对，全部冻结文件hash一致，flags未变、PHYSX queries仍OFF。初版事后验证误把capture.cpp当header dependency而失败；finalize-v3单独核对实际Ninja主编译命令，保留失败记录，未重编译。结果native-build-result-v2.json。
+
+自有源码hunk、47检查与冻结编译证据位于analysis/cover-worker/owner-grab-ticket/evidence.json。task08 brief已改为若后续收到则只review这些自有改动，继续复用同一侧栏Worker。本轮无游戏/XR/Quest/输入执行，未安装/替换入口。Contact、逐点Profile、C0实时抓握和全部要求的游戏/视觉/头显验证仍未完成，不将编译或Host检查计作整个掩体完成。
+
+### 2026-11-15：L2 Contact 适配及原始辅助骨在扒住皮肤求解中的兼容
+
+新增纯模块cover_l2_grab_contact.h，将已由Native独立认证的L2 reference observation和owner snapshot转换为现有GrabPose Contact：原始world point逐值保留，profile坐标轴只取墙面水平朝向，检查同frame、全部epochs、同原始观察时间、权限及逐点Profile kind/id。top仍仅CT2+popup，不用普通握拳替代所需Profile。Key内原有shape_generation字段在此明确表示cover reference epoch，不宣称物理形状或碰撞证明。Native仍须认证实际Scene/actor/Link和owner ticket；此helper本身不提供准入或骨骼写入权限。
+
+纯适配检查45/0，使用synthetic L2-shaped点位/owner/Profile验证三边到真实GrabPose规划器、原始坐标与时间保留、权限、墙面基准及拒绝不改输出。原始reference/C0-local/component夹具加synthetic逐点点位/腕型进行固定骨长skin管线检查，首次51断言3失败：仅记录过的r272辅助骨值三边均在旧strict validate处被拒绝。保留skin-before日志。
+
+cover_grab_pose_adapter的唯一行为修正是沿用已有cover_passive_atoms验证：原始frame和当前body candidate均须通过已有限定规则，所有合格辅助骨65/67/106保持完整local字节不变，不能修改手臂骨/骨长。普通与记录aux两类、三边均进入实际现有adapter solve，修正后84断言0失败；非单位手臂和篡改辅助骨字节分别拒绝不改输出。未修改的现有cover_grab_pose_adapter_test完整1226检查0失败，覆盖既有DesiredBones/释放过渡等路径。证据analysis/cover-worker/owner-l2-contact/evidence.json，附自有patch与before hash。
+
+上述Profile与点位均明确是测试合成数据，不能计作生产逐点GrabPose authored完成或实际表面贴合。本轮尚未接入Native C0 live caller，没有新的Native编译/运行包；r291编译记录仍只证明上一轮冻结版本。本轮无游戏/XR/Quest/GPU/立体图像/头显运行。下一步继续生产逐点Profile、当前source/owner/点位的最终绑定及C0 runtime接线，再完成原需求的运行与视觉验证。
+
+### 2026-11-15：三点初版 authored Profile 与 C0 实时皮肤接线，r292 编译
+
+新增cover_grab_profiles.h，revision marcus115-cover-l2-author-v1。左侧、右侧和顶沿具有不同稳定id、腕/掌朝向、四指曲线和拇指闭合；接近为各自曲线的轻度闭合，抓稳使用完整曲线。掌心定位沿用现有Marcus115 authored marker及wrist-down20标定，固定骨长/比例，未冒充真实手势采集。数据明确是designer-authored初版，尚未看实际表面完成贴合，不能计作CV-12视觉/手感验收。
+
+cover_grab_owner_receipt新增read_if，让Native用C0已认证的不可变parent Source核对原Scene key，避免伪造新Scene Receipt。新cover_grab_skin_live.inl绑定真实owner票据、当前tracking ticket、完整actor/world/Link/slot/type、原stereo/reference/controllers和broker action/cookie/revision；再读取同frame/epochs原始L2票据，生成对应Profile/Contact，调用既有current-V3关联器和skin transition adapter。没有重新读输入、重签时间、另造lease或新增骨骼writer。
+
+C0在本次独立自由手求解成功后才尝试该附加。准备结果写入同一个body candidate；失败保留本次新求出的自由手结果并撤销旧cosmetic状态。释放仅保存相对腕偏移/指型过渡，不保留旧world contact。过渡next状态仅在原Kernel commit成功后保存。未完整DesiredBones、不可达或失证不接管扒住手型，固定body/head/feet及原有准入保护仍保留。此处是源码接线与编译状态，实际Native新分支尚待Host和游戏证据。
+
+原始骨架夹具配生产初版Profile、合成可达点位/对齐输入进行三边普通及记录aux的skin求解，工作区和同版冻结头各102检查0失败。冻结测试依赖26生产头全部逐hash匹配Native冻结版本，记录aux helper单列为fixture；无工作区生产头泄漏。实际CoverInputOwner/read_if另54检查0失败，包括错误线程不执行predicate、拒绝不改输出和有效票据读取。
+
+r292从r291冻结源上仅叠加本次自有hunk及新模块。两次私有上下文移植因当前邻近代码与冻结版不一致被拒绝，后按精确自有锚点移植，未复制其他会话dirty源码。首次编译因冻结依赖闭包缺cover_grab_pose/transition两头失败，明确补齐并记录hash后使用全新native-build-v2编译，所有失败文件保留。Native编译/链接及依赖验证通过：442项目头加主编译单元，flags未变、PHYSX queries OFF。DLL SHA256 ea9349ebc2eb0da64f21f7e2edb49ce795e6193c6ae8a12544a48903724135dd，未staged/未替换入口。证据analysis/cover-worker/owner-grab-profiles/evidence.json及cover-grab-skin-r292/native-build-result-v2.json。
+
+Worker仍保留唯一侧栏会话，task08接单状态未证实，未新建替代会话。本轮无游戏/XR/Quest/输入注入，未声称实际新分支、渲染或头显验收。下一步必须先做新Native read/compose/C0 append分支的Host覆盖，再处理实际游戏consumer/retirement与逐点全角度贴合，完成原完整掩体需求；不能把此次102/54或编译算作系统完成。
+
+### 2026-11-15：实际 Native read/compose 与真实 owner 的 Host 路径覆盖
+
+新增owner-grab-live-host夹具，直接包含冻结r292的生产cover_grab_skin_live.inl及所有生产算法头，实际执行CoverInputOwner begin/update/complete、ticket store、current V3 classify、独立free hands求解、Native read和Native compose。actor/eye/key谓词及PointReceipt reader的数据类型/函数从同版源提取；原始actor/point生产端与broker状态是显式Host替身，不是引擎准入或实际L2 getter。没有伪造ticket或用恒true函数替代owner snapshot。
+
+左、右、顶沿各普通/记录aux两种，一共6场景，每场295检查，合1770断言0失败。实际held过渡weight达到1，逐点authored指型相对本帧刚求出的free hand发生真实变化，FK腕位置/朝向匹配prepared skin target；左8..26以外96骨的完整local字节均与本帧free hand一致，含右手/head/feet/辅助骨。真实release owner回到free，过渡结束时完整candidate等于当前free手结果；真实regrab获得不同lease。没有只证明首次weight0空操作。
+
+核对错误world/actor/Link/slot/type/reference/ticket/stereo/controllers及broker action/cookie/revision/barrier均拒绝；实际另一线程读取在修改scratch owner前被拒绝；owner失效后不返回缓存授权。更新的V3 release+repress输入仍通过Source classifier，但旧continuation被Native compose的tracking门拒绝，candidate保留新free hands；原始点位权限失效同样不残留扒住输出。
+
+v1/v2编译失败是Host边界缺common include及顺序，修正仅夹具；v4将base_view作为Input子对象传入独立free hands导致真实alias gate拒绝，v5改为独立owned copy后通过。v6六场景1182/0后补96非左骨不变与真实跨线程检查，最终v7六场景1770/0；日志全部保留。50生产依赖逐hash匹配冻结r292，2个显式Host边界/aux helper单列，未漏入工作区生产头。证据analysis/cover-worker/owner-grab-live-host/evidence.json。
+
+本轮未改生产源码，r292 DLL不变且未staged，无游戏/XR/Quest执行。新分支尚未与外层实际apply_impl/Kernel/CAS/read_completed_cover合为同一Host测试，不能把此1770结果当作该层或实际游戏证明；后续细项见owner-grab-live-host/next-c0.md。真实Original Compose、覆盖债务retirement、逐点全角度贴合、GPU/双眼及物理头显仍未验收，完整需求继续未完成。
+
+### 最新用户优先级：先交付基础进入／面朝／双手6DoF／退出（2026-11-15）
+
+用户直接问当前能否进入和面朝掩体，要求先做最基础功能。当前工作顺序改为优先验证并交付基础可玩闭环：进入掩体、角色/身体面朝掩体的基准正确（不锁定真实头动）、进入后左右手仍独立6DoF、正常退出。完整需求保留，扒边/拉拽手型等后续工作保留但不能继续作为基础交付前置门槛。过去实际游戏记录有原游戏A进入掩体，但当前新版本尚无基础四项完整实际验收，特别不能宣称自动稳定面朝掩体已验证。
+
+本次正在进行的advanced组合Host检查正常终止且未写生产：原始旧point一秒过期被拒绝是有效负例；重新生成准入前时间一致的合成Scene后，实际Native skin准备成功，但外层Kernel prepare以invalid_plan拒绝、未执行写入。定位到实际长度误差4.0584362462681156e-5与报告3.8716715607733931e-5差1.8676468549472247e-6，超过现有report一致性1e-6；这仅定位到具体不一致，尚未修复，不能把之前单模块通过当组合提交成功。失败与源码留owner-grab-c0-host/checkpoint.json。后续修复须重算正确报告，不放宽Kernel。当前按用户要求先收敛基础，不继续让这项advanced问题占用基础交付。
+
+### 最新直接要求落地与基础 r293 实际检查失败（2026-11-15）
+
+用户明确取消逐点手型匹配，改用普通握拳和统一向下拉、按位移连续探出；按顺序先交付进入后身体面朝掩体并保留双手6DoF，再扒掩体，再摄像头上/下/左/右，交互仅限原版LT确有对应探头动作的方向。要求文档已置顶同步，历史复杂GrabPose不再作为交付门槛。此轮没有继续手型/拉拽/碰撞开发。
+
+body_goal_view_adapter新增cover-only face_cover_reference：以已认证Marcus参考模型+Y正面、组件姿态和当前wall anchor建立根骨旋转，防止继承背靠墙动画的根骨朝向；连续view/head、pelvis和显式foot anchors保持原路径，旧legacy marker行为不变。该问题机制在合成背向root中复现，不能称真实原游戏根因已全部证明。真实Marcus reference配4墙朝向×3独立视向等116检查0失败；v1夹具feet与calibrated结构别名被现有门拒绝，v2用独立owned feet后通过。
+
+r293以精确冻结r290（已含掩体hand scope及aux修复）为基，只替换本次goal header，排除整个matched skin接线。Native编译/依赖核对通过，SHA b01859751b611bd68710319dc7691a8954c9ff63fa579a18ad910aec59ae345a。根源码旧matched skin默认disabled，保留历史而不启用。唯一Worker task09同ID恢复仍被desktop active writer拒绝，不声称接单，也没有创建替代Worker。
+
+新独立实例cover-1115-r293-basic-face准备时旧私有工具与11月15日canonical runtime_config接口的锚点变化正确阻止继续；在未启动实例上恢复，保持canonical isolation/identity/resource/pause/音频/后台窗口保护。操作者仅原始A进入和neutral观察，无Grip/探头位移/碰撞动作；增加必须有新的cover消费与hand提交的8秒有界检查。实际game5560 creation134392303645493342、owner32528、XR53776已进入原CT2，实际双眼投影成功。但基础检查FAILED：cover fits/plans/applied/consumed/view均停在1，hand commits351（进入前持续，进入后不再更新）。不能把首次提交当持续可用，不能说面朝/双手修复已游戏验收。
+
+实际挂起32份不可变记录独立复制回读hash一致：serial352，51 fields，protocol0/failure0/consumed1，安装epoch1417，current epoch至1449，coverage_epoch0、covered全0，storage/metadata仍当前。cached candidates/started/finished0；per_bone snapshot/eligible拒绝1712，forward per-bone697，证明相关原始路径在跑，不能说没动画Tick。继续定位实际原始覆写/retirement缺证，不能用时长、epoch递增或强清债解决。快照SHA62d8cfccb9d6a0aa4fd1e50215dd06a4f6cb64c27bc36564137cdca23fe0b2b3。
+
+279投影帧/errors0，亲看120正常站立双手、185接近掩体有严重近处网格遮挡、210/240黑画面，未作完整跨度或表面贴合接受。normal_cleanup_verified false、entries_restored0、XR exit0、无强杀；独立核实本次game/owner/XR精确PID均已不在，remaining_owned空，不能把进程终态当内部恢复成功。源码保护13项前后hash未变。此基础包未交付/未替换用户入口，不让用户试这个失败版本。证据cover-basic-r293/evidence.json及实际archive。下一步只修阻断掩体持续C0更新的具体原始覆写证明问题，再进行有针对性的基础复查。
+
+
+### 2026-11-16：进入掩体后手6DoF停更，r294镜像路径修复未通过实际检查
+
+当前只处理owner要求的身体面朝掩体和进入掩体保留双手6DoF。扒掩体/镜头位移暂不推进；不以旧GrabPose匹配、遮挡或碰撞作为前置。
+
+根据r293的实际停更，离线分析私有原始.text数据库副本，F4FEC镜像原实现主段2761字节和262字节冷段及相关数学helper全部与原始保存段逐字节相符，证书及汇编见cover-basic-r294-mirror/mirror-chunks.json。新增原镜像整骨架写回见证，复用现有F7940回调和Registry，不新增hook、骨骼writer、不改镜像标记、不直接清除消费后的待退休字段。完整mirror/reference/indices/代码/身份/world和正常返回前后数据一致性必须通过；缺少镜像表的纯转发不算写入。
+
+r294冻结r293基础源码，仅新增上述见证，133项离线检查0失败，Native e570eea2204b9f8955dbd64aa96f121980a116fc801d49fbcae2d12ab3cdc86e编译通过。实际隔离实例cover-1115-r294-mirror-hands进入原CT2掩体，但cover consumed仍只有1、hands commits387后停止；mirror started/finished0、rejected1071。结论是修复没有解决当前故障，不交付成功候选。pending52，原子coverage仍0。operator exit1，正常模块cleanup未验证、无强制终止；runner remaining_owned为空，随后精确PID47680/70164/39368均不存在。原始输入/物理隔离和0.4后台规则保留。实际证据见该目录actual-result.json及独立instance/native/cover-pending-observation.json。
+
+下一步r295仅补镜像见证拒绝阶段/表大小/索引/代码证书的有界观测，便于从本次真实首错继续；没有放宽任何生产门。Native 17be9d82cb75f7cf2e51337febaf0f1c74cd2bbc6e643e7c519c7ed60047a571编译通过，更新头文件133项离线检查0失败。当前唯一受控实例cover-1116-r295-mirror-reason检查中，运行结果尚未记录。仍未证明实际持续双手6DoF或面朝掩体视觉通过。原唯一侧栏DeepSeek worker保留；其desktop writer占用导致CLI task09拒绝，不声称它正在实现，主会话接手关键路径。
+
+
+### 2026-11-16：r297 实际通过掩体手部持续更新与正常退出；物理/可见性另计
+
+r295实测镜像见证拒绝stage6，实际global axes为1/4。此前新增检查误按顺序枚举0..3解释；原F5AB8主/冷段实际比较1/2/4。r296修正后，拒绝定位到bone65的局部轴字段。进一步按原函数完整控制流确认：其他byte值有明确no-op默认分支，之后仍进入F4FEC逐desired bone的完整32B最终写回；这些轴字节并非数组下标，不能把人为枚举范围作为写回证明的前置。r297保留全部轴/表字节的前后相等检查，按原默认分支接入；reference/mirror索引范围、当前owner/world、原代码证书、metadata、正常原调用返回和原Registry退休规则不变。
+
+r297运行期间仅对精确自有PID47932执行只读内存拷贝，creation_time与image核对，取得真实115条reference/mirror表；65/67的parent均56、互为mirror、axis均3；106 parent0、mirror106、axis3。原假设被实际数据纠正。档案actual-mirror-source.json及两个二进制留在cover-basic-r297-default-axis，原始共享IDA DB SHA a87a4802…c9eab0未变。156项纯构造检查和159项真实表回放检查全部0失败；不是物理手柄证明。
+
+Native ddbd5c00c7c0e40d6c4d8dd37c7fa688041cb88ce676b62f4f8ced103db215ef，精确冻结r293基本面对掩体/hand6DoF来源，加本次mirror见证；436生产依赖来自冻结目录，PHYSX OFF，未合入后来复杂GrabPose/skin。唯一实际实例cover-1116-r297-default-axis：原CT2进入成功，operator exit0；cover plan/applied/consumed/view全部82，mirror started/finished82/82、rejected0；hands attempts/solved/commits492/492/492，body fallback0。原先cover consumed1即永久挂起的故障在这次基础动作检查中解除。退出native/goal/body/atom pending全部0、entries_restored1、normal_cleanup_verified=true、forced_termination=false、remaining_owned={}；精确47932/67728/65128均不存在。源码/输入/身份锚点前后不变，202真实双眼投影帧/errors0。
+
+本人看frame140/180/199：站立双手可见；掩体内附近身体模型遮住手。不能把逻辑连续更新冒称为完整6轴手运动、身体朝向可见性或实体头显验收。此次没有执行独立左右手的逐轴运动，physical_headset_acceptance=false、hand_visual/body_facing_visual仍false。按owner暂缓遮挡范围保留问题，不以计数掩盖实际图片限制。
+
+构建组件保存J:/gearsVr/candidates/cover-basic-r297-20261116/GearsCapture.dll，hash回读相同；build-info.json明确仅Native组件、需要现有同组PG/XR与cover-specific手动profile，并不是整套启动器包，没有覆盖其他候选/现有启动入口。完整证据analysis/cover-system-20261108/cover-basic-r297-default-axis/evidence.json。后续先完成基本手部/面朝掩体可见性确认，再按owner顺序普通握拳向下扒、最后镜头位移；不恢复复杂手型匹配或碰撞工作。
+
+### 2026-11-16：r304 进入掩体保留双手6DoF，基础面朝掩体实际通过
+
+本轮继续owner指定的基础顺序，没有推进复杂GrabPose/skin、碰撞、遮挡或Quest工作台。r298观察脚本把poses字典当列表，动作未执行；r299外部Space快照混到原动画与C0之间，不能作为同回调手部失败证据。两次均保留原记录并正常退出。后续改用原有有界typed HandTrace与同次V3输入、原consumer及原调用返回后的Local数组逐条配对，不新增姿态writer。
+
+r300实际捕获右手移动时，计划与consumer相同，但原调用后右腕被覆盖，四个手臂控制角色只获得左侧两个（mask3）。发现现有retained-control路径被V1-only前置门挡住，V3无法进入。r301把该前置门与现有V3来源一致，保留同一已commit/consume lease、owner、Scene、线程、metadata、身份和原Registry退休检查；不续写源时间、不放宽新姿态freshness。实际右腕晚覆写消失。r302统一已有cover camera/body/head/hand墙向基准；r303采用原模型reference-neutral并按头部锚点恢复骨盆；r304修正旧fitter重新选回原背靠动画骨盆的问题，仅新reference-neutral Marcus分支使用已验证的目标骨盆。原脚点、骨长和单writer保持。旧profile仍使用原measured pelvis。
+
+r304 Native 00c9999286423f7cd47fc2eb97145309ccf286ebdedcdca54cfe68c238772199 编译通过，PHYSX OFF。full-fitter实际存档离线回放通过，头误差约0.000009u、双脚误差均小于0.000104u、最大骨长误差0.000064u。实际隔离实例cover-1116-r304-face-hands进入原CT2掩体，9个有界实际记录覆盖左右手分别复合平移/旋转/归位、转头与归位。全部normal/consumer/end=1，双腕计划与consumer、原调用后Local逐字节相同；四控制角色mask15。左右手实际平移约3.086/3.085cm，旋转18.96774°与输入一致，单手平移时另一手漂移小于0.009mm；转头输入5.729578°，实际头部5.729578°，手部持续更新。
+
+注意：本次默认前伸目标超出原角色固定臂长，5.385cm输入平移被IK限制为约3.086cm。历史r297原CT0站立同输入首相位target-to-wrist误差6.055/6.059cm，本次CT2为6.073/6.076cm，相差不足0.18mm。这是原臂长投影限制，不是新增cover停更；不宣称无限制1:1，也不伸长骨骼。此次是复合位移/旋转动作检查，并非逐轴穷举或物理追踪验收。
+
+实际原consumer存档重建Local×component的root/pelvis/head/feet/shoulders与Space一致，torso朝墙夹角3.261570°，肩线与墙向90.005571°、肩线水平误差0.000095°。实际墙向取C0 wall_anchor，不能用相反的legacy preview forward。亲看实际双眼frame190/230/265，双前臂/手在沙袋前可见，转头场景变化；共280投影帧/errors0。仅基础可见性通过，非完整表面/全视角贴合验收。
+
+operator/stop均0，normal_cleanup_verified=true、entries_restored1、pending/body_native/body_goal/atom/cover_body均0，remaining_owned={}，未强杀。独立查本次game30276/owner60312/XR74312均已不在，未影响其他实例。原锚点与cover-reader源码hash保持。物理头显未验收。原唯一侧栏DeepSeek worker已通过desktop原会话恢复，task13审查r301/r302，未发现身份/lease门放宽；task11/12旧exe早于修订source不能充当修订结果，主会话重新编译并绑定decoder和实际档案，保留旧错结论作为历史而不采信。
+
+证据：analysis/cover-system-20261108/cover-facing-r304-fit/evidence.json、motion-result.json及同目录源/编译/decoder档案。交付保存J:/gearsVr/candidates/cover-basic-r304-20261116/GearsCapture.dll并回读SHA一致；build-info明确仅Native组件，不是整套可启动包，没有替换用户现有入口。诊断相位记录默认OFF，物理profile保持OFF。完整手动启动器包和头显反馈仍待完成。后续按owner顺序做普通握拳向下扒，再接原生LT允许方向的摄像头位移；高掩体不添加原游戏不允许的向上探头。
+
+### 2026-11-16：r305 三方向统一向下扒动已实现、编译及CPU联动通过；实际扒动待查
+
+上一goal turn为实质进展：r304修复掩体手部停更并实际检查基础面对掩体/左右独立手运动。本轮继续owner指定的简单扒动，原唯一侧栏DeepSeek worker完成task15，主模型审查。新增CoverPullMode，通用调用默认generic保留既有行为；掩体实际两条输入路径共用prepare_grab_points选择directional_down。真实grant时固定tracking up轴和模式，gain1；向下扒左点right减少、右点right增加、上点up增加。向上反向收回，松手保持，再抓从当前保持位置回收。饱和沿用clipped rebase，反向1cm立即响应；非法enum与同sequence改mode拒绝，较新sequence不重解释已grant模式。原生LT点位/高掩体权限、lease、freshness、epoch和单writer不变。
+
+仅三处生产差分合入r304冻结线：cover_interaction.h、cover_input_live.inl、cover_input_owner.h的mode判等单行；当前源码其它新增snapshot/高级skin代码未引入。task14报告的单位错误已修正，6.055/6.059与6.073/6.076均为厘米。Native 01377599aee0d6e97dbcaba5f4d1a5de7e477b694ed949c66f3be6f85080634e 编译通过，436生产依赖全来自冻结树，PHYSX OFF。
+
+有意义CPU检查：三方向相同down距离、比例、上拉reverse、松手保持/重新grant再上拉0.1m、饱和后1cm立即反向、冻结旋转轴/模式、非法enum及重复payload拒绝通过。精确冻结头文件下owner 100检查0失败（新增三方向owner+view偏移），live 62检查0失败，transaction 808检查0失败。初次旧夹具缺view_anchor、EyeSample缺native_ct，且旧transaction/range测试仍期待范围缩小时自动clamp，失败原样保存；修正仅测试夹具/采用已有修正transaction测试，生产未为通过检查而放宽。cpu-checks、cpu-checks-v2失败档案和cpu-checks-v3最终结果均保留。
+
+当前普通free手型已有squeeze闭合路径，此轮未把它冒称为抓住后的完整拳型视觉验收。r305尚未启动实际游戏扒动、未检查实际摄像头偏移、未做实体头显接受；r304实际证据不替代r305 runtime。下一步用现有0.4后台隔离入口做一次原生LT点位抓取→向下扒→松手保持→再抓上推的有界实际检查，并检查普通拳型及原C0/视点消费。高级匹配手型、碰撞/遮挡仍延期。Native组件及build-info保存J:/gearsVr/candidates/cover-basic-r305-20261116，回读SHA一致；不是整套启动包，未覆盖用户入口。完整证据analysis/cover-system-20261108/cover-pull-r305-downward/evidence.json。完整掩体目标保持active。
+
+### 2026-11-16：r305 左侧原生LT点实际扒动/松手保持/再抓回收通过，身体视点真实应用
+
+上轮goal turn为实质进展，r305方向映射/Native构建/CPU联动完成。本轮使用唯一新隔离实例cover-1116-r305-downward-pull、同Native 01377599…80634e、PG f8e6f3c2…4807及XR16840b27…7fc，0.4后台/cloaked/observe-only/testmute/物理输入隔离，resource admission wait0。未改变生产源/输入权限，未运行Quest工作台。实际game53740 creation134392398912033486、owner73532、XR74020；现有runner handle6042正常终态exit0。
+
+唯一worker task16编写operator初稿存在dict/gesture接口错误，经主审修正。fake selfcheck仍因人工fixture状态无法到点而失败，原日志保留，不能据此判生产功能成败，也不声称fake通过。主模型冻结已review的57b3645ca28bc8b469a824eca80d4040e1e8df9b4d0cbdffbf9ef623ee14f091版本于r305/hand-motion.py，实际动作只使用此字节版本；worker后续源改动未进入运行。源operator预备一次缺isolated-r105模块搜索路径，在启动前纠正，未产生游戏动作。
+
+实际进入原CT2掩体后，读取当前原生LT左点和原控制器world，按r302/r304已证明的C0墙向映射到当前raw握点，验证id1/kind1/allowed/reach后按下Grip。Scene实际owner获得，向下0.10m后virtual.right=-0.100000024m、up=0；松手保持；再次回到同原生左点获得新request，向上0.05m后right=-0.0500000715m。cover消费从105→123、再次176→194，仅这些计数不单独作身体完成证据。
+
+独立主模型新编译decoder绑定r305冻结类型/文件大小/magic/PID/session及同seq/tick/compose，解析6条实际C0与V3输入。全部normal/consumer/end=1、四手臂控制mask15、双腕计划与consumer及原调用后Local逐字节相同；输入LEFT squeeze为0/0/1/0/1/0。原调用后实际头Space×component世界坐标沿墙right投影：接触0、下扒-10.0002408cm、松手后-10.0002427cm、上推回收-5.0002405cm、最终放手-5.0002425cm；竖直变化约0.000008cm。目标头与原消费头误差均小于0.000005u。确认实际身体视点应用了虚拟扒动，未退出手部6DoF。
+
+380实际双眼投影帧/errors0，亲看308抓取、318下扒、353回收；沙袋相对画面位移与横向视点变化一致、右前臂可见。左手多数被沙袋挡住，普通拳型的可见性仍未接受，不将图片冒称为手/表面贴合或头显接受。projection-phase-selection.json通过同名neutral事件wall/perf近似关联到帧，仅单帧级大致关联，typed C0才是位移数值证据。
+
+operator/stop0、normal_cleanup_verified=true、entries_restored1，pending/body_native/body_goal/atom/cover_body全部0，remaining_owned={}，无强杀，源码锚点/cover-reader hash未变。独立查询本次精确game53740/owner73532/XR74020均已不在，不涉及其他实例。实际证据actual-left-result.json、decoded-pull.json、decoder-provenance.json及instance/cover-output。Native组件build-info已记录仅左侧链实测通过，未替换用户启动入口。右侧与上沿实际链、可见普通拳型、完整manual包及实体头显仍待完成，完整goal保持active。原侧栏worker串行task17准备右侧/上沿operator，不启动第二writer或任何runtime。
+
+### 2026-11-16：r306 右侧/上沿实际扒动与摄像头位移通过，三方向基础链已实际覆盖
+
+上一goal turn为实质进展：r305实际左点down/release/regrab/up及原C0应用通过。本轮仅补原生LT右点与低掩体上沿，复用同Native01377599…80634e、PGf8e6…4807、XR1684…7fc，不重编不合入生产变化。worker task17基于已实际运行的r305模块参数化，主审纠正int报告键、头命令闭包/真实命令记录和consume增长比较；冻结r306/hand-motion.py SHA7208ec7f5b7c9c13a1d9635dbcf586c0344c71936fc32628761163b6674fe00c。仅现有g.put/gesture与g.head_move，右侧观察yaw+.55、上沿观察pitch+.45后返回，finally释放Grip并还原原头/手，不新增writer或输入路径。
+
+新隔离实例cover-1116-r306-directions，game9124 creation134392404353391142、owner17964、XR71764；既有runner handle27500终态exit0。准备时遗漏旧Native构建回执路径导致源脚本在启动前中断，随后修正为明确复用r305回执；重用已写预备文件时逐字节检查相同，没有覆盖或重跑已启动实例。实际资源wait0、0.4后台/cloaked/observe-only/testmute/物理输入隔离继续保持。
+
+实际当前CT2原生右点id2/kind2 allowed/reach授Grip，down.10m后virtual=(.100000024,0)，松手保持，回到同点新request再上推.05m后=(.0499999523,0)。保持该偏移，原生上沿id3/kind3授Grip，down.10m后virtual=(.0499999523,.100000143)，松手保持，再抓上推.05m后=(.0499999523,.0500001907)。均从当前真实held offset推进，不重置坐标，不伪造native点或权限。实际原生高掩体无popup的条件仍由同一个cover_l2_allowed保留，本轮没有高掩体runtime新接受。
+
+复用已编译并有源hash绑定的r305 decoder（类型未变），严格配对15条实际C0/原consumer/原调用后骨骼与V3输入：全部normal/consumer/end=1、alpha mask15、双腕planned/consumer/after Local逐字节相同。排除观察头转动的回合，原调用后实际头Space×component沿墙right：右down10.0000019cm、松手保持10.0000019cm、回收5.0000012cm。上沿相对该段起点：down10.0000000cm、观察返回后10.0000076cm、回收5.0000000cm，另一轴漂移不足0.000001cm。确认右/上实际身体视点与手6DoF，不仅是Scene计数。转头/抬头期间Grip持续持有，offset保持；头关节的观察旋转/marker偏移单独存在，不把头转时pivot变化混为虚拟位移误差。
+
+549实际双眼投影帧/errors0，亲看273右侧转头、431上沿down、448抬头观察。侧向/上移与观察视角变化可见，双前臂、上方左掌和部分弯曲手指可见，但完整普通拳型闭合/清晰度仍未接受；不增加手型匹配、碰撞或遮挡前置。上述帧通过neutral同名事件wall/perf作近似关联，数值结论以typed C0为准。
+
+operator/stop0、normal_cleanup_verified=true、entries_restored1，pending/body_native/body_goal/atom/cover_body均0，remaining_owned={}，无强杀，锚点/reader hash前后不变；独立核实精确9124/17964/71764均不存在。无Quest/其他候选变化。证据r306/evidence.json、decoded-directions.json、projection-phase-selection.json及instance实际档案。r305组件build-info已记左/右/上三方向runtime分别通过，仍不是完整manual启动包，未覆盖用户入口或宣称实体头显接受。后续准备独立完整cover manual包供owner体验；普通拳型可见性另查，不恢复复杂matched-skin任务。唯一侧栏worker task18只读调查现有打包支持，不允许改source/tests/guards。完整goal保持active。
+
+### 2026-11-16：r307 完整独立掩体手动候选已准备，离线整包依赖/库存/ZIP通过
+
+本轮不启动游戏、GUI、XR或Quest，不替换原入口/旧候选。此前r304面对掩体/双手与r305/r306三方向原生LT扒动已有Source1实际证据；本轮把同一Native01377599…80634e与已测PGf8e6…4807打成独立完整候选，非仅DLL。入口J:/gearsVr/candidates/cover-manual-r305-20261116/GearsVR Launcher.exe，ZIP同目录cover-manual-r305-20261116.zip，15730801B，SHAb0535edd5cf3d566ced42684803d4af144f072ecab701a24bb2cf0af0fcace19。
+
+物理XR复用明确Source0构建167b568e…cc3（旧manual-owner-20261113记录simulator_define=false、compiled0，physical_runtime_checked=false），未把Source1检查用1684…XR当物理包。原物理producer与r305 Native的controller/pose六个传递header规范化文本全等，CPU双版本ABI probe输出/EXE一致；主模型另核对stereo_bridge/controller_cohort/controller_continuity/render_size/gpu_share/sixdof_ticket_mailbox六header规范化全等。两套ABI控制器packet5816B/version4/frame720B、posepacket112B/version1。证据task18报告与r307/wire-source-comparison.json。ABI一致不等于头显运行验收。
+
+候选使用独立source-root和现有stage_portable/package_portable，无新启动平台。candidate-only sixdof_manual_profile原字节保留，仅追加CoverBodyPrototype(top/live)/CoverCameraPreview/CoverInputPrototype(.3/.7)三段；validate函数原样且CPU验证拒绝simulator_operator。原CoverPosePhaseObserver/CoverControlObserver及C0/receipt功能依赖仍enabled1，不按Observer名字误关；所有明确diagnostic_*=0，无phase trace或record_base_entry测试配置。未改全局profile/public config。GUI复用4baf041f…80b7c，Python3.12/所缺quiet工具与许可证从旧完整包按其库存hash复用；第一次准备因当前树缺OpenXR license、第二次缺quiet11 EXE在创建stage前拒绝，修正为精确库存验证来源。未伪造文件或跳过检查。
+
+原worker task18完成只读ABI/打包调查；task19保留未执行的准备脚本后按主模型要求交接。主模型独占r307/main-package.py执行实际打包，不与worker并写。task18曾建议关闭功能observer，主审明确拒绝并纠正；无此改动进入包。更早无关旧task07 CPU复查不作为本候选证据。source-copy-receipts记录逐文件来源和复制前后hash，profile-delta记录唯一配置增量。
+
+753个payload文件、52727336B。使用包内runtime/python/python.exe -I -B两次严格preflight：初次标准stage通过，之后仅README掩体说明、界面语言zh-CN及准确local-candidate元数据更新并重绑inventory后再次通过。没有developer Python fallback；imports/PE依赖解析通过。最终inventorySHA936bc616d37767414486824806ab57d6bf6c8e680a0a43536b3f302fc2d98476。独立回读753文件hash全部相符，ZIP754项(含inventory)CRC无错、SHA相符。preflight game_started/gui_started=false，release_ready=false。默认游戏路径空，owner首次选GOWDE-Steam.exe；默认render_scale1.0、中文界面，完整README给三项短检查与正常停止/日志导出说明。候选中不含模拟器、存档或账号文件。
+
+完整manual包已准备并可由owner启动，尚未在实体头显验收，普通拳型闭合/可见性仍待确认；保留原臂长，不恢复专用hand-skin匹配或碰撞/遮挡工作。原生cover exit/reentry在held offset后的实际行为亦独立待查，不能用模块正常停机代替。完成状态详见r307/delivery-review.json、delivery.json、preflight-final.json、profile-delta.json。完整goal保持active，不把离线整包检查当全系统/头显接受。
+
+### 2026-11-16：r308观察器拒绝inactive槽位，r309修读者后退出/重入基础检查通过
+
+上一goal turn为实质进展：完整manual候选r307交付并离线验证。本轮只补held offset退出/重入边界。用户手动包及ZIP未改，仍Native01377599…；新诊断冻结r308仅扩展原bounded/simulator-only手部记录：首次cover后可观测站立和重入，mode改变时重新选择同pose；32条上限、当前Source1认证、所有输入/lease/metadata/原consumer/骨长检查不变。无新hook/writer、无生产源变化。436依赖编译Native12ecc579ed46319b74a9e1234a0a165a85363cb2da7f33da28447dc161febd25，仅诊断实例使用，不替换manual包。
+
+worker task20编写operator，主审修正左链hash、-0.05符号、退出不额外按键、重入右手A、完整Link/slot/world读取和新计数等待。r308实例cover-1116-r308-lifecycle实际已由CT2退出CT0，最后同回调双腕exact/mask15正常；随后active cover reader无条件要求CurrentSlotPct在0..1，拒绝退出后的槽位sentinel，operator1中断，未跑自由手/重入。保留actual-result.json和7条typed记录，不算完整通过，也不是生产退出失败。normal_cleanup_verified=true、无强杀、remaining_owned={}，精确game74624/owner70104/XR35920均不在。
+
+r309只修改私有operator的phase_snapshot：CT0用既有经过game/pawn/anchor核验的current()原始CoverType/Action读取值，不读活动槽位，不添加accepted=true或假身份；CT2仍用原cover_state.capture完整验证。唯一worker task21窄review确认没有活动掩体合法性或生产guard放宽；CT0缺少accepted字段不得被消费成active认证。
+
+新隔离实例cover-1116-r309-lifecycle（同诊断DLL，不重编），game27420 creation134392429912205265、owner24864、XR73496，runner21692终态0。先用已证左点链建立held-.05m并release，单次左stickY=-.45/0.45s后释放，实际CT2→CT0。执行左右小位移命令并恢复，再按原入cover流程左stickY.25/0.15s、右buttonA一次、释放；实际CT0→CT2，同Link2317566720/slot0/world2240381184，virtual=0,0、owns0，新hands/cover消费均继续增长。不是自动重抓或复用旧offset。
+
+10条typed C0/V3配对类型序列2×6→0×3→2×1，全部normal/consumer/end1、四臂角色mask15、双腕planned/consumer/after Local逐字节相同。退出后的右手移动与归位记录被捕获；左手独立移动的短稳定窗口未被200ms选择器采到，因此不冒称分别采到了退出后双手的完整运动，只证明全程双手姿态保留、右手位移及重入C0恢复。左右命令执行记录与390实际双眼帧另存。亲看339退出、352外部移动、381重入，双手在退出和重入后可见；非完整手面贴合/拳型或头显验收。
+
+operator/stop0、normal_cleanup_verified=true、entries_restored1，pending/body_native/body_goal/atom/cover_body全0，无强杀、remaining_owned={}；精确27420/24864/73496均不存在，源码锚点/reader hash前后不变。0.4后台/cloaked/observe-only/testmute/物理隔离、资源wait0保留。manual ZIP回读仍b0535edd5cf3d566ced42684803d4af144f072ecab701a24bb2cf0af0fcace19，无需更新owner包。证据r309/evidence.json、decoded-lifecycle.json、projection-phase-selection.json及实际instance；r308失败单独保留。源软件基础退出/重入已补查，实体头显反馈与普通握拳可见/闭合效果仍待确认；已异步询问owner实际结果，不把无回复当接受。完整goal仍active。
+
+### 2026-11-16：r310普通握拳输出观察通过；当前操作说明同步
+
+r310只替换冻结r305诊断的九个采样骨骼为左腕、七个手指关节与头，magic C0FIST01/version1及输出文件名相应独立；436依赖、32条上限、Source1认证、生产输入/lease/C0写入保持原样。worker task22交接后主会话完成manifest、严格类型解码器、构建和实际运行。诊断Native bf5f26dfe0e6b9628c79f0e9b752d9a8db8ddf930e7eb513a71182bf6b94fdbe，不进入手动包。
+
+单次隔离实例cover-1116-r310-fist使用原r305左点操作字节不变。六条实际记录squeeze为0/0/1/0/1/0，全部normal、consumer/end1、mask15，九个采样骨骼planned/consumer/after-original完全一致。五个手指末端相对手腕的闭合位移分别5.978/7.658/6.739/5.256/5.593cm，释放及重复闭合复现，最终打开误差最大0.00003145cm。已有普通握拳实现有效，无须新增手型预设。仅采样七个手指关节及五末端，非全部15关节、每次GPU绘制或头显视觉验收。
+
+runner/operator/stop均0，315双眼帧无projection error；normal_cleanup_verified=true、entries_restored1、pending均0，无强杀、remaining_owned为空。精确game58044/owner71368/XR59896均已退出，原锚点及reader未改。r310/evidence.json及decoder-provenance.json保存实际身份和解码依据。手动候选及ZIP保持b0535edd5cf3d566ced42684803d4af144f072ecab701a24bb2cf0af0fcace19。
+
+需求文档将当前操作表、流程及AC05统一为三方向均向下扒、向上回收；CV14/AC05逐点匹配手型标为被最新普通握拳要求替代，CV12松手保持/重抓继续保留，全部CV01–24和AC01–22编号保留。实体头显手部6DoF反馈仍待owner，普通拳型清晰度/手感也未接受。既有实际点位检查均为CT2，CT1高掩体行为另保留缺口，由同一worker task23只读审查，不把低掩体结果扩大到高掩体。
+
+### 2026-11-16：高掩体首次进入修正、完整路线录像与独立停机失败
+
+r311使用原r305 Native实际进入CT1，但cover消费0、neutral provider wrong_thread、L2 calls0；未执行后续手部动作，失败保留cover-high-r311/evidence.json。operator1/stop0、正常恢复通过，精确game24800/owner68932/XR16656已退出。worker task23源码共用路径核对并未覆盖初始化前置，因此不能代替该实际失败。task24准备链未闭合，保留未执行生成器，主会话接手main-reviewed.py并核对CT1候选/入cover/geometry三个断言。
+
+原因在cover_body_live::blend_before：ct!=2在game_thread首次绑定之前返回，中立视点虽支持CT1但要求这一线程。r312只让完整pawn/mesh/world/children身份校验接受CT1/2以初始化线程；绑定后立即if(ct!=2)return，原tick、child_before、target_current及旧端点权重写入仍CT2-only。worker task25窄review未见权限扩大；service_entry既有恢复路径可达，不新增写权或hook。主会话436依赖冻结构建Native8b472c02d41447aa28ee195c3e79065237e53c110556bae84846a9cf9d054d7f，唯一生产改动cover_body_live.inl。
+
+r312实际CT1首次进入通过：五条typed记录均CT1/Source1、normal/consumer/end1、mask15、双腕planned/consumer/after完全一致。左右输入位移4.123cm，实际受原骨长限制位移3.016cm；旋转4.58366度与实际相符，对侧漂移<0.001cm、返回误差<0.001cm。实际torso与墙方向夹角3.26215度；原生点权限left=true/right=false/top=false，本次未执行CT1侧扒。352双眼帧无error，亲看frame340双手在高石柱前可见。operator/stop0、normal_cleanup_verified=true、entries_restored1、pending全0，精确34540/36132/15220已退出；见cover-high-r312-thread/evidence.json。
+
+r313独立整包cover-manual-r312-20261116已打包，原r305包保留。Native8b472c02…，物理XR/PG/GUI及ABI沿用已验证来源；严格包内Python preflight两次通过。753 payload文件、ZIP754项，ZIP SHA4161cc08ee6f5d4a6f432725e6ea2f9b3332c9bc8fc395ff9eba8006af2665df。打包未启动物理游戏或GUI；实体头显仍未接受。
+
+主人随后明确要求自行完成并先交演示路线录像，之后才真机；已更新需求与audit，不再催中间候选头显反馈。worker task26提供薄route模块，主会话hash绑定原r304双手、r309左扒/退出重入、r306右/上沿及观察，最后退出。r314同r312功能DLL实际四阶段全部通过，operator0，final CT0；813实际双眼帧无projection error。录制原速无声双眼视频77.43s，附独立r312高掩体片段和中文字幕，四个编码帧已亲看，完整ffmpeg解码通过。视频为实际路线证据，非实体头显。
+
+但r314停机独立失败：stop1、normal_cleanup_verified=false，Native incomplete/cleanup_timeout1/resources_retained1/entries_restored0；body/atom/cover pending全0，native_services0、sidecar release尚未开始。游戏及owned进程均已退出、remaining_owned为空，无强杀；PID可能被系统复用，不按PID单独判断身份。完整动作通过不等于正常停机通过，旧失败不撤销。worker task27只读定位说明native_services0不能单独证明TLS depth或无回调（计数在mutex之后），原因未证。下一步仅r315退出并在CT0确认手部持续更新2秒后停机的窄复查，不重跑整条路线或放宽guard；当前仍不能宣称完整交付通过。
+
+### 2026-11-16：r315停机窄复查、r316完整路线复查及r317高掩体左扒通过；r318演示录像
+
+r315同r312功能DLL，只检查CT2退出后CT0及手部提交持续至少2秒，再停止。operator/stop0、正常清理通过，不能用这次延迟前置证明r314停机原因或已修复。r316同完整路线复查，仅增加独立query-only WCT/CPU观察器：真实game创建时间和Native started_qpc绑定，只有stop延迟2.5/6.5/11秒才限量取样，不暂停线程、不写游戏。全部动作再次通过，operator/stop0、normal_cleanup_verified=true、entries_restored1、pending全0、native_services26，无强杀、remaining_owned为空，观察器只记录正常terminal，未采到延迟等待。28条typed C0均CT2/Source1、consumer/end正常、mask15、双腕planned/consumer/after完全相同；上限32未饱和。775投影帧无error。旧r314超时未复现、原因未证，不撤销旧失败或声称因果修复。
+
+r317只补CT1真实原生左LT点下扒链，保持r312功能DLL；与r312同原入cover流程，只将原r305左链CT检查设1。六条typed C0正常、mask15、双腕精确保留，实际头世界沿墙right相对接触点：0→-10.0000147cm→释放保持-10.0000148cm→回收-5.0000148cm，竖直漂移<0.00001cm。原生top point=0,0,0,0，未开放高掩体顶部。operator/stop0、正常清理及entries_restored1通过，见cover-high-pull-r317/evidence.json。
+
+r318最终录像取正常停机的r316完整矮掩体路线、r312高掩体双手、r317高掩体左扒三个实际片段，保留各片段观测wall_ns帧间隔并标明独立片段/受控输入/原速无声/非头显。最终H264 1280×720 30fps、88.566667秒、14274496B，SHA d83fd432d6820e87329631d9034508ea95add9e2a1959ca56a623af81397cf83，路径J:/gearsVr/analysis/cover-system-20261108/demo-final-20261116/cover-demo.mp4。完整ffmpeg解码通过，亲看8/24/45/58/74/84秒编码画面，中文字幕正常，双手及视点变化可见，抓手有时处于视野边缘，非全手面/拳型贴合证明。原r314动作预览仍保留并明确其停机失败。
+
+新docs/cover-demo-route-20261116.md提供时间路线和候选入口；r313整包库存753文件及ZIP hash再次独立核对通过，原包未改。软件基础动作和录像可供owner审阅；实体头显尚未接受，r314一次停机超时原因仍未解释，因此完整goal保持active，不以录像或后续通过把问题抹去。后续只针对该未解释停机边界或owner看录像反馈推进，不重复已通过玩法、扩大皮肤贴合/碰撞/武器范围，也不催中间真机测试。
+
+### 2026-11-16：r319停机分界诊断与r320一次窄实际基线通过，未改用户候选
+
+本goal turn前一轮为实质进展：高掩体首次进入/左扒、完整低掩体路线和89秒录像已交付，保留r314单次停机超时。本轮不重跑整条路线。task28核对现有support日志：r314停止后约3.624秒game仍running，r316约3.748秒也running且pipeline计数同样不再增长；r316却能完成state release并正常恢复，因此不能归因游戏先退出或单靠pipeline冻结判断无后续service callback。Native native_services计数在mutex之后，0不能单独证明TLS depth或锁等待。只读查询03:58–04:04 Application 1000/1001无匹配GOWDE/GearsCapture事件，缺少事件不等于排除崩溃；进程快照才是该时段仍活着的证据。
+
+task29计划增加诊断计数，但交接proposal.patch已不存在，capture-diag.cpp实际删除service_session_stop_native并多出括号，与result.md不符；主审拒绝，原文件/结果/main-review.json保留，任何此worker派生源码均未入构建。主会话按审过设计重建三处规范差分，仅冻结r312 capture.cpp增加原子计数和既有status输出：stop_requested时入口/线程/depth、quiesce返回、depth拒绝、mutex尝试/取得、close返回及release claim。去掉诊断后服务函数文本与原版完全相同，原guard/锁/claim/deadline/hook保持。当前生产源码capture.cpp、r312用户包和录像未改。
+
+r319诊断Native编译/链接完成，初始旧build wrapper把主capture.cpp误要求在showIncludes头依赖中出现而拒绝回执；保留该失败，不重复编译。main finalize-build.py以唯一Ninja编译边验证实际主TU路径，所有冻结文件hash不变，436头依赖和主TU分别核验、GEARS flags全等、无外部工作树依赖，再生成准确回执。Native SHA0369f48ecae40b41af17000d5173718b7046ec27100cb61b5d45ada0892f9fb6，仅诊断使用，绝不当新手动版交付。
+
+r320使用此诊断DLL，只沿既有原生左点链下扒/保持/回收，再按原退出动作到CT0立即结束，不加入r315的2秒等待；0.4后台cloaked/observe-only/testmute/物理输入隔离及原资源准入均保留。operator/stop0、正常清理通过，无强杀、remaining_owned为空；316双眼帧无error。计数entries1/quiesce_returns1/depth_rejects0/mutex_attempts1/mutex_acquired1/close_returns1/close_claims1，last_depth0；终态stopped、entries_restored1、所有body/atom/cover pending0，观察器正常terminal并join。证明诊断分界在实际正常基线上可用，不能证明旧故障因果或已修复。详见cover-stop-slice-r320/evidence.json。
+
+不继续循环未变化的玩法或停机动作。旧超时仍待能区分callback/depth/mutex/close的失败现场；计数仅stop_requested窗口且原子开销可能改变竞态，须保留限制。后续可先离线核对最终r316源输入与视点位移配对，或处理owner录像审阅的具体反馈；不以旧失败或正常基线伪造物理验收。完整goal仍active。
+
+### 2026-11-16：r321仅离线核对最终候选摄像头视图与身体消费记录
+
+本goal turn前一轮为实质进展：r319分界诊断构建/r320短基线完成，旧停机根因未证。本轮没有启动游戏、XR或输入。唯一worker task30提供小型body_mount提交reader，主审补齐Header64/Record8864、Native PID/started、finite/EOF核验，MSVC C++20 /W4 /WX编译通过。原始r316低掩体28条、r317高掩体6条记录完整读取，PID和Native started与各实际session一致；按seq/tick/compose及左右控制器/头输入逐项与原C0消费记录完全配对，consumer/end正常、mask15、双腕exact不变。
+
+首次分析把旧trace.source_ns与V3 input.received_ns直接相等比较而拒绝，保留为读者假设错误，非游戏失败。主审核对实际源码：旧trace记录parent Scene/Core时间，新输入另有V3时间，低掩体相差33.196–77.750ms；二者必须区分。reader改为显式输出v3_input_received_ns与parent_scene_received_ns，后者与每条旧trace.source_ns完全一致；没有刷新或替换任何追踪收据、没有修改原100ms等运行guard。每个稳定操作相位按输入pose/头q及附近时间定位，不能当同Scene帧收据；这些限制写入r321/evidence.json。
+
+实际记录的body_render_base经stereo_camera_position得到参考摄像头世界坐标：r316低左下扒沿墙right -10.00000008cm，低右+10.00000008cm，上沿up+10cm；松手后的新手位置样本仍保持10cm，上推回收后为5cm，最终release/归位样本仍保持5cm。r317高左-10.00001530cm，收回后约-5cm，其他轴漂移<0.002cm。相同C0实际消费头关节位移与视图基座一致；没有仅以期望输入或Scene计数冒充位移。
+
+右侧观察输入yaw31.51267876度、原调用后头骨世界旋转31.51268238度；顶部观察输入pitch25.78310037度、实际25.78310236度。观察和返回期间记录的render-base原点变化0，抓扒offset保持，头部旋转独立；这并不声称HMD实际转动只影响方向而没有眼/头marker几何位移。
+
+CoverCameraPreview.matrix_origin始终是零offset中立参考，单独看它不应判断最终摄像头冻结。冻结源码路径表明prepare_axes_math把committed offset写入render、C0用该render写入/发布，read_cover_view只返回已消费同域/新鲜publication的p.render，Scene在body_view_owned时覆盖旧view并交给stereo_matrices。新证据是该CPU渲染基座与同C0消费配对，不是每次GPU draw或实体头显证明；既有实际投影录像是独立视觉参考。生产源码、候选ZIP与录像均未改。
+
+唯一worker task31正在对当前优先要求与全部CV/AC编号做只读处置映射，区分仍生效、明确延期与已替代历史细则；不得据此恢复碰撞、逐点手型或旧大矩阵。完整goal保持active：原r314单次停机原因仍未解释，owner录像审阅/后续实体体验也未接受。
+
+
+## 2026-11-16 r322：头部平移检查及抓取中断实证
+
+46项CV/AC编号已逐项保留并完成当前优先级审阅（analysis/cover-worker/task-31/result.md、main-review.json）；碰撞、遮挡、逐点手型仍按主人要求暂缓，历史大矩阵不作为本次基础交付门槛。
+
+生产r312的受控Source1检查中，无抓取时左右4cm、上下5cm、前后方向3cm及回位命令完成。15条实际C0记录与头/手读取逐条按seq/tick/compose/parent时钟精确配对，两手consumer/after均一致；前10条无抓取样本中头骨与生产rig_tracking推导眼位置的平移差最大0.00001244游戏单位，render-base位置保持稳定。上移后的稳定回位没有单独typed样本，不补造。证据：cover-physical-head-r322/partial-evidence.json。此为CPU与实际游戏采样，非每个GPU绘制或真机验收。
+
+抓住右侧点下扒10cm后，头部平移并转头成功，回正阶段失败：抓键前后仍为1，但抓取授权撤销，偏移保持10cm。首个撤销来源明确为ControllerMatchingRead::mutex_unavailable（共享控制器读锁0ms争用），源龄约8.2ms；不是脚本松手或100ms过期。保留原始失败，不用旧输入延续授权。task34只在同一已选定帧、原身份和原时间戳上增加极短有界重读；仍失败则照旧撤销。待代码审阅、CPU夹具、编译及此单一失败路径复查，尚未更新用户候选包。
+
+r322 operator失败，但正常stop=0、entries_restored=1，无强制终止；此前r314停机超时仍为未复现且未证明修复。89秒既有基础演示继续保留，用户仍按先录像后真机顺序验收。
+
+证据精度补注：Code3含WAIT_TIMEOUT、WAIT_ABANDONED等获取mutex失败；r322原调用未保存contended，因此“短争用”是待复查的窄分支假设，直接实证仅到mutex_unavailable。新修复仅允许contended=true的WAIT_TIMEOUT重读，abandoned/无效锁仍立即拒绝。
+
+
+## 2026-11-16 r323–r328：有界读帧修复、源码合入及新版录像
+
+唯一侧栏DeepSeek worker task34草稿经主会话review后，修正脚本CRLF锚点和测试夹具：独立输出、真实100ms边界、post-read时钟/预算，以及按语义检查清空而非比较C++填充字节。纯CPU163项断言通过，MSVC C++20 /W4 /WX。helper仅当mutex_unavailable且contended=true时，对同一const StereoSample最多总8次、总250000ns重读；无Sleep、不换帧、不更新源时间、不保留未知授权。重读成功仍按新观察时刻复验，原发布者身份/100ms检查保持。完整诊断latest/selected/sync保留。
+
+r323从r312冻结源仅改cover_input_live、shared_prepare的mutable now、新helper，并继承已经独立review的r319 stop-request-only诊断capture.cpp。1149份冻结文件hash核验；437个项目头依赖及capture.cpp真实Ninja编译边单列证明，flags未变、无外部工作区依赖。Native f6c7022105e1e58e14b067859e8cb27485420e07dd7f9150d54ac522855d0448。analysis/cover-system-20261108/cover-controller-retry-r323/main-review.json。
+
+r324同一失败动作窄复查通过：右侧点下扒10cm后，保持Grip时头部平移/转头/回正、松手保持、再抓上推5cm，正常退出；8条C0记录逐条精确配对，双腕consumer/after一致，363投影帧无错误。r327新版本完整矮掩体基础路线四段通过（手、左扒动/退出重入、右/上扒动/头部观察、最终CT0退出），27条C0记录双腕一致，750投影帧无错误。两次operator/stop均0、entries_restored1、remaining_owned为空，stop_diag进入/锁获取/close_claim均1且depth0。两次retry计数均0；只证明当前动作路径通过，不证明旧r322子类型实际恢复。原r314停机超时原因仍未证。
+
+task35把功能修复最小合入当前源码：helper及cover_input与冻结r323字节相同；shared仅移除stamp的const；Troika原调用也仅将本地stamp改mutable以兼容引用参数，无新武器功能或runtime。before copies和逐字节单替换证明经主会话复核，capture.cpp其他工作未改，r319诊断只在独立候选冻结源。完整当前root有其他未提交工作，未声称该整个root已编译；交付二进制来自上述独立冻结构建。
+
+r325候选J:/gearsVr/candidates/cover-manual-r323-20261116，ZIP fecd8c1ca4a1e9fc0a010fa933530b3404121fa31c26b2368e7be2da9ff38679，inventory 0c82fcf564f752922f29ad4184192ca9e8fc263d28854d1bd427d7c2c473164d；753文件/ZIP全hash核验及严格隔离离线preflight通过。物理Source0 XR/loader/GUI/PG及物理启动边界保持，旧r312包保留。r328约105.5秒新录像位于J:/gearsVr/analysis/cover-system-20261108/demo-r323-20261116/cover-demo.mp4，SHA fd7cdbf2c49e3816f153a64c3913e21d99c5428b7023e253d22cf00900611914；新版低掩体+保持抓住时头部检查，附先前高掩体片段并标明构建来源。整段ffmpeg解码通过，8/24/45/70/93/101秒画面及字幕已看。非实体头显/全手面贴合验收。
+
+基础动作与录像可审阅；目标仍active，不能把原r314超时标为修复，也不以重复未变化测试替代原因定位。后续只追踪该具体退出问题的已保存证据或新捕获的诊断，不重新展开碰撞/遮挡/逐点手型/大矩阵。
+
+
+## 2026-11-16 r329–r334：退出竞态修正与同构建最终交付核验
+
+进一步检查原r314 capture-status.txt发现确切终止分支为cover_body_stop_incomplete pending=0，而不是笼统的30秒state-release超时。此前只追踪native_services0，漏掉此直接分支；现已纠正。原cover_body::drain_failed经由draining再次读pending，1→0交错会在5秒前错误报告失败。request_session_stop先请求drain、可能延后stop record，因此单靠stop_qpc不能证明原现场drain耗时；原两读与drain_tick未记录。源码缺陷确定、与原分支一致，现场具体交错仍为推断。
+
+唯一DeepSeek worker task36提供一函数补丁及夹具模板；主会话修正模板中的namespace实参、tick类型与预期，直接从实际旧/新生产源码提取函数（不是另写一份谓词），纯CPU24断言全部通过。旧函数在tick1000/now1001/pending[1,0]提前失败，新函数不失败且到期前不读pending；真正到期pending>0仍失败、pending0不失败、时钟倒退保护通过。函数改为先确认5秒到期，再单次读pending，不改写者/期限/资源恢复权限。root cover_body经hash guard最小合入，其他代码未变。
+
+r329冻结继承r323仅此一函数变更，1149文件hash、437项目头依赖和capture.cpp编译边核验通过，编译链接成功。Native SHA184c9440cd2c12807b34e90f7283d5e3411c72cee891a6cd0f1e8dc30b5c3717。r330完整矮掩体基础四段通过并最终CT0退出，28条精确C0双腕记录，778投影帧无错；r331直接首次进入高掩体、双手、顶部禁止和原生左点抓扒/保持/再抓收回通过，10条精确双腕记录，454投影帧无错。两次operator/stop0、entries_restored1、pending0、release_returned1/state_destroyed1、remaining_owned为空，无强制终止；stop诊断各进入/获取锁/close_claim1、depth0。输入retry均0，不把本次未争用当原输入故障子类型的直接复现。
+
+r334复用已核验实际记录读取器（关键layout/math头与当前构建逐字节相同），按seq/tick/compose/父时钟/源输入精确配对。当前低左-10.00000008cm、右+10.00000008cm、上10cm，高左-10.00000004cm；松手/重抓保持10cm，反向后5cm。实际head旋转31.51267884°/25.78310302°匹配输入，扒动render-base原点变化0。证据是CPU render-base及原消费者姿态，实际录像另证；不冒称每个GPU绘制/实体头显验收。
+
+r332最终候选J:/gearsVr/candidates/cover-manual-r329-20261116，ZIP0a22e32c93af1230e7d89d8f460b0ccbb48b0294bfda8aadc8213986c90e2953、inventory9ebff7d2d0a65202cbb9d9205f0307ca42c04488e3de340c16c719b7e583ed0f；753payload文件及ZIP全部hash和严格preflight通过，Source0 XR/loader/GUI/PG保持。r333最终录像93.466667秒，全部片段同交付Native，SHA fe05e6b9643abafd56ba6ae9f9d440c320b8d51d0b54f5a35b42fd807500d2db，整段ffmpeg解码0，8/24/45/62/74/88秒画面和中文字幕已看。旧版包/失败/录像保留。
+
+当前进行最终最新主人基础交付审计；原46项CV/AC与历史未验收范围保留。碰撞、遮挡、逐点手型和复杂战斗/跑动大矩阵仍遵守主人延期，不重新阻塞“面朝→双手6DoF→普通握拳原生点扒动→视点→录像”的闭环。实体头显体验按主人先看录像后测试，未提前要求反馈。完整当前root含其他未提交工作，未声称整体root构建；交付二进制是上列独立冻结验证构建。
+
+
+## 2026-11-16 最终当前交付审计（r335）
+
+最新主人指定的基础软件闭环、编译候选、自主检查和路线录像已逐项核验完成，记录于analysis/cover-system-20261108/cover-completion-r335/audit.json（10项当前交付要求及46项原CV/AC处置完整保留）。唯一worker task37只读审计没有发现须由agent再补的基础功能或录像缺口，主会话独立核验当前Native/ZIP库存/录像hash、镜像文档和源合入，并看过编码画面。
+
+交付构建r329、93.466667秒同构建录像及文字路线已准备供主人审阅；按主人约定，下一阶段由主人先看录像，再决定实体头显体验测试。此记录不表示完整历史AC、碰撞/遮挡、逐点皮肤贴合、复杂战斗/跑动矩阵或实体头显已验收。原r314现场的两读交错及r322mutex子类型没有直接记录，保留此限度；已修复和验证对应实际源码缺陷与当前基础动作，不能把未记录的现场时序冒称直接复现。
+
+不再为当前已完成的基础交付重复启动未变化的自动游戏检查。原候选、失败记录与独立冻结源全部保留；未发布公共release、未安装Quest或自动启动主人真机体验，未创建新worker或其他任务聊天。
+
+
+## 2026-11-16 主人看录像后的效果纠正：重新进行掩体探头射击闭环
+
+主人明确反馈旧录像未展示想要的抓墙沿后探出效果；新验收是藏身→真实边缘抓扒/或头显物理探身→看见外侧目标→六DoF瞄准射击→收回。已确认头显物理移动与手扒都可探身、独立叠加。主会话承认此前把位移数值正确当作效果完成，旧完成仅留作基础动作局部记录；当前效果任务重新active，新增当前掩体射击闭环。
+
+初步源码定位：cover_l2_viewpoint_getter.h把actions3/4/7定义为原版viewpoint；cover_l2_grab_live把这些点直接送入手抓选择。镜头终点与墙沿接触点被混用。r330已有记录neutral render eyeZ589.124、L2 neutralZ583、popup viewpointZ634；这三值本身不能证明真实墙沿高度。cover_geometry的mid_top_z仍标candidate-only，不能当已证实表面，不盲加高度常量或关闭真实追踪。下一步独立获取边缘/眼位与实际曝光关系，分离手接触与镜头行程，再接通原版开火消费者。
+
+继续复用侧栏同一DeepSeek worker task38只读定位；新演示使用项目Skill，字幕写实际按键、对象和流程。没有启动新游戏或Quest，不改变旧候选文件。
+
+
+## 2026-11-16 r337实际完整行程观察：虚拟上探身体计划失败
+
+r336诊断Native18d44543af0a6c1194d05f04563a77e264dc275d43dd7946bbf3ef528cfff22f经主会话review/build。task40完整行程观察草稿已修正默认未接近时不能要求top_selected、坐标转换统一取同一快照/actual units、每阶段geometry valid、物理上移与virtual0分别断言；r337现有受控Source1路径实际执行11阶段，operator/stop0且normal_cleanup_verified，425实际投影采集帧，无投影错误。数据采集完成不代表功能通过。
+
+实际数值纠正此前猜测：slot candidateZ564+rawMidHeight70=634，恰等于原版popup viewpointZ634；中立bone eyeZ590.361、原版neutral viewpoint583、允许上探.51m。因此不能由函数名直接推断top点垂直超出墙沿，也不能声称eye已高过候选墙沿。可见墙体表面仍需对应画面确认。
+
+更关键的当前功能失败：.1m手扒正常；virtual请求到.51m时cover_reason10、plans继续但applied/consumed停192，松手/重抓阶段仍不推进，rejected12→84。终端planner状态15 pelvis_iterations共82次，与这段持续拒绝相符；收回0后恢复，独立头显物理上移.51m时正常消费357。当前虚拟全行程未真正应用，不能用controller virtual数字报通过。7条typed成功记录中也没有virtual全高提交。实际phase-contact图显示全上探与真实头部上移都存在自己头盔/头部遮挡；需要同时处理身体计划与眼位/可见性对应。
+
+现有immutable first-failure记录保存了更早startup commit失败(stage3/detail12)，用冻结对应replay源码离线重放原body plan solved且saved_report_matches=true；此记录不是后续pelvis_iterations目标，不能冒用。复用现有First类另捕获首个fixed_cover plan失败，保留所有旧记录、仅一次内存复制，drained时写文件，无新反射/engine读。待精确目标重放后修复，不缩小原生行程、不改骨长、不放宽身份/时效，不把失效计划的旧画面当当前成功。
+
+原Lancer射击真正入口在Playground vr_fire_adapter→weapon_lancer_r2_native，而非Native输入observer。task41已定位当前Frame/R2独占/muzzle/main_hand_held等guard，尚无覆盖态实际开火证据。继续同一worker task42准备精确失败输入捕获；掩体射击仍是当前目标，未省略。性能自查已记录warm整组proof/context重复风险，未擅改共享验证核心、未报XR/采样率为真实gameFPS。
+
+
+### 2026-11-16 r339 actual-frame correction and offline investigation
+
+r339 normal cleanup verified (stop0, remaining owned empty), but operator1 at reverse_full; no functional acceptance. Unlike r337, pelvis_iterations did not reproduce (dedicated plan-failure file correctly absent). Exact recorded commit12/unit51 replays plan_cover solved with saved-report match. Source ages controller79.2512→120.7833ms; existing header shows plan0.1798ms, prepare-to-commit37.347ms, total41.5321ms. This isolates a phase, not an inclusive function cost/FPS claim; retain100ms and lifecycle checks.
+
+Actual hand trace seq4 normal/consumer_verified1 has headZ634.52908, left elbow625.21742/wrist637.44049: full51cm can reach original CPU consumption in r339, so do not assert full travel always fails. Pure body FK reconstructed authored eye639.392 at derived51cm, head behind eye11.56cm; do not flip camera on a visual guess. Saved commit Output contains post-hand-IK candidate, but failed commit is not rendered proof. Foreground obstruction unresolved, prior helmet label withdrawn pending actual mesh correspondence. Existing PG runtime log explicitly reports native_lancer_r2_enabled_unified_muzzle; no successful cover shot has yet been recorded.
+
+Next narrow runtime changes only the synthetic left-hand placement14cm left of the native popup reference (inside unchanged18cm admission radius), to compare a natural side-of-top grip rather than a hand on the view centerline. It must retain consumption advance, physical HMD independence, release/regrab and normal cleanup. Native/shared validation core remains unchanged. Evidence: analysis/cover-system-20261108/cover-plan-probe-r339/evidence.json; source performance audit task44.
+
+
+### 2026-11-16 r340 reader correction and r341 lateral-hand route
+
+r340 operator1 at granted observation, stop0/normal cleanup/empty owned; held phase5/owns1 and CPU consumption advanced, so do not label a functional grab failure. Reader incorrectly assumed a single read after0.6s must be a fresh status snapshot. r341 only fixes that observer: wait a strictly newer Scene (bounded2.5s), retain stable predicate, require actual consumption advance, and record real lateral/distance metrics. Native/PG/shared core unchanged.
+
+r341 operator0/stop0, all11 phases have new Scene and consumed advance: approach/granted/down10cm/down51cm/release/regrab/regranted/reverse0/released/head physical51cm/head return. Actual lateral=-.14m within existing .18m admission. Terminal cover applied=consumed658, pelvis_iterations0, commit12=0. This run does not repair or disprove intermittent prior source-age failures; no FPS assertion.529 captured projection images, no capture errors, normal cleanup, remaining owned empty. Main viewed6-phase contact: center near-arm blockage reduced, environment beyond wall visible on rise and lower view restored on retract. Actual edge surface contact/fitting still not certified;14cm proximity alone does not prove it.
+
+Current scope remains concealed start + actual edge grab + independent physical/hand peek +6DoF aim/fire + subtitled video. No shots in r341. Existing original R2 path confirmed enabled; task48 source draft reviewed against exact instance identity, real newly-held evidence and released input semantics, not yet executed. Do not deliver r341 as full goal. Evidence: analysis/cover-system-20261108/cover-hand-placement-r341/evidence.json and phase-contact.jpg.
+
+
+### 2026-11-16 r342–r345 cover weapon-hold first failure
+
+r342 did not pick up Lancer: neutral-only wrapper returned before original X, slot2 empty; no trigger sent. r343 corrected original X and asserted actual Weap_AssaultRifle/current weapon identity, but unholster inside cover stayed attachment_unavailable until switch_timed_out. r344 outside-first setup stopped at a legacy hardcoded log path before Grip, not a gameplay hold failure; r345 corrected exact manifest-derived PG path. All four owned runs normal stop0, no remaining owned processes. Keep distinct preparation/reader failures.
+
+r345 originalX succeeded, outside right-shoulder original sequence produced held slot2/frame634 and body-mount held1. Existing held-chain rejected attachment at frame788, source timestamp approximately363.57ms after original cover-A input (same recorder neutral wall/perf join, not exact failure invocation). It cleared the held model; later full peek found no current setup-hold event and sent no R2 burst. All12 cover route phases including recovery still observed, but shooting is unachieved. This is now a concrete integration failure for the requested held-gun cover loop, not evidence that firing works. Do not bypass the attachment predicate or infer which subcheck failed from the aggregate status.
+
+Next: reuse the operator existing Resolver/context for low-frequency before-cover/neutral-cover read-only snapshots of weapon Mesh/Instigator/HiddenGame and typed unique52-byte attachment/BoneName, with identity/readback brackets. These observations grant no write/fire permissions. Any production change must fix the identified cover lifecycle/attachment behavior while retaining identity, freshness, single-writer and normal restoration; no shared performance-core change was made. Task51 video draft corrected to exact projection paths and cropped timeline origin, per-button captions; no new successful shooting video yet.
+
+
+### 2026-11-16 r346 exact attachment observations
+
+Two selected-metadata read-only snapshots reused the existing operator Resolver; no new UObject scan, engine call, hook or writer. Before and after cover observations both coherent under selected-descriptor/value and registry reread. Same pawn, weapon, weapon Mesh, pawn Mesh, Instigator and same Attachments arraydata/count5/cap17. Unique Lancer entry changed b_MF_Weapon_R_End/number0/rotation0/scale1 -> b_MF_Weapon_L_End/number0/rotation[0,0,32768]/scale1. Weapon Mesh HiddenGame changed false to true; attachment_unavailable precedes Mod visibility acquired in the existing log, so do not claim the first failed subcheck was hidden. The positive original left-bone reparenting directly contradicts the current strict right-only attachment assumption for VR holding through cover.
+
+This is evidence for a scoped cover lifecycle repair, not permission to globally accept L bones, ignore hidden state, preserve a stale held authorization or add another transform writer. Existing normal PG Frame lacks a current cover key; BodyMount Source.original_scene is historical and cannot by itself authorize a live-cover exception. Reuse/extend the current Native caller receipt only with explicit actor/link/slot/type/thread/lifecycle/freshness boundaries. Worker55 is examining that narrow interface; production/shared validation core still unchanged.
+
+r346 operator1/stop0/normal cleanup/empty owned. Separate earlier failure: on this different cover entry, cover_reason104 and cover_fits/plans/consumed0, while standing hands had committed. This is aggregate freeze Code::fit, not proof of pelvis_iterations or the same r337 failure; inner ng status is missing. Keep it open separately. Main helper/evidence in analysis/cover-system-20261108/cover-attachment-r346. No shots or new successful shooting video. Full goal remains open.
+
+
+## 2026-11-16 r347 implementation / r348 actual held-cover-fire failure
+
+Private r347 implements current-cover-only original Lancer L_End attachment observation through one readonly Native sidecar. Default R reader remains strict for unrelated stow/frag/saw consumers; explicit held lifecycle, typed body mount, Lancer follow and R2 use the scoped cover path. It retains visible/unique component, exact layout, actor/weapon identity, registration, lifecycle/current Scene association/reference and original tracking gates. Current cover is independently sampled, not borrowed from Source.original_scene; no second pose writer or TTL extension. Native current cover sample reused once per query, closing uses unchanged Core revision instead of a second full owner acquisition. Only a known Lancer L parent pays for sidecar queries. Performance/FPS unmeasured.
+
+Final Native 8dc1f05c0079e79f93c485411e6260ef86338b08ac2c6f3c539f02c59f4efab8 and PG 11318ba2dc75c1b0914f7534fbc9215c3f01919e9da55a66cd00b16f17c5652c built from isolated r347 tree, dependency logs show no external worktree headers. PG config is explicitly identified; do not call it a byte-reproduction of reused f8e6 PG. Actual protocol boundary executable29 cases and original strict typed attachment9 cases passed. Initial exploratory PG3764 is rejected for runtime after interface corrections.
+
+r348 owned Source1 game PID24364: outside original Lancer pickup and right-shoulder hold event550; current body mount ready held1. Entered low cover and completed 12 grab/pull/fire-attempt/release/regrab/reverse/head/recovery phases. Terminal cover715 applied=consumed, reason0; no reproduction of r346 aggregate freeze104 in this run. R2 frame896 accepted status3/owned1/muzzle_ready1, then attachment_unavailable frame898; valid trajectory count0. R2 acceptance is not a successful shot. First rejecting attachment subguard is still unknown; do not blame hidden bit or transitioning without evidence. r349 worker57 adds bounded failure classification only, no gameplay guard changes yet.
+
+Operator1 (actual no-valid-shot failure), stop0, normal cleanup verified and remaining_owned empty. 854 projection images/no errors; not game FPS. Main personally reviewed all12 phase contact images: upward motion and reverse/head return are visible, but initial sheltered eye and actual edge contact remain unaccepted; arm view obstruction/contact fit also unresolved. No successful new captioned shooting video, physical headset acceptance, release or public overwrite. Evidence: analysis/cover-system-20261108/cover-peek-fire-r348/evidence.json and phase-contact.jpg. Full owner goal remains open.
+
+
+## 2026-11-16 r350/r352 first rejection isolated; r353/r354 actual cover fire chain
+
+r350 diagnostic-only run retained holding through entry, but0 valid trajectories and normal cleanup. Early Native stage1 rejects exposed a real integration omission: the visual metadata carrier had no reference/reference_generation, so its cover attachment request was incomplete. Alternating Native/reader logs exhausted the24-message budget; do not claim this run isolated the later firing rejection. Final r348 archive has855 images;854 was its before-stop marker only.
+
+r351 forwards the already-certified reference through the existing C0 endpoint (private ABI4, appended Pose, strict size/version/response-byte checks on retained export entry). Sole C0 producer fills it; PG metadata carrier copies it without inventing clocks or becoming an actionable Frame. No new game query or writer. Original timestamp windows remain unchanged. Endpoint CPU81 checks passed, including reference mismatch, invalid pose, old ABI and non-authorizing visual data. Initial PG compile attempt used a nonexistent StereoSample.reference and was rejected; final build uses the actual endpoint.reference. Bounded rejection logging now deduplicates complete reason tuples.
+
+r352 actual PID58968 reached R2, then frame872 Native rejection30/detail20 proved current cover transition present at receipt fill rejection, followed by attachment_unavailable. The current actor/link/slot/read checks had passed, but receipt_valid categorically rejected transitioning=1. Operator1/stop0/normal cleanup,0 valid traces. r353 changes only that excess policy: accept stable boolean transition0/1 as current metadata, reject unknown values, still compare it across independent read brackets. Identity, visible/unique attachment, current cover link/slot/type, actual game animation/action gates and source age remain. Protocol CPU34 checks passed. No ignored hidden flag, TTL increase, cached hold authority or second pose writer.
+
+r354 actual Source1 PID16240 uses Native65bd8fe96f842fcce204385ab154ee81412719dfd89df1f512785873f203f9a8 and PG2c476069999d8206efbbcbc815abe171fd3989c57280eda773d2aed12f4fb557. Real ground pickup/outside shoulder hold -> cover -> grab/downpull -> two actual R2 holds produced11 new trace_valid=1 trajectories with write/trace source consistency1. All12 phases including after-fire lease/consumed advance, release/regrab/reverse, physical head-up/return completed; operator0/stop0, normal cleanup and remaining_owned empty. Final cover applied=consumed522. This is controlled firing-chain evidence, not complete visual/physical acceptance or game FPS.
+
+Main reviewed all12 actual paired phase images. Initial visible wrist-to-edge remains unaccepted. Own-row r348 decoded targets prove~36.4cm wrist error before full rise; fixed arm reach47cm vs requested83cm explains the reachable-shell projection (task59), not a matched-skin requirement. No bone stretching. r354 also needs an exact shared-basis comparison: held aim C0 right wrist~635 while shot muzzle Z~596; these are different points and not yet exact paired snapshots, so do not diagnose cause or certify sight alignment from that difference alone. Current slot candidate top634 is not a certified mesh edge.
+
+Task60 found existing first-consumption Frame/Output/Core/stamp archives, but Goal/neutral placement were not saved and exact full-input join remains unproven. Its replay.cpp is an uncompiled draft, not baseline evidence. Next reuse the existing one-time first-consumption snapshot to retain actual state.goal for body reach replay; inspect common eye/weapon basis, fix actual visible edge reach, then record the owner-captioned full demo. No successful complete new delivery video/manual package or headset acceptance; public/manual r329 entry unchanged. Full goal remains active. Evidence: cover-peek-fire-r350/evidence.json, r352/first-attachment-failure.json, r354/evidence.json, r354/consumed.json and task59/rows.json.
+
+
+## 2026-11-16 r355–r359: same-C0 replay captured; numerical reach improved, real edge/eye and fire still fail
+
+r355 Native927e4ff5c90890ad5aa472510bf80038fe488248d43dfe12861f315f89b898f6 reused r353 Playground. It separates cached visual cover geometry from transient stock action/transition bytes while retaining full current before/after context, and captures actual Goal+V3 Input+asset in the SAME C0 consumption as source/output/core/stamp/observed. Header104/strict original payload sizes. First/grab archives immutable, export only normal drain. Worker61 mixed/unwired draft was rejected and retained separately; main implemented the critical capture. r356 actual PID53840 operator0/stop0/normal cleanup,11 valid shots; this still did not establish coherent visual aim. No TTL or writer changes.
+
+r357 offline reader loaded both r356 archives with strict sizes/EOF/header/native identity/model/owner/world/stamp joins, computed real Marcus115 SHA256 and reran plan_cover using the ACTUAL saved Goal. Baseline head/pelvis/feet position errors0. Wrong PID, wrong owner and truncated Goal each rejected (exit2). Optical eye is derived through the authored head-eye marker; the recorded left wrist uses the existing free-hand eye converter. Neutral grab target exceeded fixed arm reach by21.763cm. Counterfactual low eye619, at last captured slot+12cm horizontal setback and candidate top634 minus15cm, solved with2.738cm reach margin. The geometry belongs to a last successful snapshot, NOT an exact-C0 surface certificate. This is pure math, no gameplay write/physical acceptance.
+
+r358 adds a separate scoped derived-eye field without changing raw neutral calibration. One current geometry query is stack-owned by Shared.prepare and reused by the grab collector; fullGoal resamples raw eye and requires the exact current TrackingBundle before copying the derived placement. Body/view anchors share it, physical tracking remains downstream once. LT permission and popup endpoint retained; high-cover upward remains absent. Top target was changed from LT eye endpoint to slotXY + candidate midTopZ. Worker63 pure helper27 checks passed; worker64 static scoped review found no raw/derived epoch or double-physical displacement bug. Final Native97883aa36cb1b8823d3d697f52955450bcb14015b40f09e670e67ebb5deca6fe built441 project dependencies; PG353 reused. Initial Native82cf... compiled but final adds bounded existing-value-only binding/placement diagnostic observations; initial manifest/receipt retained. No shared validation-core modification or public/manual promotion.
+
+r359 PID38076 reached all12 action phases with new consumed body progress: zero offset ->10cm downpull ->15cm native-popup clamp -> release/regrab -> reverse -> independent head-up/return. Normal cleanup verified, operator1/stop0, remaining_owned empty, no forced termination;777 archived projection images.11 paired consumed rows decoded through existing reviewed decoder. Grab/drag/reverse/head rows2..10 now have wrist-target residual approximately0; idle rows1/11 remain6.07cm. This fixes numerical reach to the chosen target, NOT actual wall contact.
+
+The main personally reviewed all12 phase image pairs: initial view STILL looks over visible sandbags and the fist is visibly above the actual edge. Therefore slot+MidHeight is NOT accepted as visible wall top; its prior candidate-only warning matters. r358 must NOT be promoted as the requested low-cover fix merely because body/target math passes. The field is used in original camera point computation; actual render mesh bounds/vertices near the slot are the next needed datum. Collision/occlusion requirements remain deferred; do not reinstate physics certification as a gate. Current eye/core/capture/provider within each decoded row agree619->629->634->619, so do not blame a blanket missing virtual delta or guess a sign flip without new evidence.
+
+Firing also FAILED in r359: two actual trigger holds,0 valid trajectories. The sole logged trigger-active R2 witness has status10, owned0, muzzle_ready0 and continuous_poll_gap1, even though that copied sample is56.79ms old. No attachment rejection was logged; this does not isolate every failed press. Do not relax input freshness/continuity or declare a fixed gun/view basis. New bounded Native binding-rejection witness table is empty in this no-shot run, not proof of firing-animation coverage. Next inspect exact muzzle/continuity readiness from existing logs, alongside actual mesh edge location. No unchanged rerun scheduled.
+
+Performance self-audit expanded and worker62 corrections incorporated: static repeated-proof/attachment-schema risks, bounded observer costs, same_basis tick scope and independent render_current read distinguished. No CPU time or actual new-game FPS measured, no performance gain claimed. Full goal remains active; initial visual shelter, true visible edge grab, coherent peek fire and final captioned demo remain incomplete. Public/manual r329 preserved. Evidence: cover-replay-r357/result.json, archive-rejection-result.json; low-cover-placement-r358/native-build-result.json; cover-low-eye-r359/evidence.json, own-row-contact.json, basis.json, phase-contact.jpg; worker tasks62–64 results. Worker65 is the same persistent sidebar worker, searching saved render-geometry evidence only.
+
+
+## 2026-11-16 r360 visible-component reader prepared; capture blocked at input startup (not a Bounds rejection)
+
+Worker65 bounded saved-evidence search found no current mesh asset/bounds/transform packet for the low-cover slot. Existing collection captures authenticate explicit components and LocalToWorld but do not give the wall top. The original LT excerpt alone does NOT prove MidHeight semantics. Do not infer an actual top from slot+MidHeight or replace it with a physics bound.
+
+Worker66 implemented one external-RPM reflected Bounds observation, reusing existing current lifecycle/roles/surface/collection membership and LocalToWorld proof. Main rejected initial draft errors (StructProperty width compared with None, struct-type pointer treated as object, instance data read from type memory). Corrected reader uses exact Origin0/BoxExtent12/SphereRadius24 shape, instance raw slicing, strict closing roles/surface/Bounds, optional missing-property-only asset reporting. Fake query tests distinguish instance bytes from type metadata and reject bad offsets/nonfinite/negative values. Main reran the check successfully and verified frozen SHA fbef7705576999c87ad16c396e366d33f15d72556863a74a1489211ff2e13de7. No production/frame-loop reader or new action authority.
+
+r360 private data-only route retains real setup entry then plans ONE existing Actor.Trace call across the cover point solely to identify the actual component; its hit point is not substituted for visible top. The frozen reflected reader would then read actual component bounds/asset/transform. Reuses r355 Native927e... and r353 PG2c476..., no new public/manual package. The run PID67288 FAILED Native activation: rejected controller input producer unavailable, before operator/trace/Bounds. XR stdout nevertheless reports5467 controller frames published. Receiver open can reject many boundaries; mapping/header/mutex/publisher cause not yet isolated. Current root/frozen controller/stereo/pose headers compare semantically equal (CRLF hash difference only). Do not call this missing publisher, proven mutex contention, or a Bounds failure.
+
+Protected runner50085 terminal1. Original run normal_cleanup_verified=false, stop_exit1, remaining_owned empty; preserve failed marker. Final isolated-done has owned_game_absent=true, owned children remaining empty, forced_termination=false; actual owned PIDs67288/53680/65304 absent at check. PG shutdown0/entry restored and XR terminal object destruction are separately recorded; this is not a successful gameplay/normal-cleanup acceptance. No interference with other active chats/sessions. No unchanged restart.
+
+Private r361 PG diagnostic-only closing classification compiled:18f77c8f378ba578716e4e49458cc5a08173926a21b5f90f72f525f4b4a4fd5f,188 project dependencies. Existing unified muzzle closing stage6/7 predicates are split in SAME short-circuit order, logging exact failed predicate and existing game-difference bits without new game queries, changed checks, source age or writer. Not selected or game-run. Remember follow muzzle_stage6 is success; aggregate unified stage6 cannot identify which closing predicate failed.
+
+Worker67 now owns only the private r362 ControllerInputBridge receiver-local optional open diagnostic and own-process check; main will integrate activation logging after review. No retry or input guard relaxation is authorized by that brief. Next recover the specific startup boundary, obtain actual visible component geometry, and repair initial shelter/true edge/peek fire before final captioned video. Full objective remains active; r359 visual and firing failures remain unresolved. Evidence: cover-render-geometry-r360/evidence.json, worker tasks65/66 results and r361/playground-build-result.json.
+
+
+## 2026-11-16 r362 diagnostic build; r363 XR preflight failure; r364 verified prebirth wait
+
+Worker67 optional ControllerOpenRead receiver-local diagnostic reviewed/corrected, private headerSHA1a9dc45fa34559e030c592197a0d092b232fe0d384146f755f5475e3c91973a4. Own-process named-mutex check12/0 proves contended rejection and accepted open afterrelease, plus invalidPID; no game input or serialized/ABI/name change. Main activation logs exact code/error only on existing failed open, retries0. Final private Native9baa49df5ad821f44e556e36b31a4c3b5ecb639091c7f05f7b02a44d4becbeb3 compiled440 project dependencies, no external worktree dependency. Root/shared headers unchanged. No actual producer failure reason has yet been captured by this build.
+
+r363 PID66860 stopped at an EARLIER gate: Strict focused XR source0 or startup panel preflight failed; Native remained inactive. XR log69744 ends at runtime starting/extension enumeration, so it never exercised input-open diagnostic, operator, ray or Bounds reader. Original overall normal_cleanup_verified=false/stop_exit1 retained. Final isolated-done proves owned game/children absent, no forced game termination. XR cleanup separately reports stop_signaled/wait/terminate_owned_child for cleanup_wait_timeout; do not hide this owned-XR forced cleanup behind the game-only forced_termination=false field. No owner/other-chat process was stopped. Runtime78949 terminal1.
+
+Observed shared isolation source now treats memory/active owners as observations for another owner's load tests. Do not overwrite it. For this cover data capture only, r364 private copied tool adds an admission constraint INSIDE the existing first_admission mutex: no competing live owner, at least8GiB commit/6GiB physical. Disk/freshness/process/current-input/source0 protections remain; no additional feature/headset acceptance gate. Modified private-tool hash5a319a8171d972d4ff74d9ebffaab3cc60676b593ba5e3d8ebab9ca49a6d1178 is recorded before spawn in its prepared receipt. Other threads/global settings unchanged.
+
+r364 bounded60s admission returned prebirth_resource_refusal=true, with NO isolated-worker.json and NO launcher-session.json. Thus no new game/XR was started; runtime83668 terminal1 is a resource-window refusal, not another gameplay or Bounds failure. Current require_memory reauthenticates the live worker identity and observes lancer-physical-export-1116-ff6z28 still active; do not stop it or infer it ended from timeout. This prepared attempt's admission is unconsumed. Revalidate actual owner/memory state before resuming it; no repeated launch while unchanged.
+
+Additional offline projection uses actual r359 captured Core base-view, input FOV/eye/reference (same admitted C0 tick41781/compose41782). The candidate world point(-4123.25086,-509.729277,634) projects in front of the camera at left-eye normalized pixel(.741621,-.121011), ABOVE the image. That agrees with the visibly too-high grab target; it does not give actual bag top, game near/far or exact GPU-image pairing. Do not patch a speculative camera sign to fit this bad candidate. See cover-replay-r357/project_record.cpp and r359-top-projection.json.
+
+Full objective remains unfulfilled: actual visible edge/sheltered eye, coherent peek firing and final captioned demo still open. New data needed is the explicit visible component bounds/asset/transform; reader and route are prepared, not runtime-accepted. No public/manual replacement. Next obtain an uncontended admitted runtime using existing protections, perform one component measurement, then correct the real placement and retest the requested effect. This turn is progress plus a verified live-owner wait, not a blocked or complete goal claim.
+
+
+## 2026-11-16 owner priority: state-based empty-hand grab BEFORE actual edge detection
+
+Latest direct owner instruction: first finish Grip-based up/down/left/right peek while already in the game's cover state; physical edge detection comes afterwards. Existing cover state is sufficient to enter this interaction. Original LT/L2 direction permissions/ranges remain; no invented high-cover upward peek. Empty left hand acquires at its current tracked position without proximity to a purported edge. Pull down raises body/camera; pulling up reverses; lateral hand movement produces opposite body/camera movement. Preserve additive physical HMD motion and independent tracked hands, fist only, same sole hand arbiter/body writer. This changes implementation priority, not the eventual edge-detection objective.
+
+Task69 assigned to the same visible persistent Kaku worker, private cover-state-grab-r367 copied from r362. Remove the state-mode acquisition dependency on an 18cm LT eye-point neighborhood and add an explicit two-axis mode; do not label the state handle as measured physical contact. Do not reuse failed r358 placement (its nominal top was above real mesh). Main owns integration build/controlled runtime. No implementation or runtime success is claimed at assignment.
+
+Offline map evidence r365/r366 is preserved, now deferred: exact cooked mesh arrays and transformed authored geometry indicate the old nominal top634 exceeds the nearest mesh maximum601.7018 by32.2982 game units. This explains the bad candidate, but does not prove live component identity/contact. It is not a prerequisite for the state-grab slice.
+
+Correction to the previous r364 checkpoint: although no isolated-worker/session was born, the outer run-basic claim.json WAS already created. The prior phrase 'unconsumed prepared attempt' is incorrect for that outer runner. Preserve this failed claim; use a new identified attempt for changed functional code. Do not reset old receipts or relaunch it directly.
+
+Full goal stays active. State grabbing, later edge detection, coherent aim/fire and captioned demonstration remain separately unverified until actual evidence exists. No public/manual candidate replaced.
+
+
+## 2026-11-16 r367 current-state Grip implemented; r368 actual motion/video; right-out still pending
+
+Owner priority implemented in a NEW private r367 frozen from r362; four changed files only: cover_interaction.h, cover_input_owner.h, cover_l2_grab_live.inl, cover_input_live.inl. Explicit state_grab + state handle (not physical edge) acquires at current tracked hand, independent of LT eye-point distance. Same original typed cover/L2 query/range remains. Negative hand displacement on frozen wall tracking right/up controls two axes simultaneously; release/regrab and incumbent/sole-owner behavior preserved. Same-frame equality includes the state handle. Old optional one-axis motion backend explicitly rejects state mode. No shared core/identity/freshness/time-window/writer changes. No r358 bad placement reused. Grip closes the existing fist; no matching pose authoring added.
+
+Main review corrected requesting-stage leftover edge reach, froze both axes, included handle equality and removed dead old provider code. Focused kernel26/0, old interaction PASS. The old Owner fixture omitted explicit view_anchor; main's isolated valid-fixture copy73/0, state Owner22/0 checks actual controller edge->grant, diagonal/reverse/regrab, independent HMD additive, incumbent preservation and changed same-frame handle rejection. A NEW weapon proposal intentionally has lower priority than valid cover per existing arbiter; a main draft test incorrectly assumed otherwise and was corrected to test an actual incumbent. No production arbiter change. Worker baseline old Owner16 failures preserved as fixture evidence.
+
+Native598d86efcf1c49ab4cd7cbae7343f3e65808ec15010f40189734d382b9fce5d5 compiled440 project dependencies, no external worktree dependency, all dependency hashes unchanged after worker freeze. Reuses PG3532c476069999d8206efbbcbc815abe171fd3989c57280eda773d2aed12f4fb557. Build83562 terminal0.
+
+r368 actual game PID10896, controlled Source1:9 phases passed, operator0, stop0, normal_cleanup_verified=true, remaining_owned{}, no forced game termination. Acquire at original hand without approach; hand down10cm -> virtualup0.100000024m; combined right hand movement -> virtualleft-0.100000001m whileup preserved; reverse lateral and vertical tozero; released HMDup0.0800000429m with virtualzero then return. Body consumption advanced in everyphase29..182. Main personally viewed all9 paired phase images and dense frame517: actual bag moves down in image on upward peek, lateral view changes and returns. This proves this low-cover left/up/return slice, not right-out/high-cover/new fire/headset/full hand fit or edge detection.
+
+Worker70 final simple demo preserves original frame timing and trims startup/walking:9 actual phase captions, three lines of flow/Grip state/object/result, persistent Source1/non-headset/edge-deferred banner. Actual paired projection, no audio, H264/yuv420p1280x960,17.36s. Final SHA0df06e3dbc313a02a58ef081be85f6aa74deb6a50a9005abdc9771206bdea43f. pythonw/CREATE_NO_WINDOW used, final FFmpeg/FFprobe0. Source/ASS/script/route retained. Delivery J:/gearsVr/analysis/cover-system-20261108/cover-state-peek-r368/demo/cover-state-grab-r368-demo.mp4.
+
+NEW manual candidate J:/gearsVr/candidates/cover-state-manual-r367-20261116/GearsVR Launcher.exe packaged753 inventoried files, strict portable preflight passed. Native r367+PG353 selected, existing physical source0 XR unchanged; no game launched by packaging and no physical headset acceptance. Old r329 inventory/binaries untouched for rollback. Package README explicitly records right-out/high-cover/fire unverified.
+
+Right-out verification remains OPEN, not replaced by rightward return: r370 selected nearest right-permitted low cover, but ordinary walking was blocked BEFORE original A/cover/grab; operator1, normal cleanuptrue. r371 preparation failed double-read PSO copying guard BEFORE any game; retained. r372 fresh preparation after two equal current PSO hashes succeeded; actual game21296 original lateral movement hit read-only helper's special_move==0 assertion when actual state15 (cover type2), BEFORE any grab. Normal cleanuptrue. r373 driver now stops input and waits bounded7s for freshly authenticated actual idle0 before continuing; production guards unchanged. r373 prebirth resource refusal occurred with another reauthenticated live owner and ~5GiB physical memory below the private6GiB guard; NO worker/session born. Outer claim already exists; never reset it or directly rerun this consumed outer attempt. Runtime53001 terminal1, no owned game/XR remains. Do not stop the other owner or loosen shared protections.
+
+Current full goal active; state-mode source built and left/up actual effect demonstrated. Next finish right-out actual verification using corrected original-slide route when a current resource window permits a NEW identified attempt, then proceed with remaining full objective in owner's priority order. Actual edges, coherent peek aim/fire and final complete-feature demo still open. No FPS improvement measured; projection count/rate is not game FPS.
+
+
+### r373 flag correction and r374 resumed after verified external-state change
+
+r373 has actual ResourceUnavailable pre-spawn stderr and no worker/session, but its legacy runner did not recognize the new private refusal prefix: original prebirth_resource_refusal=false and normal_cleanup_verified=false are preserved, error Private launcher start refused. Do not rewrite these as a normal-cleanup pass. The no-game-born classification is based on explicit pre-spawn stack/guard and absent worker/session, not those false flags. r374 private runner adds only the exact new ResourceUnavailable prefix to existing no-birth recognition, still requiring start_exit1/empty stdout/no worker/log/session; four focused positive/negative cases passed. No gameplay validation changed.
+
+Live reauthentication then observed the other owner ended and memory restored (~21GiB commit/~10GiB physical, zero active owners), so a NEW r374 attempt was prepared. It reuses the same frozen r367 Native+PG353 and corrected original-cover-slide idle wait. Previous r372 showed positive stick movement advanced from slot0 toward next slot; r374 keeps only that observed direction and a bounded14 pulses rather than reversing early. Actual game78112 born; runtime93969 currently owns it. Do not start another cover runner until this handle is terminal and cleanup inspected. No right-out success claim yet.
+
+
+### r374/r375 final actual result; task71 next concrete failure
+
+r374 game78112 actual ordinary A left player CoverType0/special_move0; no state grab or slide ran. Operator1, stop0, normal cleanuptrue, no remaining ownedprocess. Near target facing differed from authored wall normal. r375 changed only test approach facing to p+250*forward, using original authored direction and same guarded A once. Game79740 actually entered low CoverType2, but initial C0 body check FAILED before state grip/slide: cover fits/plans/consumed0, reason104=100+cc::Code::fit. Full input matched605/missing0, hand_world_valid1, state offsetcertified1, standing hands solved460/commits438. Thus this is now a real initial cover-neutral fitting rejection, not a claimed right-motion failure or a missing edge. Its deeper ng::prepare substage is not yet known. Do not weaken fit limits, freshness, current identity or pretend all-cover readiness.
+
+r375 operator1/stop0/normal_cleanup_verifiedtrue/remaining_owned{} preserved. Runtime22168 terminal1; r37493969 terminal1. All own game/XR runtime/build handles terminal; no pending owned runner. Same worker task71 active, narrowly adding optional receiver-local diagnostics to existing ng::prepare/cc::freeze statuses in NEW r376 only; no game/build/shared source or frozen r367 edit authorized to worker. Main retains review/build/runtime ownership. Do not rerun unchanged before the concrete substage is observable.
+
+r36817.36s video and manual candidate remain preserved as the proven left/up/return slice, not general cover acceptance. Basic state-grab source exists, but right-out game proof and this entry-angle fitting failure remain OPEN; full objective active and actual edge detection still deferred under owner priority. Current no-progress classification is progress (implementation, real gameplay/media/package and new failure evidence), not blocked.
+
+
+## 2026-11-16 r376 diagnostics built; actual r380 right-slot failure confirmed; r378 crouch-height candidate built
+
+Task71 private diagnostic default-null/real FullBodyC0Native.diagnostic_first_failure reviewed, no extra plan/game reads or changed guards. Fifteen focused CPU diagnostic cases pass; existing recorded-skeleton/constructed Core fixture is not current game evidence. Recorded flags distinguish unexecuted Report; formatter counts/types reviewed, wrong shadow flag removed. r376 Nativee5c530dbcc73758850aa25f13b7a773546197b6144e2ee984653dc6918236264 compiled440 project dependencies, post-freeze hashes unchanged. Build58058 terminal0. r377 resource refusal BEFORE birth, actual other-owner identities2/low physical memory; no worker/session, claim consumed. It was not run again.
+
+After actual other owners ended/resource recovered, new r379 game81660 reached Native but failed irrelevant Lancer shoulder acquisition BEFORE cover. Operator1/normal cleanuptrue, runtime49551 terminal1. Basic cover testing now intercepts the existing owned/controller/navigation context BEFORE weapon pickup; no X/draw/reload/fire prerequisite. Same world/registry/current checks and ordinary movement retained, current symbolic CoverLink153 slot0 used as navigation hint only.
+
+r380 actual empty-hand route entered original low cover, then ordinary left-stick lateral travel reached right-permitted slot with range[0,0.699999174,0,0.51]. Before any grip, C0 cold initialization failed104. New nested diagnostic stage5,0,0,0,2 means ng::fit / fit::inputs; flags0,1,0,0,0 prove planner NEVER ran. Reference-derived target hipZ517.277426 is below fixed foot targets520.607822/520.310007; already-measured original crouch hipZ546.282059. This is actual game evidence of a reference-neutral height-selection defect; not an exact r375 failed-tick replay. Operator1/stop0/normal_cleanup_verifiedtrue/remaining_owned{}; runtime36362 terminal1.
+
+Main strict archive reader/FK of r368 successful tick37076/compose37077 confirms successful authored hipZ523.81679 only3.6245 above feet520.19, while original measured hipZ546.57067. Task72 counterfactual uses actual archived model/source identities and reconstructs PRE-fit reference XY from production marker/root formula. Four bounded cases: old baseline solved; eye/head lower5cm with reference hip rejectedinputs beforeplan; same lowered case using measured crouch hipZ solves; unchanged baseline using newhelper also solves. Head/foot/max-length residuals around2.42e-6/1.04e-5/8.33e-6 native units; up10/lateral10 mathematical planning passes. Failed-case plan/residual fields are explicitly null, not copied success. Archived counterfactual is not actual current input or r375 replay.
+
+r378 changes only cover_neutral_goal.h relative frozenr376. Reference-neutral Marcus cover retains authored facing pelvisXY but adopts current measured crouch hipZ; other basis/posture unchanged. Existing measured feet/head, fit .25 limit, bone lengths, current source/admission/closing checks and unique writer remain. No eye-height patch, collision/edge dependency or extra query. Native d95e99769d1dff9ace90632c0f6c851b7fa7e0438cafbd438885499fc4fada11 compiled440 project dependencies, no externalworktree dependency; build51924 terminal0. Old manual r367 and delivered17sec partial demo unchanged; r378 not yet promoted.
+
+New r381 owned controlled Source1 run currently exec72948: empty hands, original left full-limit/return, ordinary travel to right slot, proportional/full native top/right limits and return, independent HMD. Scope follows owner's state-grab-before-edge priority; no new firing/high-cover/physical-headset claim. Do not start another runner until this handle is terminal and cleanup reviewed. All prior owned runtimes are terminal. Goal active, after-fix game verification pending; actual edges and coherent peek aiming/fire/full demo remain open.
+
+
+## 2026-11-16 r381 initial fit fixed; explicit virtual lateral body step r382 built
+
+r381 Source1 empty-hand actual run72948 terminal1, operator1/stop0/normal_cleanup_verifiedtrue/remaining_owned{}. Neutral and empty Grip consumed64/106; full-left virtual request -.699999169 reached but body consumption159 stopped. Actual saved first failure C0FAIL01 at tick108473/compose108474 replays status15/bone91, requested78.070092492 versus reach78.044184779. That first failure is at .5666m; an explicit feasible three-ball witness disproves physical impossibility there. Full .70m with feet fixed does have separated reach balls by10.7299cm, so merely improving solver convergence cannot supply requested full range.
+
+Latest owner wants body to move with pull and defers collisions. r382 therefore opts state-grab into explicit virtual lateral body-step targets: both foot XY receive committed_grip_world.xy, original foot Z/orientation retained. Physical head movement does not translate feet. Default legacy/standing policy stays off; fixed bone lengths, solver/tolerance, source identity, freshness and transaction guards unchanged. This is a body-authoring policy, not tracked-foot/collision proof. Two-file delta reviewed; Native89481080e7bb956856286b2b265cca595af1316cf1b4e54422fb423b7a913a4c compiled440 projectdeps, no externalworktree dependencies, build57121 terminal0. Same worker task73 correcting focused checks, no further production mutation.
+
+r383 new Source1 controlled empty-hand route now exec26758 live: left full limit/retract, original cover travel to right-permitted slot, up/right native limits and returns, independent HMD. Original r381/other claims not reused. Private admission remains max2 total,8GiB commit/6GiB physical under existing admission mutex, behind-windows/mute/0.4/no physical input. No other owner session touched. Check actual result and normal cleanup before any next runner. Actual edge detection deferred by owner; final aimed fire, full coherent demo and physical headset acceptance still pending. Old r367 manual partial candidate/video retained, not promoted.
+
+
+## 2026-11-16 r382 faithful policy replay passes; r383 startup failure and r384 no-birth recorded
+
+Task73 initial test erroneously used already-offset failed head as neutral and applied displacement again. Corrected reconstruction subtracts archived committed/physical offsets; flag-off exact signed lateral reconstructs saved head/grip/feet within float roundoff. Production prepare_axes_math now generates actual displacement, full70cm, up51cm, diagonal70+51 and return: all plan_cover status0.51 assertions0 failures; build/run explicit exit0. Max head8.36e-6/foot1.91e-5/length1.24e-5. Default and standing foot targets remain unchanged, no added game object/field queries or measured FPS claim. Earlier doubled-neutral vertical-failure results are invalid fixture evidence and superseded. Source-tree comparison confirms exactly two changed files versus r378, no hidden solver delta.
+
+r383 runtime26758 terminal1 before gameplay Native start: own PID76236 crashed in D3D12Core.dll c0000005/offsetae0f6, event20:53:28. Another PID85848 has same-second module/offset; preserve observations without causal attribution. No operator/projection/action evidence. normal_cleanup_verifiedfalse, XRexit1, isolated launcherexit1, no forced termination and remaining_owned{}. Do not label this normal gameplay cleanup.
+
+One new r384 attempt privately restricted admission to no other active automatic game (max1total) to reduce startup interference. Runtime28818 terminal1 after bounded120second wait: another authenticated game remained active, ResourceUnavailable before worker/session birth. prebirth_resource_refusaltrue, normal_cleanup_requiredfalse, no own processes; claim consumed. No repeated launch on unchanged external state. All own runtime/build handles terminal. Worker task74 prepares an offline actual-route captions/contact/video builder only, encoding not started. Requirements latest state-grab-first priority now mirrored at top, SHA9a2ba352da40f46a873b48418bc1db09b9bb1f60836806bc1df022abbdd25c39. Full-range current game/optical shelter/firing/edges/full demo/headset still pending; goal active.
+
+
+## 2026-11-16 r385 actual full state-grab range passed; basic candidate and captioned video delivered
+
+r385 runtime47993 terminal0, operator0/stop0/normal_cleanup_verifiedtrue/remaining_owned{}, no forced termination. All18 observed phases advance actual body consumption48→860; final902. Actual Native plan status0=1343, status1..15=0. Original current left limit-.699999181 and right+.699999174, top.51; left/right/top full intents consumed, reverse returns and independent HMD+.080000043 consumed. Ordinary original cover movement11 pulses changes permitted side; no teleport, physical edge or new permission invented.800 actual paired JPEG frames captured without errors, not FPS evidence.
+
+Main personally viewed all18 paired contacts plus dense top frame00573: left/right space reveal and returns visible; top rises above bag in right eye. Maximum top pull visibly obstructs left eye with arm/sleeve and shows arm geometry in right eye. This defect stays in raw evidence/video; no unobstructed stereo/complete skin-fitting acceptance. New candidate r382753files offline strict preflighttrue; physical XR unchanged, no physical launch. Oldr329/r367 retained. Delivery video J:\gearsVr\analysis\cover-system-20261108\cover-state-step-r385\demo\cover-state-peek-r385-demo.mp4 SHAd2363636c76412dcf20800579a1e2414b6ce8b831aea2d56dab7e5dd9a4499de; original-speed actual Source1, silent, all button/object/action captions, ordinary cover slide separately labeled. Captions join actual event wall clock to actual paired images, at_ns retained as perf evidence only; completion-boundary timing reviewed. Offline pythonw/CREATE_NO_WINDOW used. Basic state-grab movement milestone delivered; real-edge work follows as latest owner asked. Original full goal stays active; final edge/shelter/coherent aimed fire/top image defect/high-cover state-mode/headset gaps remain separate.
+
+
+## 2026-11-16 r387 current sandbag identity/transform correspondence established
+
+Previous goal turn was progress: actual r385 full state-grab range and57sec captioned video/manual package delivered. Continue actual edge detection after owner's requested basic milestone. r387 current-component probe reused frozen r382 Native+PG353, original empty-hand entry, one original Actor.Trace and existing frozen bounds reader fbef7705. Runtime75889 terminal0, operator0/stop0/normal_cleanup_verifiedtrue/remaining_owned{}, no forced termination. One accepted Trace hit(-4160.004883,-536.705017,544), normal(.803436,.595392,near0), current actor mp_warmachine_SMC number19/component StaticMeshComponent number177, typed asset SDStitchingProxy_114_StaticMesh; current all16 LocalToWorld floats exactly equal offline r366 component29464 authored matrix. Original FName number encoding accounts for authored _18/_176 suffixes. Asset-name/component/transform correspondence now actual, not inferred from nearest-map distance alone.
+
+Reflected Bounds enclosing top602.701828 is not visual edge (original render max601.7018). Asset Bounds is not reflected; reader correctly reports missing rather than inventing data. Live vertex bytes/native LOD prefix not fingerprinted, so do not overstate complete render identity proof. Bounded externalRPM reader6924reads/69656bytes/~384.9ms once; not added to per-frame production loop, no game FPS claim. No permission/grab/collision-volume/handset effect acceptance from this probe. Same sole worker task75 computes exact original surface slices/rim candidates with triangle provenance and actual neutral-eye reach. No live own runner or build. Basic r382 candidate preserved; full goal active, real edge and coherent aimed-fire plus top arm/sleeve visual issue remain pending.
+
+
+## 2026-11-16 r388 actual top interval passes; visible XY still unresolved
+
+Task75 corrected literal slice maxima600.141/600.930/597.530 with explicit uncertain winding/slopes. Main independent original-vertex barycentric reconstruction tri2950/2951/2136 errors0; see r387/main-membership-review.json. Collision hit at544 differs nearest render triangle by5.798cm. Not an edge admission.
+
+Task76 original worker source/tests17checks frozen separately. Main took bounded critical changes in independent cover-top-query-r388 copy: exact launcher-session/game/instance binding, sampled input correspondence, raw failed-receipt preservation;14 focused callback boundary cases passed. No concurrent worker-file edit or shared core change. Adapter SHAe4516c3b199a0f7c5c1b5938a5316b424a0f65aeb7c69cb6865a93bb8bf9c2cd. Max10rays/15sec, first-hit after-only baseline, later before/after surface equality and original ownership/function/identity/unknown-pending guards retained. Not per-frame production geometry.
+
+r388 runtime58543 terminal0, operator0/stop0/normal_cleanup_verifiedtrue/remaining_owned{}, no forced termination.9 actual accepted original Actor.Trace calls produce last blocked600.953125 and closest sampled empty601.65625, interval.703125gameunit=.00703125m. All later current surface packets equal first. Exact top height near authored crest600.9296, BUT hit(-4160.0054,-536.7053,600.9531) stays vertical collisionfront and lies 30.649cm from this named render crest. This is point-to-point distance, not nearest triangle distance. Do not use collision XY as visible fist contact. Full real-edge grab remains unimplemented; current state-grab candidate unchanged.
+
+Existing historical Trace instruction evidence maps ExtraFlags2 to another query bit; SDK source lists PhysicsVolumes, not a complex toggle. No random flags or shared allowlist change. SDK Actor.TraceComponent declares explicit bComplexCollision as a lead only; current GOW availability/layout/entry unverified. Same worker task77 read-only function metadata reader, no invocation/queue/game/build. Main will inspect actual current signature and original code before any new function action. Goal active; actual visible edge/shelter/coherent aiming+fire/full demo and recorded top arm/sleeve issue remain pending. No owned live runner/build or opened REA binary (session reported openfalse).
+
+
+### 2026-11-16 r393：原版弹道表面与碰撞面分开记录
+
+本轮先保留已交付的掩体状态抓取版本：r382 Native、r385 实际18阶段、57秒带按键/对象/流程字幕录像，手动入口 cover-state-manual-r382-20261116。边缘检测仍后置。大幅上探时手臂/袖子挡视野保留为已知问题；该版本探出射击、高掩体新状态模式及实体头显尚未验收。
+
+r389 的只读 TraceComponent 元数据读取因调用公共 `_chain` 时传入字典而失败，r390 单一调用点修复后通过，均正常退出。当前原版 TraceComponent 签名没有较新SDK中的复杂碰撞布尔参数；在私有数据库中核对的历史原版函数固定传入0x20DF，不据此新增函数调用。原始数据库未改，批处理正常退出。
+
+r392 在操作开始前发生D3D12启动异常，零查询，normal_cleanup_verified=false、无本方残留；保留该失败。唯一启动重试r393（exec72532）terminal0：同一当前掩体组件、同一线段，原版Actor.Trace分别使用8和9，共两次查询。角色/组件身份和全16项矩阵在本轮闭合一致；两次均accepted，操作/退出均0，normal_cleanup_verified=true，无强退、无残留。
+
+flags8命中[-4160.005371,-536.705261,599]，距原始导出模型最近三角面约9.929883厘米；flags9命中[-4174.583984,-547.405273,599]，约0.825005厘米。后者法线与对应原始三角面法线反向平行，保存的重心权重由主会话独立重建，误差约1e-13单位。该结果支持下一步使用弹道表面查询寻找抓边候选，但不是实时渲染缓冲指纹、精确零误差表面或完整抓边成功证据。当前资产对应仍部分依赖r387先前读取，未虚构本轮资产字段。
+
+证据：analysis/cover-system-20261108/cover-bullet-surface-r393/evidence.json、main-comparison-review.json，以及analysis/cover-worker/task-78/actual-r393-comparison.json。只在私有诊断查询副本放行精确flags9；公共验证核心、Native/Playground及已交付状态抓取候选均未修改。查询数量/录制帧数不是游戏FPS证明。
+
+
+### 2026-11-17 r394顶部定位通过；主人要求双手显示预览
+
+r394 exec59465 terminal0，operator/stop均0，正常清理且无本方残留。同一当前低掩体原版Actor.Trace flags9共9次；最后命中Z600.25，最近空样本600.953125，区间0.703125单位/0.00703125米。最后完整命中XYZ[-4179.110352,-550.727478,600.25]，原导出最近三角2962距离0.825026厘米。当前组件及全16矩阵闭合一致；实际边缘抓取尚未接入，不能把本诊断当生产抓边完成。证据cover-bullet-top-r394/evidence.json。
+
+主人随后反馈穿模严重，要求隐藏双手以外的身体，先看效果。转入r395双手显示预览，原r382状态抓取候选保持。仅本地渲染处理；保留两手六DoF、握拳/握持、手持武器及原身体/掩体/镜头数据。不以简单坍缩非手骨骼冒充完整隐藏，因为混合蒙皮可能制造拉长三角面。Task81提取原模型手部索引范围，主会话核对原SetMesh到draw的本地角色身份关联。
+
+Task80已保存现有原版Trace集成路径，当前优先级转为本显示预览。私有IDA数据库批处理已正常退出：1c48f8原SetMesh读者408B及8c75d8尾块22B，与原历史代码匹配。完整入口指令显示VF来自R8；旧HexRays参数推断不能直接当ABI。尚无新渲染钩子、未运行双手隐藏版本、未声称隐藏效果通过。完整目标继续active。
+
+
+### 2026-11-17 r399：仅双手显示预览已实测并录制
+
+主人要求严重穿模时先隐藏双手以外的身体。主会话接管r395私有Native显示接入：原SetMesh读者1c48f8、8c75d8全部430B证书，当前本地FGPUSkin对象的4个VF与一次同线程indexed draw对应；没有第二个身体/相机/骨骼写者，不修改共享网格或其他角色。r397实际2048条当前绘制对应，四组窗口分别76089@0、270@76089、30672@76359、2880@107031。沿现有最终draw forward，仅重放原indexbuffer中的手部连续区间；其他本地身体区间不绘制。
+
+保留失败：r396新增1钩子但登记容量仍88，激活拒绝，修为精确额外1位；r397 Native正常停机但旧独立verify_stopped不认识新增游戏入口，整轮cleanupfalse保留。私有验证器只添加已核对原SetMesh的408+22字节恢复期待，公共验证核心未改；原始字节通过、改1字节拒绝的离线检查成立。r398隐藏成功但手掌缺口，原因是只选纯手骨权重；该视觉结果撤回。最终保留含任何手腕/手指权重的原始完整手部表面，各1853面，总3706面/31个连续index区间，衣袖和身体排除；纯范围检查39项0失败。
+
+最终Native8c10e897a16f70e95729bf7402bb71e5b8633f8c7bcf1aa4c951a31ee40bd3b4，443依赖、无外部工作树依赖，正常完整构建。r399 exec14622 terminal0，operator/stop0，五阶段中立→握拳→上探51厘米→收回→松开，身体消费均推进。亲看全部5张实际双眼阶段图和字幕视频帧：原双手/手套保留，大幅上探时原大块躯干/衣袖遮挡消失，悬浮手腕截口仍可见。此为显示预览，不是碰撞、真实边缘、完整拟合或真机验收。旧r382完整身体候选保留。
+
+约12.8秒原速无声实际Source1录像：J:/gearsVr/analysis/cover-system-20261108/cover-hands-preview-r399/demo/hands-only-peek-r399.mp4，SHA29a96ecce239b69439278897cc14ce4e54393720d5b80d96fd39b0a66e4c6493。字幕写明流程、左Grip/R2操作、当前掩体对象与非真机范围，放在左上以免遮手。证据cover-hands-only-r395/evidence.json。r398/r399独立恢复验证及正常清理均通过、无强退/残留；录制帧数和过滤计数不当游戏FPS。完整掩体目标仍active，真实抓边和探出瞄准射击未完成。
+
+
+### 2026-11-17 r400–402：原版表面查询接入已编译，运行证明未成立
+
+沿r399已验证的仅双手Native继续。task82纯Actor.Trace固定帧帮助器423检查0失败；主会话接入当前GT原版native277、116字节参数、74字节NativeParm及三个out链接，完整原始代码1873+186字节/函数字段/类型布局/GNatives和当前身份均核对。普通掩体入口只排几何意图；下一完整renderer Scene在session/stereo/body锁以外同步执行查询，前后用短锁核对当前掩体与对象生命周期，不更新输入时间、不增加身体或相机写者。稀疏每掩体一次，最多10条flags9真实查询；还没有把探测点接入抓取距离门槛。
+
+Native fe7c81f3610a91555b955e1174c2c3ba95896814770ee40f9e6e97934d7f7758完整构建通过，447个依赖，无外部工作树依赖。PG继续原353 final2/2c476069，未新编译。r401 exec66551 terminal1：原版A未进入低掩体，查询calls0，不归因于尚未执行的查询，也不宣称原生表面后端通过；正常清理验证true、无残留。r402仅修普通接近位置65→85单位并中立等待0.5秒，保留相同一次原版A；exec36297 terminal1，在另一boom-demo游戏占用期间被私有max1与8GiB commit/6GiB physical启动边界拒绝。无worker/launcher出生、无查询；原run-result的cleanupfalse原样保留，已消费claim不复用。两次实际结果和原始路径见cover-surface-grab-r400/evidence.json。
+
+侧栏原唯一DeepSeek worker继续task83，仅在独立候选副本给现有射击prepare_stage6的closing谓词分类，保留所有检查、求值顺序和调用次数；不会把旧follow_stage6成功误读成失败，不放宽100毫秒或same_game边界。真实抓边、低位藏身最终确认、探出后的当前6DoF瞄准射击及完整新路线仍未完成。r399双手预览保持，未测新游戏FPS，不使用XR/采集计数证明性能。
+
+
+r403射击closing诊断源码已集成：task83已完成并由主会话review，原353 final2源快照逐文件hash核对后复制；仅weapon_unified_fire、weapon_lancer_r2_native、weapon_lancer_refire_native三个文件改变。11项closing谓词保留原短路顺序/公共查询次数，失败分别1..11、未抵达0、全部通过12在stage7之前。只扩充原有三条诊断，不新增打印频率或共享验证核心修改。source-checkpoint在cover-fire-closing-r403；尚未编译或运行，不宣称射击修复。当前无本会话运行/编译句柄，r401/r402已terminal；资源窗口另有boltok游戏，未干预。下一步需要空闲资源后fresh claim，原r402不复用。
+
+
+### 2026-11-17 r409：Native原版表面后端9次实际查询通过
+
+r405修正射线起点位于当前中立眼位的墙外侧，不再假定slot forward方向，Native a52532878d673ad2193c56bf480cb44d344a5f30d566a7a4f437208878d8598e，447依赖、无外部工作树依赖构建通过。r404首个只读Anchor guard acquisition deadline超时、查询0、正常cleanuptrue；task84私有adapter只允许精确deadline类失败丢弃后完整重读一次，仍总2次、原guard200ms/5次和输入100ms边界不变，12个内存用例通过。混合拒绝/未知子类/owner变化证据保留，公共验证核心未改。r406资源拒绝无启动，原cleanupfalse保留。r407启动gamepad冻结线程时OpenThread87：线程已退出，两次均原始字节状态；未激活Native、原cleanupfalse/no remaining保留。r409私有入口仅在原gamepad gate之前加2秒活身份检查等待，gate与线程冻结/恢复本身不变；已有first_admission等待600用于资源，不放宽输入/Scene生命周期。
+
+r409 exec61110 terminal0，operator/stop0、正常cleanuptrue、无强退残留。完整Scene485排一个意图，486当前GT在所有session/stereo/body锁外执行原Actor.Trace277 flags9。9次调用、accepted1/status0，整段0.003168秒。最后阻挡/第一个空点高度600.25..600.953125（0.703125世界单位，即约0.703厘米），真实点[-4179.11523,-550.739136,600.25]、法线[.352624923,-.13186948,.92642653]。输入时间与原Scene Receipt不重写，当前Actor/component/StaticMesh/WorldInfo/16元素LocalToWorld前后核对。这证明Native原版表面查询后端；该次仍state-grab，尚未启用近墙才抓的gate，不宣传真实抓边完成。
+
+同场5阶段中立/握拳/上探51厘米/收回/松手身体消费均推进；亲看全部5张实际双眼图，双手/手套完整、躯干衣袖隐藏、上探清晰，位于J:/gearsVr/analysis/cover-system-20261108/cover-native-surface-r409/demo。现有左端slot0只允许左/上；同link slot3有右/上许可，不能给slot0虚构右探。task85在独立r408继续近真实点18厘米才能新抓取、真实当前表面证明缓存、延续握持与释放保持重抓；未编译/未运行该gate。r403射击closing诊断PG08ffa8ae551b52a80323785fafffb76490d05a728b00dffc91d3e4f39e375748，188依赖、无外部依赖构建通过，尚未用于游戏，仍不宣称射击修复。后续需要近边抓扒及探出6DoF射击完整路线。未测新游戏FPS，查询耗时不等于FPS，头显验收未成立。证据cover-surface-side-r405/evidence.json。
+
+
+r408真实接触点抓取门槛已构建：Native81fb778e56f0de4c71766ca66227c2c6f0c819d32a673cdd914e674780ae6d28，447依赖，无外部工作树依赖。相对r405只改surface probe与L2 provider两个inl，保留现有身体/相机/骨骼和仅双手绘制实现。保存真实Hit及Surface身份/asset/matrix/本地WorldInfo字段证明；当前Scene只核对新增表面边界、组成几何与眼位key，不重做原版Trace/公共neutral查询。新抓取默认id0，仅当前点18cm内为id3；同request延续，释放保持后的certified offset用于重抓映射，原LT左右上范围、2轴反向拉动与HMD自由仍由原kernel执行。首编译Windows near宏冲突失败保留，主会话仅把成员改为within_reach后reach2构建通过。task85已冻结，未运行该gate；r410 exec58391是真实远/近/上拉/侧拉/释放保持/重抓收回/HMD路线，当前确认活跃、在既有first_admission wait600等待，尚无launcher出生，必须续等同句柄，不新开/复用claim。task86仅准备右手两种姿态实际射击operator helper，无新游戏/模块写者。完整目标仍未完成。
+
+
+r410真实抓取首验失败与r412重复锁修正：r410 exec58391 terminal1，CT2原版进入成功，L2 provider152调用/151ready、范围左-.7上.51，current C0和hand-world均成立，但queued/services/calls全部0。根因是新request在调用方已持有tracked StereoMutex(std::mutex)时再次加同一锁，首次抛出后attempted key已登记，后续早退不再排队。r410正常cleanuptrue无残留，失败保留，不能称真实抓取通过。主会话在独立r412仅移除request这一处重复stereo lock（调用方锁/body锁/所有前后校验保留），其他Native/C0/相机/骨骼文件未变，Native f65ced6119484e1ff3f670a5fe6740d5291eaf8c1a8d85cdfdaeafa4c99e2142构建447依赖无外部依赖通过。新r413 exec16741沿同一远/近/抓取/拉动/释放保持/重抓/HMD路线验证，当前真实句柄活跃、启动前资源等待；必须续等同句柄，不重复启动。r409原版9次表面查询实际成功证据保留，完整掩体与6DoF射击仍未完成。
+
+
+r413真实近边抓取与上探通过，侧移生命周期撤回未解决：exec16741 terminal1，operator1、正常cleanuptrue，无残留/强退。真实7阶段中立远手、远Grip拒绝、松开、HMD前移25cm且virtual0、手靠近原版查询沙袋上沿、近Grip抓住、向下拉手上探51cm，身体消费均推进；原版9次查询accepted1，用时0.0035667秒，同一真实点[-4179.11523,-550.739136,600.25]与600.25..600.953125区间。随后左上斜向动作在offset[-.0326160043,.459445119]中断：frame836/token2的shared handoff显示lifecycle4→5、down/known/tracked均0、withdrawal7，而源read/controllerstatus均0、requested/latest/selected seq7413一致、age约6.9ms。匹配输入没有missing，最终surfaceCurrent1，不能归咎于墙点过期或放开原输入边界。具体global/action身份差异仍不明，保持guard，task87在独立r415只记录首次真实握持时epochs/action barrier前后Snapshot，不新增查询/日志循环。释放保持重抓、左右全范围、探出射击均未通过这版；当前无运行/构建句柄。r414已写惰性fire准备脚本（实际X拾枪/右手左肩取枪→进入掩体→近边上探→两种右手姿态R2），只做语法检查、未执行准备或游戏。完整目标仍active。证据cover-request-lock-r412/r413-evidence.json。
+
+
+r417真实近边与左上扒动、释放保持重抓全路线通过：同一既有runner恢复观察后确认operator0/stop0、正常清理true、无残留与强退。16阶段含远Grip拒绝、HMD前移25cm且virtual0、真实沙袋顶近Grip、上探51cm、左移20cm/上探20cm、横向回中、释放保持、远手拒绝、重新接近抓取和手上移收回，身体消费均推进。r413生命周期撤回本次未重现；r415仅增加观察，不宣称因果修复。视觉仍不验收：r413记录的最终SpaceBases证实手臂骨长合计46.995cm，抓边目标需73.246cm，实际手腕误差26.252cm正好为IK触达截断；目标在上探时保持世界锚定，不能误诊为虚拟相机补偿缺失。下一步使用可达接近路线核对实际手腕/画面，并接通两姿态真实瞄准射击。右侧/高墙真实边检测、完整字幕视频和新手动候选仍未完成，完整目标active。证据cover-grip-domain-r417/r417-evidence.json。
+
+
+r418真实拾枪抓边上探到达，探出射击仍失败：exec6455 terminal1，operator1/stop0、正常清理true、无残留。原版X拾枪和右手左肩取枪后进入掩体，HMD前移65cm，真实远Grip拒绝/近边抓住/手下拉上探51cm共7阶段身体消费推进；两种右手姿态R2均0条合格射击，保持实际失败。原8条stage0拒绝日志在frame730前耗尽，而实际press约1021/1076，不能据旧日志归因；follow_stage6也不是失败码。私有r419下一步只记录实际R2按下时当前首个guard失败，保持原13项短路次序/TTL/总8条日志，不新增写入者。已看3张实际投影图，手部仍部分在顶沿遮挡附近；9条CPU手迹显示靠近后腕误差从r417约29.2cm降至9.77cm，上探后8.57cm，不能宣称渲染锚定完成。完整目标active，侧边/高墙、有效六DoF射击和全字幕演示仍待完成。证据cover-peek-fire-r418/r418-evidence.json。
+
+
+r420更大物理前移上探时身体消费停止，未到射击：exec12102 terminal1，operator1/stop0、正常cleanuptrue/无残留。资源等待后使用r415 Native6e2d与已编译r419 PG67ee3bd1。85cm物理前移/真实抓边后virtual上探51cm仍owns1、missing0，但第7阶段body consumed未推进，plans188/applied144/consumed144/rejected48、reason10。对应冻结源码为cc::prepare后n::apply_with_view_marker返回false，保存first-cover-plan-failure/first-failure/body-pending/6手迹；具体枚举需按r415实际布局解码，不能预设spine失败。fire helper尚未调用，因此新R2诊断未实测，不能报射击原因。另已修正后续演示fixture：原helper用初始head_rest，前倾65cm时把枪留在头后20cm；task94改要求caller真实current_head_pose，枪在当前头前25cm，左右手/头不替代控制，实际helper合成夹具14/14通过，未当游戏证据。下一步保存此完整身体故障，同时在已能消费的65cm上下文用修正helper隔离R2问题。完整身体/手腕锚定/侧边/高墙/射击/字幕全路线仍active。证据cover-peek-fire-r420/r420-evidence.json。
+
+
+r423物理脚跟随因果修复与r424全身体路线通过，r422射击基准分岔未解决：私有r423只在cover启用新增默认false物理xy视觉脚跟随flag；不改脚z/朝向、头/眼目标、骨长或eps，不改游戏胶囊。r420保存的实际失败在原goal精确复现plan15/bone91；仅新脚xy后plan0且原head/foot/length误差阈值全过。adapter实际当前1864B Core与原Marcus几何CPU210/210；旧1832B blob和误把XR Z作up的测试失败保留，测试仅修为Y轴。Native6c26e0e4/447deps/no outside编译。r424 exec10404 terminal0/cleanuptrue，无残留，85cm物理前移+近抓+上探51+左移20/上探20+释放保持+重抓+收回+头返回16阶段body消费全推进/原因0；近抓/上探腕误差约0.00004/0.00016cm，侧移仍8.20071cm reach clamp。已看5张真实图，固定85cm脚本让目标手在头后/视野外，不能算可见抓边演示；下一步按实际墙点距离安排身体接近并将真实query横向种子靠近手，避免强迫跨身抓中心点。r422 exec80983正常清理，当前头前25cm修正helper后首burst2条实际原版合格shot，第二0；其调整aim与面墙方向dot约-1，原socket和新origin还不在同一正确cover基准，不能当有效瞄准。已定位Native rig publish在uncomposed-cover画面拒绝前，task98核对currentC0眼基准/Scene一致性，不新增posewriter。完整右侧/高墙/连贯射击/全字幕视频/新手动候选及头显验收仍未完成，goal active。证据r424-evidence.json与cover-peek-fire-r422/r422-evidence.json。
+
+
+r425手附近真实query与r426上探失败的有限几何诊断：Native425/9626fdbc/447deps编译成功，真实Trace横向种子只靠近当前手，不提供hit或动作权限。r426实际8阶段到上探停住，operator1/stop0/正常清理true/无残留；本次真实边缘高度577.75，按实测距离前移约0.60787m并低头观察手。保存的C0FAIL01在当前源码离线精确复现plan15/bone91：48.046cm上拉时腿球距离78.10941056超过78.04420110。三球解析交点在现有.001内缩下实际存在；诊断只改变期望骨盆到该可行点，原头/脚/朝向/骨长不变，plan0且头7.60e-7、脚约1.50e-5、长度2.17e-5全部通过原阈值。它证明当前128步投影收敛问题，不是生产修复，不允许通过重拟合neutral或放宽eps交付。task100继续最终cover world姿态旁路，task101准备有限解析fallback；均待完成/编译/实游戏验证。双手only保留，完整掩体/瞄准射击/全字幕路线/新候选未完成，goal active。证据cover-hand-contact-r426/r426-evidence.json。
+
+
+r426完整上探的固定脚位可达性补充：对保存几何仅把spine球中心上移到51cm目标，使用原完整半径求头球中心到双腿球交集的最近点，最小距离49.4525926342大于原spine半径46.8600150938，差2.5925775405cm；两个正对偶系数和3.56e-14驻点残差证实该固定脚位下51cm无解。48.046cm仍有解，分别保留“收敛失败”和“固定stance不可达”两个问题。不得缩小原定探头幅度、伸长骨或投影头目标换取通过；后续需协调原有身体执行点的脚位/站姿。证据cover-hand-contact-r426/full-rise-distance-certificate.json，非新的游戏帧。
+
+
+r426参考面墙脚位的51cm离线见证：实际宽脚位约61cm，模型参考面墙脚位约23.56cm。保存头目标经同一authored marker逆算eye后减去实际physical/Grip，得到原neutralEye[-4122.726509,-491.326003,590.950811]，与路线初始眼位相符至0.0001cm。仅以reference foot-minus-eye和固定面朝root求脚XY，保留实际脚z/朝向、原头目标/51cm与骨长，plan0，头3.247e-6、脚2.159e-5/4.191e-6、长度2.138e-5通过原阈值。该结果为CPU可行性见证，尚非生产修复；task102准备在cold cover入口一次冻结reference脚位并复用，不每帧追踪头拟合，优先于task101复杂通用投影fallback。无新游戏/头显完成声明。
+
+
+r427最终掩体坐标旁路编译与实际host检查：主会话在worker多次静态返工后接手小段host编译/夹具收尾，保留首失败；实际定位controllers display_mode与display_observed_ns之间padding字节导致同源误拒，复用既有same_input全字段比较，仅在派生姿态比较副本排除controller对象表示，不修改存储rawCore或其原current_copy核对。RawCore继续bootstrap，同Scene完成cover姿态只更新独立world sidecar；pending公共read/XR projection拒绝，原始clock/epochs不刷新，冲突final保持拒绝，legacy不强制staged。修正合法180度旋转+平移/同Scene无输入重新发布的夹具，最终当前父源18个rig模式全过，final-world100checks含padding、真实输入变化拒绝、rawCore字节不变。Native526069c2e60d5125acc8275613c0d977dacb865b24eff726409d680c2449e960/447deps/no outside实际编译，未跑游戏。旧BodyGoal host prefix缺当前Native依赖导致编译失败，日志保留，不能声称其用例过；真正启用的Native body/capture接口已集成编译。Task102唯一worker在新r428源实现cold参考脚位；完整头眼藏身/手贴边/射击方向/右高边/字幕路线仍待实游戏，goal active。证据cover-final-rig-world-r427/r427-evidence.json。
+
+
+r428参考脚位、r430实际上探与r431参考骨盆修正：Native428 fe6fd217/447deps实际编译，保存426脚位26check与adapter233通过；首次bcrypt头/ADL和错误测试断言失败保留，主会话小修。r429因主会话晚import math形成闭包未绑定而在neutral后中断，正常清理；已修作用域并新case430。430 game79280的9阶段（远拒绝、物理接近、真实近抓、51cm上探、抬头平视）body消费均推进/原因0；但两R2 burst0/0合格trajectory，原ammo420->418->417不能当6DoF射击。实际失败frame1019/1069 stage5/follow1/planframe0，task104源码定位tick清计划后的早退组，具体分支未明，非padding因果证明。已看5张真实图：上探/目标视野正确，近抓阶段灰黑近处几何遮挡，未独立确认遮挡模型；手commit7/8实际腕偏9.7305/6.4214cm（样本较阶段末早1.59/.76s），不能算贴边。CPU保存430 neutral Frame/Goal+已消费头手姿态重现肩到手56.722/53.418，参考pelvisZ由546.429降至525.894后43.018/42.328进入原46.995cm臂长，头/脚/长度原阈值全过。新431只在当前fixed-cover Marcus参考脚位opt-in冻结reference pelvis高度，旧默认仍measuredZ；实际helper17/adapter239通过，Native148de613/447deps编译，未实游戏验收。PG432a2d294c5/188项目依赖与419flags完全相同，仅3文件增加既有R2预算内tick阶段和socket前后被动记录，无新查询/权限。新鲜433 main runner74699运行中，使用431+432并把持枪右手放在当前HMD前下方；不重跑旧case。完整左右/高边、无阻挡抓边、手贴边、正确瞄准射击/全字幕路线/新手动候选/头显仍未完成，goal active。证据cover-reference-contact-fire-r430/r430-evidence.json。
+
+
+r433实际结果与公共Rig拒绝边界定位：game43532 Native431148de613 + PG432a2d294c5，runner74699 terminal1/stop0/正常清理true/无残留。10阶段含右枪随当前HMD放低、真实近抓、51cm上探/平视body消费均推进；两burst仍0/0合格trajectory。新witness在frame1182/1237明确socket之前plan已invalid，tickstage3/rigprovider_unavailable(reply1/failure2)，socket前后tickserial完全相同，排除该两次失败由socket重入清plan；尚不能判定Nativepending/age/其它读取边界。RT初始1180/1181和1235/1236已有ready1/owned1，随后拒绝撤销，非整段Rig断流。Native累计pending635/finalized533、duplicates0/readrejected320。已看实际grab/up：右枪放在当前头前下方，上探可见院子，但近抓灰黑几何遮挡仍在；新低局部点下选中handcommit上探8.1785cm/平视6.3473cm腕偏（采样早阶段末1.64/.78s），参考骨盆对保存430的修复不能泛称所有边缘成功。所有失败保留，无码率/FPS/头显/完整视频或新手动交付宣称。task106唯一worker在新434中加入仅私有RT窗口、固定64记录、正常stop后导出的public Rig读取拒绝边界，不弱化任何guard、不续旧时间戳。证据cover-reference-contact-fire-r433/r433-evidence.json，full goal active。
+
+
+### r434公共Rig读取诊断：已编译，r435运行中
+
+新增仅在私有诊断开启、掩体内右扳机按住时启用的64条读取边界记录；不改变原校验顺序、时效、身份和单一写入者。停止且调用排空后才单次导出CSV。主审查修正停止条件、声明默认参数、测试初始化和临时文件接口，并去除额外完整姿态复制。19种离线Rig模式通过（新增432项检查），不能作为游戏射击成功证明。Native434编译完成，SHA256 ae3b51edbc8c35d327d6fb283af38793d59d858304566ae434ad00f427471b2f，447个项目依赖。r435已启动一次受控复现（本方执行句柄8437）；应继续观察该句柄，尚无新游戏结果。手动入口和双手显示保留。完整掩体目标仍未完成。
+
+
+### r435实际结果：采样开关遗漏，r436配置修正
+
+r435两次射击均0条合格轨迹，原PG见证仍为扣扳机前Rig不可用；正常退出、stop0、无本方残留。实际capture.ini未启用diagnostic_render_pose_trace，故新增记录为0，不能据此判断Native拒绝原因。已保留失败并在新r436私有入口明确启用该开关，AST和配置解析确认预期值1；复用已编译Native434/PG432，无重新构建。r436执行句柄23958运行中，须继续观察同一句柄并先核对实际INI。完整目标、接触画面和射击仍未验收。
+
+
+### r436实际定位：扣扳机时最终掩体姿态仍待发布
+
+本次实际INI诊断开关为1，停止后导出19条公共读取记录：15条staged_pending拒绝、4条accepted。与PG失败帧1178/1234对应的Scene均为pending1/ready0/finalized0，拒绝发生在时效校验之前；输入/发布时间仍新鲜。两次射击均0条合格轨迹，不能报射击修复。已正常退出、stop0、无本方残留；无本方运行中的构建或游戏。原worker任务107只读分析发布先后关系及是否存在身体/武器依赖环，不弱化读取者校验、不重置旧时间、不增加第二写入者。双手显示和完整掩体目标保留，完整新演示仍待完成。
+
+
+### r436后源码定位与接触画面复核
+
+任务107只读结论：pending不足以确定body-view具体首败条件，不可用停机末态反推R2。主直接核对原SetPawnCoverAction保存脚本且SHA吻合：1/2/8分别为BlindLeft/BlindRight/BlindUp，当前cover_action仅0/3/4/7。该不匹配是明确候选，实测失败帧CA仍缺，暂不扩允许列表。原worker任务108在新私有437补现有有界记录中的body-view首败/已采样动作及最近身体提交结果，不新增反射查询或权限。主实际看过436近时JPEG：抓取几何遮挡严重，上探和回正可见庭院，真实抓点接触未验收。当前无本方运行中游戏/构建；完整目标继续，未提交新手动候选或完整演示。
+
+
+### r439/440身体读取定位与r441合法盲射支持
+
+原worker108停止，437只有未接入POD头，保留不用。主独立439实现32条GT身体视角拒绝记录并编译；440正常退出无残留，两次射击仍失败，记录显示读取入口view_valid0；最近身体结果曾被其他网格覆盖，不能归因CA。441修正诊断为当前玩家网格/同Compose，并补原版已有合法盲射CA1/2/8在既有VR中立姿态中的支持；冷校准仍要求action/last/transition0，所有时效/身份/几何/消费校验保留。257项动作范围检查通过；Native441编译SHA256 9ef85818df0eb3d6865e3c1a32eba5845e051d9ec3d412eaf47ab7d364138de7，449项目依赖。该功能缺口有原版源码依据，但未证明是440中断原因。新442执行句柄97752运行中，须观察同一运行，不重启。真实接触画面、各方向边缘与完整演示仍未完成。
+
+
+### r442实际基本射击成功，接触几何仍未完成
+
+Native441/PG432的实际442正常完成21阶段并退出，operator0/stop0/无残留。两种右手姿态各1条合格轨迹，write/trace来源一致，朝掩体内侧方向点积0.9999999997/0.9887647263；不是用扣弹数证明。身体记录实际CA8/SM0仍有有效view和消费完成发布，证明合法盲射支持生效；仍有2条瞬时外层view_invalid，不能宣称持续自动射击或无丢帧。主看过近时原JPEG：抓取时近处几何遮住接触，上探回正可见庭院。CPU消费手样本抓取误差约0，最大上探10.67cm、回正8.70cm（分别约1.63s/0.80s前采样），不是逐帧GPU接触证明。继续真实近侧边缘/接近路线、各方向检测和完整字幕演示；完整目标不完成，无新手动候选/头显验收。
+
+
+### r443/444近侧命中证据与保存姿态可达性
+
+Task109只改一文件保留原第一次低位Trace；Native443已编译369d42b0...e2efec，449依赖。实际444正常完成21阶段、两姿态各1合格射线，operator0/stop0/无残留。原9次Trace合计2.679ms，首次低位面与最终顶部命中同一已验证Actor/Component，沿射线顶部更深约23.06cm。该低位面z544、眼位约590且横向不同，投影深度不能当穿模证明，低面也不是可直接替代的抓边点。手部误差另以保存442数据离线复现：fullup/level肩到手距57.6665/55.6944cm；原骨长保持，317个25cm范围XY候选fullup无解、level有解。未据此修改实时身体。Task111继续仅离线检查XYZ有限调整，头脚双手目标与solver约束不放宽。真实近侧上缘、藏身起始眼位、各方向边缘和完整字幕演示仍未完成，主无运行中游戏/构建。
+
+
+### r445藏身基准与有界姿态拟合：仅保存数据数学证据
+
+主执行111的有限XYZ搜索：3497候选/姿态，复现原442基线，原满幅低头上探未找到解、回正找到解；这不是全空间不可行证明。r445反事实只改数学输入：中立眼位/保存头位降低10/15/20cm、右手随视点降低、左抓点和脚固定，保留原531.8865中立骨盆高度；原solver中立姿态可解，有限XY搜索两姿态双手均可达。主修113纯拟合器：别名先校验、非零seedZ拒绝，8个粗探点+2轮细化，最多17次纯planner，已有数学偏移种子在当前输入上成功只需1次；10/15/20/25cm反事实都双姿态成功，独立重算原body约束与双臂范围、无Goal修改、错误种子不写输出。尚未接入Native或验证游戏FPS，不是当前游戏眼位或手部修复。下一步必须让输入/身体/双眼共用同一冷藏身基准、保留可行骨盆，再在现有单一C0写入中处理手臂可达；不能只下压摄像机或缩短探头幅度。443/444实际基本射击保留，接触/完整演示和物理验收仍未完成，无本方运行中游戏/构建。
+
+
+### r447藏身起点与现有双手求解整合：已编译，待实际游戏
+
+原Worker已恢复，复用同一侧栏会话，task115只准备下一轮路线。Native447冻结12项差异并编译通过，SHA256 a1a439949b4db657d6024999714d74be0f945ff7a5b8c0a2b6cca4832b9536a2，451项目依赖。只在当前真实顶部、空闲零动作/零扒动时选取一次低于顶部8cm的藏身基准，保持原Eye/XR时间与身份；原中立骨盆高度保留，双手可达性拟合复用现有C0写入入口和已准备目标，不新增反射或身体写入者。离线锚点20项、组合34项检查通过，保存442数据的降低眼位反事实组合中双手目标误差约0.00003原生单位；这是离线数学证据。真实447游戏尚未运行，不能称为穿模或抓边修复完成。保持仅双手显示，碰撞与遮挡延后；下一轮检查藏身起点、真实抓握点画面、扒起手误差与两姿态射击。完整新字幕演示及头显验收仍未完成。
+
+
+### 实际r448基础失败与r449同一提交几何修正
+
+实际448在进入掩体后基础C0持续更新阶段失败，未进入真实抓边/两姿态射击路线。藏身捕获1次，降低20.4819cm；身体首次消费1次，后续reason104，拟合骨盆Z约509.69低于脚Z约520。operator1、stop0、normal_cleanup_verified=true且无残留；不是通过。Task117只读核对找到身体/双手直接读取Scene模块last_eye的跨提交依赖，没有找到其显式清空赋值，不能声称已证明上游零眼位根因。Task118在独立449中将降低高度与现有受锁committed drag一起传递，当前eye与已核对frozen anchor之差构成几何数据，原currentSource/身份/时效/消费检查保持；同一提交的lower驱动骨盆补偿和双手拟合启用。四文件差分已审阅；主离线12项边界检查通过，完整Native编译进行中，尚无449游戏证据。Worker116真实JPEG提取脚本已写并主执行，448因基础阶段失败缺少7个目标事件，不能当新演示。继续只显示双手，完整目标不变。
+
+
+### r449编译与实际451：身体恢复持续更新，眼位诊断异常仍保留
+
+449首轮完整编译因公共函数声明遗漏失败，主补齐第5文件接口声明及默认参数位置后，cohort2编译通过，SHA256 e5a59311a58106703cdf2fc666eca9a3c4092cd415b6286b0d7f79e04672fa98，451依赖；主离线12项边界检查通过。实际450在XR初始化预检前退出，0帧，未启用Native，不算掩体结果；日志xrGetSystem初始化约66s超过45s预算，私有451/452仅将初始化等待改120s，严格焦点/追踪/Source1/启动面板和原行数不变。实际451进入掩体基础持续更新恢复，失败时C0消费141、fitted2、reason0，最终消费203；但路线新增concealed_current诊断为0而停neutral_far。已有同帧full_goal frame893/sequence7873/reference1与input完全相等，stored1/ready，physical/virtual均零，actual目标眼Z569.046875、当前顶577.046875，低8cm。不能把零眼位诊断当实际眼位；异常根因仍待修，完整抓边/射击未验证。452改用这些既有同帧输出键和消费推进检查藏身起点，未修改Native/Grip/LT范围/动作或降低原消费检查，正在单实例受控运行。
+
+
+### 实际452：抓住和上扒到达，画面抓点仍受沙袋遮挡
+
+同一449 Native的452通过同帧full_goal与input frame/sequence/reference、零physical/virtual和消费推进核对藏身起点：眼Z571.15625、顶部579.15625，低8cm。实际到达10阶段，含远处Grip拒绝、头显独立前移、右手低持枪、实际顶部靠近、看抓点、抓住、51cm上扒、回正视线，均有C0消费推进。射击helper在发R2前拒绝：同局真实slot2 held后一次inventory_unavailable使其历史held标志永久清空，后续idle held-chain恢复未重新生成held日志事件；本轮未发射击输入，不能称原射击通过/失败。operator1/stop0/无残留且normal_cleanup_verified=true。保存CPU手记录seq7/8/9的抓/上扒/回正目标误差左0.000564/0.000199/0.000015cm，右约0.000004/0.000014/0.000010cm；相距事件0.81–3.31s，不是逐帧或GPU证明。整批最大误差58.32/60.58cm仍保留待定位，不据选中样本宣布完整双手通过。主亲看中立、抓住、上扒真实JPEG：抓住被沙袋挡住，上扒可见庭院，尚无可接受抓边画面。453独立源码只尝试原Surface/Scope/Trace内近侧低面向内四个垂直落点查真实上沿，不把低面点当抓点，也不改变碰撞/遮挡延期。完整左右/高掩体、射击、字幕路线和头显仍未完成。
+
+
+### r453/实际454：真实近侧上沿与21阶段射击流程通过，画面和返回手误差仍待处理
+
+453单文件近侧垂直Trace扩展已编译ca9ce95b...a41a048，451依赖；主修正Worker的crest侧XY、低点fallback、失败被覆盖和无锁诊断写入，保留原Scope/Surface/字段/100ms/关闭检查，不新增身体写入者。实际454以第1条近侧垂直射线选中真实上沿，距初始低面向内3cm，top(-4184.34277,-513.592834,573.839355)，normalZ0.74943；原crest(-4201.34229,-526.072205,578.453125)保留，合计10次Trace耗时2.7472ms（一次冷查询，非FPS）。起始eye565.839355比top低8cm。21阶段消费均推进，两姿态各1条新有效射线，枪口原点变化约2.33cm、yaw变化0.15004rad，实际朝内方向检查通过；operator0/stop0/无残留/正常清理。Helper123只保留同局历史setup以允许受控R2输入尝试，soft inventory gap标当前握持unknown，所有原Native当前身份/库存/附件/火控检查及新射线同frame/sequence/source验证保持。保存抓/up样本中头目标上升50.999999574524395cm，实际左腕世界位置变化1.86881246508525e-05cm；样本距事件2.63/1.58s，非逐帧或GPU证明。主亲看真实JPEG：抓上沿拳头部分可见，但近处沙袋仍遮挡，探出可见庭院；未验收完整抓握画面。整批最大左/右误差12.15/41.71cm保留，head-return样本右41.71cm，不能称整个手部序列无偏差。Task125准备更远40cm站位、探出后低头看抓点及先收右手再回头显的23阶段路线；不改游戏相机/火控。完整字幕视频、物理上下侧移、高掩体/右侧与头显仍未完成。
+
+
+### 实际455：23阶段走通但40cm站位抓手偏移，拒绝当作抓握完成
+
+455同一453Native加入探出后低头看抓点和先收右手再回HMD，并把站位加远40cm；23阶段流程/两姿态各1有效射击/清理均通过。主亲看抓、低头、回正实际JPEG，拳头更可见，但保存CPU样本在up左19.89/右6.75cm、inspection25.63/8.81cm、target17.33/9.52cm，明显偏离抓点，不得用流程passed当作抓握通过或编码成合格演示。全批最大25.63/9.52cm；head-return样本现已近零，返回输入顺序修正保留。已准备并运行456，恢复454的25cm接近距离、仍23阶段含低头看手和收右手，不改Native骨长、约束或交互权限。编码脚本126只在全部关键抓/up/低头/目标/射击/收回/返回样本消费者已验证且双腕误差<=0.1cm时才生成该段实际字幕片；455保留为失败，不输出为合格演示。完整目标保持。
+
+
+### 实际456：25cm抓手采样准确，首次R2因临时源不可用封基线而丢失
+
+恢复25cm但保留低头/先收手的456实际到11阶段，16条保存手部消费者样本全批最大左0.000474cm/右0.000333cm，仍仅采样非逐帧/GPU。第一R2 burst无新有效射线，第二1条，未走完流程；operator1/stop0/无残留且正常清理。已确认首次press后103057737880800出现R2 source_status0/frame0；下一新鲜frame1150遇已按下变status1 baseline，1151同按边变status8 blocked，continuous_poll_gap全0。相邻Native身体视图/消费和Rig准备记录正常，不能代替该PlayerTick缺失的客户端来源；精确HandClient拒绝原因尚无。原反重放封基线行为不修改，也不靠延长按住/反复重按掩盖。现有HandClient.copy_frame_on_gt第4可选FrameReadObservation接口能在同一次公共读取中返回具体失败；下一只私有PG调用方填该已有参数并附在既有有界日志，不另跑反射/完整状态查询或修改共享验证核心。Worker126字幕编码脚本已写未执行，455关键手误差不合格，456射击不合格，都不作为合格视频输出。完整目标继续。
+
+
+### 实际458：矮掩体23阶段与新版字幕视频；首次R2修复仍待验证
+
+Native453保持真实近侧上沿，PG457只在既有同一次HandClient读取中补充失败分类，编译188依赖、原432配置不变。实际458完成23阶段，两种右手瞄准姿态各产生1条新有效射击，正常清理无残留。22条保存手部样本最大左0.000342cm、右0.000356cm，仅代表保存CPU样本。456首次R2失败此次未复现，两次burst内均无copy failure；其他时段分类不能冒充456原因修复。65.24秒真实Source1流程已编码并解码抽看，V2包含中文流程、操作按键和抓取对象；V1左Grip字幕错误保留为弃用，V2依据执行路线与实际抓握状态更正，直接左手输入的精确按边时刻未记录。视频不是头显验收或游戏FPS证明。Worker130正在单独处理短暂缺源后丢首次按键的输入历史边界，尚未编译验收；审查要求只在实际缺源后启用恢复约束，不改变连续正常输入。左右/高掩体边缘全方向下扒、物理头显各方向探头和完整多方向演示仍未完成，完整目标保持进行。
+
+视频：`J:\gearsVr\analysis\cover-system-20261108\cover-reference-contact-fire-r458\demo\cover-grab-peek-fire-r458-v2.mp4`；SHA256 `3384c41287c7c383d3f0c6debc2332896401f14fab176c571ddf502636c2b574`。
+
+
+### 实际460：首次R2历史边界离线修复，集成矮掩体路线通过
+
+PG459只改输入包装层及对应测试，共享OriginalR2/HandClient未动。缺源时只保留原有效UP的历史，不执行；下一次仍须当前100ms内Frame、原有连续性/身份检查、同publisher/stream/right tracking和恰好一次新DOWN，原UP sync+250ms固定截止。普通连续fresh路径不增加恢复约束；所有fresh DOWN在提前deferred前清掉UP资格，保留pending失源取消、已拥有按键松键清理和反重放。主审查发现并修正过错误测试断言及pending DOWN遗留UP资格问题，失败日志host-check1/2保留；host-check3实际2277断言通过。集成DLL SHA256 `7ae888897331fb3912ea6d11ff473c6980911ede281f09249dc97f6e2b7b2471`，188依赖，原PG432配置。实际460/game89832完成23阶段，两种瞄准姿态各1条新有效射击，operator0/stop0/正常清理/无残留；23条保存手部样本最大左0.000597cm、右0.000471cm。此实际流程证明集成动作可用，日志未证明缺源UP恢复分支在burst中触发，该分支以离线确定性检查为证。继续保留hands-only；左右/高掩体全边下扒、物理头显各方向独立探出、完整多方向演示与头显验收仍未完成。
+
+
+### 实际462：左侧位移通过但抓点滑动，右槽身体更新失败
+
+Native461已编译8dc06c32451c70316ff2954da79e66862d9e1b17b86f21f22ccec9a5bbcaf178/452依赖，原453配置；状态方向内核和纯抓点helper45项离线检查通过，不能当运行完成。实际462仅到8阶段：左侧逻辑握拳拥有与虚拟位移完成12cm、原版约70cm上限、反向收回和松手；保存CPU骨骼样本显示实际左手相对初始抓点仍滑动，右手最大误差12.548cm，整段不能作为左右抓扒合格交付。原版左杆横移到右许可槽后，right_released_neutral的body消费不再前进，reason104；拟合骨盆Z516.202低于双脚约520.3/520.6。右抓/HMD方向用例未开始。operator1/stop0/正常清理/无残留，失败保留。主会话464分离cover左手几何上下文与右武器瞬时观察，并增加已有状态摘要中的POD诊断；同CoverLink槽切换不重采C0驱动头骨为原始中立几何的修复正在纯mock回归，均未实际验证。原要求保留真实侧边检测、低/高方向、射击、同枪双手支撑、探出退出镜头/六自由度恢复，不能用左位移通过代替。
+
+
+### Native464：抓握上下文与换槽校准修复已编译；465启动前等待超时
+
+464将左手掩体抓点几何上下文从右手武器/挂载瞬时观察中分开，保留当前左手追踪、对象、掩体和参考空间绑定；在既有摘要增加POD状态，未增加反射/公共查询或写入者。同一CoverLink换槽可重用初始中立头部几何；每次输出仍须完整当前Scene/identity/value guard，几何时间戳不改写。纯registry329项通过，旧layout/身份/getter变化与冷重试检查保留。Native SHA256 `e86a79d5c8922bbd5f2195497219527e7c2d252ae112535e391199c815955f0a`，452依赖、原461配置。实际465受控首启动等待600秒后被max_total_instances=1拒绝，占用为boom-video09-1117-185704，内存阈值满足；未创建本case launcher-session/isolated-worker，operator未执行、无自有残留，不是玩法失败或修复验证。旧prebirth分类字段为false，不拿它代替实际文件/返回记录。后续须运行名额释放后用该版本和同一抓点目标检查复测，不能降低并发保护或停止其他会话。用户新增OT-01..06已同步需求，并明确双手射击为双手握同一把枪；远处滑入、低上左右/高左右、同枪支撑、探出退出镜头/6DoF恢复均保留待实测。
+
+
+### 实际466：小幅左扒抓点稳定，满幅左扒可达性仍失败
+
+运行名额释放后，Native464/PG459实际466完成左侧中立、状态抓握和下拉左探12cm三阶段；当前抓握请求保持、附件active1和context resets2稳定，修复后小幅固定抓点检查通过。满幅原版约70cm左探时，现有双臂可达拟合耗尽17次planner仍不可行，求解前的固定抓点被现有手臂可达投影改动，严格0.5cm目标检查失败。不能称为满幅抓扒完成，也不降低原版探头上限或放松骨长、抓点要求。右侧、高掩体、独立HMD路线、同枪双手射击与探出退出未执行。operator1/stop0/normal_cleanup_verified=true/无本方残留；失败数据保留。唯一原Worker串行task139核对原版进出与同枪支撑接口，task140只使用保存数据做有界可达性反事实，区分离线数学与实际游戏证据。继续双手显示、侧边状态抓握阶段，真实侧边检测及完整字幕路线未完成。
+
+
+### 保存466离线可达性：骨盆XY有限搜索未找到双臂解
+
+Task140独立纯CPU探针已编译运行exit0，抓握捕获的头/骨盆/双脚基线重放误差均0。使用同一抓握Frame与第4条满幅head/右腕目标重构反事实，保持固定左抓点、原骨长与头脚目标；不是满幅原帧回放。原拟合器17次调用仍不可行；50cm半径内5cm网格317点均body solved，但未找到双臂同时可及点。按超范围之和最优(0,-50)时左距46.9734、右距53.4428，对照保存臂长46.9950，右仍超约6.4488units。这是有限采样结果，不能推断连续XY或全身全局无解；不继续盲目扩大骨盆移动。主review修正参数数量、抓握捕获前缀、网格圆域和失败返回，并保留首次空输出调用失败。下一步唯一Worker task141只离线检查现有body-root朝向自由度，头脚及骨长保持；未改生产、未启动新游戏。同枪双手射击及OT01..06、真实侧边、完整字幕路线仍待完成。
+
+
+### 保存466肩部自由度：45度锁骨上限找到双臂预置候选
+
+Task141已用现有root heading做13组/221次纯planner反事实，未找到双臂可达点；主review修正未执行replay的默认status假证据，现明确attempted=false/status=null。Task142核对实际8.parent6、32.parent30及头腿独立分支，只改变锁骨q，保持原朝墙root、头脚目标、所有骨长和局部translation/scale。主review纠正祖先检查方向、双侧修改检查、81点圆域及best未填数据，并保留初稿无效输出。修正后81网格点加1基准共82次body plan，在45度cap找到双臂reach-sphere预置候选；(0,-25)时左/右距39.6055/45.3546units，低于约46.995原臂长，头脚位置不变、全骨长误差约微量float舍入。这是保存Frame重构的数学可达性，不含最终手IK或真实接触画面，不能报游戏修好。冻结464四项差异文件hash保持。Worker143下一步仅隔离467源码的最小角锁骨补偿，当前附件opt-in，原25cm/17次预算不变，先纯fixture再主审编译。完整方向、高掩体、真实边缘、同枪双手射击、探出退出恢复及字幕路线仍未验收。
+
+
+### Native467已编译，实际468按原抓点门槛复测中
+
+隔离467仅4文件变化，当前已认证cover attachment opt-in最小锁骨补偿；原fast path、25cm骨盆范围、17次planner上限、唯一C0写入与当前身份/时效许可保持。主审修正最小角几何、重复应用、实时Workspace栈复制、非法拓扑、数值边界和无谓位置读取中的四元数计算。主直接执行冻结host程序exit0，269项定向检查通过；旧路径17次不可达，新路径9次成功，左/右实际补偿32.6128/35.4558度，selected Output独立重建头脚/朝向/关键骨段并核对完整changed_mask与其余Atom保持。Worker空exit文件已保留且不作证据。完整Native编译通过，SHA256 6910bd9e02b2893ba5620ef8083e425980ed4accbdf93e8527eb9a49d38d4422，453项目依赖、原464配置不变。准备468时452依赖旧断言和PowerShell登录目录问题均在启动前保留，精确恢复准备后实际468已由主启动（执行句柄72376），复用PG459和原466路线/0.5cm抓点要求，尚无结果。Worker144仅只读高掩体接线，不运行游戏或改冻结源码。完整OT01..06、真实侧边和字幕路线仍未完成。
+
+
+### 实际468：满幅左扒抓点恢复，右侧前的原版横移未取得许可
+
+Native467/PG459实际完成左侧中立、抓握、12cm、原版约70cm满幅、反向12cm、回中立、松手7阶段，原0.5cm抓点门槛不变。保存CPU骨骼全左探样本相对acquisition实际左腕漂移约0.000101cm，右腕误差约0.0000193cm；本批右腕最大0.000317cm。腕原始target字段是物理控制器目标，不能把其随下拉变化当抓点漂移；实际腕需对固定acquisition抓点比较。样本比阶段检查早约1–1.6秒，不证明逐帧GPU。主查看实际full-left SBS JPEG，庭院/枪/双手局部可见，无玩家头身腿；仍是侧面状态fallback，不是实体侧边接触。随后14次原版横杆横移未得到右侧LT许可，保存多次SM15、后续range0，路线在右抓前失败，不能报右侧/HMD通过，也不能据此直接归因右抓功能。operator1/stop0/正常清理verified/无本方残留；当前无本方游戏/构建运行。下一步检查实际原版换槽与L2拒绝的保存记录，保留完整高低方向、真实边缘、同枪双手射击、探出退出恢复及字幕路线目标。
+
+
+### 换槽参考源码接线不一致：保留严格消费者，先复现当前key提交
+
+主审拒绝单凭朝墙视角反转原版横杆符号；保存468实际位置在初始L2 right轴投影为正，SM15仅过渡记录。诊断469已编译3e453a5162f4b30470c8226cc79f4f89dc74a1562b479e01c6511f3bb35882c8/453依赖/原配置；仅既有L2路径POD记录，主运行合成geometry978 checks/0 failures/exit0，无新query或权限。准备下一case前发现明确源码不一致：neutral同Link暖几何换槽忽略slot可发布新EyeSample.slot，但calibration.key只在冷重置赋值；geometry::calibration_matches仍严格same_key含slot，二者可能不一致。此为源码缺口，尚不把468终态当逐帧因果证明。470未启动；Worker148在隔离471先做before/after复现，拟只在完整当前guard通过的发布点同步current key，保留原offset/calibrated_ms和全部消费者检查。Worker147路线仅收集现有字段/首拒绝，主又指出异常吞掉与>=frame放宽问题，须修正后才使用。计划471保留469诊断并由主编译，之后472沿原输入方向实际检查；左侧468证据与完整高低方向/实体边缘/双手同枪/退出恢复/字幕路线范围不变。
+
+
+### Native471与实际472：换槽键离线修复通过，满幅左抓稳定性重新打开
+
+当前key接线缺口已在真实producer模拟路径复现：主执行before程序exit1，332checks/1fail；成功发布处同步key后neutral332checks/0fail、coupled geometry991checks/0fail，主执行after程序exit0。strict consumer保留、原offset/calibrated_ms与暖路径无额外骨查询保持。471完整编译SHA256 f8eeb903482f172e5931757ec234050df07c98dde5377f3fda6daffe7c5f9537，453依赖，原配置不变；147路线修复为正帧号完全一致、严格身份异常过滤且fresh idle必要，SHA453ea4ce9fd89250d9cffbb86101eb5ba25450de1e6b160fecddfae7c0f72a5b。实际472通过中立/抓握/12cm三阶段，满幅左探再次失败；当前L2/query均ready，request/owns/active保持，reset2，body消费192/reason0，reach17/status4/最佳XY(-7.5,-15)。保存seq4实际左腕对初始抓点漂移约0.0002cm，右腕最大约0.000435cm。原468单次左7通过不能视为每次进入普遍稳定。未到换槽/右抓/HMD，不能称为key修复已实际验证。operator1/stop0/正常清理/无残留；当前无本方游戏或build。Worker149只用保存472和当前production数学作有限检查；若重构成功而实际失败，则需要真正full Frame，不凭猜测扩大角度或减探头幅度。完整高低方向/实体边缘/同枪双手射击/退出恢复/字幕路线保持未完成。
+
+
+### Native473：调用方距离上限修复已编译，实际474验证中
+
+复用同一472采集身份的counterfactual，旧helper按FK链长计算、caller按原reach计算的上限差异可导致减界0.0005units时17次/status4；473向helper传入已有caller limits，按min(chain-.001, caller limit)求解，不重复减margin。前后对照改为9次成功，最终距离严格小于原caller上限；45度、25cm/17次、暖启动1及最终predicate保留。主执行282checks/0fail/exit0；该数据仍不是实际472 late失败Frame。
+
+473完整Native编译exit0、453依赖、配置与471相同，SHA256 01c6eb24007c70ed1a89d5fbcf802bfe036e1dc8a2e2a392612914612e1e7dc4。仅四个隔离文件变化，body_c0_hands与PG459未改。新增last-math POD便于区分调用方上限、有效上限和实际距离，不用于玩法权限。受控实际474运行中，不能把离线结果视为满幅稳定性验收。双手射击按主人确认指双手握同一把枪；高低方向、真实边缘、探头射击和退出镜头检查保持待完成。
+
+
+### 实际474：动作前渲染票据冲突停止，未验证473玩法
+
+实际474/PID31512在进入掩体动作前中断；body_cover_reach_attempts=0，未执行473数学/last-result更新点。原native_owned_scene_begin的reason4分支命中same renderer不同ticket保护，pending ticket35、last ticket33。当前保存数据缺分支瞬间current/trial/pending完整tuple，不能推定具体时序或宣称473导致/解决。operator1，完整normal_cleanup_verified=false，PG shutdown12/entryrestoredfalse；remaining_owned={}且未强制终止，不能称正常清理通过。Worker151检查保存证据，后续只在原失败分支保存首次POD tuple，严格条件及清理保持。完整掩体目标未完成。
+
+
+474证据补充：runtime归档session-status较早快照为owned_pipeline_failure_reason=1，instance最终状态为4；SessionStop reason_code=4则只是proof_failure枚举，不能与pipeline reason混用。较早保存reason1对应promotion not_ready，最终reason4是后续同renderer不同ticket保护；尚无exact first-call tuple。475诊断将只在begin现有两个失败分支保存首次轻量快照，并标明first_begin_failure而非所有pipeline源首错。
+
+
+### 实际476左侧通过、右侧12cm失败：低掩体几何缓存换槽失效
+
+475仅在两个原begin失败分支保存首次POD诊断，主会话补齐summary，单一文件差分；完整Native编译SHAe33cda5b6ded5c2092c5e7ae64e72ade2d388800f61277818adeaec212516da7、453依赖、配置未变。实际476/PID67944：左侧中立/抓握/12cm/原版满幅约70cm/反向12cm/归零/松手7阶段通过；原生正向滑动9步到slot3，原LT右权限ready、right range .699952844，成功右抓。暖换槽key471实际已到达；但right12cm阶段virtual=.120000005正确、抓点target漂移9.096748cm，concealed_current=0、cold lower24.6018066仍缓存/captures1，lastmath tick68716从右抓到失败未更新。operator1/stop0/正常清理true/无残留/未强制终止；头显方向、满幅右、后续流程未到。
+
+代码定位：cover_input_live::concealed_key复用带slot的严格native_key使同Link暖换槽丢掉低掩体cold lower；cover_c0_policy_live又以lower>0开启reachfit，因而右侧没有补偿。477只在concealed几何比较用局部key把slot归一到当前，再复用原native_key；global native_key、slot epochs、当前LT/抓握权限、cold原值/计数及C0 gate均未改。换pawn/mesh/Link/world/type/calibrated_ms/session/space/reference/units仍失效。主执行before33checks/3fail/exit1，after33checks/0fail/exit0；原source1-cover18/0。现代mock补上concealed-anchor头，host-only屏蔽既有4459 shadow warning，生产配置不变。477正在完整Native编译，未宣称玩法修复完成。Worker152连续summary命令失败且后续状态无进展，主会话按skill连续返工可接手关键部分条款补齐小修；唯一worker及侧栏保留，未另开worker/CLI。
+
+
+### 实际478：低侧22流程通过，深入腕坐标检查仍发现右手限幅
+
+477完整Native编译SHAee20be66f4a6e8f8188fc59ab19203da6d8fbfc071ecc88fe6401d588876fccb、453依赖、原配置。Worker154只读接受窄geometry改动，无阻断；fixture直接构造cold cache，不代替capture链路/实际执行。实际478/PID90660：左右抓握/12cm/原LT满幅/反向12cm/归零/松手、独立HMD上下左右及回中共22阶段通过，沿原掩体滑动9步，operator0/stop0/正常清理true/无残留。source1受控采样，不是头显验收/FPS；实体侧边缘、射击/同枪双手/退出镜头尚未覆盖。
+
+深入保存CPU手提交21rows/22phases发现right target差：seq8右抓起始12.254535cm，seq14物理HMD上移16.502793cm，seq15返回12.255288cm，其余保存right多数<.0002cm。最近输入变更提交比checkpoint早约1至1.5秒，seq8不能据此断言后来仍错；不过不得把22流程通过当全部手6DoF位置验收。right_full与physical_head_up实际Source1双眼图已查看，只看到双手，没有角色头/躯干/腿；手部像素没有足够标尺证明数值。手输入raw target与抓点不是同一含义，left约99cm raw误差不能称抓点漂移。
+
+当前先处理无Grip/头显动作的right reach clipping：body_c0_hands只对cover_attachment_active启用clavicle补偿，已有cover_fit_goal在无Grip时仍可执行reach fitter但helper关闭。需在已验证current fixed-cover+prepared hands范围检查几何补偿条件，不新增抓握权限或writer。479高side草稿独立保留，暂不构建/运行；先解决基础双手6DoF。主会话当前无本方游戏或build。
+
+
+478深入证据补充：physical_head_up当前检查点reach17/status4、effective0,0、距离47.836836/51.425270相对caller46.993976/46.993956，returnup同为17/status4，故不仅早期CPU像素疑问，而是无attachment时实际数学失败。right acquisition较晚检查点已经status0，早seq8不代表持续失败；其后right12/full/反向/归零保存actual左腕对固定抓点最大0.000250cm。summary concealed_current仍观测0，且summary与lastmath tick不同步，不能把22流程通过等同缓存每帧current。保存这些限制，下一任务156从477独立修freehand几何，不混479高side草稿。
+
+
+### Native481：无Grip时的当前双腕补偿离线修复已编译
+
+Worker156连续两轮仍停在实现设想/未写test，主会话按skill接手关键部分。481从477独立复制，生产仅body_c0_hands已有current cover_fit_goal且双侧prepared分支将clavicle_compensation=true；left固定anchor仍只由cover_attachment_active选择，没有合成lease或新权限。其他scope/identity/freshness/reader/writer、45度/25cm/17次严格predicate及默认纯fitter Request不变。新host用同PID478初始Frame/Goal/Core，加明确构造的肩下chainReach+1units双腕目标及head/physical world +8cm/返回，再测可达fastpath。不是late478 exact Frame，也不是原真实控制器targets。
+
+主执行同源before40checks/1fail/exit1，上移17次/status4、两腕约9cm reach projection；after40/0/exit0，上移9次/status0，误差1.58e-5/7.05e-6units、肩角22.07/38.27度；返回1次，普通可达fastpath0次。head/feet/骨长/原Goal保持，无lease。初版harness直接传source子对象触发alias拒绝，随后按原API复制asset/base独立参数，旧失败保留在tool记录，不当作玩法回归。481完整Native编译SHAc66f31c3552085f5a8c6880025a27709bd539d00afbd10148515ff934e0f8a41、453依赖、原配置未变。实际482正在同一147路线受控运行，待正常结束后比对右腕保存数据；不能据离线40通过宣称实际双手6DoF修复。
+
+
+### 实际482：满幅左侧再遇微量不可达，转为保存exact数学输入
+
+实际482/PID29512在中立/抓握/12cm三阶段后，left_full_original_extent失败；L2 ready、owns/active/request1保持、context resets2，virtual-.699999154。reach17/status4，caller与effective相同46.9937724533/46.9939758635，实际最佳距离47.3040526894/46.993877132，最佳XY(-10.6066017,-15.6066017)，左残差约.31028units（约3.1mm）。原算法infeasible不输出best body，之后使用原body造成更大手部投影。不能把closest残差小当严格solved，亦不凭猜测扩大45度/25cm/17次或放宽predicate。concealed cold lower28.5178223与此前场景不同，需exact Frame而不是从旧acquisition猜测。operator1/stop0/正常清理true/无残留；本次未到HMD，所以481实际freehand修复仍未验证。
+
+任务157隔离483仅诊断：在Workspace保存真正调用fit前的Request（含seed/reach），现有result点首个满幅side infeasible保存当前完整Frame/Goal/Stamp/metadata，并用版本化小companion关联exact Request/Outcome+session/tick/compose；复用collector写own目录，无GT I/O/新引擎字段读/权限或数学变化。补last required/applied肩角，下一次能区分角度cap与搜索漏点。主会话机械复制483，Worker157仅两个文件，构建与实际484仍主会话独占。当前无本方游戏或build。
+
+
+### 实际484/486精确回放与整合491：近可行位置精修、零lower/高掩体几何
+
+483首个满幅不可达Frame/Goal/Request/Outcome实际记录成功，failure16896B+inputs2320B。actual484/PID67944创建134394055200683140，22route通过/正常清理true；21right CPU提交最大误差.000228728cm，旧HMDup大偏移未再见。精确replay session1327554659075/tick55065/compose55066完全重现17/status4、left残差.662328，required48.08358/applied45；同Frame附近(-1,-1)cm可行，证明搜索方向漏点。485将最后4个2.5cm点转成unit diagonal，same capture17solved、角42.469/37.127、head/feet/骨长保持，282+40针对回归通过。
+
+actual486/PID41272创建134394066652478572，22route/cleanup再次通过，21right最大误差.000347cm；仍捕获不同瞬态失败：session1339011037172/tick53520/compose53521。485 exact replay17/status4，最佳(-7.37437,-12.37437)、left残差.394875，1cm邻域有可行点。旧cardinal算法在同Frame也失败（不是已证明的方向替换回归）。489只对补偿开启、body有效、残差<=2.5cm的近可行姿态，在前17次失败后增加8个1.25cm点，最多25；默认/optout仍17，普通warm1/早成功返回不变，45度/25cm/严格caller limits不变。真实484仍17solved，486变25solved、角38.40/41.41；两个回放各16检查/0fail，头脚骨长不变。最初host构建错误引用483旧header已纠正，错误输出不当作489功能失败或通过。
+
+487当前cover几何不再依赖concealed_lower>0：低type2即使lower0仍可fit；高type1要求committed virtualup/range.maxup/lower均0，Body层高仅接受none0或left/right非0request形状、committed_grip_world.z0，top/畸形/type0拒绝且Output不改，物理HMDup独立允许。原cg.domain/current binding/V3/LT/交互权限/唯一C0 writer全部保留，不新增wrapper参数。Synthetic high over real model fixture51检查通过，不是实际高掩体收据。
+
+491整合489 math+487高/零lower geometry，完整Native SHAa9bc5066089d5af11aa5b3433d00331736e66a66a501d92086e20f7f725331f3、453依赖、原配置不变；整合high fixture51/0。当前actual492运行同一低侧147路线，主session52754，尚无结果声明；高掩体实测、far slide、同枪双手射击、退出镜头、真实侧边缘和新完整字幕视频均未完成。Worker158给了短文字review；159仍未落源码且循环叙述，主会话按skill接手关键部分，原worker保留且停写，无新worker/CLI锁修改。
+
+
+### 实际492低侧通过；493/494高掩体选点证据与495路线
+
+实际492/PID77044创建134394097518314983，Native491同147路线22阶段通过，operator/stop均0，normal_cleanup_verified=true、remaining_owned为空。21个保存CPU手部记录右腕最大误差0.000230300cm；左侧/右侧抓握实际腕到固定抓点最大0.000569661/0.000046685cm。未产生本轮满幅side不可达首失败记录。这仅证明本轮低侧与受控HMD流程，不是所有帧/GPU/头显验收，亦未复查低掩体Grip向上、射击或退出镜头。
+
+实际493/PID85452创建134394107886402409，原版A进入CT1高掩体成功，slot8中立range全0，37次高掩体几何plan、math_failed0。路线在尝试抓握前因缺左探头权限停止，正常清理true，无残留；不能报左右通过。494/PID13444创建134394112178097524加入原版负LSX寻找左端；第一次仍高，第二次移动原版进入CT2且specialmove15，严格高类型guard停止，正常清理true。不是手6DoF回归，也不放宽类型校验。
+
+保存的当前候选显示有混合高低墙117及独立双端高掩体。495选点要求当前同Link高CT1、左端bLeanLeft、相邻右端bLeanRight、间距60..200units且forward同向；地址来自本次完整原查询，不复用旧进程地址。仍由当前LT/L2权限决定实际交互，route保持原版步行/A/摇杆，不设置人物位置或伪造权限。495已编写/导入检查并启动受控runner16404，结果待定。493/494证据分别在本轮r493-evidence.json/r494-evidence.json；没有新Native编译或发布。
+
+Worker skill更新已读取，采用合并brief与批量独立命令；50%自动压缩的运行时配置尚未核实，不能声称该阈值已启用。唯一原Worker保留，不为规范通知建立或重启会话。
+
+
+### 高掩体左右实测与矮掩体复验
+
+- 531 验证高掩体左侧真实墙点抓握，12 厘米至 78 厘米下拉，反向回收、解除抓握与正常退出。522 的骨架采样另确认满幅和回收的固定左腕目标。
+- 539 验证高掩体右侧真实墙点。受控头显和空闲右手先各向右、向墙移动约 20 厘米，左手 Grip 后通过 12 厘米、约 78 厘米满幅、回收和松手。中央下拉不触发虚拟上探，无 Grip 时受控头显可独立上下左右位移。正常清理，无测试进程残留。
+- 541 使用与 539 相同的 Native 和 Playground 验证矮掩体入场眼位、抓真实上沿、下拉上探、松手保持、重新抓握与收回。采样画面中，中立眼位低于沙袋顶端，探出画面越过顶端。
+- 双手握同一把枪、探出后开火、退出镜头、远距滑入、连续画面检查与完整字幕演示仍需实际证据。上述实测使用 Source1 模拟输入，真机手感待验收。
+
+
+### 矮掩体探出射击与退出复测
+
+- 545 和 546 观察到探出后单手出弹，以及左手 Grip 扶住同一把 Lancer 后带动枪身。546 的双手射击尝试未出弹。按键到达，枪口样本准备完成，是否因后续时效、来源匹配或开火条件而拒绝仍待确认。
+- 545 的 5.6 厘米手掌读数使用了镜像模型矩阵。按扶枪使用的坐标基复算，同一份骨骼和枪身读回的定位点偏差约 0.013 厘米。实际手掌与枪体表面的贴合需要画面验证。
+- 547 验证抓住真实上沿并上探约 51 厘米后，保持左 Grip、左摇杆后拉退出。原版状态回到无掩体，掩体镜头解除，探出偏移归零，手部更新继续。前后立体采样可见左手离开沙袋。操作字幕短片在 [按住 Grip 退出](/J:/gearsVr/analysis/cover-system-20261108/cover-directional-state-r547/demo/cover-peek-held-exit.mp4)。
+- 松手保持探出后再退出、连续双手射击、低掩体两侧真实边缘、远距滑入和完整演示仍待验证。当前运行使用游戏真实投影与模拟输入，实体头显手感待验收。

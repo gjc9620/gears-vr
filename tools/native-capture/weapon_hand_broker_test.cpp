@@ -450,21 +450,22 @@ void retired_cookie_tests(){
 void part_visibility_admission_tests(){
     Fixture f;f.attach();f.fake.magazine_candidate=true;
     auto frame=f.frame();w::Proposal proposal{};
+    w::Frame copied{};unsigned copy_failure{};C(!f.broker.copy_part_visibility_frame(copied,&copy_failure));C(copy_failure!=0);
     C(!f.broker.admit_part_visibility(frame));
     C(f.broker.prepare(frame,proposal)==w::Reply::accepted);
     auto decision=f.decision(frame,proposal);decision.lease.kind=w::LeaseKind::magazine;
     C(f.broker.commit(frame,proposal,decision)==w::Reply::accepted);
-    C(f.broker.admit_part_visibility(frame));
+    C(f.broker.admit_part_visibility(frame));C(f.broker.copy_part_visibility_frame(copied,&copy_failure));C(copy_failure==0);C(w::same_frame(copied,frame));
     auto changed=frame;changed.press_token++;
     C(!f.broker.admit_part_visibility(changed));
     changed=frame;changed.key.registration_cookie++;
     C(!f.broker.admit_part_visibility(changed));
     changed=frame;changed.left_grip_down=0;C(!f.broker.admit_part_visibility(changed));
-    test_thread=worker;C(!f.broker.admit_part_visibility(frame));test_thread=gt;
-    f.fake.stamp+=100000001;C(!f.broker.admit_part_visibility(frame));
+    test_thread=worker;C(!f.broker.admit_part_visibility(frame));C(!f.broker.copy_part_visibility_frame(copied,&copy_failure));C(copy_failure==3);test_thread=gt;
+    f.fake.stamp+=100000001;C(!f.broker.admit_part_visibility(frame));C(!f.broker.copy_part_visibility_frame(copied,&copy_failure));C(copy_failure==8);
     auto next=f.frame(2);C(f.broker.prepare(next,proposal)==w::Reply::accepted);
     decision=f.decision(next,proposal,false);C(f.broker.commit(next,proposal,decision)==w::Reply::accepted);
-    C(!f.broker.admit_part_visibility(next));f.finish();
+    C(!f.broker.admit_part_visibility(next));C(!f.broker.copy_part_visibility_frame(copied));f.finish();
     Fixture support;support.attach();frame=support.frame();C(support.broker.prepare(frame,proposal)==w::Reply::accepted);
     decision=support.decision(frame,proposal);C(support.broker.commit(frame,proposal,decision)==w::Reply::accepted);
     C(!support.broker.admit_part_visibility(frame));C(support.broker.admit_support_visibility(frame));

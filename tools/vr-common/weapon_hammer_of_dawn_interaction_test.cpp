@@ -85,8 +85,11 @@ struct Fixture {
             }
         }
         ++original.revision;
-        return {stamp(),request.token,certificate.instance_config,++original_event,
+        HammerOfDawnReceipt r{stamp(),request.token,certificate.instance_config,++original_event,
             original,resources,accepted,false};
+        r.stop={id.weapon,id.weapon_generation,request.use_cycle,r.original_event_serial,
+            true,true,true,true,true,true,true};
+        return r;
     }
     E ack(HammerOfDawnRequest const& request,bool accepted=true) {
         return model.acknowledge(receipt(request,accepted));
@@ -134,6 +137,48 @@ void binding_and_unverified_rules() {
     CHECK(unlimited.model.record_original_effect(effect)==E::original_effect_recorded);
     CHECK(unlimited.model.resources().units==0);
 }
+void cold_single_hand_and_invalid_target() {
+    Fixture f;HammerOfDawnInteraction cold;
+    CHECK(cold.bind(f.certificate,f.resources));
+    auto s=f.sample();s.pose.left_tracked=false;
+    CHECK(cold.observe(s)==E::hands_restored);
+    f.fire_down=true;s=f.sample();s.pose.left_tracked=false;
+    cold.observe(s);
+    CHECK(cold.edge(f.stamp(),{1,I::fire,true,true})==E::request_ready);
+    Fixture active;active.fire();s=active.sample();
+    s.target.original_target_valid=false;s.target.occlusion_clear=false;
+    CHECK(active.model.observe(s)==E::observed);
+    CHECK(active.model.owns_fire()&&!active.model.has_pending_request());
+    CHECK(active.model.update_designation(active.stamp())==E::request_ready);
+    auto query=active.take();CHECK(query.action==A::update_original_designation);
+    CHECK(active.ack(query)==E::original_accepted);
+    s=active.sample();CHECK(active.model.observe(s)==E::observed);
+    CHECK(active.model.owns_fire());
+}
+void complete_stop_readback() {
+    for(unsigned n=0;n<12;++n){
+        Fixture f;f.fire();CHECK(f.edge(I::fire,false)==E::request_ready);
+        const auto end=f.take();auto r=f.receipt(end);
+        switch(n){
+        case 0:r.stop.weapon++;break;
+        case 1:r.stop.weapon_generation++;break;
+        case 2:r.stop.use_cycle++;break;
+        case 3:r.stop.original_event_serial++;break;
+        case 4:r.stop.verified=false;break;
+        case 5:r.stop.target_withdrawn=false;break;
+        case 6:r.stop.beam_inactive=false;break;
+        case 7:r.stop.laser_inactive=false;break;
+        case 8:r.stop.valid_target_emitter_inactive=false;break;
+        case 9:r.stop.loop_sound_stopped=false;break;
+        case 10:r.stop.pending_fire_cleared=false;break;
+        case 11:r.stop={};break;
+        }
+        CHECK(f.model.acknowledge(r)==E::cancel_required);
+        CHECK(f.model.owns_fire()&&f.model.interrupted());
+        auto cancel=f.take();CHECK(cancel.action==A::cancel_original_inputs);
+        CHECK(f.ack(cancel)==E::cancelled);CHECK(!f.model.owns_fire());
+    }
+}
 void original_gates_and_pose() {
     for(unsigned n=0;n<14;++n){
         Fixture f;f.fire_down=true;auto s=f.sample();
@@ -154,8 +199,11 @@ void original_gates_and_pose() {
             case 13:s.original.aim_input_down=true;break;
             default:break;
         }
-        f.model.observe(s);CHECK(f.model.edge(f.stamp(),{1,I::fire,true,true})==E::rejected);
-        CHECK(!f.model.has_pending_request());CHECK(f.model.resources().units==777);
+        f.model.observe(s);
+        const bool original_negative=n==7||n==8||n==9;
+        CHECK(f.model.edge(f.stamp(),{1,I::fire,true,true})==
+            (original_negative?E::request_ready:E::rejected));
+        CHECK(f.model.has_pending_request()==original_negative);CHECK(f.model.resources().units==777);
     }
     for(unsigned n=0;n<10;++n){
         Fixture f;f.fire_down=true;auto s=f.sample();
@@ -276,9 +324,9 @@ void animation_and_identity() {
     CHECK(f.ack(cancel)==E::cancelled);CHECK(f.model.hands()==H::original_animation);
     f.model.expire_pose(f.ns+2000);CHECK(f.model.hands()==H::original_animation);
     f.original.animation_owns_hands=false;
-    auto s=f.sample();s.pose.left_tracked=false;f.model.observe(s);
-    CHECK(f.model.hands()==H::original_animation);
-    CHECK(f.model.observe(f.sample())==E::hands_restored);
+    auto s=f.sample();s.pose.left_tracked=false;
+    CHECK(f.model.observe(s)==E::hands_restored);
+    CHECK(f.model.observe(f.sample())==E::observed);
     CHECK(f.model.hands()==H::vr);
     CHECK(f.model.edge(f.stamp(),{2,I::fire,true,true})==E::rejected);
     f.edge(I::fire,false);CHECK(f.edge(I::fire,true)==E::request_ready);
@@ -388,7 +436,7 @@ void original_resource_and_abort_boundaries() {
 }
 }
 int main() {
-    binding_and_unverified_rules();original_gates_and_pose();aim_use_and_original_effects();
+    binding_and_unverified_rules();cold_single_hand_and_invalid_target();complete_stop_readback();original_gates_and_pose();aim_use_and_original_effects();
     designation_and_ticket_leases();tracking_cancellation_and_late_receipts();
     animation_and_identity();receipts_reload_and_conflicts();original_resource_and_abort_boundaries();
     std::printf("Hammer of Dawn interaction: %u checks passed (synthetic only)\n",checks);

@@ -1,0 +1,211 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.03,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        -0.0291,
+        0.0381,
+        -0.44079999999999997
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        0.0003592971330199302,
+        -0.08123454135942276,
+        -0.30790380794623673
+      ],
+      "bone": 2,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "bone_2"
+    },
+    {
+      "id": "mechanism",
+      "label": "弹匣锁扣",
+      "position": [
+        0.0004300704938652249,
+        0.007220589454279265,
+        -0.27511151110037735
+      ],
+      "bone": 1,
+      "role": "mechanism",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "bone_1"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "b_HB_Root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "Hammerburst.bone0.mesh",
+      "triangles": 7462
+    },
+    {
+      "bone": "b_HB_MagLatch",
+      "parent": 0,
+      "pivot": [
+        2.228458918166442e-09,
+        0.02125365734100351,
+        -0.31364984512329097
+      ],
+      "mesh": "Hammerburst.bone1.mesh",
+      "triangles": 2232
+    },
+    {
+      "bone": "b_HB_Mag",
+      "parent": 1,
+      "pivot": [
+        -2.01507701033423e-10,
+        0.008443783521652296,
+        -0.25805870056152336
+      ],
+      "mesh": "Hammerburst.bone2.mesh",
+      "triangles": 272
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.014550452232360844,
+        -0.28628213882446285
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        0.0,
+        0.014550452232360844,
+        -0.4362821388244629
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · b_HB_Root",
+      "position": [
+        0.00014548790092749038,
+        0.10735770336887232,
+        -0.3066235279264075
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "弹匣锁扣 · b_HB_MagLatch",
+      "position": [
+        0.0004300704938652249,
+        0.007220589454279265,
+        -0.27511151110037735
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "弹匣 · b_HB_Mag",
+      "position": [
+        0.0003592971330199302,
+        -0.08123454135942276,
+        -0.30790380794623673
+      ],
+      "bone": 2,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Hammerburst",
+    "kind": "magazine",
+    "capacity": 78,
+    "reserve": 702,
+    "feed": [
+      -2.01507701033423e-10,
+      0.008443783521652296,
+      -0.25805870056152336
+    ],
+    "mechanism_pivot": [
+      2.228458918166442e-09,
+      0.02125365734100351,
+      -0.31364984512329097
+    ],
+    "mechanism_bones": [
+      1,
+      2
+    ],
+    "magazine_bone": 2,
+    "travel": 0.07,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      1,
+      0
+    ],
+    "ammo_mesh": "Hammerburst.ammo.mesh",
+    "initial_loaded": 39,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": false,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": true,
+    "muzzle": [
+      -7.310780796866278e-09,
+      0.1044783349270406,
+      -0.5686630875520085
+    ]
+  },
+  "curated": true
+}

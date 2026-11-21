@@ -36,6 +36,20 @@ struct Trial {
         assert(advance()==OriginalL2Status::pressed&&aim.owns_press());context.game_target_key=true;
     }
 };
+struct PhysicalTrial:Trial {
+    PhysicalTrial():Trial(false){
+        frame.hands[0].trigger_active=1;frame.hands[0].trigger=0.f;
+        assert(advance()==OriginalL2Status::baseline);
+    }
+    OriginalL2Status advance_physical(){
+        return aim.advance(frame,stereo,context,1000000100,
+            [&](OriginalL2Action action,std::uint64_t pc){
+                const bool ok=execute(action,pc);
+                if(ok)context.game_target_key=action==OriginalL2Action::press;
+                return ok;
+            });
+    }
+};
 void part_grant_reserves_first_press_before_reload_becomes_busy(){
     namespace h=gears_weapon_hand;
     for(auto kind:{h::LeaseKind::magazine,h::LeaseKind::ammo,h::LeaseKind::cover,h::LeaseKind::other,h::LeaseKind::support}){
@@ -62,6 +76,48 @@ void part_grant_reserves_first_press_before_reload_becomes_busy(){
         assert(!h::part_reserves_secondary_trigger(f,d));
         f.interaction_control=unsigned(LeftInteractionControl::pinch);
         assert(h::part_reserves_secondary_trigger(f,d));
+    }
+}
+void owned_l2_yields_once_when_same_frame_part_grant_arrives(){
+    namespace h=gears_weapon_hand;
+    for(auto kind:{h::LeaseKind::magazine,h::LeaseKind::other}){
+        Trial t(false);
+        auto& trigger=t.frame.hands[0];
+        trigger.trigger_active=1;trigger.trigger=0;
+        assert(t.advance()==OriginalL2Status::baseline);
+        trigger.trigger=1;t.press();
+        assert(t.aim.owns_press()&&t.calls.size()==1);
+
+        h::Frame f{};f.key.lifecycle=9;f.key.frame=t.frame.sequence;
+        f.press_token=4;f.left_grip_known=f.left_grip_down=1;
+        f.interaction_control=unsigned(LeftInteractionControl::pinch);
+        h::Decision d{};d.key=f.key;d.press_token=f.press_token;
+        d.lease={kind,0,f.key.lifecycle,f.press_token};
+        d.status=h::DecisionStatus::granted;d.release_required=0;
+        t.context.allow_press=!h::part_reserves_secondary_trigger(f,d);
+        // Same input sequence: an already-owned original press must yield
+        // immediately, rather than waiting for another controller frame.
+        assert(t.advance()==OriginalL2Status::released&&!t.aim.owns_press());
+        assert(t.calls.size()==2&&t.calls[1]==OriginalL2Action::release);
+        t.context.game_target_key=false; // Successful original ButtonRelease.
+        for(unsigned i=0;i<2;++i){
+            t.next();f.key.frame=t.frame.sequence;d.key=f.key;
+            d.status=h::DecisionStatus::retained;
+            t.context.allow_press=!h::part_reserves_secondary_trigger(f,d);
+            assert(t.advance()==OriginalL2Status::blocked);
+            assert(!t.aim.owns_press()&&t.calls.size()==2);
+        }
+        // Losing contact/permission while the trigger stays physically held
+        // cannot synthesize another original press. No impossible press edge
+        // is injected without a preceding physical release.
+        d.status=h::DecisionStatus::invalid;
+        t.context.allow_press=!h::part_reserves_secondary_trigger(f,d);
+        t.next();assert(t.advance()==OriginalL2Status::baseline&&t.calls.size()==2);
+        t.next();assert(t.advance()==OriginalL2Status::blocked&&t.calls.size()==2);
+        trigger.trigger=0;t.next();++trigger.released[control_trigger];
+        assert(t.advance()==OriginalL2Status::accepted&&t.calls.size()==2);
+        trigger.trigger=1;t.press();
+        assert(t.calls.size()==3&&t.calls[2]==OriginalL2Action::press);
     }
 }
 void cold_yield_still_requires_baseline_release_and_press(){
@@ -255,6 +311,7 @@ int main(){
     assert(advance()==OriginalL2Status::abort_required&&aim.owns_press());
     assert(advance()==OriginalL2Status::abort_required);
     part_grant_reserves_first_press_before_reload_becomes_busy();
+    owned_l2_yields_once_when_same_frame_part_grant_arrives();
     cold_yield_still_requires_baseline_release_and_press();
     baseline_release_proof_requires_active_low_trigger_and_game_key_up();
     synchronous_yield_seals_held_and_missed_edges();allow_press_false_releases_without_a_new_frame();

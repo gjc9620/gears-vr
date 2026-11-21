@@ -49,7 +49,11 @@ struct Fixture {
             TroikaMuzzle{c.right_muzzle,{{4,4,6},{0,0,1}}}};
         pose.left_tracked=pose.right_tracked=pose.left_grip_down=pose.right_grip_down=true;
         pose.original_pivot_and_constraints_verified=pose.muzzle_axis_relation_verified=pose.mount_contact_verified=true;
-        CHECK(model.bind(c,resources));CHECK(model.observe(sample())==E::hands_restored);
+        pose.mount_contact_continuous=true;pose.left_hand_empty=pose.right_hand_empty=true;
+        pose.left_grip_down=pose.right_grip_down=false;
+        CHECK(model.bind(c,resources));CHECK(model.observe(sample())==
+            (phase==P::mounted?E::hands_restored:E::observed));
+        if(phase==P::mounted){pose.left_grip_down=pose.right_grip_down=true;CHECK(observe()==E::observed);}
     }
     TroikaStamp stamp(){return {identity,certificate.binding,++sequence,++ns};}
     TroikaSample sample() {
@@ -61,6 +65,7 @@ struct Fixture {
         if(input==I::fire)trigger=down;else interact=down;
         observe();return model.edge(stamp(),{++edge_serial,input,down,true});
     }
+    E touch(){pose.left_mount_contact=true;return observe();}
     TroikaRequest take(){TroikaRequest r{};CHECK(model.take_request(r,ns));return r;}
     TroikaReceipt receipt(TroikaRequest const& r,bool accepted=true) {
         if(accepted){
@@ -150,7 +155,8 @@ void input_and_identity() {
 }
 void fixed_mount_and_original_animation() {
     Fixture f(config(),P::detached);CHECK(f.edge(I::fire,true)==E::rejected);f.edge(I::fire,false);
-    CHECK(f.edge(I::interact,true)==E::request_ready);auto mount=f.take();CHECK(mount.kind==A::mount_original);
+    CHECK(f.edge(I::interact,true)==E::rejected);
+    CHECK(f.touch()==E::request_ready);auto mount=f.take();CHECK(mount.kind==A::mount_original);
     CHECK(f.ack(mount)==E::original_accepted);CHECK(f.model.hands()==H::original_animation);
     CHECK(f.model.update_aim(f.stamp())==E::rejected);CHECK(!f.model.settled());
     // Merely observing a final phase cannot take the hands from original animation.
@@ -163,19 +169,74 @@ void fixed_mount_and_original_animation() {
     auto replay=f.sample();replay.original.animation_owns_hands=true;
     CHECK(f.model.observe(replay)==E::rejected); // completed animation lease cannot be reacquired by a stale snapshot
     f.trigger=true;CHECK(f.observe()==E::hands_restored);CHECK(f.edge(I::fire,true)==E::rejected);
-    f.edge(I::fire,false);auto fire=f.fire();CHECK(fire.fire_cycle);
+    f.edge(I::fire,false);
+    f.pose.left_grip_down=f.pose.right_grip_down=false;f.observe();
+    f.pose.left_grip_down=f.pose.right_grip_down=true;f.observe();auto fire=f.fire();CHECK(fire.fire_cycle);
     f.interact=false;f.observe();f.edge(I::interact,false);
     CHECK(f.edge(I::interact,true)==E::request_ready);auto stop=f.take();CHECK(stop.kind==A::stop_original_fire);
     CHECK(f.ack(stop)==E::request_ready);auto exit=f.take();CHECK(exit.kind==A::unmount_original);
     CHECK(f.ack(exit)==E::original_accepted);CHECK(f.model.hands()==H::original_animation);
     done=f.animation(exit,P::mounted);CHECK(f.model.animation_finished(done)==E::rejected);
     done=f.animation(exit,P::detached);CHECK(f.model.animation_finished(done)==E::observed);
-    f.observe();CHECK(f.model.settled());CHECK(f.model.update_aim(f.stamp())==E::rejected);
-    Fixture rejected(config(),P::detached);CHECK(rejected.edge(I::interact,true)==E::request_ready);
+    f.observe();CHECK(f.model.settled());CHECK(f.model.hands()==H::await_tracking);
+    CHECK(f.model.update_aim(f.stamp())==E::rejected);
+    Fixture rejected(config(),P::detached);CHECK(rejected.touch()==E::request_ready);
     mount=rejected.take();CHECK(rejected.ack(mount,false)==E::original_rejected);CHECK(rejected.model.settled());
-    Fixture malformed(config(),P::detached);malformed.edge(I::interact,true);mount=malformed.take();
+    Fixture malformed(config(),P::detached);malformed.touch();mount=malformed.take();
     auto receipt=malformed.receipt(mount);receipt.original.animation_owns_hands=false;
     CHECK(malformed.model.acknowledge(receipt)==E::safety_violation);CHECK(!malformed.model.settled());
+}
+void empty_contact_entry() {
+    Fixture f(config(),P::detached);
+    f.pose.left_grip_down=f.pose.right_grip_down=false;
+    CHECK(f.touch()==E::request_ready);auto mount=f.take();
+    CHECK(mount.kind==A::mount_original);CHECK(f.model.hands()==H::await_tracking);
+    CHECK(f.ack(mount,false)==E::original_rejected);
+    for(unsigned i=0;i<10;++i){f.observe();CHECK(!f.model.has_pending_request());}
+    f.pose.left_mount_contact=false;f.observe();CHECK(f.touch()==E::request_ready);
+    mount=f.take();CHECK(f.ack(mount,false)==E::original_rejected);
+    for(unsigned gate=0;gate<7;++gate){
+        Fixture x(config(),P::detached);
+        switch(gate){case 0:x.pose.left_hand_empty=false;break;
+          case 1:x.original.can_mount=false;break;
+          case 2:x.original.input_allowed=false;break;
+          case 3:x.pose.mount_contact_continuous=false;break;
+          case 4:x.pose.mount_contact_verified=false;break;
+          case 5:x.pose.left_tracked=false;break;
+          default:x.pose.right_mount_contact=true;x.pose.right_hand_empty=false;
+              x.pose.left_hand_empty=false;break;}
+        x.touch();CHECK(!x.model.has_pending_request());
+        x.pose.left_hand_empty=x.pose.right_hand_empty=true;
+        x.original.can_mount=x.original.input_allowed=true;
+        x.pose.mount_contact_continuous=x.pose.mount_contact_verified=x.pose.left_tracked=true;
+        x.observe();CHECK(!x.model.has_pending_request()); // no retry on recovery inside
+        x.pose.left_mount_contact=x.pose.right_mount_contact=false;x.observe();
+        CHECK(x.touch()==E::request_ready);
+    }
+    Fixture right(config(),P::detached);right.pose.right_mount_contact=true;
+    right.pose.left_hand_empty=false;CHECK(right.observe()==E::request_ready);
+    auto r=right.take();CHECK(right.ack(r,false)==E::original_rejected);
+    Fixture startup(config(),P::detached);startup.pose.mount_contact_continuous=false;
+    startup.observe();startup.pose.mount_contact_continuous=true;
+    startup.touch();CHECK(!startup.model.has_pending_request());
+    // Dispatch still requires current empty-hand authority, not just contact.
+    Fixture revoked(config(),P::detached);CHECK(revoked.touch()==E::request_ready);
+    revoked.pose.left_hand_empty=false;revoked.observe();TroikaRequest out{};
+    CHECK(!revoked.model.take_request(out,revoked.ns));
+}
+void synchronous_original_entry() {
+    for(bool certificate:{false,true}){
+        Fixture f(config(),P::detached);CHECK(f.touch()==E::request_ready);auto r=f.take();
+        auto receipt=f.receipt(r);receipt.original.phase=P::mounted;
+        receipt.original.animation_owns_hands=false;receipt.original.animation_serial=0;
+        receipt.original_transition_completed=certificate;
+        CHECK(f.model.acknowledge(receipt)==(certificate?E::original_accepted:E::safety_violation));
+        if(certificate){
+            f.original=receipt.original;CHECK(f.model.hands()==H::await_tracking);
+            CHECK(f.observe()==E::hands_restored);CHECK(f.model.update_aim(f.stamp())==E::rejected);
+            f.pose.left_grip_down=f.pose.right_grip_down=true;f.observe();f.fire();
+        }
+    }
 }
 void pose_and_original_gates() {
     for(unsigned gate=0;gate<13;++gate){
@@ -221,7 +282,9 @@ void interruption_and_native_fire_lease() {
     Fixture lost;lost.fire();lost.pose.left_tracked=false;CHECK(lost.observe()==E::request_ready);
     stop=lost.take();CHECK(stop.kind==A::stop_original_fire);CHECK(lost.ack(stop)==E::original_accepted);
     lost.pose.left_tracked=true;CHECK(lost.observe()==E::hands_restored);
-    CHECK(lost.edge(I::fire,true)==E::rejected);lost.edge(I::fire,false);lost.fire();
+    CHECK(lost.edge(I::fire,true)==E::rejected);lost.edge(I::fire,false);CHECK(lost.edge(I::fire,true)==E::rejected);
+    lost.edge(I::fire,false);lost.pose.left_grip_down=lost.pose.right_grip_down=false;lost.observe();
+    lost.pose.left_grip_down=lost.pose.right_grip_down=true;lost.observe();lost.fire();
     Fixture expired;expired.fire();expired.ns+=1001;CHECK(expired.model.poll(expired.stamp())==E::request_ready);
     stop=expired.take();CHECK(stop.kind==A::stop_original_fire);CHECK(expired.ack(stop)==E::original_accepted);
     Fixture malformed;malformed.edge(I::fire,true);press=malformed.take();auto ack=malformed.receipt(press);
@@ -245,6 +308,25 @@ void interruption_and_native_fire_lease() {
     Fixture driver;driver.fire();driver.original.driver_is_this_pawn=false;
     CHECK(driver.observe()==E::request_ready);stop=driver.take();CHECK(stop.kind==A::stop_original_fire);
     CHECK(driver.ack(stop)==E::original_accepted);CHECK(driver.model.update_aim(driver.stamp())==E::rejected);
+}
+void grip_release_reacquire() {
+    for(unsigned side=0;side<2;++side){
+        Fixture f;f.fire();
+        auto& down=side?f.pose.right_grip_down:f.pose.left_grip_down;
+        down=false;CHECK(f.observe()==E::request_ready);auto stop=f.take();
+        CHECK(stop.kind==A::stop_original_fire);CHECK(f.ack(stop)==E::original_accepted);
+        down=true;f.observe();CHECK(!f.model.has_pending_request());
+        CHECK(f.edge(I::fire,true)==E::rejected); // still-held trigger is not a press
+        f.edge(I::fire,false);f.fire();
+    }
+    Fixture outside;outside.pose.left_grip_down=false;outside.observe();
+    outside.pose.left_hand_world_m.position.x+=.2;outside.pose.left_grip_down=true;outside.observe();
+    outside.pose.left_hand_world_m=troika_compose(outside.pose.turret_world_m,outside.certificate.left_handle_local_m);
+    outside.observe();CHECK(outside.edge(I::fire,true)==E::rejected);
+    outside.edge(I::fire,false);outside.pose.left_grip_down=false;outside.observe();
+    outside.pose.left_grip_down=true;outside.observe();outside.fire();
+    Fixture paused;paused.original.input_allowed=false;paused.observe();
+    paused.original.input_allowed=true;paused.observe();CHECK(paused.edge(I::fire,true)==E::rejected);
 }
 void shot_identity_and_resource_receipts() {
     Fixture f;auto fire=f.fire();auto shot=f.shot(fire,f.certificate.right_muzzle);
@@ -300,7 +382,7 @@ void certified_mechanical_guidance() {
 } // namespace
 int main() {
     geometry_and_certificates();input_and_identity();fixed_mount_and_original_animation();
-    pose_and_original_gates();interruption_and_native_fire_lease();shot_identity_and_resource_receipts();
-    certified_mechanical_guidance();
+    empty_contact_entry();synchronous_original_entry();pose_and_original_gates();interruption_and_native_fire_lease();shot_identity_and_resource_receipts();
+    grip_release_reacquire();certified_mechanical_guidance();
     std::printf("Troika interaction: %u synthetic checks passed; game/retail/headset wiring pending.\n",checks);
 }

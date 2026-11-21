@@ -132,6 +132,10 @@ def render_scale(config,manifest):
     return float(value)
 
 
+class RenderSizeLimitError(RuntimeError):
+    pass
+
+
 def render_size_info(manifest,scale,root=ROOT,environment=None):
     probe=rooted(manifest['xr_build'],root)/'OpenXRPoseProbe.exe'
     if hashlib.sha256(probe.read_bytes()).hexdigest().lower()!=manifest['xr_sha256'].lower():
@@ -139,7 +143,13 @@ def render_size_info(manifest,scale,root=ROOT,environment=None):
     result=subprocess.run([str(probe),'--render-size-info','--render-scale',str(scale)],
         capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=30,env=environment,
         creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if result.returncode:raise RuntimeError('VR render size rejected before game launch: '+(result.stderr.strip() or result.stdout.strip()))
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip()
+        error = RenderSizeLimitError if (
+            'requested engine SBS size exceeds 8192 pixels' in detail or
+            'requested eye size exceeds runtime limits' in detail
+        ) else RuntimeError
+        raise error('VR render size rejected before game launch: ' + detail)
     plans=[]
     for line in result.stdout.splitlines():
         try:value=json.loads(line)
@@ -155,6 +165,41 @@ def render_size_info(manifest,scale,root=ROOT,environment=None):
         w!=math.ceil(rw*scale-1e-9) or h!=math.ceil(rh*scale-1e-9)):
         raise RuntimeError('Runtime render size plan does not match the requested multiplier and engine limits')
     return plan
+
+
+def capped_render_size_info(manifest, requested, root=ROOT, environment=None):
+    def probe(scale):
+        return render_size_info(manifest, scale, root, environment)
+
+    try:
+        return probe(requested)
+    except RenderSizeLimitError:
+        if requested == .25:
+            raise
+
+    plan = probe(.25)
+    width, height = plan['recommended']
+    # The probe reports nine significant digits. Round down to stay within
+    # both engine bounds while using the same scale at preview and startup.
+    precision = 100_000_000
+    low = precision // 4
+    high = min(math.floor(requested * precision),
+               4096 * precision // width, 8192 * precision // height)
+    if high > low:
+        try:
+            plan = probe(high / precision)
+        except RenderSizeLimitError:
+            # The runtime can have a stricter texture limit than the engine.
+            upper = high - 1
+            while low < upper:
+                middle = (low + upper + 1) // 2
+                try:
+                    plan = probe(middle / precision)
+                except RenderSizeLimitError:
+                    upper = middle - 1
+                else:
+                    low = middle
+    return dict(plan, requested_render_scale=requested)
 
 
 def settings(config,manifest,root=ROOT):
@@ -585,10 +630,11 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     game,scale=settings(config,manifest)
     profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
     selected_render_scale=render_scale(config,manifest)
-    size_plan=render_size_info(manifest,selected_render_scale) if selected_render_scale is not None else None
+    size_plan=capped_render_size_info(manifest,selected_render_scale) if selected_render_scale is not None else None
     if size_plan:
+        selected_render_scale=size_plan['render_scale']
         print(json.dumps(size_plan),flush=True)
-        print('VR per eye: %d x %d; render scale %.2f per dimension; desktop resolution is independent.' %
+        print('VR per eye: %d x %d; render scale %.8g per dimension; desktop resolution is independent.' %
               (*size_plan['eye'],selected_render_scale),flush=True)
     owner=backend.control.identity(os.getpid())
     if not owner:raise RuntimeError('Launcher process identity unavailable')
@@ -972,7 +1018,7 @@ def main():
             config=json.loads(args.config.read_text());manifest=json.loads(args.manifest.read_text())
             value=render_scale(config,manifest)
             if value is None:raise ValueError('This build does not support runtime render size')
-            print(json.dumps(render_size_info(manifest,value)),flush=True);return 0
+            print(json.dumps(capped_render_size_info(manifest,value)),flush=True);return 0
         return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,
                      auto_continue=args.auto_continue,foreground=args.foreground,remeasure_armspan=args.remeasure_armspan)
     except Exception as error:print(str(error),file=sys.stderr);return 1

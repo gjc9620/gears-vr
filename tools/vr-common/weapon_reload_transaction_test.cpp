@@ -258,4 +258,30 @@ constexpr bool empty_supply_feedback_once_per_real_press_lifetime() {
         !f.rejected(2,2)&&f.reject(2,2)&&!f.reject(2,2);
 }
 static_assert(empty_supply_feedback_once_per_real_press_lifetime());
+// Workbench repeated-full-magazine report: the retail adapter's explicit
+// zero-target transaction must reopen repeatedly without reset/prime, filling,
+// a fake reload serial, a spare reservation or loss of the retained L rounds.
+constexpr bool repeated_inspection_replacement_keeps_ammo_and_nonce_floors() {
+    for(unsigned loaded:{2u,60u})for(unsigned spare:{0u,120u}){
+        if(loaded!=60&&spare)continue; // A real deficit uses the existing refill path.
+        Tx t;const Inv initial{id,1,60,loaded,spare};Req q;
+        if(!t.bind(initial))return false;
+        for(unsigned cycle=0;cycle<3;++cycle){
+            const auto intent=std::uint64_t(cycle+1),old_item=std::uint64_t(10+cycle*3),replacement=old_item+1;
+            const auto before=t.inventory();
+            if(!t.begin(before,intent,ReloadIntentSource::magazine_pull,0,
+                ReloadTxnMode::magazine,60,100+cycle*20,old_item)||
+               !t.stow_original(old_item)||!t.reserve_magazine_reusing_loaded(replacement)||
+               t.held_magazine_rounds()!=loaded||t.reserved()||
+               !t.seat_reused_rounds(replacement)||!t.confirm_closed(110+cycle*20,4000)||
+               !t.mechanical_ready()||t.result()!=ReloadTxnResult::inspection||t.take_request(q)||
+               t.inventory().loaded!=loaded||t.inventory().reserve!=spare||
+               t.inventory().revision!=initial.revision||
+               t.begin(t.inventory(),intent,ReloadIntentSource::magazine_pull,0,
+                   ReloadTxnMode::magazine,60,111+cycle*20,replacement+1))return false;
+        }
+    }
+    return true;
+}
+static_assert(repeated_inspection_replacement_keeps_ammo_and_nonce_floors());
 // Compile-time contract checks; this translation unit has no main or runtime.

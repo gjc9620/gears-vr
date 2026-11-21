@@ -1,0 +1,18 @@
+{
+  "schema": 3,
+  "sim_runtime": {
+    "manifest": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\simulator-cloak-source\\bin\\openxr_simulator.json",
+    "dll": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\simulator-cloak-source\\bin\\openxr_simulator.dll",
+    "manifest_sha256": "3c47397fa90c3a8acede7db68378ae8ad47b0f3ae96d19f48995ae2361f80197",
+    "dll_sha256": "92e505389ccc73b7f23971b68e2eedb63427a72db4cf8ee2903796103d8299f3"
+  },
+  "quiet_build": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\quiet-startup\\build-instance-cloak1110",
+  "quiet_sha256": {
+    "GearsEarlyLaunch.exe": "8d8f84d2c995aec58a67900b4e3dc7858bbf8f185472bef79ae792a88e391769",
+    "GearsQuietStartup.dll": "94a288a028dd49658a939b1ac2af9bbf87e27d0cecc21e7bcdafc0142a12bab9"
+  },
+  "background_policy": "DWM-cloaked-own-windows-no-desktop-pixels",
+  "native_foreground_guard_required": true,
+  "own_process_wer_no_ui": true,
+  "same_image_children": "separate-noninteractive-desktop"
+}

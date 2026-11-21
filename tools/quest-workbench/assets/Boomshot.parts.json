@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bone": -1,
+      "role": "main",
+      "side": 1,
+      "radius": 0.13,
+      "legacy_id": "main_grip"
+    },
+    {
+      "id": "support",
+      "label": "副手握持",
+      "position": [
+        0.0,
+        0.02,
+        -0.27
+      ],
+      "bone": -1,
+      "role": "support",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "support"
+    },
+    {
+      "id": "ammo",
+      "label": "子弹",
+      "position": [
+        -0.009700000510896914,
+        -0.0784833972317833,
+        -0.3040122933524
+      ],
+      "bone": 1,
+      "role": "ammo",
+      "side": 0,
+      "radius": 0.1,
+      "legacy_id": "bone_1"
+    },
+    {
+      "id": "mechanism",
+      "label": "装填机构",
+      "position": [
+        -0.009535921997398023,
+        0.12178727487804157,
+        -0.7750023800433927
+      ],
+      "bone": 2,
+      "role": "mechanism",
+      "side": 0,
+      "radius": 0.13,
+      "legacy_id": "bone_2"
+    }
+  ],
+  "groups": [
+    {
+      "bone": "Boomshot_Root",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh": "Boomshot.bone0.mesh",
+      "triangles": 5824
+    },
+    {
+      "bone": "Boomshot_Magazine",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.02,
+        -0.3
+      ],
+      "mesh": "Boomshot.bone1.mesh",
+      "triangles": 1236
+    },
+    {
+      "bone": "Boomshot_Barrel",
+      "parent": 0,
+      "pivot": [
+        0.0,
+        0.09812527656555176,
+        -0.5606922149658203
+      ],
+      "mesh": "Boomshot.bone2.mesh",
+      "triangles": 1802
+    }
+  ],
+  "rest_mesh": "",
+  "mixed_skin_triangles": 0,
+  "mixed_skin_policy": "rest-only; no rigid deformation",
+  "initial_regions": "bounding-derived authoring defaults; not calibrated grips",
+  "legacy_parts": [
+    {
+      "id": "main_grip",
+      "label": "主握把",
+      "position": [
+        -0.009700002670288088,
+        0.04986286163330078,
+        -0.4126363039016724
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "support",
+      "label": "辅助握持",
+      "position": [
+        -0.009700002670288088,
+        0.04986286163330078,
+        -0.5626363039016724
+      ],
+      "bone": -1,
+      "radius": 0.12
+    },
+    {
+      "id": "bone_0",
+      "label": "主体 · Boomshot_Root",
+      "position": [
+        -0.009594782144388178,
+        0.10158392581194715,
+        -0.21888486471263974
+      ],
+      "bone": 0,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_1",
+      "label": "弹匣 · Boomshot_Magazine",
+      "position": [
+        -0.009700000510896914,
+        -0.0784833972317833,
+        -0.3040122933524
+      ],
+      "bone": 1,
+      "radius": 0.08
+    },
+    {
+      "id": "bone_2",
+      "label": "枪管 · Boomshot_Barrel",
+      "position": [
+        -0.009535921997398023,
+        0.12178727487804157,
+        -0.7750023800433927
+      ],
+      "bone": 2,
+      "radius": 0.08
+    }
+  ],
+  "practice": {
+    "id": "Boomshot",
+    "kind": "breech",
+    "capacity": 1,
+    "reserve": 11,
+    "feed": [
+      0.0,
+      0.02,
+      -0.3
+    ],
+    "mechanism_pivot": [
+      0.0,
+      0.09812527656555176,
+      -0.5606922149658203
+    ],
+    "mechanism_bones": [
+      2
+    ],
+    "magazine_bone": 1,
+    "travel": 0.1,
+    "hinge_axis": [
+      1,
+      0,
+      0
+    ],
+    "open_axis": [
+      0,
+      0,
+      1
+    ],
+    "insertion_axis": [
+      0,
+      0,
+      -1
+    ],
+    "ammo_mesh": "boomshot-carrier.mesh",
+    "initial_loaded": 1,
+    "fire_interval": 0.1,
+    "mechanism_requires_reload": true,
+    "hand_pose_provenance": "editable authored starting templates; physical fitting pending",
+    "fastloader": false,
+    "group_round_loading": false,
+    "reload_item": "ammunition",
+    "cylinder_bone": -1,
+    "shared_grip": false,
+    "hammerburst_no_charge": false,
+    "muzzle": [
+      -0.00970000018112062,
+      0.09216228586488537,
+      -0.9475153386592865
+    ]
+  },
+  "curated": true
+}

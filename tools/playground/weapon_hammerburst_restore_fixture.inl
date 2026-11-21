@@ -26,7 +26,7 @@ struct ObservedInventory {
 }
 namespace nativeequipment {bool current_value{true};bool current(void*,hand::Frame const&)noexcept{return current_value;}}
 namespace lancerreload_state {struct Lease{inv::Identity identity{};unsigned serial{1};bool acquired{};
-    std::int64_t accepted_begin_ms{123},perfect_end_ms{4000};float reward_start{10};};Lease lease;}
+    std::int64_t accepted_begin_ms{123},perfect_end_ms{4000};float reward_start{10};bool ui_owned{},attempts_owned{};float original_start{11};};Lease lease;}
 namespace anim {enum class Acquire{rejected,acquired,recovery_required};
 struct Ownership{bool active{},visual_only{},stopped{},seek_pending{};unsigned serial{};inv::Identity inventory{};};Ownership ownership;}
 namespace visual {bool active{};struct Saved{unsigned weapon{7};};Saved saved;}

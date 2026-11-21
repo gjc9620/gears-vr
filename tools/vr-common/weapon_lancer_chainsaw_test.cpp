@@ -44,6 +44,42 @@ gears_weapon::LancerSawInputContinuity witness(gears_weapon::LancerSawSample con
 }
 int main() {
     {
+        using namespace gears_weapon;
+        // Exact configured contact replaces the legacy start sphere only.
+        // A wide acquisition creates no rail motion or motor request.
+        for(unsigned mode=0;mode<5;++mode){
+            LancerChainsawInteraction model;auto s=sample();
+            s.original_handle=s.original_slide=true;s.starter_travel_m=.08;
+            s.left_palm_m={.20,0,0};
+            s.authored_acquisition_enabled=mode!=0;s.authored_acquisition_contact=mode!=2;
+            model.observe(s);advance(s);s.left_grip_down=true;
+            if(mode==3)s.left_tracked=false;
+            if(mode==4)s.game_can_melee=false;
+            const auto d=model.observe(s);
+            assert((d.event==LancerSawEvent::pull_began)==(mode==1));
+            assert(!d.press_original_melee&&model.pull_metres()==0);
+        }
+    }
+    {
+        // Real neutral geometry was read, followed by a neutral callback
+        // without a new part observation. Preserve history, never invent a
+        // released sample. First held geometry must still be current/valid.
+        using namespace gears_weapon;
+        LancerChainsawInteraction model;auto s=sample();
+        assert(model.observe(s).event==LancerSawEvent::none);
+        if(!preserve_lancer_neutral_witness(true,true,false,false,model.phase()))model.reset();
+        advance(s);s.left_grip_down=true;
+        assert(model.observe(s).event==LancerSawEvent::pull_began);
+        LancerChainsawInteraction old;s=sample();old.observe(s);old.reset();
+        advance(s);s.left_grip_down=true;
+        assert(old.observe(s).event==LancerSawEvent::none); // Cold-held remains denied.
+        assert(!preserve_lancer_neutral_witness(false,true,false,false,LancerSawPhase::idle));
+        assert(!preserve_lancer_neutral_witness(true,false,false,false,LancerSawPhase::idle));
+        assert(!preserve_lancer_neutral_witness(true,true,true,false,LancerSawPhase::idle));
+        assert(!preserve_lancer_neutral_witness(true,true,false,true,LancerSawPhase::idle));
+        assert(!preserve_lancer_neutral_witness(true,true,false,false,LancerSawPhase::pulling));
+    }
+    {
         // Grip release locks a partial real slider. Regrasp starts there and
         // continues the remaining physical/mechanical stroke, without reset.
         using namespace gears_weapon;
@@ -474,5 +510,23 @@ int main() {
     d=interaction.observe(s);
     assert(d.event==LancerSawEvent::animation_handoff&&
            d.animation_owns_hands&&!d.release_original_melee);
+    {
+        LancerChainsawInteraction cold,granted;
+        auto start=sample();start.left_grip_down=true;
+        assert(cold.observe(start).event==LancerSawEvent::none);
+        assert(cold.phase()==LancerSawPhase::idle);
+        assert(granted.observe(start,true).event==LancerSawEvent::pull_began);
+        assert(granted.phase()==LancerSawPhase::pulling&&granted.pull_metres()==0);
+        advance(start);start.left_palm_m.x=.05;
+        assert(granted.observe(start).event==LancerSawEvent::none);
+        assert(std::abs(granted.pull_metres()-.05)<1e-8);
+        for(unsigned bad=0;bad<3;++bad){
+            LancerChainsawInteraction denied;auto invalid_grant_sample=sample();invalid_grant_sample.left_grip_down=true;
+            if(bad==0)invalid_grant_sample.left_tracked=false;
+            if(bad==1)invalid_grant_sample.left_palm_m.x=.5;
+            if(bad==2)invalid_grant_sample.right_owns_weapon=false;
+            assert(denied.observe(invalid_grant_sample,true).event!=LancerSawEvent::pull_began);
+        }
+    }
     std::puts("Lancer chainsaw VR gesture, contact and handoff passed");
 }

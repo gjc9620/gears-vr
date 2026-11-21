@@ -31,7 +31,8 @@ void bind(BoltokReload& model,BoltokBinding const& b=binding()) {
 }
 BoltokReloadStart start(BoltokInventory const& inv=inventory(),bool known=true) {
     BoltokReloadStart s{};
-    s.stamp=stamp(2);s.inventory=inv;s.r3_press_edge=1;
+    s.stamp=stamp(2);s.inventory=inv;s.r3_press_edge=1;s.accepted_begin_tick=1000;
+    s.mechanical_ownership_verified=true;
     s.original_reload_accepted=s.automatic_refill_held=true;
     s.plan.identity=identity;s.plan.generation=31;s.plan.original_reload_serial=21;
     s.plan.initial_state=1001;s.plan.final_ready_state=1004;s.plan.count=3;
@@ -405,6 +406,113 @@ void independent_verified_plan_and_conservation() {
         assert(sample.loaded()==count&&sample.total()==loaded+reserve&&sample.held()==0);
     }
 }
+void physical_open_requires_real_motion() {
+    auto s=start(inventory(5,9,6));s.r3_press_edge=0;
+    BoltokReload m;bind(m,binding(5,9,6));
+    auto opening=motion(s,0,1);
+    assert(m.begin_grab_open(s,1,opening,s.stamp.observed_ns)==E::started);
+    assert(m.current_step()==1&&m.stage()==S::take_ammunition&&!m.can_fire());
+    assert(grab(m,s,3)==E::grabbed&&m.held()==1&&m.total()==14);
+    assert(insert(m,s,4,1,3)==E::inventory_requested);
+    assert(acknowledge_inventory(m,5)==E::inventory_committed);
+    assert(move(m,s,2,6,5,1100)==E::completion_requested);
+    auto f=stamp(7,1100);
+    assert(m.acknowledge_completion(f,completion_receipt(m),f.observed_ns)==E::perfect);
+    assert(m.loaded()==6&&m.reserve()==8&&m.total()==14&&m.can_fire());
+    for(unsigned bad=0;bad!=15;++bad){
+        BoltokReload rejected;bind(rejected,binding(5,9,6));auto path=opening;auto input=s;
+        std::uint64_t token=1;
+        switch(bad){
+            case 0:path.left_grip_held=false;break;
+            case 1:path.continuous=false;break;
+            case 2:path.complete_travel=false;break;
+            case 3:path.parts=boltok_object_part(11);break;
+            case 4:path.motion_begin_sequence=0;break;
+            case 5:path.tracked_samples=1;break;
+            case 6:input.stamp.left_tracked=false;break;
+            case 7:token=0;break;
+            case 8:input.stamp.identity.weapon++;break;
+            case 9:input.plan.steps[1].rounds=2;break;
+            case 10:input.accepted_begin_tick=-1;break;
+            case 11:input.accepted_begin_tick=1001;break;
+            case 12:input.inventory.capacity=7;break;
+            case 13:input.plan.steps[2].kind=BoltokStepKind::insert_ammunition;break;
+            case 14:input.mechanical_ownership_verified=false;break;
+        }
+        assert(rejected.begin_grab_open(input,token,path,input.stamp.observed_ns)!=E::started);
+        assert(rejected.stage()==S::ready&&rejected.loaded()==5&&rejected.can_fire());
+        // Rejection must not consume the valid stroke's frame or grip token.
+        assert(rejected.begin_grab_open(s,1,opening,s.stamp.observed_ns)==E::started);
+        assert(rejected.begin_grab_open(s,1,opening,s.stamp.observed_ns)==E::rejected);
+    }
+    // Opening travel consumes the original reward window; its endpoint cannot
+    // move the accepted start forward and manufacture a perfect reload.
+    BoltokReload delayed;bind(delayed,binding(5,9,6));s.stamp.game_tick=1050;
+    assert(delayed.begin_grab_open(s,1,opening,s.stamp.observed_ns)==E::started);
+    auto held_frame=stamp(3,1050);
+    assert(delayed.grab_left_shoulder(held_frame,ammo(s),held_frame.observed_ns)==E::grabbed);
+    assert(insert(delayed,s,4,1,3,81,1050)==E::inventory_requested);
+    assert(acknowledge_inventory(delayed,5,1050)==E::inventory_committed);
+    assert(move(delayed,s,2,6,5,1101)==E::completion_requested);
+    assert(delayed.completion_request().started_tick==1000&&
+        delayed.completion_request().proposed_result==E::ordinary);
+}
+void partial_close_and_inspection() {
+    auto s=start(inventory(3,2,6));s.r3_press_edge=0;s.plan.count=4;s.plan.final_ready_state=1005;
+    s.plan.steps[1].rounds=1;
+    s.plan.steps[2]={BoltokStepKind::insert_ammunition,boltok_object_part(2),503,603,703,1003,1004,1};
+    s.plan.steps[3]={BoltokStepKind::move_original_parts,boltok_object_part(3),504,604,704,1004,1005,0};
+    s.plan.early_closures[1]={BoltokStepKind::move_original_parts,boltok_object_part(3),601,701,801,1002,1005,0};
+    s.plan.early_closures[2]={BoltokStepKind::move_original_parts,boltok_object_part(3),602,702,802,1003,1005,0};
+    for(bool inserted:{false,true}){
+        BoltokReload m;bind(m,binding(3,2,6));
+        assert(m.begin_grab_open(s,1,motion(s,0,1),s.stamp.observed_ns)==E::started);
+        unsigned seq=3,cursor=1;
+        if(inserted){
+            assert(grab(m,s,3)==E::grabbed);
+            assert(m.close_early(stamp(4),{},stamp(4).observed_ns)==E::rejected);
+            assert(insert(m,s,4,1,3)==E::inventory_requested);
+            assert(m.close_early(stamp(5),{},stamp(5).observed_ns)==E::rejected);
+            assert(acknowledge_inventory(m,5)==E::inventory_committed);seq=6;cursor=2;
+        }
+        auto branch=s;branch.plan.steps[cursor]=s.plan.early_closures[cursor];
+        auto close=motion(branch,cursor,seq-1);auto f=stamp(seq,1001);
+        auto wrong=close;wrong.before_state++;
+        assert(m.close_early(f,wrong,f.observed_ns)==E::rejected);
+        assert(m.close_early(f,close,f.observed_ns)==E::completion_requested);
+        assert(!m.can_fire()&&m.total()==5);
+        const auto result=inserted?E::ordinary:E::inspection_completed;
+        assert(m.completion_request().proposed_result==result);
+        f=stamp(seq+1,1001);
+        assert(m.acknowledge_completion(f,completion_receipt(m),f.observed_ns)==result);
+        assert(m.loaded()==(inserted?4u:3u)&&m.reserve()==(inserted?1u:2u)&&m.can_fire());
+    }
+    // A normal final close is not automatically a legal shortcut from an
+    // earlier state. No authenticated branch means no early completion.
+    s.plan.early_closures={};BoltokReload no_branch;bind(no_branch,binding(3,2,6));
+    assert(no_branch.begin_grab_open(s,1,motion(s,0,1),s.stamp.observed_ns)==E::started);
+    assert(no_branch.close_early(stamp(3),motion(s,3,2),stamp(3).observed_ns)==E::rejected);
+    assert(no_branch.stage()==S::take_ammunition&&!no_branch.can_fire());
+}
+void full_and_dry_inspection() {
+    for(unsigned loaded:{0u,3u,6u})for(unsigned reserve:{0u,2u}){
+        if(reserve&&loaded!=6)continue;
+        auto s=start(inventory(loaded,reserve,6));s.r3_press_edge=0;s.original_reload_accepted=false;
+        s.plan.count=2;s.plan.steps[1]={BoltokStepKind::move_original_parts,boltok_object_part(3),
+            502,602,702,1002,1004,0};
+        BoltokReload m;bind(m,binding(loaded,reserve,6));
+        auto invalid=s;invalid.mechanical_ownership_verified=false;
+        assert(m.begin_grab_open(invalid,1,motion(s,0,1),s.stamp.observed_ns)==E::invalid);
+        assert(m.begin_grab_open(s,1,motion(s,0,1),s.stamp.observed_ns)==E::started);
+        assert(m.stage()==S::mechanism&&!m.can_fire());
+        assert(move(m,s,1,3,2,1001)==E::completion_requested);
+        assert(m.completion_request().proposed_result==E::inspection_completed);
+        auto f=stamp(4,1001);
+        assert(m.acknowledge_completion(f,completion_receipt(m),f.observed_ns)==E::inspection_completed);
+        assert(m.loaded()==loaded&&m.reserve()==reserve&&m.total()==loaded+reserve);
+        assert(m.can_fire()==bool(loaded));
+    }
+}
 void fire_receipts_and_native_cadence() {
     for(unsigned bad=0;bad!=7;++bad){
         BoltokReload m;bind(m,binding(3,9,7,2));auto f=stamp(2);
@@ -447,6 +555,7 @@ int main() {
     complete_and_original_fire();deadline_boundary_unknown_and_pause();invalid_binding_and_start();
     wrong_ammo_and_continuous_geometry();original_inventory_and_reward_gates();
     identity_input_freshness_and_rebind();independent_verified_plan_and_conservation();
-    fire_receipts_and_native_cadence();
+    fire_receipts_and_native_cadence();physical_open_requires_real_motion();partial_close_and_inspection();
+    full_and_dry_inspection();
     std::puts("Boltok reload protocol tests passed (synthetic evidence only).");
 }

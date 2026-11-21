@@ -7,6 +7,12 @@
 #include <cstring>
 int main(){
     namespace g=gears_hand_object_grasp;namespace v=gears_vr;
+    assert(g::proximity_socket(g::Kind::none,g::ProximityContact{.18,true,true},g::ProximityContact{.13,false,true})==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::support,g::ProximityContact{.18,false,true},g::ProximityContact{.17,true,true})==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::support,g::ProximityContact{.18,false,true},g::ProximityContact{.10,true,true})==g::Kind::starter);
+    assert(g::proximity_socket(g::Kind::support,g::ProximityContact{.25,false,false},g::ProximityContact{.3,false,false})==g::Kind::none);
+    assert(g::proximity_socket(g::Kind::starter,g::ProximityContact{.01,true,true},g::ProximityContact{.18,false,true},true)==g::Kind::starter);
+
     std::printf("released_socket_layout frame=%zu size=%zu anchor=%zu hold=%zu known=%zu key=%zu stereo=%zu controllers=%zu\n",
         sizeof(gears_weapon_hand::Frame),sizeof(g::ReleasedSocket),offsetof(g::ReleasedSocket,anchor),
         offsetof(g::ReleasedSocket,hold),offsetof(g::ReleasedSocket,known),
@@ -27,6 +33,51 @@ int main(){
     assert(g::proximity_socket(g::Kind::starter,.01,.18,.14,.14,false)==g::Kind::support);
     assert(g::proximity_socket(g::Kind::starter,.01,.23,.14,.14,true)==g::Kind::support);
     assert(g::proximity_socket(g::Kind::support,.18,.01,.14,.14,true)==g::Kind::starter);
+    {
+        // A real approach acquires C at the volume edge, then stops at its
+        // folded centre. Its next missing pose must not mistake that approach
+        // for continuing movement away from the socket.
+        double anchor=-.12;
+        for(double p:{-.08,-.04,-.015,0.})
+            if(g::recenter_starter_anchor(std::abs(p),std::abs(p-.11)))anchor=p;
+        assert(anchor==0.);
+        assert(g::proximity_socket(g::Kind::starter,.04,.11,.14,.14,
+            std::abs(anchor)<=.03)==g::Kind::starter);
+        // An old edge anchor would instead have selected nearby support.
+        assert(g::proximity_socket(g::Kind::starter,.04,.11,.14,.14,false)==g::Kind::support);
+        // Do not follow an arbitrarily slow exit through the broad22cm zone.
+        for(double p:{.04,.06})
+            if(g::recenter_starter_anchor(std::abs(p),std::abs(p-.11)))anchor=p;
+        assert(anchor==0.);
+        assert(g::proximity_socket(g::Kind::starter,0.,.05,.14,.14,
+            std::abs(.06-anchor)<=.03)==g::Kind::support);
+        assert(g::recenter_starter_anchor(.20,.01));
+        assert(!g::recenter_starter_anchor(-.01,.01));
+        assert(!g::recenter_starter_anchor(.01,INFINITY));
+    }
+    {
+        using Lease=gears_weapon_hand::LeaseKind;
+        auto selected=g::proximity_socket(g::Kind::none,.10,.30,.14,.14);
+        assert(selected==g::Kind::support); // Neutral acquisition.
+        selected=g::proximity_control_handoff(selected,Lease::support,true);
+        assert(selected==g::Kind::support); // Actual Grip phase saves only selection.
+        selected=g::proximity_control_handoff(selected,Lease::support,true);
+        assert(selected==g::Kind::support); // Released frame still has the old lease.
+        selected=g::proximity_socket(selected,.18,.30,.14,.14);
+        assert(selected==g::Kind::support); // Release returns to the existing22cm hover band.
+        assert(g::proximity_socket(g::Kind::none,.18,.30,.14,.14)==g::Kind::none);
+        assert(g::proximity_socket(selected,.23,.30,.14,.14)==g::Kind::none);
+        assert(g::proximity_socket(selected,.18,.01,.14,.14)==g::Kind::starter);
+        assert(g::proximity_control_handoff(selected,Lease::magazine,true)==g::Kind::none);
+        assert(g::proximity_control_handoff(selected,Lease::ammo,true)==g::Kind::none);
+        assert(g::proximity_control_handoff(selected,Lease::support,false)==g::Kind::none);
+        assert(g::proximity_control_handoff(g::Kind::none,Lease::support,true)==g::Kind::none);
+        assert(g::proximity_control_handoff(g::Kind::starter,Lease::none,true)==g::Kind::starter);
+        assert(g::proximity_control_handoff(g::Kind::starter,Lease::none,false)==g::Kind::none);
+        for(auto occupied:{Lease::support,Lease::magazine,Lease::ammo})
+            assert(g::proximity_control_handoff(g::Kind::starter,occupied,true)==g::Kind::none);
+        assert(g::proximity_control_handoff(selected,Lease::none,true)==g::Kind::support);
+    }
     {
         gears_weapon_hand::Frame f{};f.left_tracked=f.left_grip_known=1;
         auto& input=f.controllers.hands[0];input.squeeze_active=input.grip_active=1;
@@ -83,6 +134,25 @@ int main(){
         const auto offset=v::transform(v::rotation_matrix(grip),c.grip_to_wrist_metres);
         assert(std::abs(out.position.y-offset.y*100-still_holding.position.y)<1e-8);
     }
+    {
+        auto fitted=state;fitted.preset=g::Preset::authored;
+        assert(g::keep_relative_fit(true,g::Kind::starter,fitted.kind,fitted.preset,7,7,91,91));
+        assert(!g::keep_relative_fit(false,g::Kind::starter,fitted.kind,fitted.preset,7,7,91,91));
+        assert(!g::keep_relative_fit(true,g::Kind::loading,fitted.kind,fitted.preset,7,7,91,91));
+        assert(!g::keep_relative_fit(true,g::Kind::starter,fitted.kind,fitted.preset,8,7,91,91));
+        assert(!g::keep_relative_fit(true,g::Kind::starter,fitted.kind,fitted.preset,7,7,92,91));
+        auto shifted=physical;shifted.position.x+=50;
+        const auto physical_before=shifted;
+        assert(fitted.update({},shifted,c,100,1180000000,out,true));
+        assert(fitted.weight==1&&fitted.kind==g::Kind::starter&&!fitted.position_fitted);
+        // Retained cosmetic offset follows the NEW physical hand, never the
+        // old world socket. Actual source pose bytes stay unchanged.
+        assert(out.position.x>40);
+        assert(!std::memcmp(&shifted,&physical_before,sizeof shifted));
+        for(int i=0;i<9;++i)fitted.update({},shifted,c,100,1200000000+i*20000000,out,false);
+        assert(fitted.kind==g::Kind::none&&fitted.weight==0); // Real release/unknown still decays out.
+        g::BlendState empty{};assert(!empty.update({},shifted,c,100,1500000000,out,true));
+    }
     auto moved=physical;moved.position.x+=100;
     assert(state.update({},moved,c,100,1180000000,out));
     // Release follows today's fresh hand, not yesterday's object world pose.
@@ -132,11 +202,41 @@ int main(){
             const auto relative=v::normalized(v::multiply(wrist.orientation,v::inverse(physical_wrist.orientation)));
             assert(2*std::acos(std::clamp(std::abs(relative.w),0.,1.))<=.5235987755982989+1e-8);
         }
-        const v::Vector palm=kind==g::Kind::starter?v::Vector{10,0,0}:v::Vector{9.75,-4.6,-2.1};
+        // Independent authored contact expected from the original full-skin
+        // C fit. The former {10,0,0} put the barrel through the fixed palm.
+        const v::Vector palm=kind==g::Kind::starter?
+            v::Vector{9.083391056583642,-4.06789693573326,.35535626325030734}:v::Vector{9.75,-4.6,-2.1};
         const auto marker=v::transform(v::rotation_matrix(wrist.orientation),{palm.x*scale,palm.y*scale,palm.z*scale});
         assert(std::abs(wrist.position.x+marker.x-contact.x)<1e-8&&
             std::abs(wrist.position.y+marker.y-contact.y)<1e-8&&std::abs(wrist.position.z+marker.z-contact.z)<1e-8);
-        if(scale==1&&kind==g::Kind::starter)assert(std::hypot(std::hypot(goal.position.x-contact.x,goal.position.y-contact.y),goal.position.z-contact.z)<5.);
+        // The old <5raw distance asserted the retired {10,0,0} art marker's
+        // distance to the controller origin. Exact surface-anchor projection
+        // above replaces that old art expectation. Existing apply() contact,
+        // correction and maximum-distance guards remain unchanged and are
+        // independently checked earlier; this is not permission to extend them.
+    }
+    // E's whole-gun pinch must preserve its paired wrist/finger frame when
+    // approached naturally, including a rotated gun. The old C-derived
+    // circular approach frame changed this wrist despite an exact contact.
+    for(double angle:{-.8,0.,.8})for(double scale:{1.,1.25}){
+        const v::Quaternion gun{0,0,std::sin(angle*.5),std::cos(angle*.5)};
+        const auto expected=v::multiply(gun,v::Quaternion{
+            .35355339059327373,.6123724356957946,.6123724356957946,-.35355339059327373});
+        const v::Vector contact{100,200,300};
+        const auto pad=v::transform(v::rotation_matrix(expected),{9.75*scale,-4.6*scale,-2.1*scale});
+        const v::Pose physical_wrist{{contact.x-pad.x,contact.y-pad.y,contact.z-pad.z},expected};
+        const auto untouched=physical_wrist;v::Pose grip{},skin{};
+        assert(gears_weapon_lancer_grasp::part_grip(g::Kind::loading,gun,{0,0,0,1},
+            contact,physical_wrist,scale,100,grip));
+        gears_hand_authored_mount::Mount mount{};
+        assert(gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
+            gears_hand_authored_mount::Side::left,scale,100,mount));
+        assert(gears_hand_wrist::native_wrist_target(grip,mount.calibration,100,skin)==gears_hand_wrist::Status::okay);
+        const auto delta=v::normalized(v::multiply(skin.orientation,v::inverse(expected)));
+        assert(std::abs(delta.w)>1.-1e-10);
+        assert(std::hypot(std::hypot(skin.position.x-physical_wrist.position.x,
+            skin.position.y-physical_wrist.position.y),skin.position.z-physical_wrist.position.z)<1e-8);
+        assert(!std::memcmp(&physical_wrist,&untouched,sizeof physical_wrist));
     }
     // A left wrist already aligned around the other end of the same bar
     // must not be turned180deg merely to impose +barrel on its finger row.
@@ -173,11 +273,19 @@ int main(){
             const auto barrel=v::transform(v::rotation_matrix(motion),{0,1,0});
             const auto row=v::transform(v::rotation_matrix(skin.orientation),{0,0,1});
             assert(std::abs(row.x*barrel.x+row.y*barrel.y+row.z*barrel.z-held.starter_direction)<1e-8);
-            const auto pad=v::transform(v::rotation_matrix(skin.orientation),{10,0,0});
+            const auto pad=v::transform(v::rotation_matrix(skin.orientation),
+                {9.083391056583642,-4.06789693573326,.35535626325030734});
             const v::Vector gap{skin.position.x+pad.x-contact.x,skin.position.y+pad.y-contact.y,skin.position.z+pad.z-contact.z};
             const double along=gap.x*barrel.x+gap.y*barrel.y+gap.z*barrel.z;
             assert(std::hypot(std::hypot(gap.x-barrel.x*along,gap.y-barrel.y*along),gap.z-barrel.z*along)<1e-7);
             assert(std::abs(along)<=3.+1e-7); // Nearest point remains on the finite cylinder.
+            // Original C skin Y20.06538..33.48919, original contact Y25.01551.
+            // A valid centre alone is insufficient: keep both ends of the
+            // paired authored finger-pad span on the actual handle too.
+            const double pad_low=held.starter_direction>0?-6.157650975126031:-5.7468604155024545;
+            const double pad_high=held.starter_direction>0?5.7468604155024545:6.157650975126031;
+            assert(25.0155129328+along+pad_low>=20.065379712529424+.049);
+            assert(25.0155129328+along+pad_high<=33.489185256451954-.049);
         }
         assert(!std::memcmp(&approach,&original_physical,sizeof approach));
         const auto before=fitted;auto invalid=approach;invalid.position.x=std::numeric_limits<double>::infinity();
